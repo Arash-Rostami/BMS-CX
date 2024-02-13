@@ -1,0 +1,75 @@
+{
+    "name": "rawilk/filament-password-input",
+    "description": "Enhanced password input component for filament.",
+    "keywords": [
+        "rawilk",
+        "laravel",
+        "filament-password-input",
+        "filament",
+        "forms",
+        "ui",
+        "password"
+    ],
+    "homepage": "https://github.com/rawilk/filament-password-input",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Randall Wilk",
+            "email": "randall@randallwilk.dev",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.1|^8.2|^8.3",
+        "filament/forms": "^3.0",
+        "illuminate/contracts": "^10.0",
+        "spatie/laravel-package-tools": "^1.14"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.0",
+        "nunomaduro/collision": "^7.9",
+        "nunomaduro/larastan": "^2.6",
+        "orchestra/testbench": "^8.8",
+        "pestphp/pest": "^2.20",
+        "pestphp/pest-plugin-laravel": "^2.2",
+        "pestphp/pest-plugin-livewire": "^2.1",
+        "sinnbeck/laravel-dom-assertions": "^1.3",
+        "spatie/laravel-ray": "^1.31"
+    },
+    "autoload": {
+        "psr-4": {
+            "Rawilk\\FilamentPasswordInput\\": "src/",
+            "Rawilk\\FilamentPasswordInput\\Database\\Factories\\": "database/factories/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Rawilk\\FilamentPasswordInput\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "@php ./vendor/bin/testbench package:discover --ansi"
+        ],
+        "clear": "@php vendor/bin/testbench package:purge-filament-password-input --ansi",
+        "analyse": "vendor/bin/phpstan analyse",
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Rawilk\\FilamentPasswordInput\\FilamentPasswordInputServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

@@ -1,0 +1,90 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-nv-nsrsG.css",
+    "isEntry": true,
+    "src": "resources/css/app.css"
+  },
+  "resources/css/filament/admin/theme.css": {
+    "file": "assets/theme-jYctRqTy.css",
+    "isEntry": true,
+    "src": "resources/css/filament/admin/theme.css"
+  },
+  "resources/css/main-fonts.css": {
+    "file": "assets/main-fonts-ydg3Ug7o.css",
+    "isEntry": true,
+    "src": "resources/css/main-fonts.css"
+  },
+  "resources/fonts/Roboto.woff": {
+    "file": "assets/Roboto-u7haRXy8.woff",
+    "src": "resources/fonts/Roboto.woff"
+  },
+  "resources/fonts/Roboto.woff2": {
+    "file": "assets/Roboto-zkSvWxgI.woff2",
+    "src": "resources/fonts/Roboto.woff2"
+  },
+  "resources/images/avatars/accountant.png": {
+    "file": "assets/accountant-1v_ASmZN.png",
+    "src": "resources/images/avatars/accountant.png"
+  },
+  "resources/images/avatars/accountant.svg": {
+    "file": "assets/accountant-A6pa-KD5.svg",
+    "src": "resources/images/avatars/accountant.svg"
+  },
+  "resources/images/avatars/admin.png": {
+    "file": "assets/admin-6AqzztkB.png",
+    "src": "resources/images/avatars/admin.png"
+  },
+  "resources/images/avatars/admin.svg": {
+    "file": "assets/admin-okpmICXN.svg",
+    "src": "resources/images/avatars/admin.svg"
+  },
+  "resources/images/avatars/agent.png": {
+    "file": "assets/agent-FQIzH8xh.png",
+    "src": "resources/images/avatars/agent.png"
+  },
+  "resources/images/avatars/agent.svg": {
+    "file": "assets/agent-S7sRVCsY.svg",
+    "src": "resources/images/avatars/agent.svg"
+  },
+  "resources/images/avatars/manager.png": {
+    "file": "assets/manager--WqaeQXy.png",
+    "src": "resources/images/avatars/manager.png"
+  },
+  "resources/images/avatars/manager.svg": {
+    "file": "assets/manager-lNXAK0M1.svg",
+    "src": "resources/images/avatars/manager.svg"
+  },
+  "resources/images/avatars/viewer.png": {
+    "file": "assets/viewer-ANmOMvP3.png",
+    "src": "resources/images/avatars/viewer.png"
+  },
+  "resources/images/avatars/viewer.svg": {
+    "file": "assets/viewer-dBUqkQ1t.svg",
+    "src": "resources/images/avatars/viewer.svg"
+  },
+  "resources/images/bms-fav-icon.png": {
+    "file": "assets/bms-fav-icon-c2fp8kL3.png",
+    "src": "resources/images/bms-fav-icon.png"
+  },
+  "resources/images/bms-login-backdrop.jpg": {
+    "file": "assets/bms-login-backdrop-Hd4KdXq3.jpg",
+    "src": "resources/images/bms-login-backdrop.jpg"
+  },
+  "resources/images/bms-main-logo.png": {
+    "file": "assets/bms-main-logo-kANpU4aa.png",
+    "src": "resources/images/bms-main-logo.png"
+  },
+  "resources/images/cloud.svg": {
+    "file": "assets/cloud-o1xcuPZq.svg",
+    "src": "resources/images/cloud.svg"
+  },
+  "resources/images/star.svg": {
+    "file": "assets/star-LWxXvt9a.svg",
+    "src": "resources/images/star.svg"
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-ecWDpuvf.js",
+    "isEntry": true,
+    "src": "resources/js/app.js"
+  }
+}
