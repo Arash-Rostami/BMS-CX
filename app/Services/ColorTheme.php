@@ -15,11 +15,11 @@ class ColorTheme
     public static function getRandomFontTheme(): array
     {
         $colors = [
-//            'gold' => Color::Gold,
 //            'orange' => Color::Orange,
 //            'slate' => Color::Slate,
 //            'zinc' => Color::Zinc,
             'indigo' => Color::Indigo,
+//            'indigo-second' => [400 => '242, 217, 159']
         ];
 
         return $colors[array_rand($colors)];

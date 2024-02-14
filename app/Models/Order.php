@@ -141,6 +141,22 @@ class Order extends Model
         return $this->belongsTo(Party::class,);
     }
 
+    /**
+     * Get the product associated with the order.
+     */
+    public function payments()
+    {
+        return $this->hasMany(Payment::class, 'order_id');
+    }
+
+    /**
+     * Get the product associated with the order.
+     */
+    public function paymentRequests()
+    {
+        return $this->hasMany(PaymentRequest::class, 'order_id');
+    }
+
 
     /**
      * Get the product associated with the order.

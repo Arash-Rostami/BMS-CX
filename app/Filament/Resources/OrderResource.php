@@ -219,14 +219,6 @@ class OrderResource extends Resource
                     ->columnSpanFull()
                     ->collapsible()
                     ->collapsed(),
-
-                Section::make('Payments:')
-                    ->schema([
-
-
-                    ])->columnSpanFull()
-                    ->collapsible()
-                    ->collapsed(),
             ]);
     }
 
@@ -260,7 +252,9 @@ class OrderResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            Operational\OrderResource\RelationManagers\PaymentRequestsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
@@ -339,7 +333,8 @@ class OrderResource extends Resource
                                     Admin::showInvoiceNumber(),
                                     Admin::showOrderNumber(),
                                 ]),
-                                Admin::showPayments()
+                                Admin::showPaymentRequests(),
+                                Admin::showPayments(),
                             ]),
                         ])->space(2),
                     ])

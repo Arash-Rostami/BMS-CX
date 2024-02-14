@@ -857,15 +857,39 @@ class Admin
             ->weight(FontWeight::ExtraLight);
     }
 
+
+    /**
+     * @return TextColumn
+     */
+    public static function showPaymentRequests(): TextColumn
+    {
+        return TextColumn::make('paymentRequest')
+            ->state(function (Model $record): string {
+                return 'Payment requests: ' . count($record->paymentRequests);
+            })
+            ->alignRight()
+            ->color('danger')
+            ->icon('heroicon-s-arrow-right-on-rectangle')
+            ->iconPosition(IconPosition::Before)
+            ->grow(false)
+            ->hidden(fn($record) => is_null($record) || $record->paymentRequests->isEmpty())
+            ->badge();
+    }
+
     /**
      * @return TextColumn
      */
     public static function showPayments(): TextColumn
     {
         return TextColumn::make('payments')
-            ->default('... payments')
-            ->color('secondary')
+            ->state(function (Model $record): string {
+                return 'Payment: ' . count($record->payments);
+            })
             ->alignRight()
+            ->icon('heroicon-o-credit-card')
+            ->iconPosition(IconPosition::Before)
+            ->color('secondary')
+            ->grow(false)
             ->badge();
     }
 

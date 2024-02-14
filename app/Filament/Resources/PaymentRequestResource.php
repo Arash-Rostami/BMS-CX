@@ -31,6 +31,7 @@ use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 
 class PaymentRequestResource extends Resource
+
 {
     protected static ?string $model = PaymentRequest::class;
 
@@ -93,6 +94,8 @@ class PaymentRequestResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $table = self::configureCommonTableSettings($table);
+
         return (getTableDesign() != 'classic')
             ? self::getModernLayout($table)
             : self::getClassicLayout($table);
@@ -185,7 +188,7 @@ class PaymentRequestResource extends Resource
         return static::getModel()::where('status', 'new')->count();
     }
 
-    private static function configureCommonTableSettings(Table $table): Table
+    public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
             ->filters([AdminOrder::filterCreatedAt(), AdminOrder::filterSoftDeletes()])
@@ -211,9 +214,8 @@ class PaymentRequestResource extends Resource
             ]);
     }
 
-    private static function getModernLayout(Table $table): Table
+    public static function getModernLayout(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
         return $table
             ->columns([
                 Split::make([
@@ -239,10 +241,8 @@ class PaymentRequestResource extends Resource
             ]);
     }
 
-    private static function getClassicLayout(Table $table): Table
+    public static function getClassicLayout(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
-
         return $table
             ->columns([
                 Admin::showInvoiceNumber(),
@@ -264,6 +264,4 @@ class PaymentRequestResource extends Resource
                 Admin::showMICR()
             ])->striped();
     }
-
-
 }
