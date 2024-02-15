@@ -116,7 +116,6 @@ class PaymentRequestResource extends Resource
                                 Admin::viewDeadline(),
                                 Admin::viewPurpose()
                             ])->columns(3),
-
                         Tabs\Tab::make('Account Details')
                             ->schema([
                                 Admin::viewBeneficiaryName(),
@@ -127,7 +126,6 @@ class PaymentRequestResource extends Resource
                                 Admin::viewIFSC(),
                                 Admin::viewMICR(),
                             ])->columns(2),
-
                         Tabs\Tab::make('Extra Details')
                             ->schema([
                                 Admin::viewBeneficiaryAddress(),
