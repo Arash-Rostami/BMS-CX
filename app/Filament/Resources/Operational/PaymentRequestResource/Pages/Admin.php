@@ -3,11 +3,14 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Models\Order;
+use App\Policies\PaymentRequestPolicy;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Get;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
@@ -49,21 +52,55 @@ class Admin
 
 
     /**
+     * @return Radio
+     */
+    public static function getStatus(): Radio
+    {
+        return Radio::make('status')
+            ->options([
+                'approved' => '✅ Allow',
+                'rejected' => '🚫 Deny',
+                'processing' => '⏳ Processing',
+                'completed' => '☑️ Completed',
+                'cancelled' => '❌ Called off',
+            ])
+            ->descriptions([
+                'approved' => 'Authorize the payment for processing',
+                'rejected' => 'Decline the payment request',
+                'processing' => 'The payment is being processed',
+                'completed' => 'The payment has successfully been made',
+                'cancelled' => 'The payment has been cancelled',
+            ])
+            ->inline()
+            ->inlineLabel(false)
+            ->disableOptionWhen(fn(string $value): bool => PaymentRequestPolicy::updateStatus($value))
+            ->label('')
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">🛑 </span>Status'));
+    }
+
+
+    /**
      * @return Select
      */
     public static function getType(): Select
     {
         return Select::make('type')
             ->options([
-                'contract' => 'Order',
-                'extra' => 'Others',
+                'order' => 'Order',
+                'packaging' => 'Packaging',
+                'delivery' => 'Delivery',
+                'customs' => 'Customs',
+                'insurance' => 'Insurance',
+                'license' => 'License',
+                'other' => 'Other',
             ])
+            ->live()
             ->required()
             ->label('')
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">⭕ </span>Type<span class="red"> *</span>'));
     }
-
 
     /**
      * @return MarkdownEditor
@@ -73,10 +110,12 @@ class Admin
         return MarkdownEditor::make('purpose')
             ->label('')
             ->maxLength(65535)
-            ->required()
+            ->requiredIf('type', 'other')
             ->columnSpanFull()
             ->disableAllToolbarButtons()
+            ->hidden(fn(Get $get): bool => $get('type') != 'other')
             ->hintColor('primary')
+            ->placeholder('Please specify the purpose of payment request')
             ->hint(new HtmlString('<span class="grayscale">🚩 </span>Purpose<span class="red"> *</span>'));
     }
 
@@ -165,9 +204,23 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">✒️ </span>Beneficiary Name<span class="red"> *</span>'))
             ->hintColor('primary')
-            ->placeholder('')
+            ->placeholder('person or organization')
             ->required()
-            ->columnSpanFull()
+            ->maxLength(255);
+    }
+
+
+    /**
+     * @return TextInput
+     */
+    public static function getRecipientName(): TextInput
+    {
+        return TextInput::make('recipient_name')
+            ->label('')
+            ->hint(new HtmlString('<span class="grayscale">✒️ </span>Recipient Name<span class="red"> *</span>'))
+            ->hintColor('primary')
+            ->placeholder('If same, enter the beneficiary\'s name again')
+            ->required()
             ->maxLength(255);
     }
 
@@ -315,7 +368,7 @@ class Admin
         return TextColumn::make('type')
             ->label('Payment Type')
             ->grow(false)
-            ->formatStateUsing(fn($state) => ($state == 'extra') ? 'Other payments' : 'Main order payment')
+            ->formatStateUsing(fn($state) => ucfirst($state))
             ->sortable()
             ->searchable()
             ->badge();
@@ -419,7 +472,7 @@ class Admin
     public static function filterByType(): Grouping
     {
         return Grouping::make('type')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => $record->type == 'extra' ? ucfirst($record->type) : 'Order');
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->type));
     }
 
     /**
@@ -599,9 +652,7 @@ class Admin
     public static function viewType(): TextEntry
     {
         return TextEntry::make('type')
-            ->state(function (Model $record): string {
-                return ($record->type == 'extra') ? 'Other payments' : 'Main order payments';
-            })
+            ->state(fn(Model $record) => ucfirst($record->type))
             ->color('secondary')
             ->badge();
     }
@@ -613,6 +664,18 @@ class Admin
     {
         return TextEntry::make('beneficiary_name')
             ->label('Beneficiary Name')
+            ->color('secondary')
+            ->badge();
+    }
+
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewRecipientName(): TextEntry
+    {
+        return TextEntry::make('recipient_name')
+            ->label('Recipient Name')
             ->color('secondary')
             ->badge();
     }

@@ -9,6 +9,7 @@ use App\Filament\Resources\PaymentRequestResource\Pages;
 use App\Filament\Resources\PaymentRequestResource\RelationManagers;
 use App\Models\PaymentRequest;
 use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Tabs;
@@ -46,6 +47,12 @@ class PaymentRequestResource extends Resource
             ->schema([
                 Group::make()
                     ->schema([
+                        Section::make('Status')
+                            ->schema([
+                                Admin::getStatus()
+                            ])
+                            ->hidden(fn(string $operation) => $operation === 'create')
+                            ->collapsible(),
                         Group::make()
                             ->schema([
                                 Section::make('Order Details')
@@ -61,6 +68,7 @@ class PaymentRequestResource extends Resource
                                         Admin::getBankName(),
                                         Admin::getAccountNumber(),
                                         Admin::getBeneficiaryName(),
+                                        Admin::getRecipientName(),
                                         Admin::getBeneficiaryAddress(),
                                         Admin::getBankAddress(),
                                         Admin::getDescription()
@@ -119,6 +127,7 @@ class PaymentRequestResource extends Resource
                         Tabs\Tab::make('Account Details')
                             ->schema([
                                 Admin::viewBeneficiaryName(),
+                                Admin::viewRecipientName(),
                                 Admin::viewBankName(),
                                 Admin::viewAccountNumber(),
                                 Admin::viewSwiftCode(),

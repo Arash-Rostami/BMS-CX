@@ -2,12 +2,25 @@
 
 namespace App\Providers;
 
+use App\Models\PaymentRequest;
+use App\Policies\PaymentRequestPolicy;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
+
+    /**
+     * The policy mappings for the application.
+     *
+     * @var array
+     */
+    protected $policies = [
+
+    ];
+
+
     /**
      * Register any application services.
      */

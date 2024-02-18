@@ -20,6 +20,7 @@ class PaymentRequest extends Model
         'deadline',
         'description',
         'beneficiary_name',
+        'recipient_name',
         'beneficiary_address',
         'bank_name',
         'bank_address',
@@ -38,7 +39,6 @@ class PaymentRequest extends Model
         'deadline' => 'datetime',
         'extra' => 'json',
     ];
-
 
 
     public function attachments()

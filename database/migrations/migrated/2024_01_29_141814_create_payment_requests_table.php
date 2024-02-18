@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::create('payment_requests', function (Blueprint $table) {
             $table->increments('id')->unsigned()->index();
-            $table->enum('type', ['contract', 'extra'])->default('contract');
+            $table->enum('type', ['order','packaging','delivery', 'customs', 'insurance','license','other'])->default('order');
             $table->text('purpose');
             $table->enum('status', ['pending', 'processing', 'approved', 'rejected', 'completed', 'cancelled'])->default('USD');
             $table->double('individual_amount');
@@ -20,6 +20,7 @@ return new class extends Migration {
             $table->timestamp('deadline');
             $table->text('description')->nullable();
             $table->string('beneficiary_name');
+            $table->string('recipient_name')->nullable();
             $table->text('beneficiary_address')->nullable();
             $table->string('bank_name');
             $table->text('bank_address')->nullable();
