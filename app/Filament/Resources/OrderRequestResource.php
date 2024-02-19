@@ -78,6 +78,8 @@ class OrderRequestResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $table = self::configureCommonTableSettings($table);
+
         return (getTableDesign() != 'classic')
             ? self::getModernLayout($table)
             : self::getClassicLayout($table);
@@ -175,9 +177,8 @@ class OrderRequestResource extends Resource
             ]);
     }
 
-    private static function getModernLayout(Table $table): Table
+    public static function getModernLayout(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
         return $table
             ->columns([
                 Split::make([
@@ -201,17 +202,11 @@ class OrderRequestResource extends Resource
                     ])->columnSpanFull(true),
                 ]),
                 Admin::showTimeStamp()
-            ])
-            ->contentGrid([
-                'md' => 2,
-                'xl' => 2,
             ]);
     }
 
-    private static function getClassicLayout(Table $table): Table
+    public static function getClassicLayout(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
-
         return $table
             ->columns([
                 Admin::showCategory(),

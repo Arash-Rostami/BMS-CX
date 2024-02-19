@@ -31,10 +31,10 @@ class AvatarMaker
     public function get(string $role): string
     {
         return match ($role) {
-            'Agent' => $this->getPNG('agent'),
-            'Accountant' => $this->getPNG('accountant'),
-            'Manager' => $this->getPNG('manager'),
-            'Admin' => $this->getPNG('admin'),
+            'agent' => $this->getPNG('agent'),
+            'accountant' => $this->getPNG('accountant'),
+            'manager' => $this->getPNG('manager'),
+            'admin' => $this->getPNG('admin'),
             default => $this->getPNG('viewer'),
         };
     }

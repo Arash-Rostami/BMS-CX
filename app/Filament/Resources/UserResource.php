@@ -73,7 +73,7 @@ class UserResource extends Resource
                                     ->collapsed()
                                     ->collapsible()
                                     ->visibleOn('create')
-                                    ->visible(fn() => auth()->user()->role == 'Admin'),
+                                    ->visible(fn() => isUserAdmin()),
                             ])->columns(2),
                         /*Second tab*/
                         Tabs\Tab::make('Professional')

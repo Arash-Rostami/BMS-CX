@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Payment extends Model
@@ -13,30 +14,55 @@ class Payment extends Model
 
     protected $fillable = [
         'payer',
-        'number',
-        'beneficiary_name',
-        'beneficiary_address',
-        'bank_name',
-        'account_number',
-        'swift_code',
-        'IBAN',
         'amount',
         'currency',
-        'IFSC',
-        'MICR',
+        'account_number',
+        'bank_name',
         'extra',
         'user_id',
+        'payment_request_id',
         'order_id',
+        'attachment_id',
     ];
+
 
     protected $casts = [
         'extra' => 'json',
     ];
 
+    protected static function booted()
+    {
+        static::creating(function ($post) {
+            $post->user_id = auth()->id();
+        });
+    }
+
+
     public function attachments()
     {
-        return $this->hasMany(Attachment::class, 'payment_id');
+        return $this->hasMany(Attachment::class);
     }
+
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'id', 'order_id');
+    }
+
+
+    public function orderRequests()
+    {
+
+        return $this->belongsTo(OrderRequest::class, 'id','id' ?? null);
+
+    }
+
+
+    public function paymentRequests()
+    {
+        return $this->hasMany(PaymentRequest::class, 'id');
+    }
+
 
     /**
      * Get the user that owns the payment.
@@ -45,13 +71,4 @@ class Payment extends Model
     {
         return $this->belongsTo(User::class);
     }
-
-    /**
-     * Get the order that the payment belongs to.
-     */
-    public function order()
-    {
-        return $this->belongsTo(Order::class);
-    }
-
 }

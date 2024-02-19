@@ -18,7 +18,7 @@ return new class extends Migration {
             $table->string('phone')->nullable();
             $table->string('email', 191)->unique();
             $table->string('company', 191)->nullable();
-            $table->enum('role', ['Agent', 'Accountant', 'Manager', 'Partner', 'Admin'])->nullable();
+            $table->enum('role', ['agent', 'accountant', 'manager', 'partner', 'admin'])->nullable();
             $table->enum('status', ['active', 'inactive', 'pending'])->default('active');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('ip_address')->nullable();

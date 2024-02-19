@@ -17,9 +17,9 @@ class ListUsers extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->visible(fn() => auth()->user()->role == 'Admin'),
+                ->visible(fn() => isUserAdmin()),
             ExcelImportAction::make()
-                ->visible(fn() => auth()->user()->role == 'Admin')
+                ->visible(fn() => isUserAdmin())
                 ->color("success"),
         ];
     }

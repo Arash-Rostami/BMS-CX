@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
+use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
@@ -14,6 +15,8 @@ class ListPaymentRequests extends ListRecords
     {
         return [
             Actions\CreateAction::make(),
+            ExcelImportAction::make()
+                ->color("success"),
         ];
     }
 

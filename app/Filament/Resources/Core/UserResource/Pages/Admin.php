@@ -155,10 +155,10 @@ class Admin
     {
         return ButtonGroup::make('role')
             ->options([
-                'Agent' => 'Agent 🎧',
-                'Accountant' => 'Accountant 💰',
-                'Manager' => 'Manager 👑',
-                'Partner' => 'Partner 👓',
+                'agent' => 'Agent 🎧',
+                'accountant' => 'Accountant 💰',
+                'manager' => 'Manager 👑',
+                'partner' => 'Partner 👓',
             ])
             ->onColor('primary')
             ->offColor('gray')
@@ -289,18 +289,18 @@ class Admin
             ->sortable()
             ->toggleable()
             ->icon(fn(string $state): string => match ($state) {
-                'Agent' => 'heroicon-o-pencil',
-                'Accountant' => 'heroicon-o-calculator',
-                'Manager' => 'heroicon-o-briefcase',
-                'Partner' => 'heroicon-o-book-open',
-                'Admin' => 'heroicon-o-shield-check',
+                'agent' => 'heroicon-o-pencil',
+                'accountant' => 'heroicon-o-calculator',
+                'manager' => 'heroicon-o-briefcase',
+                'partner' => 'heroicon-o-book-open',
+                'admin' => 'heroicon-o-shield-check',
             })
             ->color(fn(string $state): string => match ($state) {
-                'Agent' => 'primary',
-                'Accountant' => 'warning',
-                'Manager' => 'success',
-                'Partner' => 'gray',
-                'Admin' => 'danger',
+                'agent' => 'primary',
+                'accountant' => 'warning',
+                'manager' => 'success',
+                'partner' => 'gray',
+                'admin' => 'danger',
             })
             ->alignLeft();
     }
@@ -316,7 +316,7 @@ class Admin
                 'agent' => 'Agent',
                 'accountant' => 'Accountant',
                 'manager' => 'Manager',
-                'viewer' => 'Viewer',
+                'partner' => 'Partner',
             ]);
     }
 

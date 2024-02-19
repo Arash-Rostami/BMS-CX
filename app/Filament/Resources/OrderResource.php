@@ -227,6 +227,7 @@ class OrderResource extends Resource
      */
     public static function table(Table $table): Table
     {
+        $table = self::configureCommonTableSettings($table);
 
         return (getTableDesign() != 'classic')
             ? self::getModernLayout($table)
@@ -281,7 +282,7 @@ class OrderResource extends Resource
         ]);
     }
 
-    private static function configureCommonTableSettings(Table $table): Table
+    public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
             ->recordUrl(null)
@@ -307,10 +308,8 @@ class OrderResource extends Resource
             ]);
     }
 
-    private static function getModernLayout(Table $table): Table
+    public static function getModernLayout(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
-
         return $table
             ->columns([
                 Split::make([
@@ -343,10 +342,8 @@ class OrderResource extends Resource
             ]);
     }
 
-    private static function getClassicLayout(Table $table): Table
+    public static function getClassicLayout(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
-
         return $table
             ->columns([
                 Admin::showProformaNumber(),
