@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::create('payment_requests', function (Blueprint $table) {
             $table->increments('id')->unsigned()->index();
             $table->enum('type', ['order','packaging','delivery', 'customs', 'insurance','license','other'])->default('order');
-            $table->text('purpose');
+            $table->text('purpose')->nullable();
             $table->enum('status', ['pending', 'processing', 'approved', 'rejected', 'completed', 'cancelled'])->default('USD');
             $table->double('individual_amount');
             $table->double('total_amount');

@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\AvatarMaker;
+use Illuminate\Support\HtmlString;
 
 
 function getTableDesign()
@@ -29,4 +30,16 @@ function isUserAgent()
 function isUserAccountant()
 {
     return auth()->user()->role === 'accountant';
+}
+
+function showCurrencies()
+{
+    return [
+        'USD' => new HtmlString('<span class="mr-2">🇺🇸</span> Dollar'),
+        'EURO' => new HtmlString('<span class="mr-2">🇪🇺</span> Euro'),
+        'Yuan' => new HtmlString('<span class="mr-2">🇨🇳</span> Yuan'),
+        'Dirham' => new HtmlString('<span class="mr-2">🇦🇪</span> Dirham'),
+        'Ruble' => new HtmlString('<span class="mr-2">🇷🇺</span> Ruble'),
+        'Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')
+    ];
 }

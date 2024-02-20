@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Models\Order;
+use App\Models\PaymentRequest;
 use App\Policies\PaymentRequestPolicy;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
@@ -21,8 +22,6 @@ use Filament\Tables\Grouping\Group as Grouping;
 
 class Admin
 {
-
-
     protected static array $statusTexts = [
         'new' => 'New',
         'processing' => 'Processing',
@@ -57,13 +56,7 @@ class Admin
     public static function getStatus(): Radio
     {
         return Radio::make('status')
-            ->options([
-                'approved' => '✅ Allow',
-                'rejected' => '🚫 Deny',
-                'processing' => '⏳ Processing',
-                'completed' => '☑️ Completed',
-                'cancelled' => '❌ Called off',
-            ])
+            ->options(PaymentRequest::$status)
             ->descriptions([
                 'approved' => 'Authorize the payment for processing',
                 'rejected' => 'Decline the payment request',
@@ -86,15 +79,7 @@ class Admin
     public static function getType(): Select
     {
         return Select::make('type')
-            ->options([
-                'order' => 'Order',
-                'packaging' => 'Packaging',
-                'delivery' => 'Delivery',
-                'customs' => 'Customs',
-                'insurance' => 'Insurance',
-                'license' => 'License',
-                'other' => 'Other',
-            ])
+            ->options(PaymentRequest::$typesOfPayment)
             ->live()
             ->required()
             ->label('')
@@ -110,10 +95,10 @@ class Admin
         return MarkdownEditor::make('purpose')
             ->label('')
             ->maxLength(65535)
-            ->requiredIf('type', 'other')
+            ->requiredIf('type', 'Other')
             ->columnSpanFull()
             ->disableAllToolbarButtons()
-            ->hidden(fn(Get $get): bool => $get('type') != 'other')
+            ->hidden(fn(Get $get): bool => $get('type') != 'Other')
             ->hintColor('primary')
             ->placeholder('Please specify the purpose of payment request')
             ->hint(new HtmlString('<span class="grayscale">🚩 </span>Purpose<span class="red"> *</span>'));
@@ -168,14 +153,7 @@ class Admin
     public static function getCurrency(): Select
     {
         return Select::make('currency')
-            ->options([
-                'USD' => new HtmlString('<span class="mr-2">🇺🇸</span> Dollar'),
-                'EURO' => new HtmlString('<span class="mr-2">🇪🇺</span> Euro'),
-                'Yuan' => new HtmlString('<span class="mr-2">🇨🇳</span> Yuan'),
-                'Dirham' => new HtmlString('<span class="mr-2">🇦🇪</span> Dirham'),
-                'Ruble' => new HtmlString('<span class="mr-2">🇷🇺</span> Ruble'),
-                'Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')
-            ])
+            ->options(showCurrencies())
             ->required()
             ->label('')
             ->hintColor('primary')
@@ -368,7 +346,7 @@ class Admin
         return TextColumn::make('type')
             ->label('Payment Type')
             ->grow(false)
-            ->formatStateUsing(fn($state) => ucfirst($state))
+            ->formatStateUsing(fn($state) => PaymentRequest::$typesOfPayment[$state])
             ->sortable()
             ->searchable()
             ->badge();
@@ -472,7 +450,7 @@ class Admin
     public static function filterByType(): Grouping
     {
         return Grouping::make('type')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->type));
+            ->getTitleFromRecordUsing(fn(Model $record): string => PaymentRequest::$typesOfPayment[$record->type]);
     }
 
     /**
@@ -652,7 +630,7 @@ class Admin
     public static function viewType(): TextEntry
     {
         return TextEntry::make('type')
-            ->state(fn(Model $record) => ucfirst($record->type))
+            ->state(fn(Model $record) => PaymentRequest::$typesOfPayment[$record->type])
             ->color('secondary')
             ->badge();
     }

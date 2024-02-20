@@ -40,6 +40,28 @@ class PaymentRequest extends Model
         'extra' => 'json',
     ];
 
+    public static array $typesOfPayment = [
+        'Order' => 'Order',
+        'ContainerDemurrage' => 'Container Demurrage',
+        'CustomsAndPortFees' => 'Customs & Port Fees',
+        'ContainerAcceptance' => 'Container Acceptance',
+        'ShrinkWrap' => 'Shrink Wrap',
+        'ContainerLashing' => 'Container Lashing',
+        'SgsReport' => 'SGS Report',
+        'JumboBoxPallet' => 'Jumbo/Box/Pallet',
+        'DrumPackaging' => 'Drum Packaging',
+        'Trucking' => 'Trucking',
+        'Other' => 'Other',
+    ];
+
+    public static array $status = [
+        'approved' => '✅ Allow',
+        'rejected' => '🚫 Deny',
+        'processing' => '⏳ Processing',
+        'completed' => '☑️ Completed',
+        'cancelled' => '❌ Called off',
+    ];
+
 
     public function attachments()
     {
@@ -63,12 +85,13 @@ class PaymentRequest extends Model
             ->map(fn($item) => $item->count);
     }
 
-    /**
-     * Get the user that owns the payment request.
-     */
-    public function user()
+    public static function showApproved()
     {
-        return $this->belongsTo(User::class);
+        return self::whereNotIn('status', ['cancelled', 'rejected', 'completed'])
+            ->pluck('type', 'id')
+            ->map(function ($type) {
+                return self::$typesOfPayment[$type] ?? $type;
+            });
     }
 
     /**
@@ -77,5 +100,19 @@ class PaymentRequest extends Model
     public function order()
     {
         return $this->belongsTo(Order::class);
+    }
+
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Get the user that owns the payment request.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

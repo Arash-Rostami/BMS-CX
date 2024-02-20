@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Operational\PaymentResource\RelationManagers;
 
-use App\Filament\Resources\Operational\OrderResource\RelationManagers\PaymentRequestsRelationManager as OrderPaymentRequests;
-use App\Filament\Resources\PaymentRequestResource;
+use App\Filament\Resources\Operational\PaymentRequestResource\RelationManagers\OrderRelationManager as PaymentRequestOrder;
+use App\Filament\Resources\OrderResource;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
@@ -12,9 +12,9 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
-class PaymentRequestsRelationManager extends RelationManager
+class OrderRelationManager extends RelationManager
 {
-    protected static string $relationship = 'paymentRequests';
+    protected static string $relationship = 'order';
 
 
     public function form(Form $form): Form
@@ -24,7 +24,7 @@ class PaymentRequestsRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return PaymentRequestResource::infolist($infolist);
+        return OrderResource::infolist($infolist);
     }
 
     public function table(Table $table): Table
@@ -32,12 +32,13 @@ class PaymentRequestsRelationManager extends RelationManager
         $table = self::configureCommonTableSettings($table);
 
         return (getTableDesign() != 'classic')
-            ? PaymentRequestResource::getModernLayout($table)
-            : PaymentRequestResource::getClassicLayout($table);
+            ? OrderResource::getModernLayout($table)
+            : OrderResource::getClassicLayout($table);
     }
+
 
     public static function configureCommonTableSettings(Table $table): Table
     {
-        return OrderPaymentRequests::configureCommonTableSettings($table);
+        return PaymentRequestOrder::configureCommonTableSettings($table);
     }
 }

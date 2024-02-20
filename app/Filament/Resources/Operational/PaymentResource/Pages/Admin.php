@@ -12,6 +12,10 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
@@ -68,8 +72,9 @@ class Admin
     public static function getPaymentRequest(): Select
     {
         return Select::make('payment_request_id')
-            ->options(fn() => PaymentRequest::whereNotIn('status', ['cancelled', 'rejected', 'completed'])->pluck('beneficiary_name', 'id'))
+            ->options(fn() => PaymentRequest::showApproved())
             ->required()
+            ->multiple()
             ->label('')
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">💳 </span>Payment Request<span class="red"> *</span>'));
@@ -108,7 +113,7 @@ class Admin
             ->label('')
             ->maxLength(65535)
             ->columnSpanFull()
-            ->callAfterStateUpdated(fn(?Model $record) => json_encode([['notes', $record->extra]]))
+//            ->afterStateUpdated(fn(?Model $record) => json_encode(['notes' => $record->extra]))
             ->disableAllToolbarButtons()
             ->hintColor('primary')
             ->placeholder('Optional')
@@ -121,14 +126,7 @@ class Admin
     public static function getCurrency(): Select
     {
         return Select::make('currency')
-            ->options([
-                'USD' => new HtmlString('<span class="mr-2">🇺🇸</span> Dollar'),
-                'EURO' => new HtmlString('<span class="mr-2">🇪🇺</span> Euro'),
-                'Yuan' => new HtmlString('<span class="mr-2">🇨🇳</span> Yuan'),
-                'Dirham' => new HtmlString('<span class="mr-2">🇦🇪</span> Dirham'),
-                'Ruble' => new HtmlString('<span class="mr-2">🇷🇺</span> Ruble'),
-                'Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')
-            ])
+            ->options(showCurrencies())
             ->required()
             ->label('')
             ->hintColor('primary')
@@ -195,5 +193,246 @@ class Admin
             ->requiredWith('file_path')
             ->rule(new EnglishAlphabet)
             ->columnSpanFull();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showInvoiceNumber(): TextColumn
+    {
+        return TextColumn::make('order.invoice_number')
+            ->label('Invoice Number')
+            ->grow(false)
+            ->sortable()
+            ->searchable()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showPaymentRequest(): TextColumn
+    {
+        return TextColumn::make('paymentRequests.type')
+            ->label('Payment Request')
+            ->grow(false)
+            ->formatStateUsing(fn($state) => PaymentRequest::$typesOfPayment[$state])
+            ->sortable()
+            ->searchable()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showTransferredAmount(): TextColumn
+    {
+        return TextColumn::make('amount')
+            ->label('Paid Amount')
+            ->color('warning')
+            ->grow(false)
+            ->state(fn(?Model $record) => "💰 Sum: {$record->currency} " . number_format($record->amount) . " transferred by {$record->payer}")
+            ->sortable()
+            ->toggleable()
+            ->searchable()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showTimeStamp(): TextColumn
+    {
+        return TextColumn::make('created_at')
+            ->label('Creation Time')
+            ->dateTime()
+            ->sortable()
+            ->alignRight()
+            ->toggleable();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showPayer(): TextColumn
+    {
+        return TextColumn::make('payer')
+            ->color('secondary')
+            ->sortable()
+            ->searchable()
+            ->toggleable()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showAmount(): TextColumn
+    {
+        return TextColumn::make('amount')
+            ->label('Payable Amount')
+            ->color('warning')
+            ->grow(false)
+            ->state(fn(?Model $record) => '💰 Sum: ' . number_format($record->amount) . ' - ' . $record->currency)
+            ->sortable()
+            ->searchable()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showBankName(): TextColumn
+    {
+        return TextColumn::make('bank_name')
+            ->label('Transferring Bank')
+            ->color('secondary')
+            ->sortable()
+            ->searchable()
+            ->toggleable()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showAccountNumber(): TextColumn
+    {
+        return TextColumn::make('account_number')
+            ->label('Transferring Account')
+            ->color('secondary')
+            ->sortable()
+            ->searchable()
+            ->toggleable()
+            ->badge();
+    }
+
+
+    /**
+     * @return Grouping
+     */
+    public static function filterByCurrency(): Grouping
+    {
+        return Grouping::make('currency')
+            ->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => data_get($record, 'currency'));
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function filterByPayer(): Grouping
+    {
+        return Grouping::make('payer')
+            ->collapsible();
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function filterByOrder(): Grouping
+    {
+        return Grouping::make('order_id')->collapsible()
+            ->label('Order')
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->order->invoice_number);
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function filterByPaymentRequest(): Grouping
+    {
+        return Grouping::make('payment_request_id')->collapsible()
+            ->label('Payment Request')
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->paymentRequests[0]->beneficiary_name);
+    }
+
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewOrder(): TextEntry
+    {
+        return TextEntry::make('order_id')
+            ->label('Order')
+            ->state(function (Model $record): string {
+                return $record->order->invoice_number;
+            })
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewPaymentRequest(): TextEntry
+    {
+        return TextEntry::make('payment_request_id')
+            ->label('Payment Request')
+            ->state(function (Model $record) {
+                $invoiceNumbers = [];
+                foreach ($record->paymentRequests as $request) {
+                    if ($request->type) { // Handle potentially null values
+                        $invoiceNumbers[] = PaymentRequest::$typesOfPayment[$request->type];
+                    }
+                }
+                return implode('|', $invoiceNumbers);
+            })
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewPayer(): TextEntry
+    {
+        return TextEntry::make('payer')
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewTransferredAmount(): TextEntry
+    {
+        return TextEntry::make('amount')
+            ->state(fn(?Model $record) => '💰 Sum: ' . number_format($record->amount) . ' - ' . $record->currency)
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewAccountNumber(): TextEntry
+    {
+        return TextEntry::make('account_number')
+            ->label('Transferring Account')
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewBankName(): TextEntry
+    {
+        return TextEntry::make('bank_name')
+            ->label('Transferring Bank')
+            ->badge();
+    }
+
+    /**
+     * @return ImageEntry
+     */
+    public static function viewAttachments(): ImageEntry
+    {
+        return ImageEntry::make('file_path')
+            ->label('')
+            ->extraAttributes(fn($state) => $state ? [
+                'class' => 'cursor-pointer',
+                'title' => '👁️‍',
+                'onclick' => "showImage('" . url($state) . "')",
+            ] : [])
+            ->disk('filament')
+            ->alignCenter()
+            ->visibility('public');
     }
 }

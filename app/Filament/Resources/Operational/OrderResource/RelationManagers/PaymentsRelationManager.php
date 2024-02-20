@@ -1,20 +1,21 @@
 <?php
 
-namespace App\Filament\Resources\Operational\PaymentResource\RelationManagers;
+namespace App\Filament\Resources\Operational\OrderResource\RelationManagers;
 
-use App\Filament\Resources\OrderResource;
+use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
+use App\Filament\Resources\PaymentRequestResource;
+use App\Filament\Resources\PaymentResource;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use Illuminate\Database\Eloquent\Model;
 
-class OrdersRelationManager extends RelationManager
+class PaymentsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'orders';
+    protected static string $relationship = 'payments';
 
     public function form(Form $form): Form
     {
@@ -23,7 +24,7 @@ class OrdersRelationManager extends RelationManager
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return OrderResource::infolist($infolist);
+        return PaymentResource::infolist($infolist);
     }
 
     public function table(Table $table): Table
@@ -31,10 +32,9 @@ class OrdersRelationManager extends RelationManager
         $table = self::configureCommonTableSettings($table);
 
         return (getTableDesign() != 'classic')
-            ? OrderResource::getModernLayout($table)
-            : OrderResource::getClassicLayout($table);
+            ? PaymentResource::getModernLayout($table)
+            : PaymentResource::getClassicLayout($table);
     }
-
 
     public static function configureCommonTableSettings(Table $table): Table
     {
@@ -51,14 +51,14 @@ class OrdersRelationManager extends RelationManager
                         if (!$record || !$record->id) {
                             return null;
                         }
-                        return OrderResource::getUrl('edit', ['record' => $record->id]);
+                        return PaymentResource::getUrl('edit', ['record' => $record->id]);
                     }, shouldOpenInNewTab: true),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->label('New')
                     ->icon('heroicon-m-arrow-top-right-on-square')
-                    ->url(fn() => OrderResource::getUrl('create'), shouldOpenInNewTab: true),
+                    ->url(fn() => PaymentResource::getUrl('create'), shouldOpenInNewTab: true),
             ])
             ->poll(30);
     }

@@ -161,7 +161,10 @@ class PaymentRequestResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            Operational\PaymentRequestResource\RelationManagers\OrderRelationManager::class,
+            Operational\PaymentRequestResource\RelationManagers\PaymentsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

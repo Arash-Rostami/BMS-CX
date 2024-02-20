@@ -1,42 +1,39 @@
 <?php
 
-namespace App\Filament\Resources\Operational\PaymentResource\RelationManagers;
+namespace App\Filament\Resources\Operational\PaymentRequestResource\RelationManagers;
 
+use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\OrderRequestResource;
-use App\Models\OrderRequest;
+use App\Filament\Resources\OrderResource;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use Illuminate\Database\Eloquent\Model;
 
-
-class OrderRequestsRelationManager extends RelationManager
+class OrderRelationManager extends RelationManager
 {
-    protected static string $relationship = 'orderRequests';
+    protected static string $relationship = 'order';
 
     public function form(Form $form): Form
     {
-        return $form
-            ->schema([ ]);
+        return $form->schema([]);
     }
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return OrderRequestResource::infolist($infolist);
+        return OrderResource::infolist($infolist);
     }
-
 
     public function table(Table $table): Table
     {
         $table = self::configureCommonTableSettings($table);
 
         return (getTableDesign() != 'classic')
-            ? OrderRequestResource::getModernLayout($table)
-            : OrderRequestResource::getClassicLayout($table);
+            ? OrderResource::getModernLayout($table)
+            : OrderResource::getClassicLayout($table);
     }
 
     public static function configureCommonTableSettings(Table $table): Table
@@ -54,14 +51,14 @@ class OrderRequestsRelationManager extends RelationManager
                         if (!$record || !$record->id) {
                             return null;
                         }
-                        return OrderRequestResource::getUrl('edit', ['record' => $record->id]);
+                        return OrderResource::getUrl('edit', ['record' => $record->id]);
                     }, shouldOpenInNewTab: true),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->label('New')
                     ->icon('heroicon-m-arrow-top-right-on-square')
-                    ->url(fn() => OrderRequestResource::getUrl('create'), shouldOpenInNewTab: true),
+                    ->url(fn() => OrderResource::getUrl('create'), shouldOpenInNewTab: true),
             ])
             ->poll(30);
     }

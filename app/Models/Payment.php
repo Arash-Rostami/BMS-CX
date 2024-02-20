@@ -43,24 +43,29 @@ class Payment extends Model
         return $this->hasMany(Attachment::class);
     }
 
-
-    public function orders()
+    public function order()
     {
-        return $this->hasMany(Order::class, 'id', 'order_id');
+        return $this->belongsTo(Order::class);
     }
 
+//
+//    public function orders()
+//    {
+//        return $this->hasMany(Order::class, 'id', 'order_id');
+//    }
+//
 
-    public function orderRequests()
+    public function orderRequest()
     {
 
-        return $this->belongsTo(OrderRequest::class, 'id','id' ?? null);
+        return $this->belongsTo(OrderRequest::class, 'id', 'id' ?? null);
 
     }
 
 
     public function paymentRequests()
     {
-        return $this->hasMany(PaymentRequest::class, 'id');
+        return $this->hasMany(PaymentRequest::class, 'id' ,'payment_request_id');
     }
 
 

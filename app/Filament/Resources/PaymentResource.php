@@ -6,16 +6,21 @@ use App\Filament\Resources\Operational\PaymentResource\Pages\Admin;
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Filament\Resources\PaymentResource\RelationManagers;
 use App\Models\Payment;
-
+use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
+use App\Models\PaymentRequest;
 use Filament\Forms\Components\Group;
-
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
-
 use Filament\Forms\Form;
-
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\RestoreBulkAction;
+use Filament\Tables\Columns\Layout\Panel;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +29,7 @@ use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Component as Livewire;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class PaymentResource extends Resource
 {
@@ -49,8 +55,7 @@ class PaymentResource extends Resource
                                         Admin::getAccountNumber(),
                                         Admin::getBankName(),
                                         Admin::getNotes()
-                                    ])
-                                    ->columns(2)
+                                    ])->columns(2)
                                     ->collapsible()
                             ])
                             ->columnSpan(2),
@@ -97,21 +102,11 @@ class PaymentResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
-            ->columns([
-                //
-            ])
-            ->filters([
-                //
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+        $table = self::configureCommonTableSettings($table);
+
+        return (getTableDesign() != 'classic')
+            ? self::getModernLayout($table)
+            : self::getClassicLayout($table);
     }
 
     public static function getEloquentQuery(): Builder
@@ -122,13 +117,27 @@ class PaymentResource extends Resource
             ]);
     }
 
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Admin::viewOrder(),
+                Admin::viewPaymentRequest(),
+                Admin::viewPayer(),
+                Admin::viewTransferredAmount(),
+                Admin::viewAccountNumber(),
+                Admin::viewBankName(),
+                RepeatableEntry::make('attachments')
+                    ->label('')
+                    ->schema([Admin::viewAttachments()])
+            ]);
+    }
+
     public static function getRelations(): array
     {
         return [
-            Operational\PaymentResource\RelationManagers\OrderRequestsRelationManager::class,
-            Operational\PaymentResource\RelationManagers\OrdersRelationManager::class,
+            Operational\PaymentResource\RelationManagers\OrderRelationManager::class,
             Operational\PaymentResource\RelationManagers\PaymentRequestsRelationManager::class,
-
         ];
     }
 
@@ -152,4 +161,65 @@ class PaymentResource extends Resource
         return 'primary';
     }
 
+    public static function configureCommonTableSettings(Table $table): Table
+    {
+        return $table
+            ->filters([AdminOrder::filterCreatedAt(), AdminOrder::filterSoftDeletes()])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\RestoreAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                    RestoreBulkAction::make(),
+                    ExportBulkAction::make(),
+                ])
+            ])
+            ->defaultSort('id', 'desc')
+            ->poll(30)
+            ->groups([
+                Admin::filterByCurrency(),
+                Admin::filterByPayer(),
+                Admin::filterByOrder(),
+                Admin::filterByPaymentRequest(),
+            ]);
+    }
+
+
+    public static function getModernLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Split::make([
+                    Panel::make([
+                        Stack::make([
+                            Split::make([
+                                Admin::showInvoiceNumber(),
+                                Admin::showPaymentRequest()
+                            ]),
+                            Split::make([
+                                Admin::showTransferredAmount()
+                            ]),
+                        ])->space(2),
+                    ])
+                ])->columnSpanFull(),
+                Admin::showTimeStamp()
+            ]);
+    }
+
+    public static function getClassicLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Admin::showInvoiceNumber(),
+                Admin::showPaymentRequest(),
+                Admin::showPayer(),
+                Admin::showAmount(),
+                Admin::showBankName(),
+                Admin::showAccountNumber()
+            ])->striped();
+    }
 }
