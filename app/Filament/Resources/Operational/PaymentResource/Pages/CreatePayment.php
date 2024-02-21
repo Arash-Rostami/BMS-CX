@@ -15,6 +15,7 @@ class CreatePayment extends CreateRecord
 
         $count = count($paymentRequestIds);
 
+        // store the payment for each payment request selected, except the last one
         for ($i = 0; $i < $count - 1; $i++) {
             $newData = $data;
 
@@ -23,6 +24,7 @@ class CreatePayment extends CreateRecord
             static::getModel()::create($newData);
         }
 
+        // save then store the payment for the last payment request
         $data['payment_request_id'] = $paymentRequestIds[$count - 1];
 
         return $data;
