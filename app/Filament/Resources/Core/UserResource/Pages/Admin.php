@@ -349,7 +349,10 @@ class Admin
     protected static function getCountryFromIp(string $state): string
     {
         return Cache::remember("country_{$state}", now()->addMinutes(10), function () use ($state) {
-            return Http::get('http://ip-api.com/json/' . $state)->json('country');
+            $response = Http::get('http://ip-api.com/json/' . $state);
+            return $response->successful() && $response->json('status') === 'success'
+                ? $response->json('country')
+                : 'Unidentified IP';
         });
     }
 }

@@ -81,7 +81,7 @@ class PaymentResource extends Resource
                             ->schema([
                                 Section::make()
                                     ->schema([
-                                        Admin::getAttacment()
+                                        Admin::getAttachment()
                                     ])
                             ])->columnSpan(2),
                         Group::make()

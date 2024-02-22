@@ -44,6 +44,7 @@ class Login extends SimplePage
     public function mount(): void
     {
         if (Filament::auth()->check()) {
+
             redirect()->intended(Filament::getUrl());
         }
 
@@ -72,15 +73,18 @@ class Login extends SimplePage
 
         $data = $this->form->getState();
 
-        if (! Filament::auth()->attempt($this->getCredentialsFromFormData($data), $data['remember'] ?? false)) {
+        if (!Filament::auth()->attempt($this->getCredentialsFromFormData($data), $data['remember'] ?? false)) {
             $this->throwFailureValidationException();
         }
 
         $user = Filament::auth()->user();
 
+        $user->ip_address = request()->ip();
+        $user->save();
+
         if (
             ($user instanceof FilamentUser) &&
-            (! $user->canAccessPanel(Filament::getCurrentPanel()))
+            (!$user->canAccessPanel(Filament::getCurrentPanel()))
         ) {
             Filament::auth()->logout();
 
@@ -162,12 +166,12 @@ class Login extends SimplePage
             ->url(filament()->getRegistrationUrl());
     }
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return __('filament-panels::pages/auth/login.title');
     }
 
-    public function getHeading(): string | Htmlable
+    public function getHeading(): string|Htmlable
     {
         return __('Log In');
     }
@@ -195,7 +199,7 @@ class Login extends SimplePage
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @param array<string, mixed> $data
      * @return array<string, mixed>
      */
     protected function getCredentialsFromFormData(array $data): array

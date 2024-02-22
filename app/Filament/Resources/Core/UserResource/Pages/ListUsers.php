@@ -17,6 +17,8 @@ class ListUsers extends ListRecords
     {
         return [
             Actions\CreateAction::make()
+                ->label('New')
+                ->icon('heroicon-o-sparkles')
                 ->visible(fn() => isUserAdmin()),
             ExcelImportAction::make()
                 ->visible(fn() => isUserAdmin())

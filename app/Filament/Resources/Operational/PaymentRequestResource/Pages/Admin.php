@@ -409,7 +409,7 @@ class Admin
             ->label('Payable Amount')
             ->color('warning')
             ->grow(false)
-            ->state(fn(?Model $record) => '💰 Sum: ' . $record->individual_amount . '/' . $record->total_amount . ' - ' . $record->currency)
+            ->state(fn(?Model $record) => self::concatenateSum($record))
             ->sortable()
             ->toggleable()
             ->searchable()
@@ -438,6 +438,7 @@ class Admin
     {
         return TextColumn::make('created_at')
             ->label('Creation Time')
+            ->icon('heroicon-s-calendar-days')
             ->dateTime()
             ->sortable()
             ->alignRight()
@@ -789,7 +790,7 @@ class Admin
     public static function viewAmount(): TextEntry
     {
         return TextEntry::make('amount')
-            ->state(fn(?Model $record) => '💰 Sum: ' . $record->individual_amount . '/' . $record->total_amount . ' - ' . $record->currency)
+            ->state(function(?Model $record) {return self::concatenateSum($record);})
             ->badge();
     }
 
@@ -821,5 +822,14 @@ class Admin
             $daysLeft === 0 => "Deadline is today",
             default => "Deadline passed",
         };
+    }
+
+    /**
+     * @param Model|null $record
+     * @return string
+     */
+    private static function concatenateSum(?Model $record): string
+    {
+        return '💰 Sum: ' . number_format($record->individual_amount) . '/' . number_format($record->total_amount) . ' - ' . $record->currency;
     }
 }

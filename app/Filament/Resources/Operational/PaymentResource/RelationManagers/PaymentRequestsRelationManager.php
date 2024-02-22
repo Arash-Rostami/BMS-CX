@@ -16,7 +16,6 @@ class PaymentRequestsRelationManager extends RelationManager
 {
     protected static string $relationship = 'paymentRequests';
 
-
     public function form(Form $form): Form
     {
         return $form->schema([]);

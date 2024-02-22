@@ -54,10 +54,10 @@ class OrderResource extends Resource
                     ->schema([
                         Forms\Components\Section::make()
                             ->schema([
-                                Admin::getCategory(),
-                                Admin::getProduct(),
                                 Admin::getOrderRequestNumber(),
                                 Admin::getProformaNumber(),
+                                Admin::getCategory(),
+                                Admin::getProduct(),
                                 Forms\Components\Section::make()
                                     ->schema([
                                         Admin::getProformaDate(),

@@ -9,12 +9,15 @@ use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Get;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Support\Enums\IconPosition;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
+use Illuminate\Database\Eloquent\Builder;
+
 
 class Admin
 {
@@ -54,6 +57,7 @@ class Admin
             ->hintColor('primary')
             ->relationship('category', 'name')
             ->required()
+            ->live()
             ->createOptionForm([
                 TextInput::make('name')
                     ->required()
@@ -81,7 +85,13 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">📦 </span>Product<span class="red"> *</span>'))
             ->hintColor('primary')
-            ->relationship('product', 'name')
+            ->relationship('product', 'name',
+                function (Builder $query, Get $get) {
+                    if ($get('category_id')) {
+                        $query->where('category_id', $get('category_id'));
+                    }
+                }
+            )
             ->required()
             ->createOptionForm([
                 TextInput::make('name')
@@ -327,7 +337,7 @@ class Admin
     {
         return TextColumn::make('quantity')
             ->color('info')
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '⏲️ Qt: ' : '') . $record->quantity)
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '⏲️ Qt: ' : '') . number_format($record->quantity))
             ->grow(false)
             ->toggleable()
             ->searchable()
@@ -342,7 +352,7 @@ class Admin
     {
         return TextColumn::make('price')
             ->color('info')
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '💰 Pr: ' : '') . $record->price)
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '💰 Pr: ' : '') . number_format($record->price))
             ->toggleable()
             ->grow(false)
             ->searchable()
@@ -357,6 +367,7 @@ class Admin
     {
         return TextColumn::make('created_at')
             ->dateTime()
+            ->icon('heroicon-s-calendar-days')
             ->sortable()
             ->toggleable()
             ->alignRight();
@@ -448,6 +459,7 @@ class Admin
     {
         return TextEntry::make('quantity')
             ->label('Quantity')
+            ->state(fn(?Model $record) => number_format($record->quantity))
             ->color('secondary')
             ->badge();
     }
@@ -459,6 +471,7 @@ class Admin
     {
         return TextEntry::make('price')
             ->label('Price')
+            ->state(fn(?Model $record) => number_format($record->price))
             ->color('secondary')
             ->badge();
     }

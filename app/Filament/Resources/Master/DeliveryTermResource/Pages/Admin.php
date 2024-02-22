@@ -47,6 +47,7 @@ class Admin
         return TextColumn::make('created_at')
             ->dateTime()
             ->sortable()
+            ->icon('heroicon-s-calendar-days')
             ->toggleable(isToggledHiddenByDefault: true);
     }
 

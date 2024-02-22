@@ -20,6 +20,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\IconPosition;
 use Filament\Tables\Columns\TextColumn;
@@ -31,6 +32,7 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Grouping\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Component as Livewire;
@@ -67,6 +69,7 @@ class Admin
             ->hintColor('primary')
             ->relationship('category', 'name')
             ->required()
+            ->live()
             ->createOptionForm([
                 TextInput::make('name')
                     ->required()
@@ -93,7 +96,13 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">📦 </span>Product<span class="red"> *</span>'))
             ->hintColor('primary')
-            ->relationship('product', 'name')
+            ->relationship('product', 'name',
+                function (Builder $query, Get $get) {
+                    if ($get('category_id')) {
+                        $query->where('category_id', $get('category_id'));
+                    }
+                }
+            )
             ->required()
             ->createOptionForm([
                 TextInput::make('name')
@@ -119,6 +128,10 @@ class Admin
     {
         return Select::make('order_request_id')
             ->options(OrderRequest::getApproved())
+            ->live()
+            ->afterStateUpdated(function (Set $set, ?string $state) {
+                self::updateForm($state, $set);
+            })
             ->searchable()
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">🛍️ </span>Order Request'))
@@ -213,6 +226,8 @@ class Admin
      */
     public static function getBuyer(): Select
     {
+//        return Buyer::all()->pluck('name', 'id');
+
         return Select::make('buyer_id')
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">📥 </span>Buyer<span class="red"> *</span>'))
@@ -900,6 +915,7 @@ class Admin
     {
         return TextColumn::make('updated_at')
             ->dateTime()
+            ->icon('heroicon-s-calendar-days')
             ->sortable()
             ->alignRight()
             ->description(fn($record): string => "Created " . Carbon::parse($record->created_at)->diffForHumans())
@@ -1354,5 +1370,24 @@ class Admin
     {
         return Group::make('order_status')->label('Status')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->order_status));
+    }
+
+    /**
+     * @param string|null $state
+     * @param Set $set
+     * @return void
+     */
+    private static function updateForm(?string $state, Set $set): void
+    {
+        if ($state) {
+            $orderRequest = OrderRequest::findOrFail($state);
+            $set('category_id', $orderRequest->category_id);
+            $set('product_id', $orderRequest->product_id);
+            $set('grade', $orderRequest->grade);
+            $set('party.buyer_id', $orderRequest->buyer_id);
+            $set('party.supplier_id', $orderRequest->supplier_id);
+            $set('orderDetail.buying_quantity', $orderRequest->quantity);
+            $set('orderDetail.buying_price', $orderRequest->price);
+        }
     }
 }

@@ -74,7 +74,7 @@ class Admin
         return Select::make('payment_request_id')
             ->options(fn() => PaymentRequest::showApproved())
             ->required()
-            ->multiple()
+            ->multiple(fn($operation) => $operation == 'create')
             ->label('')
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">💳 </span>Payment Request<span class="red"> *</span>'));
@@ -163,7 +163,7 @@ class Admin
     /**
      * @return FileUpload
      */
-    public static function getAttacment(): FileUpload
+    public static function getAttachment(): FileUpload
     {
         return FileUpload::make('file_path')
             ->label('')
@@ -245,6 +245,7 @@ class Admin
     {
         return TextColumn::make('created_at')
             ->label('Creation Time')
+            ->icon('heroicon-s-calendar-days')
             ->dateTime()
             ->sortable()
             ->alignRight()
