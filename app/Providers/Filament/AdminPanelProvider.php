@@ -86,7 +86,7 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-//            ->databaseNotifications()
+            ->databaseNotifications()
             ->maxContentWidth(MaxWidth::Full)
             ->spa()
             ->brandName('BMS')

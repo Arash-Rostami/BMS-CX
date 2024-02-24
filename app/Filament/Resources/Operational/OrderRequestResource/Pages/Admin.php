@@ -144,7 +144,6 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale"></span>Quantity (needed)'))
             ->hintColor('primary')
-            ->required()
             ->numeric();
     }
 
@@ -157,7 +156,6 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale"></span>Price (expected)'))
             ->hintColor('primary')
-            ->required()
             ->numeric();
     }
 
@@ -306,8 +304,8 @@ class Admin
     {
         return TextColumn::make('supplier_id')
             ->label('Supplier')
-            ->state(function (Model $record): string {
-                return $record->supplier->name;
+            ->state(function (Model $record): string | null {
+                return optional($record->supplier)->name;
             })
             ->sortable()
             ->searchable()
