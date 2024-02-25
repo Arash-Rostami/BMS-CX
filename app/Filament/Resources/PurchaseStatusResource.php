@@ -21,9 +21,11 @@ class PurchaseStatusResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-m-arrow-path-rounded-square';
 
-    protected static ?string $pluralModelLabel = 'Purchase Status';
+    protected static ?string $pluralModelLabel = 'Stages';
 
     protected static ?string $navigationGroup = 'Master Data';
+
+    protected static ?string $navigationLabel = 'Stages';
 
 
     public static function form(Form $form): Form
@@ -52,7 +54,7 @@ class PurchaseStatusResource extends Resource
                 'xl' => 3,
             ])
             ->poll(30)
-        ->filters([])
+            ->filters([])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

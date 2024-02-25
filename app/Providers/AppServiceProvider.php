@@ -3,13 +3,15 @@
 namespace App\Providers;
 
 use App\Models\PaymentRequest;
-use App\Observers\DatabaseNotificationObserver;
 use App\Policies\PaymentRequestPolicy;
 use Filament\Support\Assets\Js;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\VerticalAlignment;
 use Filament\Support\Facades\FilamentAsset;
+use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\View\View;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -43,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
             Js::make('lightBoxInit', __DIR__ . '/../../resources/js/lightBoxInit.js'),
 
         ]);
+
 
 //        Notifications::alignment(Alignment::Start);
 //        Notifications::verticalAlignment(VerticalAlignment::End);

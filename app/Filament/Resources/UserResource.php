@@ -13,6 +13,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\ForceDeleteBulkAction;
 use Filament\Tables\Actions\RestoreBulkAction;
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
+use Illuminate\View\View;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 
@@ -140,6 +142,8 @@ class UserResource extends Resource
 
             ], layout: FiltersLayout::Modal)
             ->actions([
+                Action::make('setting')
+                    ->url(fn(User $record): string => route('filament.admin.resources.users.setting', ['record' => $record])),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
                 Tables\Actions\ForceDeleteAction::make(),
@@ -168,6 +172,11 @@ class UserResource extends Resource
             ]);
     }
 
+    public function getHeader(): ?View
+    {
+        return view('filament.resources.user-resource.pages.settings');
+    }
+
     public static function getRelations(): array
     {
         return [];
@@ -179,6 +188,7 @@ class UserResource extends Resource
             'index' => Core\UserResource\Pages\ListUsers::route('/'),
             'create' => Core\UserResource\Pages\CreateUser::route('/create'),
             'edit' => Core\UserResource\Pages\EditUser::route('/{record}/edit'),
+            'setting' => Core\UserResource\Pages\Settings::route('/abc/{record}'),
         ];
     }
 

@@ -109,6 +109,10 @@ class AdminPanelProvider extends PanelProvider
                     ->label('Table Design')
                     ->url('/table-design-toggle')
                     ->icon('heroicon-s-table-cells'),
+                MenuItem::make()
+                    ->label('Chat')
+//                    ->url(route('test'))
+                    ->icon('heroicon-o-chat-bubble-left-right'),
             ])
             ->viteTheme('resources/css/filament/admin/theme.css');
     }
