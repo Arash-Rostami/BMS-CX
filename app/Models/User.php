@@ -166,4 +166,13 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
     {
         return self::role === 'Admin';
     }
+
+    public static function isUserAuthorizedForOrderStatus()
+    {
+        if (auth()->user()) {
+            return in_array(auth()->user()->role, ['manager', 'admin']);
+        }
+        return false;
+    }
+
 }

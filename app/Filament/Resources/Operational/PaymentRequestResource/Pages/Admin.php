@@ -4,7 +4,9 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Models\Order;
 use App\Models\PaymentRequest;
+use App\Models\User;
 use App\Policies\PaymentRequestPolicy;
+use App\Services\NotificationManager;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\MarkdownEditor;
@@ -831,5 +833,23 @@ class Admin
     private static function concatenateSum(?Model $record): string
     {
         return '💰 Sum: ' . number_format($record->individual_amount) . '/' . number_format($record->total_amount) . ' - ' . $record->currency;
+    }
+
+
+    /**
+     * @param Model $record
+     * @return void
+     */
+    public static function send(Model $record): void
+    {
+        $data = [
+            'record' => $record->order->invoice_number,
+            'type' => 'delete',
+            'module' => 'paymentRequest',
+            'url' => route('filament.admin.resources.payment-requests.index'),
+            'recipients' => User::all()
+        ];
+
+        NotificationManager::send($data);
     }
 }

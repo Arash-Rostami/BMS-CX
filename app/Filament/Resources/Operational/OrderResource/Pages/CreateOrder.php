@@ -11,6 +11,8 @@ use App\Models\OrderDetail;
 use App\Models\Party;
 use App\Models\Product;
 use App\Models\Supplier;
+use App\Models\User;
+use App\Services\NotificationManager;
 use Filament\Forms\Get;
 use Filament\Resources\Pages\CreateRecord;
 use Livewire\Livewire;
@@ -54,6 +56,16 @@ class CreateOrder extends CreateRecord
         $this->record->invoice_number = $this->makeInvoiceNumber();
 
         $this->record->save();
+
+        $data = [
+            'record' => $this->record->invoice_number,
+            'type' => 'new',
+            'module' => 'order',
+            'url' =>  route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
+            'recipients' => User::all()
+        ];
+
+        NotificationManager::send($data);
     }
 
 }

@@ -9,7 +9,9 @@ use App\Models\Packaging;
 use App\Models\PortOfDelivery;
 use App\Models\ShippingLine;
 use App\Models\Supplier;
+use App\Models\User;
 use App\Rules\EnglishAlphabet;
+use App\Services\NotificationManager;
 use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
@@ -1004,7 +1006,7 @@ class Admin
             ->label('Delivery Term')
             ->color('secondary')
             ->state(function (Model $record): string {
-                return $record->logistic->deliveryTerm->name;
+                return optional($record->logistic->deliveryTerm)->name ?? 'N/A';
             })
             ->searchable()
             ->sortable()
@@ -1020,7 +1022,7 @@ class Admin
             ->label('Packaging')
             ->color('primary')
             ->state(function (Model $record): string {
-                return $record->logistic->packaging->name;
+                return optional($record->logistic->packaging)->name ?? 'N/A';
             })
             ->badge()
             ->searchable()
@@ -1037,7 +1039,7 @@ class Admin
             ->label('Shipping Line')
             ->color('secondary')
             ->state(function (Model $record): string {
-                return $record->logistic->shippingLine->name;
+                return optional($record->logistic->shippingLine)->name ?? 'N/A';
             })
             ->searchable()
             ->sortable()
@@ -1053,7 +1055,7 @@ class Admin
             ->label('Port of Delivery')
             ->color('secondary')
             ->state(function (Model $record): string {
-                return $record->logistic->portOfDelivery->name;
+                return optional($record->logistic->portOfDelivery)->name ?? 'N/A';
             })
             ->searchable()
             ->sortable()
@@ -1389,5 +1391,23 @@ class Admin
             $set('orderDetail.buying_quantity', $orderRequest->quantity);
             $set('orderDetail.buying_price', $orderRequest->price);
         }
+    }
+
+
+    /**
+     * @param Model $record
+     * @return void
+     */
+    public static function send(Model $record): void
+    {
+        $data = [
+            'record' => $record->invoice_number,
+            'type' => 'delete',
+            'module' => 'order',
+            'url' => route('filament.admin.resources.orders.index'),
+            'recipients' => User::all()
+        ];
+
+        NotificationManager::send($data);
     }
 }

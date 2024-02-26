@@ -47,7 +47,7 @@ trait NotificationConfig
             'reminder' => 'The payment request for %s requires your attention.'
         ],
         'payment' => [
-            'new' => 'Payment received for %s.',
+            'new' => 'Payment made for %s.',
             'edit' => 'Payment details for %s changed.',
             'delete' => 'Payment for %s deleted.',
             'reminder' => 'Payment for %s requires your attention.'
@@ -74,7 +74,7 @@ trait NotificationConfig
 
     public static array $bodyStatus = [
         'order' => [
-            'pending' => 'Order request for %s is pending.',
+            'pending' => 'Your permission for order request of %s is requested.',
             'processing' => 'Order request for %s is under review.',
             'approved' => 'Order request for %s has been approved.',
             'rejected' => 'Order request for %s has been rejected.',

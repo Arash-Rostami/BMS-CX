@@ -308,7 +308,7 @@ class ViewOrder extends ViewRecord
             ->label('Delivery Term')
             ->color('secondary')
             ->state(function (Model $record): string {
-                return $record->logistic->deliveryTerm->name;
+                return optional($record->logistic->deliveryTerm)->name ?? 'N/A';
             })
             ->badge();
     }
@@ -322,7 +322,7 @@ class ViewOrder extends ViewRecord
             ->label('Shipping Line')
             ->color('secondary')
             ->state(function (Model $record): string {
-                return $record->logistic->shippingLine->name;
+                return optional($record->logistic->shippingLine)->name ?? 'N/A';
             })
             ->badge();
     }
@@ -336,7 +336,7 @@ class ViewOrder extends ViewRecord
             ->label('Port of Delivery')
             ->color('secondary')
             ->state(function (Model $record): string {
-                return $record->logistic->portOfDelivery->name;
+                return optional($record->logistic->portOfDelivery)->name ?? 'N/A';
             })
             ->badge();
     }
@@ -552,7 +552,7 @@ class ViewOrder extends ViewRecord
             ->label('Packaging')
             ->color('secondary')
             ->state(function (Model $record): string {
-                return $record->logistic->packaging->name;
+                return optional($record->logistic->packaging)->name ?? 'N/A';
             })
             ->badge();
     }

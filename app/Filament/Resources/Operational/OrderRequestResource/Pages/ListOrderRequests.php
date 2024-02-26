@@ -26,5 +26,4 @@ class ListOrderRequests extends ListRecords
     {
         return OrderRequestResource::getWidgets();
     }
-
 }

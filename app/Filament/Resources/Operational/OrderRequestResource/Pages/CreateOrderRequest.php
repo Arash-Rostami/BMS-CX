@@ -23,10 +23,30 @@ class CreateOrderRequest extends CreateRecord
             'record' => $this->record->product->name,
             'type' => 'new',
             'module' => 'orderRequest',
-            'url' => 'filament.admin.resources.order-requests.index',
+            'url' => route('filament.admin.resources.order-requests.index'),
             'recipients' => User::all()
         ];
 
         NotificationManager::send($data);
+
+        $this->notifyManagement($this->record);
     }
+
+
+    /**
+     * @return void
+     */
+    public function notifyManagement($record): void
+    {
+        $dataStatus = [
+            'record' => $record->product->name,
+            'type' => 'pending',
+            'module' => 'order',
+            'url' => route('filament.admin.resources.order-requests.index'),
+            'recipients' => User::all()
+        ];
+
+        NotificationManager::send($dataStatus, true);
+    }
+
 }

@@ -2,9 +2,13 @@
 
 namespace App\Filament\Resources\Operational\OrderRequestResource\Pages;
 
+use App\Filament\Resources\OrderRequestResource;
 use App\Models\Buyer;
 use App\Models\Supplier;
+use App\Models\User;
+use App\Services\NotificationManager;
 use Filament\Forms\Components\Actions\Action;
+use Filament\Forms\Components\Component;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
@@ -218,9 +222,7 @@ class Admin
             });
     }
 
-    /**
-     * @return Radio
-     */
+
     public static function getStatus(): Radio
     {
         return Radio::make('request_status')
@@ -232,7 +234,8 @@ class Admin
                 'rejected' => '❌ Rejected',
                 'fulfilled' => '🏁 Fulfilled',
             ])
-            ->required();
+            ->disabled(!User::isUserAuthorizedForOrderStatus())
+            ->default('pending');
     }
 
     /**
@@ -304,7 +307,7 @@ class Admin
     {
         return TextColumn::make('supplier_id')
             ->label('Supplier')
-            ->state(function (Model $record): string | null {
+            ->state(function (Model $record): string|null {
                 return optional($record->supplier)->name;
             })
             ->sortable()
@@ -518,5 +521,22 @@ class Admin
     {
         return Grouping::make('request_status')->label('Status')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->request_status));
+    }
+
+    /**
+     * @param Model $record
+     * @return void
+     */
+    public static function send(Model $record)
+    {
+        $data = [
+            'record' => $record->product->name,
+            'type' => 'delete',
+            'module' => 'orderRequest',
+            'url' => route('filament.admin.resources.order-requests.index'),
+            'recipients' => User::all()
+        ];
+
+        NotificationManager::send($data);
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 
 use App\Filament\Resources\PaymentResource;
+use App\Models\User;
+use App\Services\NotificationManager;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreatePayment extends CreateRecord
@@ -28,5 +30,18 @@ class CreatePayment extends CreateRecord
         $data['payment_request_id'] = $paymentRequestIds[$count - 1];
 
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $data = [
+            'record' => $this->record->order->invoice_number,
+            'type' => 'new',
+            'module' => 'payment',
+            'url' =>  route('filament.admin.resources.payments.index'),
+            'recipients' => User::all()
+        ];
+
+        NotificationManager::send($data);
     }
 }

@@ -49,9 +49,8 @@ class NotificationManager
     {
         return Action::make('view')
             ->button()
-            ->tooltip('view the record')
             ->icon('heroicon-s-cursor-arrow-rays')
-            ->url(route(self::getUrl()), shouldOpenInNewTab: true);
+            ->url(self::getUrl(), shouldOpenInNewTab: true);
     }
 
     /**
@@ -61,7 +60,6 @@ class NotificationManager
     {
         return Action::make('read')
             ->button()
-            ->tooltip("mark as read")
             ->icon('heroicon-c-bell-slash')
             ->color('secondary')
             ->markAsRead();
@@ -73,7 +71,6 @@ class NotificationManager
     public static function showUnreadAction(): Action
     {
         return Action::make('unread')
-            ->tooltip("mark as unread")
             ->icon('heroicon-s-bell-alert')
             ->color('danger')
             ->button()

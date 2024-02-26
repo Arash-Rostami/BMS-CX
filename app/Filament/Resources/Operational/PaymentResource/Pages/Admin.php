@@ -4,7 +4,9 @@ namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 
 use App\Models\Order;
 use App\Models\PaymentRequest;
+use App\Models\User;
 use App\Rules\EnglishAlphabet;
+use App\Services\NotificationManager;
 use Carbon\Carbon;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\MarkdownEditor;
@@ -435,5 +437,18 @@ class Admin
             ->disk('filament')
             ->alignCenter()
             ->visibility('public');
+    }
+
+    public static function send(Model $record): void
+    {
+        $data = [
+            'record' => $record->order->invoice_number,
+            'type' => 'delete',
+            'module' => 'payment',
+            'url' => route('filament.admin.resources.payments.index'),
+            'recipients' => User::all()
+        ];
+
+        NotificationManager::send($data);
     }
 }
