@@ -55,7 +55,9 @@ class PaymentRequest extends Model
     ];
 
     public static array $status = [
-        'approved' => '✅ Allow',
+        'pending' => '🕒 Pending',
+        'allowed' => '✔️ Allow',
+        'approved' => '✔️✔️ Approve',
         'rejected' => '🚫 Deny',
         'processing' => '⏳ Processing',
         'completed' => '☑️ Completed',

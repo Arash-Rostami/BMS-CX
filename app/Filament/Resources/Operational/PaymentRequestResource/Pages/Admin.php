@@ -25,8 +25,9 @@ use Filament\Tables\Grouping\Group as Grouping;
 class Admin
 {
     protected static array $statusTexts = [
-        'new' => 'New',
+        'pending' => 'New',
         'processing' => 'Processing',
+        'allowed' => 'Allowed',
         'approved' => 'Approved',
         'rejected' => 'Rejected',
         'completed' => 'Completed',
@@ -34,17 +35,19 @@ class Admin
     ];
 
     protected static array $statusIcons = [
-        'new' => 'heroicon-m-sparkles',
+        'pending' => 'heroicon-m-sparkles',
         'processing' => 'heroicon-m-arrow-path',
-        'approved' => 'heroicon-m-check-badge',
+        'allowed' => 'heroicon-m-check-badge',
+        'approved' => 'heroicon-o-clipboard-document-check',
         'rejected' => 'heroicon-m-x-circle',
         'completed' => 'heroicon-o-flag',
         'cancelled' => 'heroicon-s-hand-raised',
     ];
 
     protected static array $statusColors = [
-        'new' => 'info',
+        'pending' => 'info',
         'processing' => 'warning',
+        'allowed' => 'success',
         'approved' => 'success',
         'rejected' => 'danger',
         'completed' => 'primary',
@@ -60,7 +63,9 @@ class Admin
         return Radio::make('status')
             ->options(PaymentRequest::$status)
             ->descriptions([
-                'approved' => 'Authorize the payment for processing',
+                'pending' => 'Payment pending accounting approval',
+                'allowed' => 'Accounting department approval for processing the payment',
+                'approved' => 'Managerial approval for processing the payment',
                 'rejected' => 'Decline the payment request',
                 'processing' => 'The payment is being processed',
                 'completed' => 'The payment has successfully been made',
@@ -68,7 +73,8 @@ class Admin
             ])
             ->inline()
             ->inlineLabel(false)
-            ->disableOptionWhen(fn(string $value): bool => PaymentRequestPolicy::updateStatus($value))
+            ->default('pending')
+            ->disableOptionWhen(fn(string $value, Model $record): bool => PaymentRequestPolicy::updateStatus($value, $record))
             ->label('')
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">🛑 </span>Status'));
@@ -792,7 +798,9 @@ class Admin
     public static function viewAmount(): TextEntry
     {
         return TextEntry::make('amount')
-            ->state(function(?Model $record) {return self::concatenateSum($record);})
+            ->state(function (?Model $record) {
+                return self::concatenateSum($record);
+            })
             ->badge();
     }
 

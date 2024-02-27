@@ -22,7 +22,21 @@ class EditPaymentRequest extends EditRecord
         ];
     }
 
+    protected function beforeSave()
+    {
+        session(['old_status_payment' => $this->record->getOriginal('status')]);
+    }
+
     protected function afterSave(): void
+    {
+        $this->sendEditNotification();
+
+        $this->sendStatusNotification();
+
+        $this->clearSessionData();
+    }
+
+    protected function sendEditNotification()
     {
         $data = [
             'record' => $this->record->order->invoice_number,
@@ -33,5 +47,30 @@ class EditPaymentRequest extends EditRecord
         ];
 
         NotificationManager::send($data);
+    }
+
+    protected function sendStatusNotification()
+    {
+        $newStatus = $this->record['status'];
+
+        if ($newStatus && $newStatus !== session('old_status_payment')) {
+
+            $statusData = [
+                'record' => $this->record->order->invoice_number,
+                'type' => $newStatus,
+                'module' => 'payment',
+                'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $this->record->id]),
+                'recipients' => User::all(),
+            ];
+
+            sleep(1);
+
+            NotificationManager::send($statusData, true);
+        }
+    }
+
+    protected function clearSessionData()
+    {
+        session()->forget('old_status_payment');
     }
 }

@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->increments('id')->unsigned()->index();
             $table->enum('type', ['order','packaging','delivery', 'customs', 'insurance','license','other'])->default('order');
             $table->text('purpose')->nullable();
-            $table->enum('status', ['pending', 'processing', 'approved', 'rejected', 'completed', 'cancelled'])->default('USD');
+            $table->enum('status', ['pending', 'processing','allowed', 'approved', 'rejected', 'completed', 'cancelled'])->default('pending');
             $table->double('individual_amount');
             $table->double('total_amount');
             $table->timestamp('deadline');

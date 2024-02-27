@@ -3,13 +3,13 @@
 namespace App\Filament\Resources\Operational\OrderRequestResource\Pages;
 
 use App\Filament\Resources\OrderRequestResource;
-use App\Models\Product;
 use App\Models\User;
+use App\Notifications\OrderRequestStatusNotification;
 use App\Services\NotificationManager;
 use Filament\Notifications\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
-use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Notification as EmailNotification;
 
 
 class CreateOrderRequest extends CreateRecord
@@ -29,17 +29,19 @@ class CreateOrderRequest extends CreateRecord
 
         NotificationManager::send($data);
 
-        $this->notifyManagement($this->record);
+        $this->notifyViaEmail();
+
+        $this->notifyManagement();
     }
 
 
     /**
      * @return void
      */
-    public function notifyManagement($record): void
+    public function notifyManagement(): void
     {
         $dataStatus = [
-            'record' => $record->product->name,
+            'record' => $this->record->product->name,
             'type' => 'pending',
             'module' => 'order',
             'url' => route('filament.admin.resources.order-requests.index'),
@@ -49,4 +51,11 @@ class CreateOrderRequest extends CreateRecord
         NotificationManager::send($dataStatus, true);
     }
 
+    /**
+     * @return void
+     */
+    public function notifyViaEmail(): void
+    {
+        EmailNotification::send(User::find(1), new OrderRequestStatusNotification($this->record));
+    }
 }

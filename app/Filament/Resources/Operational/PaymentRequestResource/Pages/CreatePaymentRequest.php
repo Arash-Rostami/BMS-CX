@@ -22,5 +22,25 @@ class CreatePaymentRequest extends CreateRecord
         ];
 
         NotificationManager::send($data);
+
+        sleep(1);
+
+        $this->notifyManagement($this->record);
+    }
+
+    /**
+     * @return void
+     */
+    public function notifyManagement($record): void
+    {
+        $dataStatus = [
+            'record' => $record->order->invoice_number,
+            'type' => 'pending',
+            'module' => 'payment',
+            'url' => route('filament.admin.resources.payment-requests.index'),
+            'recipients' => User::all()
+        ];
+
+        NotificationManager::send($dataStatus, true);
     }
 }

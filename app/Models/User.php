@@ -175,4 +175,9 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
         return false;
     }
 
+    public static function getManager()
+    {
+        return self::where('role', '=', 'manager')->orwhere('role', '=', 'admin')->get();
+    }
+
 }

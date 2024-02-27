@@ -55,18 +55,20 @@ trait NotificationConfig
     ];
 
     public static array $titleStatus = [
-        'pending' => "PENDING",
-        'processing' => "PROCESSING",
-        'approved' => "APPROVED",
-        'rejected' => "DECLINED",
-        'completed' => "COMPLETED",
-        'cancelled' => "CANCELLED",
+        'pending' => "PENDING ⭐",
+        'processing' => "PROCESSING ⭐",
+        'allowed' => "ALLOWED ⭐",
+        'approved' => "APPROVED ⭐",
+        'rejected' => "DECLINED ⭐",
+        'completed' => "COMPLETED ⭐",
+        'cancelled' => "CANCELLED ⭐",
     ];
 
     public static array $iconStatus = [
         'pending' => "heroicon-s-clock",
         'processing' => "heroicon-o-arrow-path-rounded-square",
-        'approved' => "heroicon-s-check-badge",
+        'allowed' => 'heroicon-m-check-badge',
+        'approved' => 'heroicon-o-clipboard-document-check',
         'rejected' => "heroicon-c-x-circle",
         'completed' => "heroicon-s-flag",
         'cancelled' => "heroicon-s-hand-raised",
@@ -81,9 +83,10 @@ trait NotificationConfig
             'completed' => 'Order request for %s has been fulfilled.',
         ],
         'payment' => [
-            'pending' => 'Payment request for %s is pending.',
+            'pending' => 'Your decision on payment request for %s is pending.',
             'processing' => 'Payment for %s in progress.',
-            'approved' => 'Payment for %s authorized for processing.',
+            'allowed' => 'Payment for %s authorized by the accounting department for processing.',
+            'approved' => 'Payment for %s approved by management for processing.',
             'rejected' => 'Payment request for %s declined.',
             'completed' => 'Payment for %s successfully completed.',
             'cancelled' => 'Payment for %s cancelled.',
