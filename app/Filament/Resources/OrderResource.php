@@ -304,9 +304,7 @@ class OrderResource extends Resource
                     DeleteBulkAction::make()
                         ->action(function (Collection $selectedRecords) {
                             $selectedRecords->each->delete();
-                            $selectedRecords->each(
-                                fn(Model $selectedRecord) => Admin::send($selectedRecord)
-                            );
+                            $selectedRecords->each(fn(Model $selectedRecord) => Admin::send($selectedRecord));
                         }),
                     RestoreBulkAction::make(),
                     ExportBulkAction::make(),

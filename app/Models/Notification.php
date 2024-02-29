@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Notification extends Model
+{
+    use HasFactory;
+
+    protected $table = 'notifications';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'id',
+        'type',
+        'notifiable_type',
+        'notifiable_id',
+        'data',
+        'read_at',
+        'created_at',
+        'deleted_at'
+    ];
+
+
+    public function getDeletedAtAttribute()
+    {
+        if (is_null($this->attributes['deleted_at'])) {
+            return 'Uncleared';
+        }
+
+        return $this->attributes['deleted_at'];
+    }
+
+    public function getCreatedAtAttribute()
+    {
+        if (is_null($this->attributes['created_at'])) {
+            return 'Unsent';
+        }
+
+        return $this->attributes['created_at'];
+    }
+
+    public function getReadAtAttribute()
+    {
+        if (is_null($this->attributes['read_at'])) {
+            return 'Unread';
+        }
+
+        return $this->attributes['read_at'];
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'notifiable_id');
+    }
+}
+
+

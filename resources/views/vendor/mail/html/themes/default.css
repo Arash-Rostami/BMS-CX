@@ -4,8 +4,9 @@ body,
 body *:not(html):not(style):not(br):not(tr):not(code) {
     box-sizing: border-box;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
     position: relative;
+    color: lightgrey;
 }
 
 body {
@@ -100,7 +101,7 @@ img {
 .header {
     padding: 25px 0;
     text-align: center;
-    color:lightgrey;
+    color: lightgrey;
     background-color: #263645;
 }
 
@@ -200,7 +201,7 @@ img {
 }
 
 .table td {
-    color: #263645;
+    color: lightgrey;
     font-size: 15px;
     line-height: 18px;
     margin: 0;
@@ -268,8 +269,7 @@ img {
 }
 
 .panel-content {
-    background-color: #263645
-;
+    background-color: #263645;
     color: lightgrey;
     padding: 16px;
 }
@@ -291,4 +291,8 @@ img {
 
 .break-all {
     word-break: break-all;
+}
+
+* {
+    color: lightgrey;
 }

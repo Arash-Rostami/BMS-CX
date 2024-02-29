@@ -4,8 +4,12 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
 use App\Models\User;
+use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\NotificationManager;
+use App\Services\RetryableEmailService;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Notification as EmailNotification;
+
 
 class CreatePaymentRequest extends CreateRecord
 {
@@ -23,7 +27,7 @@ class CreatePaymentRequest extends CreateRecord
 
         NotificationManager::send($data);
 
-        sleep(1);
+        $this->notifyViaEmail();
 
         $this->notifyManagement($this->record);
     }
@@ -42,5 +46,19 @@ class CreatePaymentRequest extends CreateRecord
         ];
 
         NotificationManager::send($dataStatus, true);
+    }
+
+    /**
+     * @return void
+     */
+    public function notifyViaEmail(): void
+    {
+        $arguments = [User::find(1), new PaymentRequestStatusNotification($this->record)];
+
+        RetryableEmailService::dispatchEmail(
+            EmailNotification::send,
+            'payment request',
+            ...$arguments
+        );
     }
 }

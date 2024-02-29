@@ -6,6 +6,8 @@ use App\Filament\Resources\OrderRequestResource;
 use App\Models\User;
 use App\Notifications\OrderRequestStatusNotification;
 use App\Services\NotificationManager;
+use App\Services\RetryableEmailService;
+use Exception;
 use Filament\Notifications\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
@@ -56,6 +58,12 @@ class CreateOrderRequest extends CreateRecord
      */
     public function notifyViaEmail(): void
     {
-        EmailNotification::send(User::find(1), new OrderRequestStatusNotification($this->record));
+        $arguments = [User::find(1), new OrderRequestStatusNotification($this->record)];
+
+        RetryableEmailService::dispatchEmail(
+            EmailNotification::send,
+            'order request',
+            ...$arguments
+        );
     }
 }

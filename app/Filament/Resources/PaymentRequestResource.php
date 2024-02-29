@@ -59,8 +59,8 @@ class PaymentRequestResource extends Resource
                             ->schema([
                                 Section::make('Order Details')
                                     ->schema([
-                                        Admin::getType(),
                                         Admin::getOrderNumber(),
+                                        Admin::getType(),
                                         Admin::getPurpose(),
                                     ])
                                     ->columns(2)

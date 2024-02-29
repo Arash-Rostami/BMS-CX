@@ -4,10 +4,13 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
 use App\Models\User;
+use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\NotificationManager;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Notification as EmailNotification;
+
 
 class EditPaymentRequest extends EditRecord
 {
@@ -63,7 +66,7 @@ class EditPaymentRequest extends EditRecord
                 'recipients' => User::all(),
             ];
 
-            sleep(1);
+            $this->notifyViaEmail($statusData['type']);
 
             NotificationManager::send($statusData, true);
         }
@@ -72,5 +75,14 @@ class EditPaymentRequest extends EditRecord
     protected function clearSessionData()
     {
         session()->forget('old_status_payment');
+    }
+
+
+    /**
+     * @return void
+     */
+    public function notifyViaEmail($status): void
+    {
+        EmailNotification::send(User::find(1), new PaymentRequestStatusNotification($this->record, $status));
     }
 }

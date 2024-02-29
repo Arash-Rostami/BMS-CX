@@ -702,7 +702,7 @@ class Admin
             ->disk('filament')
             ->directory('/attachments/order-attachments')
             ->maxSize(2500)
-            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'])
+            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf'])
             ->imageEditor()
             ->openable()
             ->downloadable()
