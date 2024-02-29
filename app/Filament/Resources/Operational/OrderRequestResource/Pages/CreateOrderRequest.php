@@ -60,10 +60,6 @@ class CreateOrderRequest extends CreateRecord
     {
         $arguments = [User::find(1), new OrderRequestStatusNotification($this->record)];
 
-        RetryableEmailService::dispatchEmail(
-            EmailNotification::send,
-            'order request',
-            ...$arguments
-        );
+        RetryableEmailService::dispatchEmail('order request', ...$arguments);
     }
 }

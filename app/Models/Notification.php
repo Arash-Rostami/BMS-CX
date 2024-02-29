@@ -27,7 +27,6 @@ class Notification extends Model
         'deleted_at'
     ];
 
-
     public function getDeletedAtAttribute()
     {
         if (is_null($this->attributes['deleted_at'])) {

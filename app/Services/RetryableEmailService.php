@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Notification as EmailNotification;
+use Illuminate\Support\Facades\Notification;
 
 
 use Exception;
@@ -12,14 +12,13 @@ class RetryableEmailService
     private static int $maxRetries = 4;
     private static int $attempt = 1;
 
-    public static function dispatchEmail(callable $function, $service, ...$arguments): void
+    public static function dispatchEmail($service, ...$arguments): void
     {
         for (self::$attempt = 1; self::$attempt <= self::$maxRetries; self::$attempt++) {
             try {
                 // Send the email notification
-                self::sendEmailNotification($function, ...$arguments);
+                Notification::send(...$arguments);
 
-                $function();
                 break;
             } catch (Exception $e) {
 
@@ -34,8 +33,4 @@ class RetryableEmailService
         }
     }
 
-    private static function sendEmailNotification(callable $function, ...$arguments): void
-    {
-        call_user_func_array($function, $arguments);
-    }
 }

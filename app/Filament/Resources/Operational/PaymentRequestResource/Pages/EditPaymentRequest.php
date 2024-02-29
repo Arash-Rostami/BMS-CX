@@ -6,10 +6,10 @@ use App\Filament\Resources\PaymentRequestResource;
 use App\Models\User;
 use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\NotificationManager;
+use App\Services\RetryableEmailService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Notification as EmailNotification;
 
 
 class EditPaymentRequest extends EditRecord
@@ -83,6 +83,8 @@ class EditPaymentRequest extends EditRecord
      */
     public function notifyViaEmail($status): void
     {
-        EmailNotification::send(User::find(1), new PaymentRequestStatusNotification($this->record, $status));
+        $arguments = [User::find(1), new PaymentRequestStatusNotification($this->record, $status)];
+
+        RetryableEmailService::dispatchEmail('payment request', ...$arguments);
     }
 }

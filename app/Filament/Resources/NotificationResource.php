@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Filament\Tables\Filters\QueryBuilder;
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Support\Str;
 
 
 class NotificationResource extends Resource
@@ -35,25 +36,19 @@ class NotificationResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('id')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('type')
-                    ->default('Filament\Notifications\DatabaseNotification')
-                    ->hidden()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('notifiable_type')
-                    ->default('App\Models\User')
-                    ->hidden()
-                    ->maxLength(255),
                 Forms\Components\Select::make('notifiable_id')
-                    ->options(User::all()->pluck('first_name', 'id'))
+                    ->label('Recipient')
+                    ->options(User::all()->pluck('fullName', 'id'))
+                    ->required(),
+                Forms\Components\Select::make('priority')
+                    ->label('Priority')
+                    ->options(['high' => '⬆ Email & In-app', 'low' => '⬇ In-app'])
                     ->required(),
                 Forms\Components\Textarea::make('data')
+                    ->label('Message')
                     ->required()
                     ->maxLength(65535)
                     ->columnSpanFull(),
-                Forms\Components\DateTimePicker::make('read_at'),
             ]);
     }
 
@@ -64,19 +59,19 @@ class NotificationResource extends Resource
 //            ->query(fn() => Notification::where('notifiable_id',1))
             ->columns([
                 Tables\Columns\TextColumn::make('user.fullName')
-                ->badge()
-                ->color('primary'),
+                    ->badge()
+                    ->color('primary'),
                 Tables\Columns\TextColumn::make('data')
                     ->color('secondary')
                     ->words(6)
                     ->size(TextColumnSize::Small)
                     ->tooltip(function (string $state) {
-                        $data = json_decode($state, true) ;
-                        return strip_tags($data['body']  ?? '');
+                        $data = json_decode($state, true);
+                        return strip_tags($data['body'] ?? '');
                     })
                     ->formatStateUsing(function (string $state) {
                         $data = json_decode($state, true);
-                        return strip_tags($data['body']  ?? '');
+                        return strip_tags($data['body'] ?? '');
                     }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Sent')
@@ -113,7 +108,7 @@ class NotificationResource extends Resource
 
             ])
             ->defaultGroup('user.first_name')
-            ->defaultSort('created_at' , 'desc')
+            ->defaultSort('created_at', 'desc')
             ->poll(30)
             ->filters([
                 SelectFilter::make('notifiable_id')
@@ -127,5 +122,14 @@ class NotificationResource extends Resource
         return [
             'index' => Core\NotificationResource\Pages\ManageNotifications::route('/'),
         ];
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['user_id'] = auth()->id();
+
+        return dd($data);
+
+//        return $data;
     }
 }
