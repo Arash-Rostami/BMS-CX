@@ -62,6 +62,7 @@ class Admin
                     $set('invoice_number', $order->invoice_number);
                 }
             })
+            ->live()
             ->required()
             ->label('')
             ->hintColor('primary')
@@ -74,7 +75,7 @@ class Admin
     public static function getPaymentRequest(): Select
     {
         return Select::make('payment_request_id')
-            ->options(fn() => PaymentRequest::showApproved())
+            ->options(fn(Get $get) => PaymentRequest::showApproved($get('order_id')))
             ->required()
             ->multiple(fn($operation) => $operation == 'create')
             ->label('')

@@ -87,9 +87,10 @@ class PaymentRequest extends Model
             ->map(fn($item) => $item->count);
     }
 
-    public static function showApproved()
+    public static function showApproved($orderId)
     {
         return self::whereNotIn('status', ['cancelled', 'rejected', 'completed'])
+            ->where('order_id', $orderId)
             ->pluck('type', 'id')
             ->map(function ($type) {
                 return self::$typesOfPayment[$type] ?? $type;

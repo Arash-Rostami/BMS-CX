@@ -12,6 +12,8 @@ class PersonToPersonNotification extends Notification
     use Queueable;
 
     protected $data;
+    protected $subjectLine;
+    protected $body;
 
     /**
      * Create a new notification instance.
@@ -21,6 +23,8 @@ class PersonToPersonNotification extends Notification
     public function __construct(array $data)
     {
         $this->data = $data;
+        $this->subjectLine = $this->data['priority'];
+        $this->body = data_get(json_decode($this->data['data']), 'body');
     }
 
     /**
@@ -39,9 +43,9 @@ class PersonToPersonNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject("⚠️ " . $this->data['priority'])
+            ->subject("⚠️ " . $this->subjectLine)
             ->greeting('Greetings,')
-            ->line($this->data['data'])
+            ->line($this->body)
             ->line('Thank you for your attention to this matter.');
     }
 
