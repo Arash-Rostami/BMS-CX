@@ -62,7 +62,7 @@ class CreateOrder extends CreateRecord
             'type' => 'new',
             'module' => 'order',
             'url' =>  route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
-            'recipients' => User::all()
+            'recipients' => User::getUsersByRoles(['manager','agent'])
         ];
 
         NotificationManager::send($data);

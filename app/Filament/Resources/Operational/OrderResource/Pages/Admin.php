@@ -1405,7 +1405,7 @@ class Admin
             'type' => 'delete',
             'module' => 'order',
             'url' => route('filament.admin.resources.orders.index'),
-            'recipients' => User::all()
+            'recipients' => User::getUsersByRole('agent')
         ];
 
         NotificationManager::send($data);

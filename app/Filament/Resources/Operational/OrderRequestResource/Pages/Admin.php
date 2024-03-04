@@ -534,7 +534,7 @@ class Admin
             'type' => 'delete',
             'module' => 'orderRequest',
             'url' => route('filament.admin.resources.order-requests.index'),
-            'recipients' => User::all()
+            'recipients' => User::getUsersByRole('manager')
         ];
 
         NotificationManager::send($data);

@@ -855,7 +855,7 @@ class Admin
             'type' => 'delete',
             'module' => 'paymentRequest',
             'url' => route('filament.admin.resources.payment-requests.index'),
-            'recipients' => User::all()
+            'recipients' => User::getUsersExcludingRoles(['partner'])
         ];
 
         NotificationManager::send($data);

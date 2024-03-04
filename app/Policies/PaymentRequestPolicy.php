@@ -27,10 +27,12 @@ class PaymentRequestPolicy
         }
 
         if (isUserAccountant()) {
-            return ($record->getOriginal('status') === 'approved')
-                ? !in_array($status, ['processing', 'completed'])
-                : !in_array($status, ['allowed', 'rejected']);  // Accountants CAN update these statuses
+            if ($record->getOriginal('status') === 'approved') {
+                return true;  // Accountant CANNOT update any status
+            }
+            return !in_array($status, ['allowed', 'rejected']);
         }
+
 
         if (isUserAgent()) {
             return $status !== 'cancelled';  // Agents CANNOT update any status except 'cancelled'

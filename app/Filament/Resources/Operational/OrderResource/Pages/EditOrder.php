@@ -28,8 +28,8 @@ class EditOrder extends EditRecord
             'record' => $this->record->invoice_number,
             'type' => 'edit',
             'module' => 'order',
-            'url' =>  route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
-            'recipients' => User::all()
+            'url' => route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
+            'recipients' => User::getUsersByRole('agent')
         ];
 
         NotificationManager::send($data);

@@ -180,4 +180,60 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
         return self::where('role', '=', 'manager')->orwhere('role', '=', 'admin')->get();
     }
 
+    public static function getAccountant()
+    {
+        return self::where('role', '=', 'accountant')->orwhere('role', '=', 'admin')->get();
+    }
+
+    public static function getAgent()
+    {
+        return self::where('role', '=', 'agent')->orwhere('role', '=', 'admin')->get();
+    }
+
+    public static function getPartner()
+    {
+        return self::where('role', '=', 'partner')->orwhere('role', '=', 'admin')->get();
+    }
+
+
+
+    public function scopeByRole($query, $role)
+    {
+        return $query->where('role', $role);
+    }
+
+    public function scopeByRoles($query, $roles)
+    {
+        return $query->whereIn('role', $roles);
+    }
+
+    public function scopeExcludeRole($query, $role)
+    {
+        return $query->where('role', '!=', $role);
+    }
+
+    public function scopeExcludeRoles($query, $roles)
+    {
+        return $query->whereNotIn('role', $roles);
+    }
+
+    public static function getUsersByRole($role)
+    {
+        return self::byRole($role)->get();
+    }
+
+    public static function getUsersByRoles($roles)
+    {
+        return self::byRoles($roles)->get();
+    }
+
+    public static function getUsersExcludingRole($role)
+    {
+        return self::excludeRole($role)->get();
+    }
+
+    public static function getUsersExcludingRoles($roles)
+    {
+        return self::excludeRoles($roles)->get();
+    }
 }

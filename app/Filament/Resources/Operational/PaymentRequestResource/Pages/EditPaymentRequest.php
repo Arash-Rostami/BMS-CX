@@ -63,7 +63,7 @@ class EditPaymentRequest extends EditRecord
                 'type' => $newStatus,
                 'module' => 'payment',
                 'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $this->record->id]),
-                'recipients' => User::all(),
+                'recipients' => User::getUsersExcludingRole('partner'),
             ];
 
             $this->notifyViaEmail($statusData['type']);
@@ -83,7 +83,10 @@ class EditPaymentRequest extends EditRecord
      */
     public function notifyViaEmail($status): void
     {
-        $arguments = [User::find(1), new PaymentRequestStatusNotification($this->record, $status)];
+        $arguments = [
+            ($status == 'allowed') ? User::getUsersByRoles(['manager', 'agent']) : User::getUsersByRole('agent'),
+            new PaymentRequestStatusNotification($this->record, $status)
+        ];
 
         RetryableEmailService::dispatchEmail('payment request', ...$arguments);
     }

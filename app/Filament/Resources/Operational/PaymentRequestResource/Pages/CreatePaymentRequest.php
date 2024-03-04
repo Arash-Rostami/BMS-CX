@@ -42,7 +42,7 @@ class CreatePaymentRequest extends CreateRecord
             'type' => 'pending',
             'module' => 'payment',
             'url' => route('filament.admin.resources.payment-requests.index'),
-            'recipients' => User::all()
+            'recipients' => User::getUsersByRoles(['accountant', 'agent'])
         ];
 
         NotificationManager::send($dataStatus, true);
@@ -53,12 +53,8 @@ class CreatePaymentRequest extends CreateRecord
      */
     public function notifyViaEmail(): void
     {
-        $arguments = [User::find(1), new PaymentRequestStatusNotification($this->record)];
+        $arguments = [User::getUsersByRole('accountant'), new PaymentRequestStatusNotification($this->record)];
 
-        RetryableEmailService::dispatchEmail(
-            EmailNotification::send,
-            'payment request',
-            ...$arguments
-        );
+        RetryableEmailService::dispatchEmail('payment request', ...$arguments);
     }
 }

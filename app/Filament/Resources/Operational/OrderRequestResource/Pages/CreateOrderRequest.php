@@ -47,7 +47,7 @@ class CreateOrderRequest extends CreateRecord
             'type' => 'pending',
             'module' => 'order',
             'url' => route('filament.admin.resources.order-requests.index'),
-            'recipients' => User::all()
+            'recipients' => User::getUsersByRole('manager')
         ];
 
         NotificationManager::send($dataStatus, true);
@@ -58,7 +58,7 @@ class CreateOrderRequest extends CreateRecord
      */
     public function notifyViaEmail(): void
     {
-        $arguments = [User::find(1), new OrderRequestStatusNotification($this->record)];
+        $arguments = [User::getUsersByRole('manager'), new OrderRequestStatusNotification($this->record)];
 
         RetryableEmailService::dispatchEmail('order request', ...$arguments);
     }

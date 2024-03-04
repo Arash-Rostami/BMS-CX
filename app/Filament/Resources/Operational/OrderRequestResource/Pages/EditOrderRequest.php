@@ -6,6 +6,7 @@ use App\Filament\Resources\OrderRequestResource;
 use App\Models\User;
 use App\Notifications\OrderRequestStatusNotification;
 use App\Services\NotificationManager;
+use App\Services\RetryableEmailService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -62,7 +63,7 @@ class EditOrderRequest extends EditRecord
                 'type' => $newStatus === 'review' ? 'processing' : ($newStatus === 'fulfilled' ? 'completed' : $newStatus),
                 'module' => 'order',
                 'url' => route('filament.admin.resources.order-requests.edit', ['record' => $this->record->id]),
-                'recipients' => User::all(),
+                'recipients' => ($newStatus == 'approved') ? User::getUsersByRole('agent') : User::getUsersByRole('partner'),
             ];
 
             $this->notifyViaEmail($statusData['type']);
@@ -81,6 +82,11 @@ class EditOrderRequest extends EditRecord
      */
     public function notifyViaEmail($status): void
     {
-        EmailNotification::send(User::find(1), new OrderRequestStatusNotification($this->record, $status));
+        $arguments = [
+            ($status == 'approved') ? User::getUsersByRole('agent') : User::getUsersByRole('partner'),
+            new OrderRequestStatusNotification($this->record, $status)
+        ];
+
+        RetryableEmailService::dispatchEmail('order request', ...$arguments);
     }
 }
