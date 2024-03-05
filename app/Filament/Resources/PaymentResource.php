@@ -5,9 +5,11 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\Operational\PaymentResource\Pages\Admin;
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Filament\Resources\PaymentResource\RelationManagers;
+use App\Models\Attachment;
 use App\Models\Payment;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Models\PaymentRequest;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
@@ -98,6 +100,17 @@ class PaymentResource extends Resource
                     ->addActionLabel('➕')
                     ->columnSpanFull()
                     ->collapsible()
+//                    ->deleteAction(
+//                        function (Action $action, $state, Repeater $component) {
+//                            $itemData = $state;
+//                            dd($itemData);
+////                            $attachment = Attachment::where();
+////                            if ($attachment) {
+////                                File::delete($attachment->file_path);
+////                                $attachment->delete();
+////                            }
+//                        }
+//                    )
                     ->collapsed(fn($operation) => $operation == 'edit'),
             ]);
     }

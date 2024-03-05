@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Attachment;
+use App\Models\Payment;
 use App\Models\PaymentRequest;
+use App\Observers\AttachmentObserver;
+use App\Observers\PaymentObserver;
 use App\Policies\PaymentRequestPolicy;
 use Filament\Support\Assets\Js;
 use Filament\Support\Enums\Alignment;
@@ -46,7 +50,7 @@ class AppServiceProvider extends ServiceProvider
 
         ]);
 
-
+        Attachment::observe(AttachmentObserver::class);
 //        Notifications::alignment(Alignment::Start);
 //        Notifications::verticalAlignment(VerticalAlignment::End);
     }

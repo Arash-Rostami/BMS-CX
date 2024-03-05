@@ -22,6 +22,11 @@ class EditPayment extends EditRecord
         ];
     }
 
+//    protected function beforeSave()
+//    {
+//        return dd($this->record);
+//    }
+
     protected function afterSave(): void
     {
         $data = [
