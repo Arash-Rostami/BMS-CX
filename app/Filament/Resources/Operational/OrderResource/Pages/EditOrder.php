@@ -29,7 +29,8 @@ class EditOrder extends EditRecord
             'type' => 'edit',
             'module' => 'order',
             'url' => route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
-            'recipients' => User::getUsersByRole('agent')
+//            'recipients' => User::getUsersByRole('agent')
+            'recipients' => User::getUsersByRole('admin')
         ];
 
         NotificationManager::send($data);

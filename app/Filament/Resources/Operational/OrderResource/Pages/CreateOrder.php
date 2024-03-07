@@ -23,7 +23,6 @@ class CreateOrder extends CreateRecord
 {
     protected static string $resource = OrderResource::class;
 
-
     /**
      * @return string
      */
@@ -62,7 +61,8 @@ class CreateOrder extends CreateRecord
             'type' => 'new',
             'module' => 'order',
             'url' =>  route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
-            'recipients' => User::getUsersByRoles(['manager','agent'])
+//            'recipients' => User::getUsersByRoles(['manager','agent'])
+            'recipients' => User::getUsersByRole('admin')
         ];
 
         NotificationManager::send($data);

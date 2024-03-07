@@ -22,7 +22,7 @@ class CreatePaymentRequest extends CreateRecord
             'type' => 'new',
             'module' => 'paymentRequest',
             'url' => route('filament.admin.resources.payment-requests.index'),
-            'recipients' => User::all()
+            'recipients' => User::getUsersByRole('admin')
         ];
 
         NotificationManager::send($data);
@@ -42,7 +42,8 @@ class CreatePaymentRequest extends CreateRecord
             'type' => 'pending',
             'module' => 'payment',
             'url' => route('filament.admin.resources.payment-requests.index'),
-            'recipients' => User::getUsersByRoles(['accountant', 'agent'])
+//            'recipients' => User::getUsersByRoles(['accountant', 'agent'])
+            'recipients' => User::getUsersByRole('admin')
         ];
 
         NotificationManager::send($dataStatus, true);
@@ -53,7 +54,8 @@ class CreatePaymentRequest extends CreateRecord
      */
     public function notifyViaEmail(): void
     {
-        $arguments = [User::getUsersByRole('accountant'), new PaymentRequestStatusNotification($this->record)];
+//        $arguments = [User::getUsersByRole('accountant'), new PaymentRequestStatusNotification($this->record)];
+        $arguments = [User::getUsersByRole('admin'), new PaymentRequestStatusNotification($this->record)];
 
         RetryableEmailService::dispatchEmail('payment request', ...$arguments);
     }

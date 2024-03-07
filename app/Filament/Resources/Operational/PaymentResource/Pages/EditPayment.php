@@ -22,10 +22,6 @@ class EditPayment extends EditRecord
         ];
     }
 
-//    protected function beforeSave()
-//    {
-//        return dd($this->record);
-//    }
 
     protected function afterSave(): void
     {
@@ -34,7 +30,7 @@ class EditPayment extends EditRecord
             'type' => 'edit',
             'module' => 'payment',
             'url' =>  route('filament.admin.resources.payments.edit', ['record' => $this->record->id]),
-            'recipients' => User::all()
+            'recipients' => User::getUsersByRole('admin')
         ];
 
         NotificationManager::send($data);

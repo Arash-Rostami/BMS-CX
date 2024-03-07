@@ -98,13 +98,7 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">📦 </span>Product<span class="red"> *</span>'))
             ->hintColor('primary')
-            ->relationship('product', 'name',
-                function (Builder $query, Get $get) {
-                    if ($get('category_id')) {
-                        $query->where('category_id', $get('category_id'));
-                    }
-                }
-            )
+            ->relationship('product', 'name')
             ->required()
             ->createOptionForm([
                 TextInput::make('name')

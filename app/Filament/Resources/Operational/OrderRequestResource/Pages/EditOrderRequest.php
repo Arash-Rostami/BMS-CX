@@ -47,7 +47,7 @@ class EditOrderRequest extends EditRecord
             'type' => 'edit',
             'module' => 'orderRequest',
             'url' => route('filament.admin.resources.order-requests.edit', ['record' => $this->record->id]),
-            'recipients' => User::all(),
+            'recipients' => User::getUsersByRole('admin'),
         ];
         NotificationManager::send($data);
     }
@@ -63,7 +63,8 @@ class EditOrderRequest extends EditRecord
                 'type' => $newStatus === 'review' ? 'processing' : ($newStatus === 'fulfilled' ? 'completed' : $newStatus),
                 'module' => 'order',
                 'url' => route('filament.admin.resources.order-requests.edit', ['record' => $this->record->id]),
-                'recipients' => ($newStatus == 'approved') ? User::getUsersByRole('agent') : User::getUsersByRole('partner'),
+//                'recipients' => ($newStatus == 'approved') ? User::getUsersByRole('agent') : User::getUsersByRole('partner'),
+                'recipients' => User::getUsersByRole('admin'),
             ];
 
             $this->notifyViaEmail($statusData['type']);
@@ -82,8 +83,12 @@ class EditOrderRequest extends EditRecord
      */
     public function notifyViaEmail($status): void
     {
+//        $arguments = [
+//            ($status == 'approved') ? User::getUsersByRole('agent') : User::getUsersByRole('partner'),
+//            new OrderRequestStatusNotification($this->record, $status)
+//        ];
         $arguments = [
-            ($status == 'approved') ? User::getUsersByRole('agent') : User::getUsersByRole('partner'),
+            User::getUsersByRole('admin'),
             new OrderRequestStatusNotification($this->record, $status)
         ];
 

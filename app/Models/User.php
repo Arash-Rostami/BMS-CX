@@ -72,7 +72,9 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return str_ends_with($this->email, '@time-gr.com');
+        return str_ends_with($this->email, '@persolco.com')
+            or str_ends_with($this->email, '@gmail.com')
+            or str_ends_with($this->email, '@time-gr.com');
     }
 
     public function getExtraValueAttribute($key)
@@ -96,10 +98,10 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
         return "{$this->first_name} {$middleName} {$this->last_name}";
     }
 
-    public function getMiddleNameAttribute()
-    {
-        return $this->middle_name ?? '';
-    }
+//    public function getMiddleNameAttribute()
+//    {
+//        return $this->middle_name ?? '';
+//    }
 
     public function buyers()
     {

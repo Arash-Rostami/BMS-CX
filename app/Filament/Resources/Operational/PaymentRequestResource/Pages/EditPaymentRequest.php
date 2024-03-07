@@ -46,7 +46,7 @@ class EditPaymentRequest extends EditRecord
             'type' => 'edit',
             'module' => 'paymentRequest',
             'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $this->record->id]),
-            'recipients' => User::all()
+            'recipients' => User::getUsersByRole('admin')
         ];
 
         NotificationManager::send($data);
@@ -63,7 +63,8 @@ class EditPaymentRequest extends EditRecord
                 'type' => $newStatus,
                 'module' => 'payment',
                 'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $this->record->id]),
-                'recipients' => User::getUsersExcludingRole('partner'),
+//                'recipients' => User::getUsersExcludingRole('partner'),
+                'recipients' => User::getUsersByRole('admin')
             ];
 
             $this->notifyViaEmail($statusData['type']);
@@ -83,8 +84,12 @@ class EditPaymentRequest extends EditRecord
      */
     public function notifyViaEmail($status): void
     {
+//        $arguments = [
+//            ($status == 'allowed') ? User::getUsersByRoles(['manager', 'agent']) : User::getUsersByRole('agent'),
+//            new PaymentRequestStatusNotification($this->record, $status)
+//        ];
         $arguments = [
-            ($status == 'allowed') ? User::getUsersByRoles(['manager', 'agent']) : User::getUsersByRole('agent'),
+            User::getUsersByRole('admin'),
             new PaymentRequestStatusNotification($this->record, $status)
         ];
 

@@ -52,8 +52,6 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-//                Section::make()
-//                    ->schema([
                 Tabs::make()
                     ->tabs([
                         /*First tab*/
@@ -101,11 +99,55 @@ class UserResource extends Resource
                             ]),
                     ])
             ])->columns(1);
-//            ]);
     }
 
 
     public static function table(Table $table): Table
+    {
+        $table = self::configureCommonTableSettings($table);
+
+        return (getTableDesign() != 'classic')
+            ? self::getModernLayout($table)
+            : self::getClassicLayout($table);
+
+    }
+
+    private static function configureCommonTableSettings(Table $table): Table
+    {
+        return $table
+            ->poll(30)
+            ->filters([
+                Admin::filterRole(),
+                Admin::filterStatus(),
+                TrashedFilter::make(),
+
+            ], layout: FiltersLayout::Modal)
+            ->actions([
+//                Action::make('setting')
+//                    ->url(fn(User $record): string => route('filament.admin.resources.users.setting', ['record' => $record])),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\ForceDeleteAction::make(),
+                Tables\Actions\RestoreAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                    ForceDeleteBulkAction::make(),
+                    RestoreBulkAction::make(),
+                    ExportBulkAction::make(),
+                ])
+            ])
+            ->defaultSort('created_at', 'desc')
+            ->groups([
+                Tables\Grouping\Group::make('company')
+                    ->label('Company')
+                    ->collapsible(),
+            ]);
+    }
+
+
+    public static function getModernLayout(Table $table): Table
     {
         return $table
             ->columns([
@@ -133,35 +175,22 @@ class UserResource extends Resource
                         ]),
                     ])
                 ]),
-            ])
-            ->poll(30)
-            ->filters([
-                Admin::filterRole(),
-                Admin::filterStatus(),
-                TrashedFilter::make(),
-
-            ], layout: FiltersLayout::Modal)
-            ->actions([
-                Action::make('setting')
-                    ->url(fn(User $record): string => route('filament.admin.resources.users.setting', ['record' => $record])),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-                Tables\Actions\ForceDeleteAction::make(),
-                Tables\Actions\RestoreAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
-                    ExportBulkAction::make(),
-                ])
-            ])
-            ->groups([
-                Tables\Grouping\Group::make('company')
-                    ->label('Company')
-                    ->collapsible(),
             ]);
+    }
+
+    public static function getClassicLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Admin::showAvatar(),
+                Admin::showFullName(),
+                Admin::showEmail(),
+                Admin::showPhone(),
+                Admin::showIP(),
+                Admin::showCompany(),
+                Admin::showStatus(),
+                Admin::showRole(),
+            ])->striped();
     }
 
     public static function getEloquentQuery(): Builder

@@ -39,7 +39,7 @@ class CreatePayment extends CreateRecord
             'type' => 'new',
             'module' => 'payment',
             'url' =>  route('filament.admin.resources.payments.index'),
-            'recipients' => User::all()
+            'recipients' => User::getUsersByRole('admin')
         ];
 
         NotificationManager::send($data);

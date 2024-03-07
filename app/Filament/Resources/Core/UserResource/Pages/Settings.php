@@ -25,7 +25,4 @@ class Settings extends Page
         $this->user = User::find($this->record)->first();
     }
 
-
-
-
 }

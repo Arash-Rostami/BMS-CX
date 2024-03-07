@@ -7,9 +7,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/table-design-toggle', [UserController::class, 'toggleTableDesign'])
     ->name('table.design.toggle');
-Route::get('/test', [UserController::class, 'test'])
-    ->name('test');
-
 
 
 Route::fallback(fn() => view('errors.404'));
