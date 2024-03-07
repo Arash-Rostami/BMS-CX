@@ -72,9 +72,8 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return str_ends_with($this->email, '@persolco.com')
-            or str_ends_with($this->email, '@gmail.com')
-            or str_ends_with($this->email, '@time-gr.com');
+        $allowedDomains = ['persolco.com', 'gmail.com', 'time-gr.com'];
+        return in_array(substr(strrchr($this->email, '@'), 1), $allowedDomains);
     }
 
     public function getExtraValueAttribute($key)
