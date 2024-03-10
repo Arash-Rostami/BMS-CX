@@ -175,6 +175,7 @@ class UserResource extends Resource
                         ]),
                     ])
                 ]),
+                Admin::showLastOnline()
             ]);
     }
 
@@ -200,6 +201,7 @@ class UserResource extends Resource
                 SoftDeletingScope::class,
             ]);
     }
+
 
     public function getHeader(): ?View
     {

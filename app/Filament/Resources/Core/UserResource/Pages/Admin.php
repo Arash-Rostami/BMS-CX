@@ -250,6 +250,19 @@ class Admin
             ->icon('heroicon-o-building-office-2');
     }
 
+
+    /**
+     * @return TextColumn
+     */
+    public static function showLastOnline(): TextColumn
+    {
+        return TextColumn::make('updated_at')
+            ->badge()
+            ->formatStateUsing(fn($state) => "Last seen: " . $state->diffForHumans())
+            ->sortable()
+            ->alignRight();
+    }
+
     /**
      * @return TextColumn
      */

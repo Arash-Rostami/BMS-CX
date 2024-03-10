@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
 use Rawilk\FilamentPasswordInput\Password;
+use Closure;
+use App\Models\User;
+use Illuminate\Support\Facades\Pipeline;
 
 
 /**
@@ -79,8 +82,19 @@ class Login extends SimplePage
 
         $user = Filament::auth()->user();
 
-        $user->ip_address = request()->ip();
-        $user->save();
+
+        // update the user's last ip, as well as last seen timestamp
+        Pipeline::send($user)
+            ->through([
+                function (User $user, Closure $next) {
+                    $user->ip_address = null;
+                    $user->save();
+
+                    return $next($user);
+                }
+            ])
+            ->then(fn (User $user) => $user->update(['ip_address' => request()->ip()]));
+
 
         if (
             ($user instanceof FilamentUser) &&
