@@ -14,7 +14,6 @@ class CreatePayment extends CreateRecord
 {
     protected static string $resource = PaymentResource::class;
 
-
     protected function handleRecordCreation(array $data): Model
     {
         // Load PaymentRequest models
