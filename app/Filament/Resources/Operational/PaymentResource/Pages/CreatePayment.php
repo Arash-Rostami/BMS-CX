@@ -19,6 +19,41 @@ class CreatePayment extends CreateRecord
         // Load PaymentRequest models
         $paymentRequests = PaymentRequest::whereIn('id', $data['payment_request_id'])->get();
 
+        list($lastModelInstance, $outstandingAmount) = $this->processPayments($data, $paymentRequests);
+
+        if ($outstandingAmount > 0) {
+            $outstandingData = [
+                    'payment_request_id' => null,
+                    'amount' => $outstandingAmount,
+                ] + $data;
+
+            $lastModelInstance = static::getModel()::create($outstandingData);
+        }
+        return $lastModelInstance;
+    }
+
+
+    protected function afterCreate(): void
+    {
+        $data = [
+            'record' => $this->record->order->invoice_number,
+            'type' => 'new',
+            'module' => 'payment',
+            'url' => route('filament.admin.resources.payments.index'),
+            'recipients' => User::getUsersByRole('admin')
+        ];
+
+        NotificationManager::send($data);
+    }
+
+
+    /**
+     * @param array $data
+     * @param $paymentRequests
+     * @return array
+     */
+    protected function processPayments(array $data, $paymentRequests): array
+    {
         $paymentAmount = $data['amount'];
         $totalAmountPaid = 0;
         $lastModelInstance = null;
@@ -48,20 +83,9 @@ class CreatePayment extends CreateRecord
             // Update the total amount paid
             $totalAmountPaid += $amountToPay;
         }
-        return $lastModelInstance;
-    }
 
+        $outstandingAmount = $paymentAmount - $totalAmountPaid;
 
-    protected function afterCreate(): void
-    {
-        $data = [
-            'record' => $this->record->order->invoice_number,
-            'type' => 'new',
-            'module' => 'payment',
-            'url' => route('filament.admin.resources.payments.index'),
-            'recipients' => User::getUsersByRole('admin')
-        ];
-
-        NotificationManager::send($data);
+        return array($lastModelInstance, $outstandingAmount);
     }
 }

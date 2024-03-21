@@ -33,6 +33,8 @@ class PaymentRequest extends Model
         'extra',
         'user_id',
         'order_id',
+        'supplier_id',
+        'contractor_id',
     ];
 
     protected $casts = [
@@ -111,6 +113,20 @@ class PaymentRequest extends Model
         return $this->hasMany(Payment::class);
     }
 
+    /**
+     * Get the user that owns the payment request.
+     */
+    public function contractor()
+    {
+        return $this->belongsTo(Contractor::class);
+    }
+    /**
+     * Get the user that owns the payment request.
+     */
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
     /**
      * Get the user that owns the payment request.
      */

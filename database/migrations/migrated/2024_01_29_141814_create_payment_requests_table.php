@@ -12,14 +12,16 @@ return new class extends Migration {
     {
         Schema::create('payment_requests', function (Blueprint $table) {
             $table->increments('id')->unsigned()->index();
-            $table->enum('type', ['order','packaging','delivery', 'customs', 'insurance','license','other'])->default('order');
+            $table->enum('type', ['Order', 'ContainerDemurrage', 'CustomsAndPortFees', 'ContainerAcceptance',
+                'ShrinkWrap', 'ContainerLashing', 'SgsReport', 'JumboBoxPallet', 'DrumPackaging',
+                'Trucking', 'Other'])->default('Order');
             $table->text('purpose')->nullable();
-            $table->enum('status', ['pending', 'processing','allowed', 'approved', 'rejected', 'completed', 'cancelled'])->default('pending');
+            $table->enum('status', ['pending', 'processing', 'allowed', 'approved', 'rejected', 'completed', 'cancelled'])->default('pending');
             $table->double('individual_amount');
             $table->double('total_amount');
             $table->timestamp('deadline');
             $table->text('description')->nullable();
-            $table->string('beneficiary_name');
+            $table->enum('beneficiary_name', ['supplier', 'contractor'])->default('supplier');
             $table->string('recipient_name')->nullable();
             $table->text('beneficiary_address')->nullable();
             $table->string('bank_name');
@@ -34,8 +36,12 @@ return new class extends Migration {
             // Foreign keys
             $table->integer('user_id')->unsigned()->index();
             $table->integer('order_id')->unsigned()->index();
+            $table->integer('supplier_id')->unsigned()->index()->nullable();
+            $table->integer('contractor_id')->unsigned()->index()->nullable();
             $table->foreign('user_id')->references('id')->on('users');
             $table->foreign('order_id')->references('id')->on('orders');
+            $table->foreign('supplier_id')->references('id')->on('suppliers');
+            $table->foreign('contractor_id')->references('id')->on('contractors');
             $table->timestamps();
             $table->softDeletes();
         });

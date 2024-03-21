@@ -219,7 +219,8 @@ class Admin
         return TextColumn::make('paymentRequests.type')
             ->label('Payment Request')
             ->grow(false)
-            ->formatStateUsing(fn($state) => PaymentRequest::$typesOfPayment[$state])
+            ->state(fn(Model $record) => $record->paymentRequests->isEmpty() ? 'Overpayment!' : PaymentRequest::$typesOfPayment[$record->paymentRequests->first()->type])
+            ->color(fn(Model $record) => $record->paymentRequests->isEmpty() ? 'danger' : '')
             ->sortable()
             ->searchable()
             ->badge();

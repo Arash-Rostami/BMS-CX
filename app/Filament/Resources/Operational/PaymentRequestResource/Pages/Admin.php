@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
+use App\Models\Contractor;
 use App\Models\Order;
 use App\Models\PaymentRequest;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Policies\PaymentRequestPolicy;
 use App\Services\NotificationManager;
 use Carbon\Carbon;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Radio;
@@ -20,6 +23,7 @@ use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Grouping\Group as Grouping;
+use Wallo\FilamentSelectify\Components\ButtonGroup;
 
 
 class Admin
@@ -182,17 +186,80 @@ class Admin
     }
 
     /**
-     * @return TextInput
+     * @return ButtonGroup
      */
-    public static function getBeneficiaryName(): TextInput
+    public static function getBeneficiary(): ButtonGroup
     {
-        return TextInput::make('beneficiary_name')
+        return ButtonGroup::make('beneficiary_name')
             ->label('')
-            ->hint(new HtmlString('<span class="grayscale">✒️ </span>Beneficiary Name<span class="red"> *</span>'))
+            ->options(['supplier' => 'Supplier', 'contractor' => 'Contractor'])
+            ->live()
+            ->columnSpan(1)
+            ->default('supplier')
+            ->hint(new HtmlString('<span class="grayscale">✒️ </span>Beneficiary<span class="red"> *</span>'))
             ->hintColor('primary')
-            ->placeholder('person or organization')
-            ->required()
-            ->maxLength(255);
+            ->required();
+    }
+
+    /**
+     * @return Select
+     */
+    public static function getSupplier(): Select
+    {
+        return Select::make('supplier_id')
+            ->requiredIf('beneficiary_name', 'supplier')
+            ->hidden(fn(Get $get): bool => $get('beneficiary_name') != 'supplier')
+            ->label('')
+            ->options(Supplier::all()->pluck('name', 'id'))
+            ->searchable()
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">🤝 </span>Supplier Name<span class="red"> *</span>'))
+            ->createOptionForm([
+                TextInput::make('name')
+                    ->required()
+                    ->maxLength(255)
+                    ->dehydrateStateUsing(fn(?string $state) => strtoupper($state)),
+                MarkdownEditor::make('description')
+                    ->maxLength(65535)
+                    ->disableAllToolbarButtons()
+            ])
+            ->createOptionAction(function (Action $action) {
+                return $action
+                    ->modalHeading('Create new supplier')
+                    ->modalButton('Create')
+                    ->modalWidth('lg');
+            });
+    }
+
+    /**
+     * @return Select
+     */
+    public static function getContractor(): Select
+    {
+        return Select::make('contractor_id')
+            ->relationship('contractor', 'name')
+            ->hidden(fn(Get $get): bool => $get('beneficiary_name') != 'contractor')
+            ->requiredIf('beneficiary_name', 'contractor')
+            ->label('')
+            ->options(Contractor::all()->pluck('name', 'id'))
+            ->searchable()
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">🤝 </span>Contractor Name<span class="red"> *</span>'))
+            ->createOptionForm([
+                TextInput::make('name')
+                    ->required()
+                    ->maxLength(255)
+                    ->dehydrateStateUsing(fn(?string $state) => strtoupper($state)),
+                MarkdownEditor::make('description')
+                    ->maxLength(65535)
+                    ->disableAllToolbarButtons()
+            ])
+            ->createOptionAction(function (Action $action) {
+                return $action
+                    ->modalHeading('Create new contractor')
+                    ->modalButton('Create')
+                    ->modalWidth('lg');
+            });
     }
 
 
@@ -370,6 +437,7 @@ class Admin
             ->color('gray')
             ->grow(false)
             ->sortable()
+            ->state(fn(Model $record) => is_null($record->contractor_id) ? $record->supplier->name : $record->contractor->name)
             ->tooltip('Beneficiary Name')
             ->toggleable()
             ->searchable()
@@ -651,6 +719,7 @@ class Admin
     {
         return TextEntry::make('beneficiary_name')
             ->label('Beneficiary Name')
+            ->state(fn(Model $record) => is_null($record->contractor_id) ? $record->supplier->name : $record->contractor->name)
             ->color('secondary')
             ->badge();
     }

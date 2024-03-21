@@ -20,7 +20,7 @@ return new class extends Migration {
             $table->json('extra')->nullable();
             // Foreign keys
             $table->integer('user_id')->unsigned()->index();
-            $table->integer('payment_request_id')->unsigned()->index();
+            $table->integer('payment_request_id')->unsigned()->index()->nullable();
             $table->integer('order_id')->unsigned()->index()->nullable();
             $table->integer('attachment_id')->unsigned()->index()->nullable();
             $table->foreign('user_id')->references('id')->on('users');

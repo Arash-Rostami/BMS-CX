@@ -70,6 +70,14 @@
     "file": "assets/bms-login-backdrop-Hd4KdXq3.jpg",
     "src": "resources/images/bms-login-backdrop.jpg"
   },
+  "resources/images/bms-logo.png": {
+    "file": "assets/bms-logo-kk5kTPKB.png",
+    "src": "resources/images/bms-logo.png"
+  },
+  "resources/images/bms-main-logo-dark.png": {
+    "file": "assets/bms-main-logo-dark-xhk2ddCr.png",
+    "src": "resources/images/bms-main-logo-dark.png"
+  },
   "resources/images/bms-main-logo.png": {
     "file": "assets/bms-main-logo-kANpU4aa.png",
     "src": "resources/images/bms-main-logo.png"
@@ -77,6 +85,10 @@
   "resources/images/cloud.svg": {
     "file": "assets/cloud-KMB3wBWF.svg",
     "src": "resources/images/cloud.svg"
+  },
+  "resources/images/main-bg.png": {
+    "file": "assets/main-bg-rCHIBv3t.png",
+    "src": "resources/images/main-bg.png"
   },
   "resources/images/star.svg": {
     "file": "assets/star-Jpveviwm.svg",

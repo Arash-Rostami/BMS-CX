@@ -45,7 +45,8 @@ return [
         ],
         'filament' => [
             'driver' => 'local',
-            'root' => public_path(''),
+            'root' => public_path(''), // dev
+//            'root' => realpath(base_path().'/../public_html/trade'), // prod
             'url' => env('APP_URL'),
             'visibility' => 'public',
         ],

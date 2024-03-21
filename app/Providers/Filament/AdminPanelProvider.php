@@ -90,7 +90,7 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth(MaxWidth::Full)
             ->spa()
             ->brandName('BMS')
-            ->brandLogo(Vite::asset('resources/images/bms-main-logo.png'))
+            ->brandLogo(Vite::asset('resources/images/bms-main-logo-dark.png'))
             ->brandLogoHeight('3rem')
             ->favicon(Vite::asset('resources/images/bms-fav-icon.png'))
             ->font(

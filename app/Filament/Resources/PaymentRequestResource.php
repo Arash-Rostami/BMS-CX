@@ -8,6 +8,7 @@ use App\Filament\Resources\Operational\PaymentRequestResource\Widgets\StatsOverv
 use App\Filament\Resources\PaymentRequestResource\Pages;
 use App\Filament\Resources\PaymentRequestResource\RelationManagers;
 use App\Models\PaymentRequest;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
@@ -30,7 +31,6 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use Illuminate\Database\Eloquent\Collection;
-
 
 
 class PaymentRequestResource extends Resource
@@ -69,7 +69,9 @@ class PaymentRequestResource extends Resource
                                     ->schema([
                                         Admin::getBankName(),
                                         Admin::getAccountNumber(),
-                                        Admin::getBeneficiaryName(),
+                                        Grid::make(2)->schema([Admin::getBeneficiary()]),
+                                        Admin::getSupplier(),
+                                        Admin::getContractor(),
                                         Admin::getRecipientName(),
                                         Admin::getBeneficiaryAddress(),
                                         Admin::getBankAddress(),
@@ -219,7 +221,7 @@ class PaymentRequestResource extends Resource
                             $selectedRecords->each(
                                 fn(Model $selectedRecord) => Admin::send($selectedRecord)
                             );
-                        }),                    RestoreBulkAction::make(),
+                        }), RestoreBulkAction::make(),
                     ExportBulkAction::make(),
                 ])
             ])
