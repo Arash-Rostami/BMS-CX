@@ -28,6 +28,9 @@ class Doc extends Model
         'BL_date' => 'date',
     ];
 
+    public static bool $filamentDetection = false;
+
+
 
     public function attachments()
     {

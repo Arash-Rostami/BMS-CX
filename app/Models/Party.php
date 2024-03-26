@@ -24,6 +24,9 @@ class Party extends Model
         'extra' => 'json',
     ];
 
+    public static bool $filamentDetection = false;
+    public static string $filamentName = 'PART';
+
     protected static function booted()
     {
         static::creating(function ($post) {

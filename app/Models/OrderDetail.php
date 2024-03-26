@@ -34,6 +34,9 @@ class OrderDetail extends Model
 
     protected $dates = ['deleted_at'];
 
+    public static bool $filamentDetection = false;
+
+
     protected static function booted()
     {
         static::creating(function ($post) {

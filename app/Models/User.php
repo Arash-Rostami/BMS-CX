@@ -142,6 +142,11 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
         return $this->hasMany(PaymentRequest::class);
     }
 
+    public function permissions()
+    {
+        return $this->hasMany(Permission::class);
+    }
+
     public function portOfDeliveries()
     {
         return $this->hasMany(PortOfDelivery::class, 'user_id');
@@ -195,7 +200,6 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
     {
         return self::where('role', '=', 'partner')->orwhere('role', '=', 'admin')->get();
     }
-
 
 
     public function scopeByRole($query, $role)

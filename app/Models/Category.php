@@ -11,6 +11,7 @@ class Category extends Model
 
     protected $fillable = ['name', 'description'];
 
+
     protected static function booted()
     {
         static::creating(function ($post) {

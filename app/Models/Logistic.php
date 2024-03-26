@@ -37,6 +37,8 @@ class Logistic extends Model
         'extra' => 'json',
     ];
 
+    public static bool $filamentDetection = false;
+
     public function attachments()
     {
         return $this->hasMany(Attachment::class, 'logistic_id');

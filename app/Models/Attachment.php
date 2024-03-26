@@ -32,6 +32,9 @@ class Attachment extends Model
     protected $table = 'attachments';
 
 
+    public static bool $filamentDetection = false;
+
+
     protected static function booted()
     {
         static::creating(function ($post) {
