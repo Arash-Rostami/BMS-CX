@@ -80,8 +80,6 @@ class QuoteRequestResource extends Resource
         return (getTableDesign() != 'classic')
             ? self::getModernLayout($table)
             : self::getClassicLayout($table);
-
-
     }
 
     public static function configureCommonTableSettings(Table $table): Table
@@ -152,7 +150,8 @@ class QuoteRequestResource extends Resource
                 ])->columnSpanFull(),
                 Admin::showRequester(),
                 Admin::showTimeStamp(),
-            ]);
+            ])
+            ;
     }
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder

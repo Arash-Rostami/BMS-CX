@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Operational\QuoteResource\Pages\Admin;
 use App\Filament\Resources\QuoteResource\Pages;
 use App\Filament\Resources\QuoteResource\RelationManagers;
 use App\Models\DeliveryTerm;
@@ -11,12 +12,18 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\Layout\Panel;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class QuoteResource extends Resource
 {
@@ -29,176 +36,94 @@ class QuoteResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('quote_request_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('transportation_means')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('transportation_type')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('origin_port')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('destination_port')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('offered_rate')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('switch_bl_fee')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('commodity_type')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('packing_type')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('payment_terms')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('free_time_pol')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('free_time_pod')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\DatePicker::make('validity'),
-                Forms\Components\Textarea::make('extra')
-                    ->maxLength(65535)
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('quote_provider_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('attachment_id')
-                    ->numeric(),
-            ]);
+        return $form->schema([]);
     }
 
     public static function table(Table $table): Table
     {
-        global $state;
+
+        $table = self::configureCommonTableSettings($table);
+
+        return (getTableDesign() != 'classic')
+            ? self::getModernLayout($table)
+            : self::getClassicLayout($table);
+    }
+
+    public static function configureCommonTableSettings(Table $table): Table
+    {
         return $table
-            ->columns([
-                TextColumn::make('quoteProvider.name')
-                    ->label('Quote Provider')
-                    ->badge()
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('quoteRequest.commodity')
-                    ->label('Request for')
-                    ->badge()
-                    ->color('secondary')
-                    ->searchable(['commodity'])
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('commodity_type')
-                    ->label('Commodity')
-                    ->badge()
-                    ->color('secondary')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('origin_port')
-                    ->label('POL')
-                    ->badge()
-                    ->color('warning')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('destination_port')
-                    ->label('POD')
-                    ->badge()
-                    ->color('success')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('transportation_means')
-                    ->label('Transportation Means')
-                    ->badge()
-                    ->color('secondary')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('transportation_type')
-                    ->label('Transportation Type')
-                    ->badge()
-                    ->formatStateUsing(fn(string $state) => DeliveryTerm::find($state)->name)
-                    ->color('secondary')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('offered_rate')
-                    ->label('Offered Rate')
-                    ->badge()
-                    ->color('secondary')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('switch_bl_fee')
-                    ->label('Switch BL Fee')
-                    ->badge()
-                    ->color('secondary')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('validity')
-                    ->date()
-                    ->badge()
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('packing_type')
-                    ->label('Packing')
-                    ->badge()
-                    ->color('secondary')
-                    ->searchable()
-                    ->formatStateUsing(fn(string $state) => Packaging::find($state)->name)
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('payment_terms')
-                    ->label('Payment Terms')
-                    ->badge()
-                    ->color('secondary')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-                TextColumn::make('free_time_pol')
-                    ->label('Free Time')
-                    ->badge()
-                    ->color('secondary')
-                    ->searchable()
-                    ->toggleable()
-                    ->sortable(),
-
-                IconColumn::make('attachment.file_path')
-                    ->boolean()
-                    ->icon(fn(Model $record) => $record->attachment?->file_path ? 'heroicon-s-check-badge' : 'heroicon-o-document-text')
-                    ->color(fn(Model $record) => $record->attachment?->file_path ? 'success' : 'gray'),
-
-
-
-
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-            ])
-            ->filters([
-                Tables\Filters\TrashedFilter::make(),
-            ])
+            ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
             ->poll(30)
+            ->defaultSort('created_at', 'desc')
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\RestoreAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
+                    DeleteBulkAction::make(),
+                    RestoreBulkAction::make(),
+                    ExportBulkAction::make(),
                 ]),
             ]);
     }
+
+    public static function getClassicLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Admin::showQuoteProvider(),
+                Admin::showCommodity(),
+                Admin::showCommodityType(),
+                Admin::showOriginPort(),
+                Admin::showDestinationPort(),
+                Admin::showTransportationMeans(),
+                Admin::showTransportationType(),
+                Admin::showOfferedRate(),
+                Admin::showSwitchBLFee(),
+                Admin::showValidity(),
+                Admin::showPackingType(),
+                Admin::showPaymentTerms(),
+                Admin::showFreeTime(),
+                Admin::showAttachment(),
+                Admin::showTimeStamp(),
+            ])
+            ->striped();
+    }
+
+    public static function getModernLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Split::make([
+                    Panel::make([
+                        Stack::make([
+                            Split::make([
+                                Admin::showQuoteProvider(),
+                                Admin::showCommodity(),
+                            ]),
+                            Split::make([
+                                Admin::showOriginPort(),
+                                Admin::showDestinationPort(),
+                            ]),
+                            Split::make([
+                                Admin::showOfferedRate(),
+                                Admin::showSwitchBLFee(),
+                                Admin::showAttachment(),
+                            ]),
+                            Admin::showValidity(),
+                        ])->space(2),
+                    ])->columnSpanFull(),
+                ])->columnSpanFull(),
+                Admin::showTimeStamp(),
+            ])->contentGrid([
+                'md' => 2,
+                'xl' => 3,
+            ]);
+    }
+
 
     public static function getRelations(): array
     {
