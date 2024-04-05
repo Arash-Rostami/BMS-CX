@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->string('file_path')->nullable();
             $table->json('extra')->nullable();
             // Foreign keys
-            $table->integer('user_id')->unsigned()->index();
+            $table->integer('user_id')->unsigned()->index()->nullable();
             $table->integer('order_id')->unsigned()->index()->nullable();
             $table->integer('payment_id')->unsigned()->index()->nullable();
             $table->integer('payment_request_id')->unsigned()->index()->nullable();

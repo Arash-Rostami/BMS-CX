@@ -290,7 +290,6 @@ class OrderResource extends Resource
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
-            ->recordUrl(null)
             ->filters([Admin::filterOrderStatus(), Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
             ->actions([
                 Tables\Actions\ViewAction::make(),

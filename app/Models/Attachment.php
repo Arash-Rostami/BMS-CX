@@ -38,7 +38,7 @@ class Attachment extends Model
     protected static function booted()
     {
         static::creating(function ($post) {
-            $post->user_id = auth()->id();
+            $post->user_id = auth()->id() ?? null;
         });
     }
 

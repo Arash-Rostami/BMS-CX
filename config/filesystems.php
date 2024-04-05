@@ -50,6 +50,13 @@ return [
             'url' => env('APP_URL'),
             'visibility' => 'public',
         ],
+        'quote' => [
+            'driver' => 'local',
+            'root' => public_path('attachments/'), // dev
+//            'root' => realpath(base_path().'/../public_html/trade'), // prod
+            'url' => env('APP_URL'),
+            'visibility' => 'public',
+        ],
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
