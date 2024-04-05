@@ -17,6 +17,11 @@ class QuoteToken extends Model
         'quote_provider_id',
     ];
 
+    public static function countNum($id)
+    {
+        return static::where('quote_request_id', $id)->count();
+    }
+
     // Relationships (potential)
     public function quoteRequest()
     {

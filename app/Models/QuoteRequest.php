@@ -36,10 +36,25 @@ class QuoteRequest extends Model
         });
     }
 
+    public static function showQuoteResponseRate($id)
+    {
+        $tokenCount = QuoteToken::countNum($id);
+
+        if ($tokenCount === 0) {
+            return '0/0 (No Received Quote)';
+        }
+
+        $responseCount = Quote::countNum($id);
+
+        $percentage = number_format(($responseCount / $tokenCount) * 100, 2, '.', '');
+
+        return "$responseCount/$tokenCount ({$percentage}%)";
+    }
+
 
     public function user()
     {
-        return $this->belongsTo(User::class); // Assuming a User model for request owners
+        return $this->belongsTo(User::class);
     }
 
     public function quoteTokens()
@@ -49,6 +64,6 @@ class QuoteRequest extends Model
 
     public function quotes()
     {
-        return $this->hasManyThrough(Quote::class, QuoteToken::class);
+        return $this->hasMany(Quote::class);
     }
 }

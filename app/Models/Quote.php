@@ -30,6 +30,11 @@ class Quote extends Model
         'attachment_id',
     ];
 
+    public static function countNum($id)
+    {
+        return self::where('quote_request_id', $id)->count();
+    }
+
     public function quoteRequest()
     {
         return $this->belongsTo(QuoteRequest::class, 'quote_request_id');

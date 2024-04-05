@@ -5,17 +5,9 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\Operational\QuoteRequestResource\Pages\Admin;
 use App\Filament\Resources\QuoteRequestResource\Pages;
 use App\Filament\Resources\QuoteRequestResource\RelationManagers;
-use App\Models\Packaging;
-use App\Models\QuoteProvider;
 use App\Models\QuoteRequest;
-use App\Services\PortMaker;
 use Filament\Forms;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -23,13 +15,9 @@ use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\TextColumn\TextColumnSize;
-use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
-use Wallo\FilamentSelectify\Components\ToggleButton;
 use Filament\Tables\Columns\Layout\Stack;
 
 
@@ -107,6 +95,7 @@ class QuoteRequestResource extends Resource
     {
         return $table
             ->columns([
+                Admin::showResponseRate(),
                 Admin::showOriginPort(),
                 Admin::showDestinatonPort(),
                 Admin::showContainerType(),
@@ -134,6 +123,7 @@ class QuoteRequestResource extends Resource
                     Panel::make([
                         Stack::make([
                             Split::make([
+                                Admin::showResponseRate(),
                                 Admin::showOriginPort(),
                                 Admin::showDestinatonPort(),
                             ]),
@@ -143,15 +133,14 @@ class QuoteRequestResource extends Resource
                                 Admin::showPackaging(),
                             ]),
 //                            Split::make([
-                                Admin::showValidity(),
+                            Admin::showValidity(),
 //                            ]),
                         ])->space(2),
                     ])
                 ])->columnSpanFull(),
                 Admin::showRequester(),
                 Admin::showTimeStamp(),
-            ])
-            ;
+            ]);
     }
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
@@ -165,7 +154,7 @@ class QuoteRequestResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            Operational\QuoteRequestResource\RelationManagers\QuotesRelationManager::class,
         ];
     }
 

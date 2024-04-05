@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\QuoteRequestResource\Pages;
 
 use App\Models\Packaging;
 use App\Models\QuoteProvider;
+use App\Models\QuoteRequest;
 use App\Services\PortMaker;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
@@ -17,9 +18,24 @@ use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TrashedFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class Admin
 {
+
+
+    /**
+     * @return TextColumn
+     */
+    public static function showResponseRate(): TextColumn
+    {
+        return TextColumn::make('response')
+            ->tooltip('Response rate')
+            ->label('Response Rate')
+            ->state(fn(Model $record) => QuoteRequest::showQuoteResponseRate($record->id))
+            ->badge()
+            ->grow(false);
+    }
 
     /**
      * @return TextColumn
