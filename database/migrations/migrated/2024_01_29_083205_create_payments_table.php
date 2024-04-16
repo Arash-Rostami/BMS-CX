@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->increments('id')->unsigned()->index();
-            $table->text('payer'); // ??
+            $table->text('payer');
             $table->double('amount');
             $table->enum('currency', ['USD', 'EURO', 'Yuan', 'Dirham', 'Ruble', 'Rial'])->default('USD');
             $table->string('account_number')->nullable();

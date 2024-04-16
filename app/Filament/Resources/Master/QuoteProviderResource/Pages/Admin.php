@@ -40,6 +40,7 @@ class Admin
             ->email()
             ->required()
             ->columnSpanFull()
+            ->unique()
             ->maxLength(255);
     }
 

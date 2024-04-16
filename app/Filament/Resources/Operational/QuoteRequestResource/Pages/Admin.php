@@ -3,10 +3,12 @@
 namespace App\Filament\Resources\Operational\QuoteRequestResource\Pages;
 
 use App\Models\Packaging;
+use App\Models\ProviderList;
 use App\Models\QuoteProvider;
 use App\Models\QuoteRequest;
 use App\Services\PortMaker;
 use Carbon\Carbon;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -245,10 +247,10 @@ class Admin
     public static function getQuoteProviders(): Select
     {
         return Select::make('recipient')
-            ->label('Quote Providers')
-            ->placeholder('Click names to select recipients, or crosses to deselect.')
+            ->label('Quote Providers List')
+            ->placeholder('Click providers list to select or deselect related recipients.')
             ->multiple()
-            ->options(QuoteProvider::pluck('name', 'id'));
+            ->options(ProviderList::pluck('name', 'id'));
     }
 
     /**

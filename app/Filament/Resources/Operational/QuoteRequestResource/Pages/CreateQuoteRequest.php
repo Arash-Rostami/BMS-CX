@@ -4,7 +4,9 @@ namespace App\Filament\Resources\Operational\QuoteRequestResource\Pages;
 
 use App\Filament\Resources\QuoteRequestResource;
 use App\Jobs\SendQuoteRequest;
+use App\Models\ProviderList;
 use App\Models\QuoteToken;
+use App\Notifications\TestNotification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -14,9 +16,14 @@ class CreateQuoteRequest extends CreateRecord
     protected static string $resource = QuoteRequestResource::class;
 
 
+
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        session()->put('recipients', $data['recipient']);
+        // Retrieve all quote providers with their unique IDs
+        $recipients = $this->getRecipientNames($data['recipient']);
+
+        session()->put('recipients', $recipients);
 
         return $data;
     }
@@ -36,6 +43,22 @@ class CreateQuoteRequest extends CreateRecord
             Queue::push(new SendQuoteRequest($dataToSend));
         }
         session()->forget('recipients');
+    }
+
+    /**
+     * @param $recipient
+     * @return mixed
+     */
+    public function getRecipientNames($recipient)
+    {
+        return ProviderList::whereIn('id', $recipient)
+            ->with('quoteProviders')
+            ->get()
+            ->pluck('quoteProviders')
+            ->flatten()
+            ->pluck('id')
+            ->unique()
+            ->toArray();
     }
 
     /**
