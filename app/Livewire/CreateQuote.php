@@ -29,31 +29,31 @@ class CreateQuote extends Component
     {
         $this->validate();
 
-        $attachmentId = $this->attachment ? $this->handleFileUpload($this->attachment) : null;
+        $this->attachmentId = $this->attachment ? $this->handleFileUpload() : null;
 
-        $quote = $this->createQuote($attachmentId);
+        $quote = $this->createQuote($this->attachmentId);
 
         if ($quote) {
             $this->nullifyToken($quote);
         }
 
-        return back()->with('message', 'Quote submitted successfully!');
+        return back()->with("message-{$this->attachmentId}", 'Quote submitted successfully!');
     }
 
-    private function handleFileUpload($fileObj)
+    private function handleFileUpload()
     {
         $attachment = new Attachment();
-        $attachment->file_path = $this->storeAttachment($this->attachment);
+        $attachment->file_path = $this->storeAttachment();
         $attachment->save();
 
         return $attachment->id;
     }
 
 
-    private function storeAttachment($fileObj)
+    private function storeAttachment()
     {
-        $fileName = uniqid() . '.' . $fileObj->getClientOriginalExtension();
-        return $fileObj->storeAs('quote-attachments', $fileName, 'quote');
+        $fileName = uniqid() . '.' . $this->attachment->getClientOriginalExtension();
+        return $this->attachment->storeAs('attachments/quote-attachments', $fileName, 'quote');
     }
 
     private function createQuote($attachmentId)
@@ -74,7 +74,7 @@ class CreateQuote extends Component
             'extra' => $this->extra,
             'quote_request_id' => $this->quoteRequest,
             'quote_provider_id' => $this->quoteProvider,
-            'attachment_id' => $attachment->id ?? null,
+            'attachment_id' => $attachmentId ?? null,
         ]);
     }
 

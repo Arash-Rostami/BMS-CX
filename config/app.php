@@ -18,6 +18,8 @@ return [
 
     'name' => env('APP_NAME', 'BMS'),
 
+    'email' => env('MAIL_FROM_ADDRESS', ''),
+
     'logo' => env('APP_LOGO', 'BMS LOGO'),
 
     'version' => env('APP_VERSION'),

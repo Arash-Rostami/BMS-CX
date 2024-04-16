@@ -3,9 +3,10 @@
 namespace App\Filament\Resources\Operational\QuoteRequestResource\RelationManagers;
 
 use App\Filament\Resources\Operational\QuoteResource\Pages\Admin;
+use App\Filament\Resources\Operational\QuoteResource\Pages\ViewQuote;
 use App\Filament\Resources\QuoteResource;
-use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -19,6 +20,13 @@ class QuotesRelationManager extends RelationManager
     {
         return $form
             ->schema([]);
+    }
+
+    public function infolist(Infolist $infolist): Infolist
+    {
+        $viewQuote = resolve(ViewQuote::class);
+
+        return $viewQuote->infolist($infolist);
     }
 
     public function table(Table $table): Table

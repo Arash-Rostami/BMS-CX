@@ -2,7 +2,7 @@
     @php
         $isSubmitted = session('quoteToken')['quote_id'] != null;
     @endphp
-    @if (session()->has('message'))
+    @if (session()->has("message-{$attachmentId}"))
         <div class="alert alert-success">
             <div
                 class="fixed top-0 left-0 w-full h-screen flex items-center justify-center z-50 bg-gray-200">
@@ -26,14 +26,6 @@
                         <h2 class="font-semibold text-xl text-gray-600">
                             Thank you for giving us your time.
                         </h2>
-
-                    @else
-                        <h2 class="font-light text-xl text-gray-600 mx-auto items-center justify-center">
-                            Thank you for giving us your quote. <br>
-                            We will certainly get back to you for our decision or the final outcome.
-                        </h2>
-                    @endif
-                    @if(!$isSubmitted)
                         <p class="text-gray-500 mb-6">
                             You may include any external link or attach other PDF/IMAGE files as well.
                         </p>
@@ -221,6 +213,11 @@
                                 </div>
                             </div>
                         </div>
+                    @else
+                        <h2 class="font-light text-xl text-gray-600 mx-auto items-center justify-center">
+                            Thank you for giving us your quote. <br>
+                            We will certainly get back to you for our decision or the final outcome.
+                        </h2>
                     @endif
                 </div>
             </div>

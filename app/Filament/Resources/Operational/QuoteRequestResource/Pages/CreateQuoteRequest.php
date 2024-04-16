@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\Operational\QuoteRequestResource\Pages;
 
 use App\Filament\Resources\QuoteRequestResource;
+use App\Jobs\SendQuoteRequest;
 use App\Models\QuoteToken;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 class CreateQuoteRequest extends CreateRecord
@@ -19,17 +21,34 @@ class CreateQuoteRequest extends CreateRecord
         return $data;
     }
 
-    protected function afterCreate(): void
+    protected function afterCreate()
     {
         foreach (session('recipients') as $recipient) {
-            QuoteToken::create([
+            $token = QuoteToken::create([
                 'token' => Str::uuid(),
                 'validity' => $this->record->validity ?? null,
                 'quote_request_id' => $this->record->id,
                 'quote_provider_id' => $recipient,
-
             ]);
+
+            $dataToSend = $this->serializeData($token, $recipient);
+
+            Queue::push(new SendQuoteRequest($dataToSend));
         }
         session()->forget('recipients');
+    }
+
+    /**
+     * @param $token
+     * @param mixed $recipientnpm
+     * @return array
+     */
+    protected function serializeData($token, mixed $recipient): array
+    {
+        $dataToSend = $this->record->toArray();
+        $dataToSend['token'] = $token;
+        $dataToSend['recipient'] = $recipient;
+        $dataToSend['email'] = auth()->user()->email;
+        return $dataToSend;
     }
 }

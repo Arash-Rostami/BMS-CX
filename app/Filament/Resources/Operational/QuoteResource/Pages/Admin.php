@@ -37,6 +37,7 @@ class Admin
     {
         return TextColumn::make('quoteRequest.commodity')
             ->label('Request for')
+            ->words(2)
             ->grow(false)
             ->badge()
             ->color('secondary')

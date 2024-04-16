@@ -41,14 +41,14 @@ class QuoteRequest extends Model
         $tokenCount = QuoteToken::countNum($id);
 
         if ($tokenCount === 0) {
-            return '0/0 (No Received Quote)';
+            return '✖️ 0/0 (No Received Quote)';
         }
 
         $responseCount = Quote::countNum($id);
 
         $percentage = number_format(($responseCount / $tokenCount) * 100, 2, '.', '');
 
-        return "$responseCount/$tokenCount ({$percentage}%)";
+        return "🖂 $responseCount/$tokenCount ({$percentage}%)";
     }
 
 

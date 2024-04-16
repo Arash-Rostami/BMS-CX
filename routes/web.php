@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/table-design-toggle', [UserController::class, 'toggleTableDesign'])
     ->name('table.design.toggle');
 
-Route::get('/quote-service/{token}', [QuoteController::class, 'authenticate']);
+Route::get('/quote-service/{token}', [QuoteController::class, 'authenticate'])->name('quote-service');
 
 
 Route::fallback(fn() => view('errors.404'));

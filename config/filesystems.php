@@ -52,7 +52,7 @@ return [
         ],
         'quote' => [
             'driver' => 'local',
-            'root' => public_path('attachments/'), // dev
+            'root' => public_path(''), // dev
 //            'root' => realpath(base_path().'/../public_html/trade'), // prod
             'url' => env('APP_URL'),
             'visibility' => 'public',

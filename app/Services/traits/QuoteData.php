@@ -37,6 +37,8 @@ trait QuoteData
     public mixed $quoteRequestDetails;
 
     public mixed $token;
+    public mixed $attachmentId;
+
 
     public function initializeDate()
     {
@@ -55,6 +57,8 @@ trait QuoteData
         $this->originPort = $this->quoteRequestDetails->origin_port;
         $this->destinationPort = $this->quoteRequestDetails->destination_port;;
         $this->packing = $this->quoteRequestDetails->packing;
+
+        $this->attachmentId = '';
     }
 
     protected function initializePaymentTerms()

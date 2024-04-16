@@ -371,6 +371,7 @@ class Admin
     public static function getValidity(): DatePicker
     {
         return DatePicker::make('validity')
+            ->default(now())
             ->label('Validity (of request)');
     }
 

@@ -19,18 +19,32 @@ class QuoteRequestTemplates
         10 => "I hope this email finds you in great health. I am contacting you to seek some information."
     ];
 
+    protected static array $questionLine = [
+        0 => 'I would be delighted if you could assist us with our quote request for the following:',
+        1 => 'I kindly request your assistance with our quote request for the following:',
+        2 => 'It would be greatly appreciated if you could help us out with a quote request for the following:',
+        3 => 'Would you be able to provide a quote for the following? We appreciate your time and assistance.',
+        4 => 'To assist with our project, we would be grateful if you could offer a quote for the following:',
+        5 => 'I have a request for a quote, and I would be happy if you could help us with the following:',
+        6 => 'In need of a quote! Could you please assist us with the following?',
+        7 => 'We are reaching out to request a quote for the following. Please let me know if you can help.',
+        8 => 'Hoping to get a quote for the following. Your assistance is much appreciated!',
+        9 => 'This request requires a quote. I would be thankful if you could consider the following:',
+        10 => 'For our ongoing project, I need a quote. If possible, could you provide a quote for the following:',
+    ];
+
     protected static array $invitationLine = [
-        0 => "To simplify the process of collecting information, we've made a form on our website for your convenience. Kindly click the button below to fill out the form:",
-        1 => "In order to make gathering information easier, we've created a form on our website where you can simply provide the necessary details. Please use the button below to access the form:",
-        2 => "To streamline the process of getting information, we've made a form on our website for your convenience. Simply click the button below to access the form:",
-        3 => "To facilitate the information gathering process, we've set up a form on our website where you can easily submit the required details. Please click the button below to access the form:",
-        4 => "To simplify the process of gathering information, we've created a form on our website for your convenience. Please use the button below to access the form:",
-        5 => "In order to make gathering information more efficient, we've made available a form on our website where you can easily submit the requested details. Kindly click the button below to access it:",
-        6 => "To ease the process of collecting information, we've prepared a form on our website for your convenience. Please use the button below to fill out the form:",
-        7 => "In order to make gathering information simpler, we've put together a form on our website where you can provide the necessary details. Please click the button below to access the form:",
-        8 => "To facilitate the information gathering process, we've created a form on our website where you can easily submit the required details. Kindly click the button below to access the form:",
-        9 => "To simplify the process of obtaining information, we've set up a form on our website for your convenience. Please use the button below to access the form:",
-        10 => "In order to make gathering information more efficient, we've established a form on our website where you can effortlessly provide the necessary details. Please click the button below to access the form:"
+        0 => "To simplify the process of collecting information, we've made a form on our website for your convenience. Kindly click the button below to fill out the form ",
+        1 => "In order to make gathering information easier, we've created a form on our website where you can simply provide the necessary details. Please use the button below to access the form ",
+        2 => "To streamline the process of getting information, we've made a form on our website for your convenience. Simply click the button below to access the form ",
+        3 => "To facilitate the information gathering process, we've set up a form on our website where you can easily submit the required details. Please click the button below to access the form ",
+        4 => "To simplify the process of gathering information, we've created a form on our website for your convenience. Please use the button below to access the form ",
+        5 => "In order to make gathering information more efficient, we've made available a form on our website where you can easily submit the requested details. Kindly click the button below to access it ",
+        6 => "To ease the process of collecting information, we've prepared a form on our website for your convenience. Please use the button below to fill out the form ",
+        7 => "In order to make gathering information simpler, we've put together a form on our website where you can provide the necessary details. Please click the button below to access the form ",
+        8 => "To facilitate the information gathering process, we've created a form on our website where you can easily submit the required details. Kindly click the button below to access the form ",
+        9 => "To simplify the process of obtaining information, we've set up a form on our website for your convenience. Please use the button below to access the form ",
+        10 => "In order to make gathering information more efficient, we've established a form on our website where you can effortlessly provide the necessary details. Please click the button below to access the form "
     ];
 
     protected static array $fallBackLine = [
@@ -103,5 +117,11 @@ class QuoteRequestTemplates
     {
         $index = array_rand(self::$endingLine);
         return self::$endingLine[$index];
+    }
+
+    public static function getQuestionLine(): string
+    {
+        $index = array_rand(self::$questionLine);
+        return self::$questionLine[$index];
     }
 }
