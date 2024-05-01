@@ -12,6 +12,7 @@ class NotificationManager
     use NotificationConfig;
 
 
+
     public static function send(array $data, bool $isStatus = false)
     {
         self::processData($data);
@@ -31,14 +32,15 @@ class NotificationManager
                 self::showUnreadAction(),
             ]);
 
+
         if ($isStatus) {
-            $notification
-                ->sendToDatabase(self::getRecipients());
+            return $notification
+                ->getDatabaseMessage();
         } else {
             //adding color to title and icon
-            $notification
+            return $notification
                 ->{self::getType($data['type'])}()
-                ->sendToDatabase(self::getRecipients());
+                ->getDatabaseMessage();
         }
     }
 
@@ -84,7 +86,6 @@ class NotificationManager
     public static function processData(array $data): void
     {
         self::setItems($data['record']);
-        self::setRecipients($data['recipients']);
         self::setUrl($data['url']);
     }
 }

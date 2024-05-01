@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\Resources\Master\ContractorResource\Pages;
+namespace App\Filament\Resources\Master\PayeeResource\Pages;
 
-use App\Filament\Resources\ContractorResource;
+use App\Filament\Resources\PayeeResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ManageRecords;
 
-class ManageContractors extends ManageRecords
+class ManagePayees extends ManageRecords
 {
-    protected static string $resource = ContractorResource::class;
+    protected static string $resource = PayeeResource::class;
 
     protected function getHeaderActions(): array
     {

@@ -9,6 +9,7 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\IconPosition;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
+use Symfony\Component\HttpFoundation\Response;
 
 
 class Admin
@@ -40,7 +41,7 @@ class Admin
             ->email()
             ->required()
             ->columnSpanFull()
-            ->unique()
+            ->unique(ignoreRecord: true)
             ->maxLength(255);
     }
 

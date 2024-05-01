@@ -52,36 +52,31 @@ class Admin
     /**
      * @return Select
      */
-    public static function getOrder(): Select
+    public static function getPaymentRequest(): Select
     {
-        return Select::make('order_id')
-            ->options(fn() => Order::where('order_status', '<>', 'closed')->pluck('invoice_number', 'id'))
-            ->afterStateUpdated(function (Set $set, $state) {
-                $order = Order::find($state);
-                if ($order) {
-                    $set('invoice_number', $order->invoice_number);
+        return Select::make('payment_request_id')
+            ->options(function () {
+                return PaymentRequest::whereIn('status', ['processing', 'approved', 'allowed'])
+                    ->orderBy('deadline', 'asc')
+                    ->get()
+                    ->mapWithKeys(function ($paymentRequest) {
+                        return [$paymentRequest->id => $paymentRequest->getCustomizedDisplayName()];
+                    });
+            })
+            ->afterStateUpdated(function ($state, Set $set) {
+                $paymentRequest = PaymentRequest::find($state);
+                if ($paymentRequest) {
+                    $set('currency', $paymentRequest->currency);
+                    $set('amount', $paymentRequest->requested_amount);
                 }
             })
             ->live()
             ->required()
             ->label('')
             ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">🛒 </span>Order<span class="red"> *</span>'));
-    }
-
-    /**
-     * @return Select
-     */
-    public static function getPaymentRequest(): Select
-    {
-        return Select::make('payment_request_id')
-            ->options(fn(Get $get) => PaymentRequest::showApproved($get('order_id')))
-            ->required()
-            ->multiple(fn($operation) => $operation == 'create')
-            ->label('')
-            ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">💳 </span>Payment Request<span class="red"> *</span>'));
     }
+
 
     /**
      * @return TextInput
@@ -198,13 +193,34 @@ class Admin
             ->columnSpanFull();
     }
 
+
     /**
      * @return TextColumn
      */
-    public static function showInvoiceNumber(): TextColumn
+    public static function showTimeGap(): TextColumn
     {
-        return TextColumn::make('order.invoice_number')
-            ->label('Invoice Number')
+        return TextColumn::make('id')
+            ->label('Payment Time Gap')
+            ->formatStateUsing(function (Model $record) {
+                $deadline = optional($record->paymentRequests->first())->deadline;
+                return $deadline ? static::calculateTimeGap($record->created_at, $deadline) : null;
+            })
+            ->grow(false)
+            ->color('info')
+            ->sortable()
+            ->searchable()
+            ->badge();
+    }
+
+
+    /**
+     * @return TextColumn
+     */
+    public static function showPaymentRequest(): TextColumn
+    {
+        return TextColumn::make('paymentRequests.id')
+            ->label('Payment Request')
+            ->formatStateUsing(fn($state) => self::getCustomizedDisplayName($state))
             ->grow(false)
             ->sortable()
             ->searchable()
@@ -214,13 +230,12 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showPaymentRequest(): TextColumn
+    public static function showPaymentRequestType(): TextColumn
     {
-        return TextColumn::make('paymentRequests.type')
-            ->label('Payment Request')
-            ->grow(false)
-            ->state(fn(Model $record) => $record->paymentRequests->isEmpty() ? 'Overpayment!' : PaymentRequest::$typesOfPayment[$record->paymentRequests->first()->type])
-            ->color(fn(Model $record) => $record->paymentRequests->isEmpty() ? 'danger' : '')
+        return TextColumn::make('paymentRequests.type_of_payment')
+            ->label('Type')
+            ->grow()
+            ->formatStateUsing(fn($state) => PaymentRequest::$typesOfPayment[$state])
             ->sortable()
             ->searchable()
             ->badge();
@@ -361,7 +376,7 @@ class Admin
         return TextEntry::make('order_id')
             ->label('Order')
             ->state(function (Model $record): string {
-                return $record->order->invoice_number;
+                return $record->order->order_invoice_number;
             })
             ->badge();
     }
@@ -376,7 +391,7 @@ class Admin
             ->state(function (Model $record) {
                 $invoiceNumbers = [];
                 foreach ($record->paymentRequests as $request) {
-                    if ($request->type) { // Handle potentially null values
+                    if ($request->type_of_payment) { // Handle potentially null values
                         $invoiceNumbers[] = PaymentRequest::$typesOfPayment[$request->type];
                     }
                 }
@@ -453,4 +468,23 @@ class Admin
 
         NotificationManager::send($data);
     }
+
+
+    public static function getCustomizedDisplayName($id): string
+    {
+        $paymentRequest = PaymentRequest::find($id);
+
+        if ($paymentRequest) {
+            return $paymentRequest->getCustomizedDisplayName();
+        }
+
+        return '';
+    }
+
+    protected static function calculateTimeGap($createdAt, $deadline): string
+    {
+        $daysDifference = Carbon::parse($createdAt)->diffInDays($deadline);
+        return $daysDifference === 0 ? 'on the final day' : $daysDifference . ' days';
+    }
+
 }

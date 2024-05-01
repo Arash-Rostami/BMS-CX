@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
+use App\Models\Order;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\NotificationManager;
 use App\Services\RetryableEmailService;
@@ -15,30 +17,41 @@ class CreatePaymentRequest extends CreateRecord
 {
     protected static string $resource = PaymentRequestResource::class;
 
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $partExists = isset($data['part']) && $data['part'];
+
+        if ($partExists) {
+            $data['order_id'] = $data['part'];
+        }
+        return $data;
+    }
+
     protected function afterCreate(): void
     {
-        $data = [
-            'record' => $this->record->order->invoice_number,
-            'type' => 'new',
-            'module' => 'paymentRequest',
-            'url' => route('filament.admin.resources.payment-requests.index'),
-            'recipients' => User::getUsersByRole('admin')
-        ];
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => Admin::getOrderRelation($this->record),
+                'type' => 'new',
+                'module' => 'paymentRequest',
+                'url' => route('filament.admin.resources.payment-requests.index'),
+            ]));
+        }
 
-        NotificationManager::send($data);
 
         $this->notifyViaEmail();
 
-        $this->notifyManagement($this->record);
+        $this->notifyManagement();
     }
 
     /**
      * @return void
      */
-    public function notifyManagement($record): void
+    public function notifyManagement(): void
     {
         $dataStatus = [
-            'record' => $record->order->invoice_number,
+            'record' => Admin::getOrderRelation($this->record),
             'type' => 'pending',
             'module' => 'payment',
             'url' => route('filament.admin.resources.payment-requests.index'),

@@ -57,6 +57,12 @@ class Order extends Model
         });
     }
 
+
+    public function getInvoiceNumberWithPartAttribute()
+    {
+        return "{$this->invoice_number} (part-{$this->part})";
+    }
+
     /**
      * Get the category associated with the order.
      */
@@ -82,7 +88,6 @@ class Order extends Model
     }
 
 
-
     public static function getStatusCounts()
     {
         return static::select('purchase_status_id')
@@ -97,12 +102,12 @@ class Order extends Model
     public static function makeOrderNumber($post): string
     {
         $category = "C" . $post->category_id;
-        $product = "P" . $post->product_id;
-        $proforma = "PR" . $post->proforma_number;
-        $party = "PA" . $post->party_id;
-        $orderDetail = "OD" . $post->order_detail_id;
-        $logistic = "L" . $post->logistic_id;
-        $doc = "D" . $post->doc_id;
+        $product = "-P" . $post->product_id;
+        $proforma = "-PR" . $post->proforma_number;
+        $party = "-PA" . $post->party_id;
+        $orderDetail = "-OD" . $post->order_detail_id;
+        $logistic = "-L" . $post->logistic_id;
+        $doc = "-D" . $post->doc_id;
 
         return $category . $product . $proforma . $party . $orderDetail . $logistic . $doc;
     }

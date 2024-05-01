@@ -6,6 +6,7 @@ use App\Filament\Resources\OrderRequestResource;
 use App\Models\Buyer;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Services\NotificationManager;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Component;
@@ -235,7 +236,7 @@ class Admin
                 'fulfilled' => '🏁 Fulfilled',
             ])
             ->disabled(!User::isUserAuthorizedForOrderStatus())
-            ->default('pending');
+            ->default('approved');
     }
 
     /**
@@ -502,7 +503,7 @@ class Admin
     public static function groupBuyerRecords(): Grouping
     {
         return Grouping::make('buyer_id')->label('Buyer')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->buyer->name));
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst(optional($record->buyer)->name));
     }
 
     /**
@@ -511,7 +512,7 @@ class Admin
     public static function groupSupplierRecords(): Grouping
     {
         return Grouping::make('supplier_id')->label('Supplier')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->supplier->name));
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst(optional($record->supplier)->name));
     }
 
     /**
@@ -529,14 +530,13 @@ class Admin
      */
     public static function send(Model $record)
     {
-        $data = [
-            'record' => $record->product->name,
-            'type' => 'delete',
-            'module' => 'orderRequest',
-            'url' => route('filament.admin.resources.order-requests.index'),
-            'recipients' => User::getUsersByRole('manager')
-        ];
-
-        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => $record->product->name,
+                'type' => 'delete',
+                'module' => 'orderRequest',
+                'url' => route('filament.admin.resources.order-requests.index'),
+            ]));
+        }
     }
 }

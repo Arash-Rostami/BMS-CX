@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
 use App\Models\Buyer;
 use App\Models\DeliveryTerm;
+use App\Models\Order;
 use App\Models\OrderRequest;
 use App\Models\Packaging;
 use App\Models\PortOfDelivery;
@@ -58,6 +59,18 @@ class Admin
         'processing' => 'warning',
         'closed' => 'success',
         'cancelled' => 'danger',
+    ];
+
+    protected static array $parts = [
+        1 => 'Part 1',
+        2 => 'Part 2',
+        3 => 'Part 3',
+        4 => 'Part 4',
+        5 => 'Part 5',
+        6 => 'Part 6',
+        7 => 'Part 7',
+        8 => 'Part 8',
+        9 => 'Part 9',
     ];
 
     /**
@@ -162,16 +175,21 @@ class Admin
     }
 
     /**
-     * @return TextInput
+     * @return Select
      */
-    public static function getDate(): TextInput
+    public static function getPart(): Select
     {
-        return TextInput::make('part')
+        return Select::make('part')
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">📑 </span>Part<span class="red"> *</span>'))
             ->hintColor('primary')
             ->required()
-            ->numeric();
+            ->live()
+            ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
+                self::updateFormBasedOnPreviousRecords($get, $set, $state);
+            })
+            ->default('main')
+            ->options(self::$parts);
     }
 
     /**
@@ -284,7 +302,7 @@ class Admin
     {
         return TextInput::make('buying_quantity')
             ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Buying<span class="red"> *</span>'))
+            ->hint(new HtmlString('<span class="grayscale"></span>Contract<span class="red"> *</span>'))
             ->hintColor('primary')
             ->required()
             ->numeric();
@@ -333,7 +351,7 @@ class Admin
     {
         return TextInput::make('buying_price')
             ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Buying<span class="red"> *</span>'))
+            ->hint(new HtmlString('<span class="grayscale"></span>Contract<span class="red"> *</span>'))
 //            ->formatStateUsing(fn(?string $state) => $state ? number_format($state, 2) : null)
             ->hintColor('primary')
             ->required()
@@ -494,13 +512,49 @@ class Admin
     /**
      * @return DatePicker
      */
+    public static function getLoadingStartLine(): DatePicker
+    {
+        return DatePicker::make('loading_startline')
+            ->label('')
+            ->native(false)
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">⌛ </span>Delivery Time Start Date'));
+    }
+
+    /**
+     * @return DatePicker
+     */
     public static function getLoadingDeadline(): DatePicker
     {
         return DatePicker::make('loading_deadline')
             ->label('')
             ->native(false)
             ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⌛ </span>Loading Deadline'));
+            ->hint(new HtmlString('<span class="grayscale">⌛ </span>Delivery Time End Date'));
+    }
+
+    /**
+     * @return DatePicker
+     */
+    public static function getETD(): DatePicker
+    {
+        return DatePicker::make('etd')
+            ->label('')
+            ->native(false)
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">⌛ </span>ETD (BND)'));
+    }
+
+    /**
+     * @return DatePicker
+     */
+    public static function getETA(): DatePicker
+    {
+        return DatePicker::make('eta')
+            ->label('')
+            ->native(false)
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">⌛ </span>ETA (China)'));
     }
 
     /**
@@ -743,7 +797,7 @@ class Admin
         return TextColumn::make('proforma_date')
             ->color('secondary')
             ->badge()
-            ->grow(false)
+            ->grow()
             ->tooltip(fn(string $state): string => "Pro forma Invoice Date")
             ->date()
             ->sortable();
@@ -759,7 +813,8 @@ class Admin
             ->badge()
             ->label('Part')
             ->grow(false)
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'Part ' : '') . $record->part)
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? self::$parts[$record->part] : (($record->part === 0) ? 'Main' : $record->part)))
+            ->color(fn(Model $record) => ($record->part === 0 ? 'primary' : 'secondary'))
             ->sortable()
             ->searchable();
     }
@@ -845,8 +900,8 @@ class Admin
     public static function showInvoiceNumber(): TextColumn
     {
         return TextColumn::make('invoice_number')
-            ->color('gray')
-            ->grow()
+            ->color('primary')
+            ->grow(false)
             ->size(TextColumnSize::ExtraSmall)
             ->sortable()
             ->toggleable()
@@ -1359,6 +1414,7 @@ class Admin
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->purchaseStatus->name));
     }
 
+
     /**
      * @return Group
      */
@@ -1366,6 +1422,75 @@ class Admin
     {
         return Group::make('order_status')->label('Status')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->order_status));
+    }
+
+    /**
+     * @return Group
+     */
+    public static function groupByInvoiceNumber(): Group
+    {
+        return Group::make('invoice_number')->label('Invoice Number')
+            ->collapsible();
+    }
+
+    /**
+     * @return Group
+     */
+    public static function groupByProformaNumber(): Group
+    {
+        return Group::make('proforma_number')->label('Pro forma Number')
+            ->collapsible()
+            ->orderQueryUsing(fn(Builder $query, string $direction) => $query->orderBy('part', $direction));
+    }
+
+    /**
+     * @return Group
+     */
+    public static function groupByPackaging(): Group
+    {
+        return Group::make('logistic.packaging_id')->label('Packaging')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->packaging)->name ?? 'N/A');
+
+    }
+
+    /**
+     * @return Group
+     */
+    public static function groupByDeliveryTerm(): Group
+    {
+        return Group::make('logistic.delivery_term_id')->label('Delivery Term')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->deliveryTerm)->name ?? 'N/A');
+
+    }
+
+    /**
+     * @return Group
+     */
+    public static function groupByShippingLine(): Group
+    {
+        return Group::make('logistic.shipping_line_id')->label('Shipping')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->shippingLine)->name ?? 'N/A');
+
+    }
+
+    /**
+     * @return Group
+     */
+    public static function groupByBuyer(): Group
+    {
+        return Group::make('party.buyer_id')->label('Buyer')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->party->buyer)->name ?? 'N/A');
+
+    }
+
+    /**
+     * @return Group
+     */
+    public static function groupBySupplier(): Group
+    {
+        return Group::make('party.supplier_id')->label('Supplier')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->party->supplier)->name ?? 'N/A');
+
     }
 
     /**
@@ -1404,4 +1529,30 @@ class Admin
 
         NotificationManager::send($data);
     }
+
+    /**
+     * @param Get $get
+     * @param string|null $state
+     * @param Set $set
+     * @return mixed
+     */
+    public static function updateFormBasedOnPreviousRecords(Get $get, Set $set, ?string $state): mixed
+    {
+        $orderRequestId = $get('order_request_id');
+
+        // Check conditions and fetch order
+        if ($orderRequestId && $state && $state != 1) {
+            $order = Order::where('order_request_id', $orderRequestId)->first();
+
+            if ($order) {
+                $set('proforma_date', $order->performa_date);
+                $set('grade', $order->grade);
+                $set('orderDetail.buying_quantity', $order->orderDetail->buying_quantity);
+                $set('orderDetail.buying_price', $order->orderDetail->buying_price);
+            }
+        }
+
+        return $orderRequestId;
+    }
+
 }

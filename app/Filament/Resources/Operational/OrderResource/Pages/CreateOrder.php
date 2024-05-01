@@ -12,6 +12,7 @@ use App\Models\Party;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Services\NotificationManager;
 use Filament\Forms\Get;
 use Filament\Resources\Pages\CreateRecord;
@@ -34,11 +35,9 @@ class CreateOrder extends CreateRecord
 
         $formattedCalendar = date('Y', time());
 
-        $orderNumber = Order::latest('id')->value('id') + 1;
-
 
         return sprintf(
-            'ORD-%s-%s-%s-%s', $orderNumber, $product, $supplier, $formattedCalendar,
+            'ORD-%s-%s-%s', $product, $supplier, $formattedCalendar,
         );
     }
 
@@ -56,16 +55,18 @@ class CreateOrder extends CreateRecord
 
         $this->record->save();
 
-        $data = [
-            'record' => $this->record->invoice_number,
-            'type' => 'new',
-            'module' => 'order',
-            'url' =>  route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
-//            'recipients' => User::getUsersByRoles(['manager','agent'])
-            'recipients' => User::getUsersByRole('admin')
-        ];
+//        $data = [
+////            'recipients' => User::getUsersByRoles(['manager','agent'])
+//        ];
 
-        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => $this->record->invoice_number,
+                'type' => 'new',
+                'module' => 'order',
+                'url' => route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
+            ]));
+        }
     }
 
 }

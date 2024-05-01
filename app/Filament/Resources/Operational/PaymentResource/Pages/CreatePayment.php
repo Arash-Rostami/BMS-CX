@@ -17,7 +17,7 @@ class CreatePayment extends CreateRecord
     protected function handleRecordCreation(array $data): Model
     {
         // Load PaymentRequest models
-        $paymentRequests = PaymentRequest::whereIn('id', $data['payment_request_id'])->get();
+        $paymentRequests = PaymentRequest::find($data['payment_request_id'])->get();
 
         list($lastModelInstance, $outstandingAmount) = $this->processPayments($data, $paymentRequests);
 
@@ -35,15 +35,15 @@ class CreatePayment extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $data = [
-            'record' => $this->record->order->invoice_number,
-            'type' => 'new',
-            'module' => 'payment',
-            'url' => route('filament.admin.resources.payments.index'),
-            'recipients' => User::getUsersByRole('admin')
-        ];
-
-        NotificationManager::send($data);
+//        $data = [
+//            'record' => $this->record->order->invoice_number,
+//            'type' => 'new',
+//            'module' => 'payment',
+//            'url' => route('filament.admin.resources.payments.index'),
+//            'recipients' => User::getUsersByRole('admin')
+//        ];
+//
+//        NotificationManager::send($data);
     }
 
 
@@ -64,11 +64,11 @@ class CreatePayment extends CreateRecord
             $payableAmount = $paymentAmount - $totalAmountPaid;
 
             // Determine the amount to be paid for the current request
-            $amountToPay = min($paymentRequest->individual_amount, $payableAmount);
+            $amountToPay = min($paymentRequest->requested_amount, $payableAmount);
 
             // Update the status if the full amount is covered
             $paymentRequest->update([
-                'status' => $amountToPay >= $paymentRequest->individual_amount ? 'completed' : 'processing',
+                'status' => $amountToPay >= $paymentRequest->requested_amount ? 'completed' : 'processing',
             ]);
 
             // Prepare the data for the new record

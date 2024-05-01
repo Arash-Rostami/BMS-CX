@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\OrderRequestResource\Pages;
 
 use App\Filament\Resources\OrderRequestResource;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Notifications\OrderRequestStatusNotification;
 use App\Services\NotificationManager;
 use App\Services\RetryableEmailService;
@@ -21,19 +22,18 @@ class CreateOrderRequest extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $data = [
-            'record' => $this->record->product->name,
-            'type' => 'new',
-            'module' => 'orderRequest',
-            'url' => route('filament.admin.resources.order-requests.index'),
-            'recipients' => User::getUsersByRole('admin')
-        ];
-
-        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => $this->record->product->name,
+                'type' => 'new',
+                'module' => 'orderRequest',
+                'url' => route('filament.admin.resources.order-requests.index'),
+            ]));
+        }
 
         $this->notifyViaEmail();
 
-        $this->notifyManagement();
+//        $this->notifyManagement();
     }
 
 
@@ -60,7 +60,7 @@ class CreateOrderRequest extends CreateRecord
     public function notifyViaEmail(): void
     {
 //        $arguments = [User::getUsersByRole('manager'), new OrderRequestStatusNotification($this->record)];
-        $arguments = [User::getUsersByRole('admin'), new OrderRequestStatusNotification($this->record)];
+        $arguments = [User::all(), new OrderRequestStatusNotification($this->record)];
 
         RetryableEmailService::dispatchEmail('order request', ...$arguments);
     }

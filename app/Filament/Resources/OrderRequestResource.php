@@ -70,10 +70,12 @@ class OrderRequestResource extends Resource
                                 Admin::getBuyer(),
                                 Admin::getSupplier(),
                             ])->collapsible(),
-                        Section::make(new HtmlString('Status <span class="red"> *</span>'))
+                        Section::make(new HtmlString('Status <span class="red"> </span>'))
                             ->schema([
                                 Admin::getStatus()
-                            ])->collapsible()
+                            ])
+                            ->collapsible()
+                            ->collapsed()
                     ])->columnSpan(1),
 
 

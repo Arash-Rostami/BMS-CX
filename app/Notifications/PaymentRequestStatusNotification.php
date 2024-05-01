@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\PaymentRequest;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -19,7 +20,7 @@ class PaymentRequestStatusNotification extends Notification
      */
     public function __construct($record, $status = null)
     {
-        $this->invoice = $record->order->invoice_number;
+        $this->invoice = $record->order->invoice_number ?? PaymentRequest::$organizationalReasonsForPayment[$record->reason_for_payment];
         $this->status = $status;
     }
 
@@ -49,9 +50,9 @@ class PaymentRequestStatusNotification extends Notification
         return (new MailMessage)
             ->subject('✨ New Payment Request Requires Approval')
             ->greeting('Greetings,')
-            ->line("A new payment request notification has been generated for order's invoice number: **{$this->invoice}**.")
+            ->line("A new payment request notification has been generated for: **{$this->invoice}**.")
             ->line('Please review the details and take the appropriate action according to the established internal procedure.')
-            ->action('View Invoice', url('/'))
+            ->action('View Payment Request', url('/'))
             ->line('Thank you for your attention to this matter.');
     }
 
@@ -69,7 +70,6 @@ class PaymentRequestStatusNotification extends Notification
             ->line('Thank you for your attention.')
             ->line('(Please note, this is an informational email only. No further action is required.)');
     }
-
 
 
     /**

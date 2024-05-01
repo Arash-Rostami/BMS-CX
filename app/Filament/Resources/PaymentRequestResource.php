@@ -8,14 +8,17 @@ use App\Filament\Resources\Operational\PaymentRequestResource\Widgets\StatsOverv
 use App\Filament\Resources\PaymentRequestResource\Pages;
 use App\Filament\Resources\PaymentRequestResource\RelationManagers;
 use App\Models\PaymentRequest;
+use App\Rules\EnglishAlphabet;
+use Carbon\Carbon;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\Tabs\Tab;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -29,6 +32,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -55,27 +59,70 @@ class PaymentRequestResource extends Resource
                             ])
                             ->hidden(fn(string $operation) => $operation === 'create')
                             ->collapsible(),
+                        Section::make('Linked to CPS (Centralized Payment Service)')
+                            ->icon('heroicon-o-information-circle')
+                            ->description('You need to select your department to follow the appropriate organizational procedure.')
+                            ->schema([
+                                Admin::getDepartment(),
+                                Admin::getCPSReasons(),
+                                Admin::getTypeOfPayment(),
+                            ])
+                            ->columns(3)
+                            ->collapsible(),
                         Group::make()
                             ->schema([
                                 Section::make('Order Details')
                                     ->schema([
-                                        Admin::getOrderNumber(),
-                                        Admin::getType(),
-                                        Admin::getPurpose(),
+                                        Grid::make(3)->schema([
+                                            Admin::getOrderNumber(),
+                                            Admin::getTotalOrPart(),
+                                            Admin::getOrderPart(),
+                                        ]),
+                                        Grid::make(2)->schema([
+                                            Admin::getType(),
+                                            Admin::getBeneficiary(),
+                                            Admin::getPurpose(),
+                                        ]),
+                                        Grid::make(2)->schema([]),
                                     ])
-                                    ->columns(2)
-                                    ->collapsible(),
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->hidden(fn(Get $get) => $get('departments') !== 'CX'),
                                 Section::make('Account Details')
                                     ->schema([
                                         Admin::getBankName(),
                                         Admin::getAccountNumber(),
-                                        Grid::make(2)->schema([Admin::getBeneficiary()]),
+                                        Grid::make(2)->schema([]),
                                         Admin::getSupplier(),
                                         Admin::getContractor(),
+                                        Admin::getPayee(),
                                         Admin::getRecipientName(),
                                         Admin::getBeneficiaryAddress(),
                                         Admin::getBankAddress(),
-                                        Admin::getDescription()
+                                        Admin::getDescription(),
+                                        Repeater::make('attachments')
+                                            ->relationship('attachments')
+                                            ->label('Attachments')
+                                            ->schema([
+                                                Group::make()
+                                                    ->schema([
+                                                        Admin::getAttachmentFile()
+                                                    ])->columnSpan(2),
+                                                Group::make()
+                                                    ->schema([
+                                                        Section::make()
+                                                            ->schema([
+                                                                Admin::getAttacmentFileName()
+                                                            ])
+                                                    ])
+                                                    ->hidden(fn($operation) => $operation == 'edit')
+                                                    ->columnSpan(2)
+                                            ])->columns(4)
+                                            ->itemLabel('Attachments:')
+                                            ->addActionLabel('➕')
+                                            ->columnSpanFull()
+                                            ->collapsible()
+                                            ->collapsed(),
                                     ])
                                     ->columns(2)
                                     ->collapsible(),
@@ -96,7 +143,8 @@ class PaymentRequestResource extends Resource
                                         Admin::getIBANCode(),
                                         Admin::getIFSCCode(),
                                         Admin::getMICRCode()
-                                    ])->collapsible()
+                                    ])
+                                    ->collapsible()
                             ])->columns(1),
                     ])
                     ->columnSpanFull()
@@ -119,14 +167,15 @@ class PaymentRequestResource extends Resource
             ->schema([
                 Tabs::make('Tabs')
                     ->tabs([
-                        Tabs\Tab::make('Order Details')
+                        Tabs\Tab::make('Request Details')
                             ->schema([
-                                Admin::viewOrder(),
+                                Admin::viewReason(),
                                 Admin::viewType(),
-                                Admin::viewStatus(),
+                                Admin::viewDepartment(),
+                                Admin::viewOrder(),
                                 Admin::viewAmount(),
                                 Admin::viewDeadline(),
-                                Admin::viewPurpose()
+                                Admin::viewStatus(),
                             ])->columns(3),
                         Tabs\Tab::make('Account Details')
                             ->schema([
@@ -228,10 +277,15 @@ class PaymentRequestResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->poll(30)
             ->groups([
-                Admin::filterByType(),
-                Admin::filterByStatus(),
+                Admin::filterByDepartment(),
                 Admin::filterByOrder(),
+                Admin::filterByReason(),
+                Admin::filterByType(),
                 Admin::filterByCurrency(),
+                Admin::filterByContractor(),
+                Admin::filterBySupplier(),
+                Admin::filterByPayee(),
+                Admin::filterByStatus(),
             ]);
     }
 
@@ -243,7 +297,10 @@ class PaymentRequestResource extends Resource
                     Panel::make([
                         Stack::make([
                             Split::make([
+                                Admin::showDepartment(),
                                 Admin::showInvoiceNumber(),
+                                Admin::showPart(),
+                                Admin::showReasonForPayment(),
                                 Admin::showType(),
                             ]),
                             Split::make([
@@ -253,7 +310,9 @@ class PaymentRequestResource extends Resource
                             ]),
                             Split::make([
                                 Admin::showPayableAmount(),
-                                Admin::showDeadline()
+                                Admin::showDeadline(),
+                                Admin::showMissingData(),
+
                             ]),
                         ])->space(2),
                     ])
@@ -266,9 +325,12 @@ class PaymentRequestResource extends Resource
     {
         return $table
             ->columns([
+                Admin::showMissingData(),
+                Admin::showDepartment(),
                 Admin::showInvoiceNumber(),
+                Admin::showPart(),
+                Admin::showReasonForPayment(),
                 Admin::showType(),
-                Admin::showPurpose(),
                 Admin::showPayableAmount(),
                 Admin::showBeneficiaryName(),
                 Admin::showBeneficiaryAddress(),

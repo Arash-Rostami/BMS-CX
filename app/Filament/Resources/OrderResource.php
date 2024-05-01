@@ -37,7 +37,6 @@ use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use Illuminate\Database\Eloquent\Collection;
 
 
-
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
@@ -58,13 +57,13 @@ class OrderResource extends Resource
                         Forms\Components\Section::make()
                             ->schema([
                                 Admin::getOrderRequestNumber(),
-                                Admin::getProformaNumber(),
+                                Admin::getPart(),
                                 Admin::getCategory(),
                                 Admin::getProduct(),
                                 Forms\Components\Section::make()
                                     ->schema([
+                                        Admin::getProformaNumber(),
                                         Admin::getProformaDate(),
-                                        Admin::getDate(),
                                         Admin::getGrade(),
                                     ])->columns(3),
                             ])
@@ -76,20 +75,20 @@ class OrderResource extends Resource
                             ->schema([
                                 Admin::getPurchaseStatus(),
                                 Admin::getOrderStatus(),
+                            ])->columns(2),
+                        /*Parties Involved*/
+                        Section::make(new HtmlString("Parties: <span class='red'>*</span>"))
+                            ->relationship('party')
+                            ->label('')
+                            ->schema([
+                                Admin::getBuyer(),
+                                Admin::getSupplier(),
                             ])->columns(2)
+                            ->columnSpanFull()
+                            ->collapsible()
+                            ->collapsed(),
                     ]),
 
-                /*Parties Involved*/
-                Section::make(new HtmlString("Parties: <span class='red'>*</span>"))
-                    ->relationship('party')
-                    ->label('')
-                    ->schema([
-                        Admin::getBuyer(),
-                        Admin::getSupplier(),
-                    ])->columns(3)
-                    ->columnSpanFull()
-                    ->collapsible()
-                    ->collapsed(),
 
                 /*Order Detailed*/
                 Section::make(new HtmlString("Details: <span class='red'>*</span>"))
@@ -117,8 +116,7 @@ class OrderResource extends Resource
                             ])->columnSpan(2)
                     ])->columns(4)
                     ->columnSpanFull()
-                    ->collapsible()
-                    ->collapsed(),
+                    ->collapsible(),
 
                 /*Logistics Info*/
                 Section::make('Logistics:')
@@ -133,7 +131,10 @@ class OrderResource extends Resource
                                         Admin::getDeliveryTerm(),
                                         Admin::getShippingLine(),
                                         Admin::getPortOfDelivery(),
+                                        Admin::getLoadingStartLine(),
                                         Admin::getLoadingDeadline(),
+                                        Admin::getETD(),
+                                        Admin::getETA(),
                                     ])->columns(3)
                             ])->columnSpan(3),
                         Forms\Components\Group::make()
@@ -258,8 +259,8 @@ class OrderResource extends Resource
     {
         return [
             Operational\OrderResource\RelationManagers\OrderRequestRelationManager::class,
-            Operational\OrderResource\RelationManagers\PaymentRequestsRelationManager::class,
-            Operational\OrderResource\RelationManagers\PaymentsRelationManager::class,
+//            Operational\OrderResource\RelationManagers\PaymentRequestsRelationManager::class,
+//            Operational\OrderResource\RelationManagers\PaymentsRelationManager::class,
         ];
     }
 
@@ -314,8 +315,15 @@ class OrderResource extends Resource
             ->groups([
                 Admin::groupByCategory(),
                 Admin::groupByProduct(),
+                Admin::groupByBuyer(),
+                Admin::groupBySupplier(),
+                Admin::groupByPackaging(),
+                Admin::groupByShippingLine(),
                 Admin::groupByStage(),
                 Admin::groupByStatus(),
+                Admin::groupByDeliveryTerm(),
+                Admin::groupByInvoiceNumber(),
+                Admin::groupByProformaNumber(),
             ]);
     }
 
@@ -329,8 +337,8 @@ class OrderResource extends Resource
                             Split::make([
                                 Admin::showProformaNumber(),
                                 Admin::showProformaDate(),
+                                Admin::showInvoiceNumber(),
                                 Admin::showOrderPart(),
-                                Admin::showPurchaseStatus(),
                             ]),
                             Split::make([
                                 Admin::showCategory(),
@@ -340,10 +348,10 @@ class OrderResource extends Resource
                             ]),
                             Split::make([
                                 Stack::make([
-                                    Admin::showInvoiceNumber(),
                                     Admin::showOrderNumber(),
+                                    Admin::showPurchaseStatus(),
                                 ]),
-                                Admin::showPaymentRequests(),
+//                                Admin::showPaymentRequests(),
                                 Admin::showPayments(),
                             ]),
                         ])->space(2),
@@ -360,11 +368,11 @@ class OrderResource extends Resource
                 Admin::showProformaNumber(),
                 Admin::showProformaDate(),
                 Admin::showInvoiceNumber(),
+                Admin::showOrderPart(),
                 Admin::showOrderStatus(),
                 Admin::showCategory(),
                 Admin::showProduct(),
                 Admin::showGrade(),
-                Admin::showOrderPart(),
                 Admin::showPurchaseStatus(),
                 Admin::showSupplier(),
                 Admin::showBuyer(),

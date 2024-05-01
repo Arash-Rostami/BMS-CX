@@ -59,7 +59,7 @@ class OrderRequestStatusNotification extends Notification
     public function sendToManagement(): MailMessage
     {
         return (new MailMessage)
-            ->subject('✨ New Order Request Requires Approval')
+            ->subject('✨ New Order Request Made')
             ->greeting('Greetings,')
             ->line("A new order request has been created for **{$this->company}** for the product: **{$this->product}**.")
             ->action('Review Request', url('/'))

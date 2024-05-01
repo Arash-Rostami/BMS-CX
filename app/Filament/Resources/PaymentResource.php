@@ -54,7 +54,6 @@ class PaymentResource extends Resource
                             ->schema([
                                 Section::make('Payment Information')
                                     ->schema([
-                                        Admin::getOrder(),
                                         Admin::getPaymentRequest(),
                                         Admin::getAccountNumber(),
                                         Admin::getBankName(),
@@ -219,8 +218,10 @@ class PaymentResource extends Resource
                     Panel::make([
                         Stack::make([
                             Split::make([
-                                Admin::showInvoiceNumber(),
-                                Admin::showPaymentRequest()
+                                Admin::showPaymentRequest(),
+                                Admin::showPaymentRequestType(),
+                                Admin::showTimeGap(),
+
                             ]),
                             Split::make([
                                 Admin::showTransferredAmount()
@@ -236,8 +237,11 @@ class PaymentResource extends Resource
     {
         return $table
             ->columns([
-                Admin::showInvoiceNumber(),
+
                 Admin::showPaymentRequest(),
+                Admin::showPaymentRequestType(),
+                Admin::showTimeGap(),
+
                 Admin::showPayer(),
                 Admin::showAmount(),
                 Admin::showBankName(),

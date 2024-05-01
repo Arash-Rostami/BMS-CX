@@ -2,28 +2,39 @@
 
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
+use App\Models\Allocation;
 use App\Models\Contractor;
 use App\Models\Order;
+use App\Models\Payee;
 use App\Models\PaymentRequest;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Policies\PaymentRequestPolicy;
+use App\Rules\EnglishAlphabet;
+use App\Services\DepartmentDetails;
 use App\Services\NotificationManager;
 use Carbon\Carbon;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Grouping\Group as Grouping;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Wallo\FilamentSelectify\Components\ButtonGroup;
+use App\Filament\Resources\Master\PayeeResource\Pages\Admin as PayeeAdmin;
 
 
 class Admin
@@ -90,13 +101,13 @@ class Admin
      */
     public static function getType(): Select
     {
-        return Select::make('type')
-            ->options(PaymentRequest::$typesOfPayment)
+        return Select::make('reason_for_payment')
+            ->options(Allocation::reasonsForDepartment('cx'))
             ->live()
-            ->required()
+            ->required(fn(Get $get) => $get('departments') == 'CX')
             ->label('')
             ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⭕ </span>Type<span class="red"> *</span>'));
+            ->hint(new HtmlString('<span class="grayscale">⭕ </span>Allocation For<span class="red"> *</span>'));
     }
 
     /**
@@ -107,11 +118,11 @@ class Admin
         return MarkdownEditor::make('purpose')
             ->label('')
             ->maxLength(65535)
-            ->requiredIf('type', 'Other')
-            ->columnSpanFull()
+            ->requiredIf('reason_for_payment', '26')
             ->disableAllToolbarButtons()
-            ->hidden(fn(Get $get): bool => $get('type') != 'Other')
+            ->hidden(fn(Get $get): bool => $get('reason_for_payment') != 26)
             ->hintColor('primary')
+            ->columnSpanFull()
             ->placeholder('Please specify the purpose of payment request')
             ->hint(new HtmlString('<span class="grayscale">🚩 </span>Purpose<span class="red"> *</span>'));
     }
@@ -128,7 +139,7 @@ class Admin
             ->hintColor('primary')
             ->placeholder('optional')
             ->columnSpanFull()
-            ->hint(new HtmlString('<span class="grayscale">ℹ️ </span>Extra Information'));
+            ->hint(new HtmlString('<span class="grayscale">ℹ️ </span>Notes (extra info)'));
     }
 
     /**
@@ -136,10 +147,11 @@ class Admin
      */
     public static function getPayableAmount(): TextInput
     {
-        return TextInput::make('individual_amount')
+        return TextInput::make('requested_amount')
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">💳 </span>Payable amount<span class="red"> *</span>'))
             ->hintColor('primary')
+            ->live()
             ->required()
             ->placeholder('The amount to pay')
             ->numeric();
@@ -153,6 +165,10 @@ class Admin
         return TextInput::make('total_amount')
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">💰 </span>Total amount<span class="red"> *</span>'))
+            ->gte('requested_amount')
+            ->validationMessages([
+                'gte' => 'Total amount cannot be less tan the payable/requested amount.',
+            ])
             ->hintColor('primary')
             ->required()
             ->placeholder('Inclusive of the payable amount')
@@ -181,6 +197,8 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">📅 </span>Deadline<span class="red"> *</span>'))
             ->hintColor('primary')
+            ->closeOnDateSelection()
+            ->minDate(now())
             ->native(false)
             ->required();
     }
@@ -198,8 +216,23 @@ class Admin
             ->default('supplier')
             ->hint(new HtmlString('<span class="grayscale">✒️ </span>Beneficiary<span class="red"> *</span>'))
             ->hintColor('primary')
+            ->required(fn(Get $get) => $get('departments') == 'CX');
+    }
+
+    /**
+     * @return Select
+     */
+    public static function getTypeOfPayment(): Select
+    {
+        return Select::make('type_of_payment')
+            ->label('')
+            ->options(PaymentRequest::$typesOfPayment)
+            ->columnSpan(1)
+            ->hint(new HtmlString('<span class="grayscale">✒️ </span>Payment Type<span class="red"> *</span>'))
+            ->hintColor('primary')
             ->required();
     }
+
 
     /**
      * @return Select
@@ -208,7 +241,8 @@ class Admin
     {
         return Select::make('supplier_id')
             ->requiredIf('beneficiary_name', 'supplier')
-            ->hidden(fn(Get $get): bool => $get('beneficiary_name') != 'supplier')
+            ->visible(fn(Get $get): bool => $get('departments') == 'CX' && $get('beneficiary_name') == 'supplier')
+            ->required(fn(Get $get): bool => $get('departments') == 'CX' && $get('beneficiary_name') == 'supplier')
             ->label('')
             ->options(Supplier::all()->pluck('name', 'id'))
             ->searchable()
@@ -238,8 +272,8 @@ class Admin
     {
         return Select::make('contractor_id')
             ->relationship('contractor', 'name')
-            ->hidden(fn(Get $get): bool => $get('beneficiary_name') != 'contractor')
-            ->requiredIf('beneficiary_name', 'contractor')
+            ->visible(fn(Get $get): bool => $get('departments') == 'CX' && $get('beneficiary_name') == 'contractor')
+            ->required(fn(Get $get): bool => $get('departments') == 'CX' && $get('beneficiary_name') == 'contractor')
             ->label('')
             ->options(Contractor::all()->pluck('name', 'id'))
             ->searchable()
@@ -257,6 +291,34 @@ class Admin
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new contractor')
+                    ->modalButton('Create')
+                    ->modalWidth('lg');
+            });
+    }
+
+
+    /**
+     * @return Select
+     */
+    public static function getPayee(): Select
+    {
+        return Select::make('payee_id')
+            ->relationship('payee', 'name')
+            ->hidden(fn(Get $get): bool => $get('departments') == 'CX')
+            ->required(fn(Get $get): bool => $get('departments') != 'CX')
+            ->label('')
+            ->options(Payee::all()->pluck('name', 'id'))
+            ->searchable()
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">🤝 </span>Payee Name<span class="red"> *</span>'))
+            ->createOptionForm([
+                PayeeAdmin::class::getType(),
+                PayeeAdmin::class::getName(),
+                PayeeAdmin::class::getPhoneNumber(),
+            ])
+            ->createOptionAction(function (Action $action) {
+                return $action
+                    ->modalHeading('Create new payee')
                     ->modalButton('Create')
                     ->modalWidth('lg');
             });
@@ -392,12 +454,116 @@ class Admin
      */
     public static function getOrderNumber(): Select
     {
-        return Select::make('order_id')
-            ->options(fn() => Order::where('order_status', '<>', 'closed')->pluck('invoice_number', 'id'))
-            ->required()
+        return Select::make('order_invoice_number')
+            ->options(fn() => Order::where('order_status', '<>', 'closed')->pluck('invoice_number', 'invoice_number')->unique())
+            ->required(fn(Get $get) => $get('departments') == 'CX')
+            ->live()
+            ->afterStateUpdated(function (Get $get, Set $set, ?string $old, ?string $state) {
+                return $set('part', []);
+            })
             ->label('')
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">🛒 </span>Order<span class="red"> *</span>'));
+    }
+
+    /**
+     * @return ButtonGroup
+     */
+    public static function getTotalOrPart(): ButtonGroup
+    {
+        return ButtonGroup::make('total')
+            ->label('')
+            ->options(['total' => 'Total', 'part' => 'Part'])
+            ->default('total')
+            ->live()
+            ->columnSpan(1)
+            ->hint(new HtmlString('<span class="grayscale">🔍 </span>Scope<span class="red"> *</span>'))
+            ->hintColor('primary')
+            ->required();
+    }
+
+    public static function getOrderPart(): Select
+    {
+        return Select::make('part')
+            ->options(function (Get $get): array {
+                $invoiceNumber = $get('order_invoice_number');
+                $total = $get('total');
+
+                if ($invoiceNumber && $total == 'part') {
+                    return Order::where('order_status', '<>', 'closed')
+                        ->where('invoice_number', $invoiceNumber)
+                        ->get()
+                        ->pluck('invoice_number_with_part', 'id')
+                        ->toArray();
+                }
+                return [];
+            })
+            ->requiredIf('total', 'total')
+            ->visible(fn(Get $get) => $get('total') == 'part')
+            ->live()
+            ->label('')
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">🔢 </span>Part<span class="red"> *</span>'));
+    }
+
+
+    /**
+     * @return Section
+     */
+    public static function getAttachmentFile(): Section
+    {
+        return Section::make()
+            ->schema([
+                FileUpload::make('file_path')
+                    ->label('')
+                    ->image()
+                    ->getUploadedFileNameForStorageUsing(self::nameUploadedFile())
+                    ->previewable(true)
+                    ->disk('filament')
+                    ->directory('/attachments/payment-attachments')
+                    ->maxSize(2500)
+                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf'])
+                    ->imageEditor()
+                    ->openable()
+                    ->downloadable()
+                    ->columnSpanFull()
+            ]);
+    }
+
+    /**
+     * @return TextInput
+     */
+    public static function getAttacmentFileName(): TextInput
+    {
+        return TextInput::make('attachment_name')
+            ->label('')
+            ->placeholder('Type in English ONLY')
+            ->hint(new HtmlString('<span class="grayscale">ℹ️️️ </span>Title/Name'))
+            ->hintColor('primary')
+            ->requiredWith('file_path')
+            ->rule(new EnglishAlphabet)
+            ->columnSpanFull();
+    }
+
+
+    public static function showMissingData(): TextColumn
+    {
+        return TextColumn::make('data')
+            ->label('Missing Info')
+            ->grow(false)
+            ->state(function (Model $record) {
+                $nullCount = -6;
+                foreach ($record->getAttributes() as $key => $value) {
+                    if (is_null($value)) {
+                        $nullCount++;
+                    }
+                }
+                return $nullCount === 0 ? 'None' : "$nullCount Missing";
+            })
+            ->icon(fn($state): string => 'heroicon-s-puzzle-piece')
+            ->color('danger')
+            ->toggleable()
+            ->badge();
     }
 
     /**
@@ -413,19 +579,63 @@ class Admin
             ->badge();
     }
 
+
+    /**
+     * @return TextColumn
+     */
+    public static function showPart(): TextColumn
+    {
+        return TextColumn::make('orderPart.part')
+            ->label('Part')
+            ->grow(false)
+            ->formatStateUsing(fn($state) => $state != null && getTableDesign() == "modern" ? "PART: {$state}" : $state)
+            ->sortable()
+            ->searchable()
+            ->badge();
+    }
+
     /**
      * @return TextColumn
      */
     public static function showType(): TextColumn
     {
-        return TextColumn::make('type')
+        return TextColumn::make('type_of_payment')
             ->label('Payment Type')
             ->grow(false)
-            ->formatStateUsing(fn($state) => PaymentRequest::$typesOfPayment[$state])
             ->sortable()
             ->searchable()
             ->badge();
     }
+
+
+    /**
+     * @return TextColumn
+     */
+    public static function showDepartment(): TextColumn
+    {
+        return TextColumn::make('departments')
+            ->label('Department')
+            ->grow(false)
+            ->color('secondary')
+            ->sortable()
+            ->searchable()
+            ->badge();
+    }
+
+
+    /**
+     * @return TextColumn
+     */
+    public static function showReasonForPayment(): TextColumn
+    {
+        return TextColumn::make('reason_for_payment')
+            ->label('Reason')
+            ->formatStateUsing(fn($state) => PaymentRequest::showAmongAllReasons($state))
+            ->sortable()
+            ->searchable()
+            ->badge();
+    }
+
 
     /**
      * @return TextColumn
@@ -437,8 +647,12 @@ class Admin
             ->color('gray')
             ->grow(false)
             ->sortable()
-            ->state(fn(Model $record) => is_null($record->contractor_id) ? $record->supplier->name : $record->contractor->name)
-            ->tooltip('Beneficiary Name')
+            ->state(function (Model $record) {
+                return $record->contractor?->name
+                    ?? $record->supplier?->name
+                    ?? $record->payee?->name
+                    ?? null;
+            })->tooltip('Beneficiary Name')
             ->toggleable()
             ->searchable()
             ->badge();
@@ -481,7 +695,7 @@ class Admin
      */
     public static function showPayableAmount(): TextColumn
     {
-        return TextColumn::make('individual_amount')
+        return TextColumn::make('requested_amount')
             ->label('Payable Amount')
             ->color('warning')
             ->grow(false)
@@ -504,7 +718,7 @@ class Admin
             ->badge()
             ->tooltip(fn(?Model $record) => self::showRemainingDays($record))
             ->toggleable(isToggledHiddenByDefault: false)
-            ->formatStateUsing(fn(string $state): string => '⏰ Deadline: ' . Carbon::parse($state)->format('M j, Y'));
+            ->formatStateUsing(fn(string $state): string => '📅 Deadline: ' . Carbon::parse($state)->format('M j, Y'));
     }
 
     /**
@@ -526,8 +740,9 @@ class Admin
      */
     public static function filterByType(): Grouping
     {
-        return Grouping::make('type')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => PaymentRequest::$typesOfPayment[$record->type]);
+        return Grouping::make('type_of_payment')->collapsible()
+            ->label('Type')
+            ->getTitleFromRecordUsing(fn(Model $record): string => PaymentRequest::$typesOfPayment[$record->type_of_payment]);
     }
 
     /**
@@ -544,8 +759,8 @@ class Admin
      */
     public static function filterByOrder(): Grouping
     {
-        return Grouping::make('order_id')->label('Order')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->order->invoice_number));
+        return Grouping::make('order_invoice_number')->label('Order')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->order_invoice_number ?? 'No Invoice Number');
     }
 
     /**
@@ -557,20 +772,56 @@ class Admin
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->currency));
     }
 
+    /**
+     * @return Grouping
+     */
+    public static function filterByDepartment(): Grouping
+    {
+        return Grouping::make('departments')->collapsible()
+            ->label('Dep.')
+            ->getTitleFromRecordUsing(fn(Model $record): string => DepartmentDetails::getName($record->departments));
+    }
 
     /**
-     * @return TextColumn
+     * @return Grouping
      */
-    public static function showPurpose(): TextColumn
+    public static function filterByReason(): Grouping
     {
-        return TextColumn::make('purpose')
-            ->words(2)
-            ->color('amber')
-            ->size(TextColumnSize::ExtraSmall)
-            ->sortable()
-            ->toggleable()
-            ->searchable();
+        return Grouping::make('reason_for_payment')->collapsible()
+            ->label('Reason')
+            ->getTitleFromRecordUsing(fn(Model $record): string => PaymentRequest::showAmongAllReasons($record->reason_for_payment));
     }
+
+    /**
+     * @return Grouping
+     */
+    public static function filterByContractor(): Grouping
+    {
+        return Grouping::make('contractor.name')->collapsible()
+            ->label('Contractor')
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->contractor->name ?? 'No contractor');
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function filterBySupplier(): Grouping
+    {
+        return Grouping::make('supplier.name')->collapsible()
+            ->label('Supplier')
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->supplier->name ?? 'No supplier');
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function filterByPayee(): Grouping
+    {
+        return Grouping::make('payee.name')->collapsible()
+            ->label('Payee')
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->payee->name ?? 'No payee');
+    }
+
 
     /**
      * @return TextColumn
@@ -693,11 +944,20 @@ class Admin
      */
     public static function viewOrder(): TextEntry
     {
-        return TextEntry::make('order_id')
+        return TextEntry::make('order_invoice_number')
             ->label('Order')
-            ->state(function (Model $record): string {
-                return $record->order->invoice_number;
-            })
+            ->default('N/A')
+            ->badge();
+    }
+
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewPart(): TextEntry
+    {
+        return TextEntry::make('part')
+            ->label('Part')
             ->badge();
     }
 
@@ -706,8 +966,16 @@ class Admin
      */
     public static function viewType(): TextEntry
     {
-        return TextEntry::make('type')
-            ->state(fn(Model $record) => PaymentRequest::$typesOfPayment[$record->type])
+        return TextEntry::make('type_of_payment')
+            ->color('secondary')
+            ->state(fn(Model $record) => PaymentRequest::$typesOfPayment[$record->type_of_payment])
+            ->badge();
+    }
+
+    public static function viewReason(): TextEntry
+    {
+        return TextEntry::make('reason_for_payment')
+            ->state(fn(Model $record) => PaymentRequest::showAmongAllReasons($record->reason_for_payment))
             ->color('secondary')
             ->badge();
     }
@@ -719,7 +987,12 @@ class Admin
     {
         return TextEntry::make('beneficiary_name')
             ->label('Beneficiary Name')
-            ->state(fn(Model $record) => is_null($record->contractor_id) ? $record->supplier->name : $record->contractor->name)
+            ->state(function (Model $record) {
+                return $record->contractor?->name
+                    ?? $record->supplier?->name
+                    ?? $record->payee?->name
+                    ?? null;
+            })
             ->color('secondary')
             ->badge();
     }
@@ -762,11 +1035,10 @@ class Admin
     /**
      * @return TextEntry
      */
-    public static function viewPurpose(): TextEntry
+    public static function viewDepartment(): TextEntry
     {
-        return TextEntry::make('purpose')
+        return TextEntry::make('departments')
             ->color('secondary')
-            ->columnSpanFull()
             ->badge();
     }
 
@@ -909,7 +1181,7 @@ class Admin
      */
     private static function concatenateSum(?Model $record): string
     {
-        return '💰 Sum: ' . number_format($record->individual_amount) . '/' . number_format($record->total_amount) . ' - ' . $record->currency;
+        return '💰 Sum: ' . number_format($record->requested_amount) . '/' . number_format($record->total_amount) . ' - ' . $record->currency;
     }
 
 
@@ -919,14 +1191,82 @@ class Admin
      */
     public static function send(Model $record): void
     {
-        $data = [
-            'record' => $record->order->invoice_number,
-            'type' => 'delete',
-            'module' => 'paymentRequest',
-            'url' => route('filament.admin.resources.payment-requests.index'),
-            'recipients' => User::getUsersExcludingRoles(['partner'])
-        ];
+//        $data = [
+//
+//            'recipients' => User::getUsersExcludingRoles(['partner'])
+//        ];
 
-        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => self::getOrderRelation($record),
+                'type' => 'delete',
+                'module' => 'paymentRequest',
+                'url' => route('filament.admin.resources.payment-requests.index'),
+            ]));
+        }
     }
+
+    /**
+     * @return Select
+     */
+    public static function getDepartment(): Select
+    {
+        return Select::make('departments')
+            ->options(DepartmentDetails::getAllDepartmentNames())
+            ->live()
+            ->required()
+            ->label('')
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">🏟️ </span>Department<span class="red"> *</span>'));
+    }
+
+    /**
+     * @return Select
+     */
+    public static function getCPSReasons(): Select
+    {
+        return Select::make('reason_for_payment')
+            ->options(fn(Get $get) => $get('departments') ? Allocation::getUniqueReasonsForCPS($get('departments')) : [])
+            ->live()
+            ->disabled(fn(Get $get) => $get('departments') == 'CX')
+            ->hidden(fn(Get $get) => $get('departments') == 'CX')
+            ->required()
+            ->label('')
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">🎯 </span>Allocation for<span class="red"> *</span>'));
+    }
+
+    /**
+     * @param Model $record
+     * @return mixed
+     */
+    public static function getOrderRelation(Model $record)
+    {
+        if (isset($record->part)) {
+            return $record->part != null ? $record->orderPart->invoice_number : $record->order->invoice_number;
+        }
+        return PaymentRequest::showAmongAllReasons($record->reason_for_payment);
+    }
+
+
+    /**
+     * @return \Closure
+     */
+    public static function nameUploadedFile(): \Closure
+    {
+        return function (TemporaryUploadedFile $file, Get $get, ?Model $record): string {
+            $name = $get('attachment_name') ?? $record->name;
+            // File extension
+            $extension = $file->getClientOriginalExtension();
+
+            // Unique identifier
+            $timestamp = Carbon::now()->format('YmdHis');
+            // New filename with extension
+            $newFileName = "Payment-{$timestamp}-{$name}";
+
+            // Sanitizing the file name
+            return Str::slug($newFileName, '-') . ".{$extension}";
+        };
+    }
+
 }

@@ -3,6 +3,17 @@
 use App\Services\AvatarMaker;
 use Illuminate\Support\HtmlString;
 
+function capitalizeFirstLetters(string $text): string
+{
+    $words = explode(' ', strtolower($text));
+    $processedWords = [];
+
+    foreach ($words as $word) {
+        $processedWords[] = ucfirst($word);
+    }
+
+    return implode(' ', $processedWords);
+}
 
 function getTableDesign()
 {

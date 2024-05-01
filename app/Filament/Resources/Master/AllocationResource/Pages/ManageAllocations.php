@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\Resources\Master\ContractorResource\Pages;
+namespace App\Filament\Resources\Master\AllocationResource\Pages;
 
-use App\Filament\Resources\ContractorResource;
+use App\Filament\Resources\AllocationResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ManageRecords;
 
-class ManageContractors extends ManageRecords
+class ManageAllocations extends ManageRecords
 {
-    protected static string $resource = ContractorResource::class;
+    protected static string $resource = AllocationResource::class;
 
     protected function getHeaderActions(): array
     {
