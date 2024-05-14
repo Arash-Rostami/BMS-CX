@@ -44,6 +44,8 @@ class CreateOrder extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+
+        dd($data);
         $data['invoice_number'] = 'default';
 
         return $data;
@@ -51,6 +53,9 @@ class CreateOrder extends CreateRecord
 
     protected function afterCreate(): void
     {
+        if ($this->record->extra['manual_invoice_number']) {
+            $this->record->invoice_number = $this->record->extra['invoice_number'];
+        }
         $this->record->invoice_number = $this->makeInvoiceNumber();
 
         $this->record->save();

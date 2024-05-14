@@ -15,6 +15,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Resources\Pages\Page;
@@ -58,6 +59,7 @@ class OrderResource extends Resource
                             ->schema([
                                 Admin::getOrderRequestNumber(),
                                 Admin::getPart(),
+                                Admin::getManualInvoiceNumber(),
                                 Admin::getCategory(),
                                 Admin::getProduct(),
                                 Forms\Components\Section::make()
@@ -71,6 +73,7 @@ class OrderResource extends Resource
                     ]),
                 Forms\Components\Group::make()
                     ->schema([
+                        Admin::getDocumentsReceived(),
                         Forms\Components\Section::make('Status:')
                             ->schema([
                                 Admin::getPurchaseStatus(),
@@ -85,8 +88,8 @@ class OrderResource extends Resource
                                 Admin::getSupplier(),
                             ])->columns(2)
                             ->columnSpanFull()
-                            ->collapsible()
-                            ->collapsed(),
+                            ->collapsed()
+                            ->collapsible(),
                     ]),
 
 
@@ -99,20 +102,18 @@ class OrderResource extends Resource
                                 Forms\Components\Section::make(new HtmlString('<span class="text-sm grayscale">⏲️ Quantity</span>'))
                                     ->schema([
                                         Admin::getQuantity(),
-                                        Admin::getInitialQuantity(),
                                         Admin::getProvisionalQuantity(),
                                         Admin::getFinalQuantity(),
-                                    ])->columns(4)
+                                    ])->columns(3)
                             ])->columnSpan(2),
                         Forms\Components\Group::make()
                             ->schema([
                                 Forms\Components\Section::make(new HtmlString('<span class="text-sm grayscale">💰 Price</span>'))
                                     ->schema([
                                         Admin::getPrice(),
-                                        Admin::getInitialPrice(),
                                         Admin::getProvisionalPrice(),
                                         Admin::getFinalPrice(),
-                                    ])->columns(4)
+                                    ])->columns(3)
                             ])->columnSpan(2)
                     ])->columns(4)
                     ->columnSpanFull()
@@ -160,11 +161,14 @@ class OrderResource extends Resource
                                     ])->columns(4),
                                 Forms\Components\Group::make()
                                     ->schema([
+                                        Admin::getContainerShipping(),
                                         Forms\Components\Section::make()
                                             ->schema([
                                                 Admin::getGrossWeight(),
                                                 Admin::getNetWeight(),
-                                            ])->columns(4)
+                                            ])
+                                            ->columns(2)
+                                            ->visible(fn(Get $get) => $get('container_shipping'))
                                     ]),
                             ])->columnSpan(4),
                     ])->columns(4)
@@ -173,30 +177,31 @@ class OrderResource extends Resource
                     ->collapsed(),
 
                 /*Documents Involved*/
-                Section::make('Docs:')
+                Section::make('Shipping Docs:')
                     ->relationship('doc')
                     ->schema([
                         Forms\Components\Group::make()
                             ->schema([
-                                Forms\Components\Section::make()
+                                Section::make(new HtmlString('<span class="text-sm">1️⃣⛴</span>'))
                                     ->schema([
                                         Admin::getVoyageNumber(),
-                                    ])->columns(1)
-                            ])->columnSpan(1),
-                        Forms\Components\Group::make()
-                            ->schema([
-                                Forms\Components\Section::make()
-                                    ->schema([
                                         Admin::getDeclarationNumber(),
                                         Admin::getDeclarationDate(),
                                         Admin::getBLNumber(),
                                         Admin::getBLDate(),
-                                    ])->columns(4)
-                            ])->columnSpan(3)
-                    ])->columns(4)
-                    ->columnSpanFull()
-                    ->collapsible()
-                    ->collapsed(),
+                                    ])->columns(5),
+                                Section::make(new HtmlString('<span class="text-sm">2️⃣⛴</span>'))
+                                    ->schema([
+                                        Admin::getVoyageNumber(),
+                                        Admin::getDeclarationNumber(),
+                                        Admin::getDeclarationDate(),
+                                        Admin::getBLNumber(),
+                                        Admin::getBLDate(),
+                                    ])->columns(5),
+                            ]),
+                    ])
+                    ->collapsed()
+                    ->collapsible(),
 
                 /*Additional Attachments*/
                 Repeater::make('attachments')
@@ -311,7 +316,7 @@ class OrderResource extends Resource
                 ])
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll(30)
+            ->poll(60)
             ->groups([
                 Admin::groupByCategory(),
                 Admin::groupByProduct(),

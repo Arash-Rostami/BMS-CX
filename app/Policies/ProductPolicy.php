@@ -30,7 +30,7 @@ class ProductPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Product');
+        return AccessLevel::hasPermissionForModel('create', 'Product');
     }
 
     /**
@@ -38,7 +38,7 @@ class ProductPolicy
      */
     public function update(User $user, Product $product): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Product');
+        return AccessLevel::hasPermissionForModel('edit', 'Product');
     }
 
     /**
@@ -46,7 +46,7 @@ class ProductPolicy
      */
     public function delete(User $user, Product $product): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Product');
+        return AccessLevel::hasPermissionForModel('delete', 'Product');
     }
 
     /**
@@ -54,6 +54,6 @@ class ProductPolicy
      */
     public function restore(User $user, Product $product): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Product');
+        return AccessLevel::hasPermissionForModel('restore', 'Product');
     }
 }

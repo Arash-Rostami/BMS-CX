@@ -30,7 +30,7 @@ class OrderPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Order');
+        return AccessLevel::hasPermissionForModel('create', 'Order');
     }
 
     /**
@@ -38,7 +38,7 @@ class OrderPolicy
      */
     public function update(User $user, Order $order): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Order');
+        return AccessLevel::hasPermissionForModel('edit', 'Order');
     }
 
     /**
@@ -46,7 +46,7 @@ class OrderPolicy
      */
     public function delete(User $user, Order $order): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Order');
+        return AccessLevel::hasPermissionForModel('delete', 'Order');
     }
 
     /**
@@ -54,6 +54,6 @@ class OrderPolicy
      */
     public function restore(User $user, Order $order): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Order');
+        return AccessLevel::hasPermissionForModel('restore', 'Order');
     }
 }

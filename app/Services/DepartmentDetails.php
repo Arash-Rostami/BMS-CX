@@ -85,7 +85,7 @@ class DepartmentDetails
 
     public static function getName($department)
     {
-        return static::$departments[$department]['name'];
+        return static::$departments[$department]['name'] ?? '';
     }
 
     public static function getCode($department)

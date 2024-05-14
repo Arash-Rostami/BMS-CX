@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\Allocation;
 use App\Models\PaymentRequest;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,7 +21,7 @@ class PaymentRequestStatusNotification extends Notification
      */
     public function __construct($record, $status = null)
     {
-        $this->invoice = $record->order->invoice_number ?? PaymentRequest::$organizationalReasonsForPayment[$record->reason_for_payment];
+        $this->invoice = $record->order->invoice_number ?? Allocation::find($record->reason_for_payment)->reason;
         $this->status = $status;
     }
 

@@ -63,7 +63,7 @@ class ProviderListResource extends Resource
                 'xl' => 3,
             ])
             ->paginated([12])
-            ->poll(30)
+            ->poll(60)
             ->defaultSort('created_at', 'desc')
             ->filters([])
             ->actions([

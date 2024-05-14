@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class Quote extends Model
 {
@@ -32,7 +33,11 @@ class Quote extends Model
 
     public static function countNum($id)
     {
-        return self::where('quote_request_id', $id)->count();
+        $cacheKey = 'quote_count_' . $id;
+
+        return Cache::remember($cacheKey, 60, function () use ($id) {
+            return self::where('quote_request_id', $id)->count();
+        });
     }
 
     public function quoteRequest()

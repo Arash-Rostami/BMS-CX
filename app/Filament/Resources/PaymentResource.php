@@ -3,12 +3,14 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\Operational\PaymentResource\Pages\Admin;
+use App\Filament\Resources\Operational\PaymentResource\Widgets\StatsOverview;
 use App\Filament\Resources\PaymentResource\Pages;
 use App\Filament\Resources\PaymentResource\RelationManagers;
 use App\Models\Attachment;
 use App\Models\Payment;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Models\PaymentRequest;
+use App\Services\TableObserver;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
@@ -23,6 +25,7 @@ use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -137,13 +140,19 @@ class PaymentResource extends Resource
             ->schema([
                 Admin::viewOrder(),
                 Admin::viewPaymentRequest(),
-                Admin::viewPayer(),
+                Admin::viewPaymentType(),
                 Admin::viewTransferredAmount(),
+                Admin::viewPaymentRequestDetail(),
+                Admin::viewPayer(),
                 Admin::viewAccountNumber(),
                 Admin::viewBankName(),
                 RepeatableEntry::make('attachments')
                     ->label('')
-                    ->schema([Admin::viewAttachments()])
+                    ->schema([
+                        Admin::viewAttachments()
+                    ])
+                    ->columnSpanFull()
+                    ->hidden(fn($state) => !$state)
             ]);
     }
 
@@ -162,6 +171,11 @@ class PaymentResource extends Resource
             'create' => Operational\PaymentResource\Pages\CreatePayment::route('/create'),
             'edit' => Operational\PaymentResource\Pages\EditPayment::route('/{record}/edit'),
         ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [StatsOverview::class];
     }
 
     public static function getNavigationBadge(): ?string
@@ -200,11 +214,11 @@ class PaymentResource extends Resource
                 ])
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll(30)
+            ->poll(60)
             ->groups([
-                Admin::filterByCurrency(),
                 Admin::filterByPayer(),
-                Admin::filterByOrder(),
+                Admin::filterByCurrency(),
+                Admin::filterByBalance(),
                 Admin::filterByPaymentRequest(),
             ]);
     }
@@ -221,10 +235,10 @@ class PaymentResource extends Resource
                                 Admin::showPaymentRequest(),
                                 Admin::showPaymentRequestType(),
                                 Admin::showTimeGap(),
-
                             ]),
                             Split::make([
-                                Admin::showTransferredAmount()
+                                Admin::showTransferredAmount(),
+                                Admin::showBalance(),
                             ]),
                         ])->space(2),
                     ])
@@ -237,15 +251,18 @@ class PaymentResource extends Resource
     {
         return $table
             ->columns([
-
+                TableObserver::showMissingData(-3),
                 Admin::showPaymentRequest(),
                 Admin::showPaymentRequestType(),
-                Admin::showTimeGap(),
-
-                Admin::showPayer(),
                 Admin::showAmount(),
+                Admin::showBalance(),
+                Admin::showRequestedAmount(),
+                Admin::showRemainingAmount(),
+                Admin::showTimeGap(),
+                Admin::showPayer(),
                 Admin::showBankName(),
-                Admin::showAccountNumber()
+                Admin::showAccountNumber(),
+                Admin::showTimeStamp()
             ])->striped();
     }
 }

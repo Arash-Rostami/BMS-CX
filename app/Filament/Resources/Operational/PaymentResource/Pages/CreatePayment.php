@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 
 use App\Filament\Resources\PaymentResource;
+use App\Models\Balance;
+use App\Models\Payment;
 use App\Models\PaymentRequest;
 use App\Models\User;
 use App\Services\NotificationManager;
@@ -14,22 +16,16 @@ class CreatePayment extends CreateRecord
 {
     protected static string $resource = PaymentResource::class;
 
+
     protected function handleRecordCreation(array $data): Model
     {
-        // Load PaymentRequest models
-        $paymentRequests = PaymentRequest::find($data['payment_request_id'])->get();
+        $paymentRequest = PaymentRequest::find($data['payment_request_id']);
 
-        list($lastModelInstance, $outstandingAmount) = $this->processPayments($data, $paymentRequests);
+        $previousPayments = $paymentRequest->payments()->sum('amount');
 
-        if ($outstandingAmount > 0) {
-            $outstandingData = [
-                    'payment_request_id' => null,
-                    'amount' => $outstandingAmount,
-                ] + $data;
+        $processedData = $this->processPayments($data, $paymentRequest, $previousPayments);
 
-            $lastModelInstance = static::getModel()::create($outstandingData);
-        }
-        return $lastModelInstance;
+        return static::getModel()::create($processedData);
     }
 
 
@@ -47,45 +43,72 @@ class CreatePayment extends CreateRecord
     }
 
 
-    /**
-     * @param array $data
-     * @param $paymentRequests
-     * @return array
-     */
-    protected function processPayments(array $data, $paymentRequests): array
+    protected function processPayments(array $data, $paymentRequest, $previousPayments): array
     {
-        $paymentAmount = $data['amount'];
-        $totalAmountPaid = 0;
-        $lastModelInstance = null;
+        $payableAmount = $data['amount'];
 
-        foreach ($paymentRequests as $paymentRequest) {
+        $totalPaid = $previousPayments + $payableAmount;
+        $remainder = $paymentRequest->requested_amount - $totalPaid;
 
-            // Calculate the remaining payable amount
-            $payableAmount = $paymentAmount - $totalAmountPaid;
+        // Determine the amount to be paid for the current request
+//        $amountToPay = min($paymentRequest->requested_amount - $previousPayments, $payableAmount);
 
-            // Determine the amount to be paid for the current request
-            $amountToPay = min($paymentRequest->requested_amount, $payableAmount);
+        // Update the status if the full amount is covered
+        $paymentRequest->update([
+            'status' => $totalPaid >= $paymentRequest->requested_amount ? 'completed' : 'processing',
+        ]);
 
-            // Update the status if the full amount is covered
-            $paymentRequest->update([
-                'status' => $amountToPay >= $paymentRequest->requested_amount ? 'completed' : 'processing',
-            ]);
+        //Create record of payment in Balance Model (balances table)
+        $this->createBalance($paymentRequest, $data);
 
-            // Prepare the data for the new record
-            $newData = [
-                    'payment_request_id' => $paymentRequest->id,
-                    'amount' => $amountToPay,
-                ] + $data;
+        // Prepare the data for the new record
+        return [
+                'payment_request_id' => $paymentRequest->id,
+                'amount' => $payableAmount,
+                'extra' => [
+                    'balanceStatus' => $remainder > 0 ? 'debit' : ($remainder < 0 ? 'credit' : 'Settled'),
+                    'remainderSum' => $remainder,
+                    'note' => $data['extra']['note']
+                ]
+            ] + $data;
+    }
 
-            // Create the new record
-            $lastModelInstance = static::getModel()::create($newData);
 
-            // Update the total amount paid
-            $totalAmountPaid += $amountToPay;
+    /**
+     * @param $paymentRequest
+     * @param $data
+     * @return void
+     */
+    private function createBalance($paymentRequest, $data): void
+    {
+
+        $categories = [
+            'payees' => $paymentRequest->payee_id,
+            'suppliers' => $paymentRequest->supplier_id,
+            'contractors' => $paymentRequest->contractor_id,
+            'departments' => $paymentRequest->department_id,
+        ];
+
+
+        foreach ($categories as $category => $categoryId) {
+            if (!$categoryId) {
+                continue;
+            }
+
+            $hasSupplierOrContractor = $paymentRequest->supplier_id || $paymentRequest->contractor_id;
+            $isDepartmentWithoutSupplierOrContractor = $category === 'departments' && !$hasSupplierOrContractor;
+            $isPayeeWithoutSupplierOrContractor = $category === 'payees' && !$hasSupplierOrContractor;
+
+            $shouldCreateBalance = $hasSupplierOrContractor || $isDepartmentWithoutSupplierOrContractor || $isPayeeWithoutSupplierOrContractor;
+
+            if ($shouldCreateBalance) {
+                Balance::create([
+                    'amount' => $data['amount'],
+                    'category' => $category,
+                    'category_id' => $categoryId,
+                    'extra' => ['currency' => $data['currency']]
+                ]);
+            }
         }
-
-        $outstandingAmount = $paymentAmount - $totalAmountPaid;
-
-        return array($lastModelInstance, $outstandingAmount);
     }
 }

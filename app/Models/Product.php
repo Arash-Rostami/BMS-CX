@@ -23,6 +23,16 @@ class Product extends Model
         return $this->belongsTo(Category::class, 'category_id');
     }
 
+    public static function scopeFilterCategory($query, $categoryIds)
+    {
+        if (!empty($categoryIds)) {
+            return $query->where('category_id', $categoryIds);
+        }
+
+        return $query;
+    }
+
+
     public function orders()
     {
         return $this->hasMany(Order::class);

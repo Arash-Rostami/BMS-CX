@@ -30,7 +30,7 @@ class PurchaseStatusPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'PurchaseStatus');
+        return AccessLevel::hasPermissionForModel('create', 'PurchaseStatus');
     }
 
     /**
@@ -38,7 +38,7 @@ class PurchaseStatusPolicy
      */
     public function update(User $user, PurchaseStatus $purchaseStatus): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'PurchaseStatus');
+        return AccessLevel::hasPermissionForModel('edit', 'PurchaseStatus');
     }
 
     /**
@@ -46,7 +46,7 @@ class PurchaseStatusPolicy
      */
     public function delete(User $user, PurchaseStatus $purchaseStatus): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'PurchaseStatus');
+        return AccessLevel::hasPermissionForModel('delete', 'PurchaseStatus');
     }
 
     /**
@@ -54,6 +54,6 @@ class PurchaseStatusPolicy
      */
     public function restore(User $user, PurchaseStatus $purchaseStatus): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'PurchaseStatus');
+        return AccessLevel::hasPermissionForModel('restore', 'PurchaseStatus');
     }
 }

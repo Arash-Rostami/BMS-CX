@@ -74,7 +74,7 @@ class QuoteRequestResource extends Resource
     {
         return $table
             ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
-            ->poll(30)
+            ->poll(60)
             ->defaultSort('created_at', 'desc')
             ->actions([
                 Tables\Actions\ViewAction::make(),

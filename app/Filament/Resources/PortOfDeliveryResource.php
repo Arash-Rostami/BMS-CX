@@ -22,6 +22,8 @@ class PortOfDeliveryResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-m-globe-americas';
 
+    protected static ?string $modelLabel = 'Port of Delivery';
+
     protected static ?string $pluralModelLabel = 'Ports of Delivery';
 
     protected static ?string $navigationGroup = 'Master Data';
@@ -55,7 +57,7 @@ class PortOfDeliveryResource extends Resource
                 'xl' => 3,
             ])
             ->paginated([12])
-            ->poll(30)
+            ->poll(60)
             ->filters([])
             ->actions([
                 Tables\Actions\EditAction::make(),

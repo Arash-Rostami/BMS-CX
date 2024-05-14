@@ -45,7 +45,12 @@ class CategoryResource extends Resource
                 ])->space(4),
                 Admin::showCreationTimeStamp()
             ])
-            ->poll(30)
+            ->poll(60)
+            ->paginated([12, 24, 36, 48, 'all'])
+            ->contentGrid([
+                'md' => 2,
+                'xl' => 2,
+            ])
             ->filters([])
             ->actions([
                 Tables\Actions\EditAction::make(),

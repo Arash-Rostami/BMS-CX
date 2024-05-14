@@ -46,8 +46,15 @@ trait QuoteData
 
         $this->iranianPorts = PortMaker::getIranianPorts();
         $this->chinesePorts = PortMaker::getChinesePorts();
-        $this->packagingOptions = Packaging::pluck('name', 'id');
-        $this->deliveryTerms = DeliveryTerm::pluck('name', 'id');
+
+
+        $this->packagingOptions = Cache::remember('packaging_options', 60, function () {
+            return Packaging::pluck('name', 'id');
+        });
+
+        $this->deliveryTerms = Cache::remember('delivery_terms', 60, function () {
+            return DeliveryTerm::pluck('name', 'id');
+        });
 
         $this->quoteProvider = data_get(session('quoteToken'), 'quote_provider_id');
         $this->quoteRequest = data_get(session('quoteToken'), 'quote_request_id');

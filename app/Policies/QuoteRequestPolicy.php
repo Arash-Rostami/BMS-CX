@@ -28,7 +28,7 @@ class QuoteRequestPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'QuoteRequest');
+        return AccessLevel::hasPermissionForModel('create', 'QuoteRequest');
     }
 
     /**
@@ -36,7 +36,7 @@ class QuoteRequestPolicy
      */
     public function update(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'QuoteRequest');
+        return AccessLevel::hasPermissionForModel('edit', 'QuoteRequest');
     }
 
     /**
@@ -44,7 +44,7 @@ class QuoteRequestPolicy
      */
     public function delete(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'QuoteRequest');
+        return AccessLevel::hasPermissionForModel('delete', 'QuoteRequest');
     }
 
     /**
@@ -52,6 +52,6 @@ class QuoteRequestPolicy
      */
     public function restore(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'QuoteRequest');
+        return AccessLevel::hasPermissionForModel('restore', 'QuoteRequest');
     }
 }

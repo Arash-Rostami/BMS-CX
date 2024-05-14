@@ -30,7 +30,7 @@ class PaymentPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Payment');
+        return AccessLevel::hasPermissionForModel('create', 'Payment');
     }
 
     /**
@@ -38,7 +38,7 @@ class PaymentPolicy
      */
     public function update(User $user, Payment $payment): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Payment');
+        return AccessLevel::hasPermissionForModel('edit', 'Payment');
     }
 
     /**
@@ -46,7 +46,7 @@ class PaymentPolicy
      */
     public function delete(User $user, Payment $payment): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Payment');
+        return AccessLevel::hasPermissionForModel('delete', 'Payment');
     }
 
     /**
@@ -54,6 +54,6 @@ class PaymentPolicy
      */
     public function restore(User $user, Payment $payment): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Payment');
+        return AccessLevel::hasPermissionForModel('restore', 'Payment');
     }
 }

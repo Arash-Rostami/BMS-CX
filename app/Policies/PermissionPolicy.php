@@ -30,7 +30,7 @@ class PermissionPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Permission');
+        return AccessLevel::hasPermissionForModel('create', 'Permission');
     }
 
     /**
@@ -38,7 +38,7 @@ class PermissionPolicy
      */
     public function update(User $user, Permission $permission): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Permission');
+        return AccessLevel::hasPermissionForModel('edit', 'Permission');
     }
 
     /**
@@ -46,7 +46,7 @@ class PermissionPolicy
      */
     public function delete(User $user, Permission $permission): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Permission');
+        return AccessLevel::hasPermissionForModel('delete', 'Permission');
     }
 
     /**
@@ -54,6 +54,6 @@ class PermissionPolicy
      */
     public function restore(User $user, Permission $permission): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Permission');
+        return AccessLevel::hasPermissionForModel('restore', 'Permission');
     }
 }

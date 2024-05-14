@@ -9,6 +9,7 @@ use App\Filament\Resources\PaymentRequestResource\Pages;
 use App\Filament\Resources\PaymentRequestResource\RelationManagers;
 use App\Models\PaymentRequest;
 use App\Rules\EnglishAlphabet;
+use App\Services\TableObserver;
 use Carbon\Carbon;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Group;
@@ -65,9 +66,10 @@ class PaymentRequestResource extends Resource
                             ->schema([
                                 Admin::getDepartment(),
                                 Admin::getCPSReasons(),
+                                Admin::getCostCenter(),
                                 Admin::getTypeOfPayment(),
                             ])
-                            ->columns(3)
+                            ->columns(4)
                             ->collapsible(),
                         Group::make()
                             ->schema([
@@ -87,7 +89,7 @@ class PaymentRequestResource extends Resource
                                     ])
                                     ->columns(3)
                                     ->collapsible()
-                                    ->hidden(fn(Get $get) => $get('departments') !== 'CX'),
+                                    ->hidden(fn(Get $get) => $get('department_id') != 6),
                                 Section::make('Account Details')
                                     ->schema([
                                         Admin::getBankName(),
@@ -275,7 +277,7 @@ class PaymentRequestResource extends Resource
                 ])
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll(30)
+            ->poll(60)
             ->groups([
                 Admin::filterByDepartment(),
                 Admin::filterByOrder(),
@@ -311,8 +313,7 @@ class PaymentRequestResource extends Resource
                             Split::make([
                                 Admin::showPayableAmount(),
                                 Admin::showDeadline(),
-                                Admin::showMissingData(),
-
+                                TableObserver::showMissingData(-6)
                             ]),
                         ])->space(2),
                     ])
@@ -325,8 +326,9 @@ class PaymentRequestResource extends Resource
     {
         return $table
             ->columns([
-                Admin::showMissingData(),
+                TableObserver::showMissingData(-6),
                 Admin::showDepartment(),
+                Admin::showCostCenter(),
                 Admin::showInvoiceNumber(),
                 Admin::showPart(),
                 Admin::showReasonForPayment(),

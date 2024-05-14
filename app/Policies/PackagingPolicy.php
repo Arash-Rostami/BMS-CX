@@ -30,7 +30,7 @@ class PackagingPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Packaging');
+        return AccessLevel::hasPermissionForModel('create', 'Packaging');
     }
 
     /**
@@ -38,7 +38,7 @@ class PackagingPolicy
      */
     public function update(User $user, Packaging $packaging): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Packaging');
+        return AccessLevel::hasPermissionForModel('edit', 'Packaging');
     }
 
     /**
@@ -46,7 +46,7 @@ class PackagingPolicy
      */
     public function delete(User $user, Packaging $packaging): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Packaging');
+        return AccessLevel::hasPermissionForModel('delete', 'Packaging');
     }
 
     /**
@@ -54,6 +54,6 @@ class PackagingPolicy
      */
     public function restore(User $user, Packaging $packaging): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Packaging');
+        return AccessLevel::hasPermissionForModel('restore', 'Packaging');
     }
 }

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Cache;
 
 class OrderRequest extends Model
 {
@@ -38,22 +39,29 @@ class OrderRequest extends Model
 
     public static function getStatusCounts()
     {
-        return static::select('request_status')
-            ->selectRaw('count(*) as count')
-            ->groupBy('request_status')
-            ->get()
-            ->keyBy('request_status')
-            ->map(fn($item) => $item->count);
+        $cacheKey = 'order_request_status_counts';
+
+        return Cache::remember($cacheKey, 60, function () {
+            return static::select('request_status')
+                ->selectRaw('count(*) as count')
+                ->groupBy('request_status')
+                ->get()
+                ->keyBy('request_status')
+                ->map(fn($item) => $item->count);
+        });
     }
 
     public static function getApproved()
     {
-        return static::where('request_status', 'approved')
-            ->with('product', 'category', 'buyer')
-            ->get()
-            ->pluck('formatted_value', 'id');
-    }
+        $cacheKey = 'approved_order_requests';
 
+        return Cache::remember($cacheKey, 60, function () {
+            return static::where('request_status', 'approved')
+                ->with('product', 'category', 'buyer')
+                ->get()
+                ->pluck('formatted_value', 'id');
+        });
+    }
 
     public function getFormattedValueAttribute()
     {

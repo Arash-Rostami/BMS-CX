@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Models\Allocation;
 use App\Models\Contractor;
+use App\Models\Department;
 use App\Models\Order;
 use App\Models\Payee;
 use App\Models\PaymentRequest;
@@ -12,7 +13,6 @@ use App\Models\User;
 use App\Notifications\FilamentNotification;
 use App\Policies\PaymentRequestPolicy;
 use App\Rules\EnglishAlphabet;
-use App\Services\DepartmentDetails;
 use App\Services\NotificationManager;
 use Carbon\Carbon;
 use Filament\Forms\Components\Actions\Action;
@@ -104,7 +104,7 @@ class Admin
         return Select::make('reason_for_payment')
             ->options(Allocation::reasonsForDepartment('cx'))
             ->live()
-            ->required(fn(Get $get) => $get('departments') == 'CX')
+            ->required(fn(Get $get) => $get('department_id') == 6)
             ->label('')
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">⭕ </span>Allocation For<span class="red"> *</span>'));
@@ -198,7 +198,7 @@ class Admin
             ->hint(new HtmlString('<span class="grayscale">📅 </span>Deadline<span class="red"> *</span>'))
             ->hintColor('primary')
             ->closeOnDateSelection()
-            ->minDate(now())
+            ->minDate(now()->subDays(1))
             ->native(false)
             ->required();
     }
@@ -216,7 +216,7 @@ class Admin
             ->default('supplier')
             ->hint(new HtmlString('<span class="grayscale">✒️ </span>Beneficiary<span class="red"> *</span>'))
             ->hintColor('primary')
-            ->required(fn(Get $get) => $get('departments') == 'CX');
+            ->required(fn(Get $get) => $get('department_id') == 6);
     }
 
     /**
@@ -241,11 +241,11 @@ class Admin
     {
         return Select::make('supplier_id')
             ->requiredIf('beneficiary_name', 'supplier')
-            ->visible(fn(Get $get): bool => $get('departments') == 'CX' && $get('beneficiary_name') == 'supplier')
-            ->required(fn(Get $get): bool => $get('departments') == 'CX' && $get('beneficiary_name') == 'supplier')
+            ->visible(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'supplier')
+            ->required(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'supplier')
             ->label('')
             ->options(Supplier::all()->pluck('name', 'id'))
-            ->searchable()
+            ->searchable(['name'])
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">🤝 </span>Supplier Name<span class="red"> *</span>'))
             ->createOptionForm([
@@ -272,8 +272,8 @@ class Admin
     {
         return Select::make('contractor_id')
             ->relationship('contractor', 'name')
-            ->visible(fn(Get $get): bool => $get('departments') == 'CX' && $get('beneficiary_name') == 'contractor')
-            ->required(fn(Get $get): bool => $get('departments') == 'CX' && $get('beneficiary_name') == 'contractor')
+            ->visible(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'contractor')
+            ->required(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'contractor')
             ->label('')
             ->options(Contractor::all()->pluck('name', 'id'))
             ->searchable()
@@ -304,8 +304,8 @@ class Admin
     {
         return Select::make('payee_id')
             ->relationship('payee', 'name')
-            ->hidden(fn(Get $get): bool => $get('departments') == 'CX')
-            ->required(fn(Get $get): bool => $get('departments') != 'CX')
+            ->hidden(fn(Get $get): bool => $get('department_id') == 6)
+            ->required(fn(Get $get): bool => $get('department_id') != 6)
             ->label('')
             ->options(Payee::all()->pluck('name', 'id'))
             ->searchable()
@@ -456,7 +456,7 @@ class Admin
     {
         return Select::make('order_invoice_number')
             ->options(fn() => Order::where('order_status', '<>', 'closed')->pluck('invoice_number', 'invoice_number')->unique())
-            ->required(fn(Get $get) => $get('departments') == 'CX')
+            ->required(fn(Get $get) => $get('department_id') == 6)
             ->live()
             ->afterStateUpdated(function (Get $get, Set $set, ?string $old, ?string $state) {
                 return $set('part', []);
@@ -546,25 +546,25 @@ class Admin
     }
 
 
-    public static function showMissingData(): TextColumn
-    {
-        return TextColumn::make('data')
-            ->label('Missing Info')
-            ->grow(false)
-            ->state(function (Model $record) {
-                $nullCount = -6;
-                foreach ($record->getAttributes() as $key => $value) {
-                    if (is_null($value)) {
-                        $nullCount++;
-                    }
-                }
-                return $nullCount === 0 ? 'None' : "$nullCount Missing";
-            })
-            ->icon(fn($state): string => 'heroicon-s-puzzle-piece')
-            ->color('danger')
-            ->toggleable()
-            ->badge();
-    }
+//    public static function showMissingData(): TextColumn
+//    {
+//        return TextColumn::make('data')
+//            ->label('Missing Info')
+//            ->grow(false)
+//            ->state(function (Model $record) {
+//                $nullCount = -6;
+//                foreach ($record->getAttributes() as $key => $value) {
+//                    if (is_null($value)) {
+//                        $nullCount++;
+//                    }
+//                }
+//                return $nullCount === 0 ? 'None' : "$nullCount Missing";
+//            })
+//            ->icon(fn($state): string => 'heroicon-s-puzzle-piece')
+//            ->color('danger')
+//            ->toggleable()
+//            ->badge();
+//    }
 
     /**
      * @return TextColumn
@@ -589,7 +589,6 @@ class Admin
             ->label('Part')
             ->grow(false)
             ->formatStateUsing(fn($state) => $state != null && getTableDesign() == "modern" ? "PART: {$state}" : $state)
-            ->sortable()
             ->searchable()
             ->badge();
     }
@@ -602,6 +601,7 @@ class Admin
         return TextColumn::make('type_of_payment')
             ->label('Payment Type')
             ->grow(false)
+            ->formatStateUsing(fn($state) => ucwords($state))
             ->sortable()
             ->searchable()
             ->badge();
@@ -613,12 +613,26 @@ class Admin
      */
     public static function showDepartment(): TextColumn
     {
-        return TextColumn::make('departments')
+        return TextColumn::make('department.code')
             ->label('Department')
             ->grow(false)
             ->color('secondary')
             ->sortable()
-            ->searchable()
+            ->searchable(['code', 'name'])
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showCostCenter(): TextColumn
+    {
+        return TextColumn::make('extra.costCenter')
+            ->label('Cost Center')
+            ->grow(false)
+            ->formatStateUsing(fn($state, Model $record) => $record->department->getByCode($state))
+            ->color('secondary')
+            ->sortable()
             ->badge();
     }
 
@@ -628,9 +642,9 @@ class Admin
      */
     public static function showReasonForPayment(): TextColumn
     {
-        return TextColumn::make('reason_for_payment')
+        return TextColumn::make('reason.reason')
             ->label('Reason')
-            ->formatStateUsing(fn($state) => PaymentRequest::showAmongAllReasons($state))
+//            ->formatStateUsing(fn($state) => PaymentRequest::showAmongAllReasons($state))
             ->sortable()
             ->searchable()
             ->badge();
@@ -777,9 +791,9 @@ class Admin
      */
     public static function filterByDepartment(): Grouping
     {
-        return Grouping::make('departments')->collapsible()
+        return Grouping::make('department_id')->collapsible()
             ->label('Dep.')
-            ->getTitleFromRecordUsing(fn(Model $record): string => DepartmentDetails::getName($record->departments));
+            ->getTitleFromRecordUsing(fn(Model $record): string => Department::getByName($record->department_id));
     }
 
     /**
@@ -1037,7 +1051,7 @@ class Admin
      */
     public static function viewDepartment(): TextEntry
     {
-        return TextEntry::make('departments')
+        return TextEntry::make('department.code')
             ->color('secondary')
             ->badge();
     }
@@ -1181,7 +1195,7 @@ class Admin
      */
     private static function concatenateSum(?Model $record): string
     {
-        return '💰 Sum: ' . number_format($record->requested_amount) . '/' . number_format($record->total_amount) . ' - ' . $record->currency;
+        return '💰 Sum: ' . $record->currency . ' ' . number_format($record->requested_amount) . '/' . number_format($record->total_amount);
     }
 
 
@@ -1211,9 +1225,10 @@ class Admin
      */
     public static function getDepartment(): Select
     {
-        return Select::make('departments')
-            ->options(DepartmentDetails::getAllDepartmentNames())
+        return Select::make('department_id')
+            ->options(Department::getAllDepartmentNames())
             ->live()
+            ->afterStateUpdated(fn($state, Set $set) => $set('extra.costCenter', $state))
             ->required()
             ->label('')
             ->hintColor('primary')
@@ -1223,17 +1238,33 @@ class Admin
     /**
      * @return Select
      */
+    public static function getCostCenter(): Select
+    {
+        return Select::make('extra.costCenter')
+            ->options(Department::getAllDepartmentNames())
+            ->required()
+            ->default('all')
+            ->disabled(fn(Get $get) => $get('department_id') == 6)
+            ->hidden(fn(Get $get) => $get('department_id') == 6)
+            ->label('')
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">↗️ </span>Department of Allocation<span class="red"> *</span>'));
+    }
+
+    /**
+     * @return Select
+     */
     public static function getCPSReasons(): Select
     {
         return Select::make('reason_for_payment')
-            ->options(fn(Get $get) => $get('departments') ? Allocation::getUniqueReasonsForCPS($get('departments')) : [])
+            ->options(fn(Get $get) => $get('department_id') ? Allocation::getUniqueReasonsForCPS($get('department_id')) : [])
             ->live()
-            ->disabled(fn(Get $get) => $get('departments') == 'CX')
-            ->hidden(fn(Get $get) => $get('departments') == 'CX')
+            ->disabled(fn(Get $get) => $get('department_id') == 6)
+            ->hidden(fn(Get $get) => $get('department_id') == 6)
             ->required()
             ->label('')
             ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">🎯 </span>Allocation for<span class="red"> *</span>'));
+            ->hint(new HtmlString('<span class="grayscale">🎯 </span>Reason for Allocation<span class="red"> *</span>'));
     }
 
     /**

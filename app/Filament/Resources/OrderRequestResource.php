@@ -181,7 +181,7 @@ class OrderRequestResource extends Resource
                 ])
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll(30)
+            ->poll(60)
             ->groups([
                 Admin::groupCategoryRecords(),
                 Admin::groupProductRecords(),

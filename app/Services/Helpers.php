@@ -54,3 +54,8 @@ function showCurrencies()
         'Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')
     ];
 }
+
+function showCurrencyWithoutHTMLTags($record)
+{
+    return strip_tags(showCurrencies()[$record]);
+}

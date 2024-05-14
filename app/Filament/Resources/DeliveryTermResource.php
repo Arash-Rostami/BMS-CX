@@ -49,7 +49,7 @@ class DeliveryTermResource extends Resource
                 ])->collapsible(),
                 Admin::showTimeStamp()
             ])
-            ->poll(30)
+            ->poll(60)
             ->filters([])
             ->contentGrid([
                 'md' => 2,

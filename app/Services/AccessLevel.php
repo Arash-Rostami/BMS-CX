@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
+
 class AccessLevel
 {
     public static function hasPermissionForModel($permission, $model)
@@ -13,12 +15,17 @@ class AccessLevel
             return true;
         }
 
-        // Retrieve profile Permissions
-        $permissions = $loggedUser->permissions()
-            ->whereIn('model', [$model, 'All'])
-            ->whereIn('permission', [$permission, 'all'])
-            ->get();
+        // Generate a unique cache key
+        $cacheKey = 'permissions_' . $loggedUser->id . '_' . $model . '_' . $permission;
 
-        return $permissions->contains(fn($permission): bool => $permission->user_id === auth()->user()->id);
+        // Retrieve profile Permissions with caching
+        $permissions = Cache::remember($cacheKey, 60, function () use ($loggedUser, $permission, $model) {
+            return $loggedUser->permissions()
+                ->whereIn('model', [$model, 'All'])
+                ->whereIn('permission', [$permission, 'all'])
+                ->get();
+        });
+
+        return $permissions->contains(fn($permission): bool => $permission->user_id === $loggedUser->id);
     }
 }

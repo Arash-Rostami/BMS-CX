@@ -63,7 +63,7 @@ class PayeeResource extends Resource
                 ])->collapsible(),
                 Admin::showTimeStamp()
             ])
-            ->poll(30)
+            ->poll(60)
             ->defaultSort('name', 'asc')
             ->filters([])
             ->contentGrid([

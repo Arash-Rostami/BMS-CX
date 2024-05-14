@@ -55,9 +55,11 @@ class QuoteResource extends Resource
             ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
             ->poll(30)
             ->defaultSort('created_at', 'desc')
+            ->poll(30)
+            ->paginated([12, 24, 36, 48, 'all'])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+//                Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
                 Tables\Actions\RestoreAction::make(),
             ])
@@ -138,7 +140,7 @@ class QuoteResource extends Resource
             'index' => Operational\QuoteResource\Pages\ListQuotes::route('/'),
             'create' => Operational\QuoteResource\Pages\CreateQuote::route('/create'),
             'view' => Operational\QuoteResource\Pages\ViewQuote::route('/{record}'),
-            'edit' => Operational\QuoteResource\Pages\EditQuote::route('/{record}/edit'),
+//            'edit' => Operational\QuoteResource\Pages\EditQuote::route('/{record}/edit'),
         ];
     }
 

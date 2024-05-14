@@ -30,7 +30,7 @@ class DeliveryTermPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'DeliveryTerm');
+        return AccessLevel::hasPermissionForModel('create', 'DeliveryTerm');
     }
 
     /**
@@ -38,7 +38,7 @@ class DeliveryTermPolicy
      */
     public function update(User $user, DeliveryTerm $deliveryTerm): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'DeliveryTerm');
+        return AccessLevel::hasPermissionForModel('edit', 'DeliveryTerm');
     }
 
     /**
@@ -46,7 +46,7 @@ class DeliveryTermPolicy
      */
     public function delete(User $user, DeliveryTerm $deliveryTerm): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'DeliveryTerm');
+        return AccessLevel::hasPermissionForModel('delete', 'DeliveryTerm');
     }
 
     /**
@@ -54,6 +54,6 @@ class DeliveryTermPolicy
      */
     public function restore(User $user, DeliveryTerm $deliveryTerm): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'DeliveryTerm');
+        return AccessLevel::hasPermissionForModel('restore', 'DeliveryTerm');
     }
 }

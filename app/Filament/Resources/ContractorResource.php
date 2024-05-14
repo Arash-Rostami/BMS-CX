@@ -45,7 +45,7 @@ class ContractorResource extends Resource
                 Admin::showTimeStamp()
             ])
             ->filters([ ])
-            ->poll(30)
+            ->poll(60)
             ->contentGrid([
                 'md' => 2,
                 'xl' => 3,

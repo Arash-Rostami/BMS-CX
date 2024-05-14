@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class Payment extends Model
 {
@@ -43,9 +44,29 @@ class Payment extends Model
         return $this->hasMany(Attachment::class);
     }
 
+
+    /**
+     * Get the sum of amounts for specified currencies.
+     *
+     * @return array
+     */
+    public static function sumAmountsForCurrencies(array $currencies)
+    {
+        $cacheKey = 'sum_amounts_for_currencies_' . implode('_', $currencies);
+
+        return Cache::remember($cacheKey, 60, function () use ($currencies) {
+            return self::whereIn('currency', $currencies)
+                ->get(['currency', 'amount'])
+                ->groupBy('currency')
+                ->map(function ($items, $currency) {
+                    return $items->sum('amount');
+                })
+                ->toArray();
+        });
+    }
     public function order()
     {
-        return $this->belongsTo(Order::class);
+        return $this->hasOneThrough(Order::class, PaymentRequest::class, 'id', 'invoice_number', 'payment_request_id', 'order_invoice_number');
     }
 
 //
@@ -65,7 +86,12 @@ class Payment extends Model
 
     public function paymentRequests()
     {
-        return $this->hasMany(PaymentRequest::class, 'id' ,'payment_request_id');
+        return $this->belongsTo(PaymentRequest::class, 'payment_request_id');
+    }
+
+    public function reason()
+    {
+        return $this->hasOneThrough(Allocation::class, PaymentRequest::class, 'id', 'id', 'payment_request_id', 'reason_for_payment');
     }
 
 

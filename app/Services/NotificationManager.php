@@ -12,7 +12,6 @@ class NotificationManager
     use NotificationConfig;
 
 
-
     public static function send(array $data, bool $isStatus = false)
     {
         self::processData($data);

@@ -16,13 +16,20 @@ use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Tables\Columns\Summarizers\Count;
+use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Component as Livewire;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Database\Query\Builder;
+
 
 class Admin
 {
@@ -55,16 +62,17 @@ class Admin
     public static function getPaymentRequest(): Select
     {
         return Select::make('payment_request_id')
-            ->options(function () {
-                return PaymentRequest::whereIn('status', ['processing', 'approved', 'allowed'])
-                    ->orderBy('deadline', 'asc')
-                    ->get()
-                    ->mapWithKeys(function ($paymentRequest) {
-                        return [$paymentRequest->id => $paymentRequest->getCustomizedDisplayName()];
-                    });
-            })
+            ->options(fn($operation) => self::getPaymentRequests($operation))
+            ->disabled(fn($operation) => $operation == 'edit')
             ->afterStateUpdated(function ($state, Set $set) {
-                $paymentRequest = PaymentRequest::find($state);
+                static $cachedPaymentRequests = [];
+
+                if (!array_key_exists($state, $cachedPaymentRequests)) {
+                    $cachedPaymentRequests[$state] = PaymentRequest::find($state);
+                }
+
+                $paymentRequest = $cachedPaymentRequests[$state];
+
                 if ($paymentRequest) {
                     $set('currency', $paymentRequest->currency);
                     $set('amount', $paymentRequest->requested_amount);
@@ -107,11 +115,10 @@ class Admin
      */
     public static function getNotes(): MarkdownEditor
     {
-        return MarkdownEditor::make('extra')
+        return MarkdownEditor::make('extra.note')
             ->label('')
             ->maxLength(65535)
             ->columnSpanFull()
-//            ->afterStateUpdated(fn(?Model $record) => json_encode(['notes' => $record->extra]))
             ->disableAllToolbarButtons()
             ->hintColor('primary')
             ->placeholder('Optional')
@@ -200,15 +207,13 @@ class Admin
     public static function showTimeGap(): TextColumn
     {
         return TextColumn::make('id')
-            ->label('Payment Time Gap')
+            ->label('Deadline Delta')
             ->formatStateUsing(function (Model $record) {
-                $deadline = optional($record->paymentRequests->first())->deadline;
+                $deadline = optional($record->paymentRequests)->deadline;
                 return $deadline ? static::calculateTimeGap($record->created_at, $deadline) : null;
             })
             ->grow(false)
             ->color('info')
-            ->sortable()
-            ->searchable()
             ->badge();
     }
 
@@ -220,11 +225,11 @@ class Admin
     {
         return TextColumn::make('paymentRequests.id')
             ->label('Payment Request')
-            ->formatStateUsing(fn($state) => self::getCustomizedDisplayName($state))
             ->grow(false)
             ->sortable()
-            ->searchable()
-            ->badge();
+            ->badge()
+            ->formatStateUsing(fn($state) => self::getCustomizedDisplayName($state))
+            ->searchable(query: fn(QueryBuilder $query, string $search) => self::searchReasonInAllocationOrPaymentRequestModels($query, $search));
     }
 
     /**
@@ -268,7 +273,7 @@ class Admin
             ->dateTime()
             ->sortable()
             ->alignRight()
-            ->toggleable();
+            ->toggleable(isToggledHiddenByDefault: true);
     }
 
     /**
@@ -291,12 +296,66 @@ class Admin
     {
         return TextColumn::make('amount')
             ->label('Payable Amount')
-            ->color('warning')
+            ->color('info')
             ->grow(false)
-            ->state(fn(?Model $record) => '💰 Sum: ' . number_format($record->amount) . ' - ' . $record->currency)
+            ->state(fn(?Model $record) => '💰 ' . $record->currency . ' ' . number_format($record->amount))
             ->sortable()
-            ->searchable()
-            ->badge();
+            ->badge()
+            ->summarize([
+                Sum::make()->label('Total'),
+                Count::make()->label('Count')
+            ]);
+    }
+
+
+    /**
+     * @return TextColumn
+     */
+    public static function showRequestedAmount(): TextColumn
+    {
+        return TextColumn::make('paymentRequests.requested_amount')
+            ->label('Requested Amount')
+            ->color('secondary')
+            ->grow(false)
+            ->formatStateUsing(function (?Model $record) {
+                list($currency, $requestedAmount, $totalAmount, $remainingAmount) = self::fetchAmounts($record);
+
+                return $currency . '  ' . $requestedAmount . ' / ' . $totalAmount;
+            })
+            ->badge()
+            ->summarize([
+                Sum::make()
+                    ->label('Total'),
+                Count::make()
+                    ->label('Count')
+            ]);
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showRemainingAmount(): TextColumn
+    {
+        return TextColumn::make('paymentRequests.total_amount')
+            ->label('Remaining Amount')
+            ->color('secondary')
+            ->grow(false)
+            ->formatStateUsing(function (?Model $record) {
+                list($currency, $requestedAmount, $totalAmount, $remainingAmount) = self::fetchAmounts($record);
+
+                return $currency . '  ' . $remainingAmount;
+            })
+            ->badge()
+            ->summarize([
+                Summarizer::make()
+                    ->label('Total')
+                    ->using(function (Builder $query) {
+                        return $query->selectRaw('SUM(total_amount - requested_amount) AS total_remaining')
+                            ->whereNull('deleted_at')
+                            ->value('total_remaining');
+                    })
+
+            ]);
     }
 
     /**
@@ -328,6 +387,30 @@ class Admin
     }
 
 
+    public static function showBalance(): TextColumn
+    {
+        return TextColumn::make('extra.remainderSum')
+            ->label('Amount Delta')
+            ->formatStateUsing(function (Model $record) {
+                $diff = self::calculateDiff($record);
+                return match (true) {
+                    ($diff > 0) => '🔺 Overpayment: +' . number_format($diff, 0),
+                    ($diff < 0) => '🔻 Underpayment: -' . number_format(abs($diff), 0),
+                    default => '⚖️ Balance',
+                };
+            })
+            ->grow(false)
+            ->color(function (Model $record) {
+                $diff = self::calculateDiff($record);
+                return match (true) {
+                    ($diff > 0) => 'danger',
+                    ($diff < 0) => 'warning',
+                    default => 'info',
+                };
+            })
+            ->badge();
+    }
+
     /**
      * @return Grouping
      */
@@ -350,11 +433,14 @@ class Admin
     /**
      * @return Grouping
      */
-    public static function filterByOrder(): Grouping
+    public static function filterByBalance(): Grouping
     {
-        return Grouping::make('order_id')->collapsible()
-            ->label('Order')
-            ->getTitleFromRecordUsing(fn(Model $record): string => $record->order->invoice_number);
+        return Grouping::make('extra')->collapsible()
+            ->label('Balance')
+            ->getKeyFromRecordUsing(function (Model $record): string {
+                return $record->extra['balanceStatus'] . '-' . $record->payment_request_id;
+            })
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->extra['balanceStatus']);
     }
 
     /**
@@ -364,7 +450,7 @@ class Admin
     {
         return Grouping::make('payment_request_id')->collapsible()
             ->label('Payment Request')
-            ->getTitleFromRecordUsing(fn(Model $record): string => $record->paymentRequests[0]->beneficiary_name);
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->paymentRequests->reason->reason);
     }
 
 
@@ -376,7 +462,7 @@ class Admin
         return TextEntry::make('order_id')
             ->label('Order')
             ->state(function (Model $record): string {
-                return $record->order->order_invoice_number;
+                return optional($record->order)->invoice_number ?? 'N/A';
             })
             ->badge();
     }
@@ -386,17 +472,36 @@ class Admin
      */
     public static function viewPaymentRequest(): TextEntry
     {
+        return TextEntry::make('paymentRequests.reason.reason')
+            ->label('Payment Purpose')
+//            ->formatStateUsing(fn(Model $record) => ucwords($record->paymentRequests->type_of_payment))
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewPaymentType(): TextEntry
+    {
         return TextEntry::make('payment_request_id')
-            ->label('Payment Request')
-            ->state(function (Model $record) {
-                $invoiceNumbers = [];
-                foreach ($record->paymentRequests as $request) {
-                    if ($request->type_of_payment) { // Handle potentially null values
-                        $invoiceNumbers[] = PaymentRequest::$typesOfPayment[$request->type];
-                    }
-                }
-                return implode('|', $invoiceNumbers);
+            ->label('Payment Type')
+            ->formatStateUsing(fn(Model $record) => ucwords($record->paymentRequests->type_of_payment))
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewPaymentRequestDetail(): TextEntry
+    {
+        return TextEntry::make('paymentRequests.total_amount')
+            ->label('Requested | Total | Remaining sums')
+            ->formatStateUsing(function (Model $record) {
+                list($currency, $requestedAmount, $totalAmount, $remainingAmount) = self::fetchAmounts($record);
+
+                return sprintf('%s %s | %s | %s', $currency, $requestedAmount, $totalAmount, $remainingAmount);
             })
+            ->color('info')
             ->badge();
     }
 
@@ -415,7 +520,7 @@ class Admin
     public static function viewTransferredAmount(): TextEntry
     {
         return TextEntry::make('amount')
-            ->state(fn(?Model $record) => '💰 Sum: ' . number_format($record->amount) . ' - ' . $record->currency)
+            ->state(fn(?Model $record) => '💰 Sum: ' . $record->currency . ' ' . number_format($record->amount))
             ->badge();
     }
 
@@ -487,4 +592,59 @@ class Admin
         return $daysDifference === 0 ? 'on the final day' : $daysDifference . ' days';
     }
 
+
+    private static function calculateDiff(Model $record): float
+    {
+        $remainderSum = $record->extra['remainderSum'] ?? 0;
+        $recordState = $record->paymentRequests->requested_amount;
+
+        return ($record->extra != null)
+            ? ($recordState - $record->extra['remainderSum']) - $recordState
+            : $record->amount - $recordState;
+    }
+
+    /**
+     * @param QueryBuilder $query
+     * @param string $search
+     * @return void
+     */
+    public static function searchReasonInAllocationOrPaymentRequestModels(QueryBuilder $query, string $search): void
+    {
+        $query
+            ->whereHas('reason', function ($query) use ($search) {
+                $query->where('reason', 'like', "%{$search}%");
+            })
+            ->orWhereHas('paymentRequests', function ($query) use ($search) {
+                $query->where('order_invoice_number', 'like', "%{$search}%");
+            });
+    }
+
+    /**
+     * Get payment request options based on operation.
+     *
+     * @param string $operation
+     * @return array
+     */
+    private static function getPaymentRequests(string $operation): array
+    {
+        $query = PaymentRequest::orderBy('deadline', 'asc');
+        if ($operation == 'create') {
+            $query->whereIn('status', ['processing', 'approved', 'allowed']);
+        }
+        return $query->get()->mapWithKeys(fn($paymentRequest) => [$paymentRequest->id => $paymentRequest->getCustomizedDisplayName()])->toArray();
+    }
+
+    /**
+     * @param Model|null $record
+     * @return array
+     */
+    public static function fetchAmounts(?Model $record): array
+    {
+        $currency = $record->paymentRequests->currency ?? '';
+        $requestedAmount = number_format($record->paymentRequests->requested_amount ?? 0);
+        $totalAmount = number_format($record->paymentRequests->total_amount ?? 0);
+        $remainingAmount = number_format($record->paymentRequests->total_amount - $record->paymentRequests->requested_amount ?? 0);
+
+        return [$currency, $requestedAmount, $totalAmount, $remainingAmount];
+    }
 }

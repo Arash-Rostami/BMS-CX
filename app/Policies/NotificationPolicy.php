@@ -30,7 +30,7 @@ class NotificationPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Notification');
+        return AccessLevel::hasPermissionForModel('create', 'Notification');
     }
 
     /**
@@ -38,7 +38,7 @@ class NotificationPolicy
      */
     public function update(User $user, Notification $notification): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Notification');
+        return AccessLevel::hasPermissionForModel('edit', 'Notification');
     }
 
     /**
@@ -46,7 +46,7 @@ class NotificationPolicy
      */
     public function delete(User $user, Notification $notification): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Notification');
+        return AccessLevel::hasPermissionForModel('delete', 'Notification');
     }
 
     /**
@@ -54,6 +54,6 @@ class NotificationPolicy
      */
     public function restore(User $user, Notification $notification): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Notification');
+        return AccessLevel::hasPermissionForModel('restore', 'Notification');
     }
 }

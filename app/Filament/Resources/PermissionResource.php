@@ -53,7 +53,7 @@ class PermissionResource extends Resource
     private static function configureCommonTableSettings(Table $table): Table
     {
         return $table
-            ->poll(30)
+            ->poll(60)
             ->filters([
 
             ])

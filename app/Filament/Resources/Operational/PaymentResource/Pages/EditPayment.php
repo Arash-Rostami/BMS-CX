@@ -22,14 +22,28 @@ class EditPayment extends EditRecord
         ];
     }
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if ($data['extra']) {
+            $originalExtra = data_get($this->record, 'extra', []);
+            $editedExtra = $data['extra'];
+
+            $mergedExtra = array_merge($originalExtra, $editedExtra);
+
+            $data['extra'] = $mergedExtra;
+        }
+
+        return $data;
+    }
+
 
     protected function afterSave(): void
     {
         $data = [
-            'record' => $this->record->order->invoice_number,
+            'record' => $this->record->paymentRequests->reason->reason,
             'type' => 'edit',
             'module' => 'payment',
-            'url' =>  route('filament.admin.resources.payments.edit', ['record' => $this->record->id]),
+            'url' => route('filament.admin.resources.payments.edit', ['record' => $this->record->id]),
             'recipients' => User::getUsersByRole('admin')
         ];
 

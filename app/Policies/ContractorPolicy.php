@@ -30,7 +30,7 @@ class ContractorPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Contractor');
+        return AccessLevel::hasPermissionForModel('create', 'Contractor');
     }
 
     /**
@@ -38,7 +38,7 @@ class ContractorPolicy
      */
     public function update(User $user, Contractor $contractor): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Contractor');
+        return AccessLevel::hasPermissionForModel('edit', 'Contractor');
     }
 
     /**
@@ -46,7 +46,7 @@ class ContractorPolicy
      */
     public function delete(User $user, Contractor $contractor): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Contractor');
+        return AccessLevel::hasPermissionForModel('delete', 'Contractor');
     }
 
     /**
@@ -54,7 +54,7 @@ class ContractorPolicy
      */
     public function restore(User $user, Contractor $contractor): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Contractor');
+        return AccessLevel::hasPermissionForModel('restore', 'Contractor');
     }
 
 }

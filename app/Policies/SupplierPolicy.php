@@ -31,7 +31,7 @@ class SupplierPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Supplier');
+        return AccessLevel::hasPermissionForModel('create', 'Supplier');
 
     }
 
@@ -40,7 +40,7 @@ class SupplierPolicy
      */
     public function update(User $user, Supplier $supplier): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Supplier');
+        return AccessLevel::hasPermissionForModel('edit', 'Supplier');
 
     }
 
@@ -49,7 +49,7 @@ class SupplierPolicy
      */
     public function delete(User $user, Supplier $supplier): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Supplier');
+        return AccessLevel::hasPermissionForModel('delete', 'Supplier');
 
     }
 
@@ -58,7 +58,6 @@ class SupplierPolicy
      */
     public function restore(User $user, Supplier $supplier): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Supplier');
-
+        return AccessLevel::hasPermissionForModel('restore', 'Supplier');
     }
 }

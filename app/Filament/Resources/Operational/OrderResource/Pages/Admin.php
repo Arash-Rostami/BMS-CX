@@ -3,11 +3,13 @@
 namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
 use App\Models\Buyer;
+use App\Models\Category;
 use App\Models\DeliveryTerm;
 use App\Models\Order;
 use App\Models\OrderRequest;
 use App\Models\Packaging;
 use App\Models\PortOfDelivery;
+use App\Models\Product;
 use App\Models\ShippingLine;
 use App\Models\Supplier;
 use App\Models\User;
@@ -16,6 +18,7 @@ use App\Services\NotificationManager;
 use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\MarkdownEditor;
@@ -40,6 +43,7 @@ use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Component as Livewire;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Wallo\FilamentSelectify\Components\ToggleButton;
 
 class Admin
 {
@@ -72,6 +76,18 @@ class Admin
         8 => 'Part 8',
         9 => 'Part 9',
     ];
+
+    protected static array $documents = [
+        'INSURANCE' => 'Insurance',
+        'COA' => 'COA',
+        'COO' => 'COO',
+        'PL' => 'PL',
+        'SGS' => 'Inspection',
+        'DECLARATION' => 'Declaration',
+        'FINAL INVOICE' => 'Final Invoice',
+        'FINAL LOADING LIST FROM SUPPLIER' => 'Final Loading List From Supplier',
+    ];
+
 
     /**
      * @return Select
@@ -109,9 +125,9 @@ class Admin
     {
         return Select::make('product_id')
             ->label('')
+            ->options(fn(Get $get) => Product::filterCategory($get('category_id'))->pluck('name', 'id'))
             ->hint(new HtmlString('<span class="grayscale">📦 </span>Product<span class="red"> *</span>'))
             ->hintColor('primary')
-            ->relationship('product', 'name')
             ->required()
             ->createOptionForm([
                 TextInput::make('name')
@@ -144,6 +160,20 @@ class Admin
             ->searchable()
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">🛍️ </span>Order Request'))
+            ->hintColor('primary');
+    }
+
+    /**
+     * @return TextInput
+     */
+    public static function getManualInvoiceNumber(): TextInput
+    {
+        return TextInput::make('extra.invoice_number')
+            ->label('')
+            ->placeholder('Enter a manual invoice number to back-date records, or leave blank for automatic generation')
+            ->columnSpanFull()
+            ->dehydrateStateUsing(fn(?string $state) => strtoupper($state))
+            ->hint(new HtmlString('<span class="grayscale">🗂 </span>Manual Invoice Number (optional)'))
             ->hintColor('primary');
     }
 
@@ -212,7 +242,7 @@ class Admin
     {
         return Select::make('purchase_status_id')
             ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🚢 </span>Shipping<span class="red"> *</span>'))
+            ->hint(new HtmlString('<span class="grayscale">🚢 </span>Shipment<span class="red"> *</span>'))
             ->hintColor('primary')
             ->required()
             ->relationship('purchaseStatus', 'name');
@@ -302,23 +332,12 @@ class Admin
     {
         return TextInput::make('buying_quantity')
             ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Contract<span class="red"> *</span>'))
+            ->hint(new HtmlString('<span class="grayscale"></span>Initial<span class="red"> *</span>'))
             ->hintColor('primary')
             ->required()
             ->numeric();
     }
 
-    /**
-     * @return TextInput
-     */
-    public static function getInitialQuantity(): TextInput
-    {
-        return TextInput::make('initial_quantity')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Initial'))
-            ->hintColor('primary')
-            ->numeric();
-    }
 
     /**
      * @return TextInput
@@ -351,25 +370,13 @@ class Admin
     {
         return TextInput::make('buying_price')
             ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Contract<span class="red"> *</span>'))
+            ->hint(new HtmlString('<span class="grayscale"></span>Initial<span class="red"> *</span>'))
 //            ->formatStateUsing(fn(?string $state) => $state ? number_format($state, 2) : null)
             ->hintColor('primary')
             ->required()
             ->numeric();
     }
 
-    /**
-     * @return TextInput
-     */
-    public static function getInitialPrice(): TextInput
-    {
-        return TextInput::make('initial_price')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Initial'))
-//            ->formatStateUsing(fn(?string $state) => $state ? number_format($state, 2) : null)
-            ->hintColor('primary')
-            ->numeric();
-    }
 
     /**
      * @return TextInput
@@ -463,7 +470,7 @@ class Admin
             ->searchable()
             ->label('')
             ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⛵ </span>Shipping Line'))
+            ->hint(new HtmlString('<span class="grayscale">⛵ </span>Shipping Company (Cargo Carrier)'))
             ->createOptionForm([
                 TextInput::make('name')
                     ->required()
@@ -475,7 +482,7 @@ class Admin
             ])
             ->createOptionAction(function (Action $action) {
                 return $action
-                    ->modalHeading('Create new shipping line')
+                    ->modalHeading('Create new Cargo carrier (shipping co)')
                     ->modalButton('Create')
                     ->modalWidth('lg');
             });
@@ -563,6 +570,20 @@ class Admin
     public static function getChangeOfStatus(): Toggle
     {
         return Toggle::make('change_of_destination')
+            ->label('');
+    }
+
+    /**
+     */
+    public static function getContainerShipping()
+    {
+        return ToggleButton::make('container_shipping')
+            ->inlineLabel()
+            ->onLabel('✔ Yes')
+            ->offLabel('✖ No')
+            ->columnSpanFull()
+            ->live()
+            ->hint(new HtmlString('<span class="grayscale">📦 </span>For this order, is there any container shipping?'))
             ->label('');
     }
 
@@ -661,6 +682,7 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">⚖ </span>Gross Weight'))
             ->hintColor('primary')
+            ->visible(fn(Get $get) => $get('container_shipping'))
             ->numeric();
     }
 
@@ -673,6 +695,7 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">⚖ </span>Net Weight'))
             ->hintColor('primary')
+            ->visible(fn(Get $get) => $get('container_shipping'))
             ->numeric();
     }
 
@@ -685,7 +708,6 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">🛳️ </span>Voyage No.'))
             ->hintColor('primary')
-            ->columnSpanFull()
             ->maxLength(255);
     }
 
@@ -710,7 +732,7 @@ class Admin
             ->label('')
             ->native(false)
             ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">️📅 ️ </span>Date'));
+            ->hint(new HtmlString('<span class="grayscale">️📅 ️ </span>Declaration Date'));
     }
 
     /**
@@ -734,7 +756,7 @@ class Admin
             ->label('')
             ->native(false)
             ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">️📅 ️</span> Date'));
+            ->hint(new HtmlString('<span class="grayscale">️📅 ️</span>BL Date'));
     }
 
     /**
@@ -770,6 +792,18 @@ class Admin
             ->requiredWith('file_path')
             ->rule(new EnglishAlphabet)
             ->columnSpanFull();
+    }
+
+    public static function getDocumentsReceived()
+    {
+
+        return CheckboxList::make('extra.docs_received')
+            ->options(self::$documents)
+            ->hint(new HtmlString('<span class="text-muted">Mark all documents received:</span>'))
+            ->live()
+            ->bulkToggleable()
+            ->label('')
+            ->columns(4);
     }
 
 
@@ -1012,12 +1046,11 @@ class Admin
     public static function showQuantities(): TextColumn
     {
         return TextColumn::make('orderDetail.buying_quantity')
-            ->label('Quantities: B. | Ini. | Pro. | Fin.')
+            ->label('Quantities: Ini. | Pro. | Fin.')
             ->state(function (Model $record): string {
                 return sprintf(
-                    "%s | %s | %s | %s",
+                    "%s | %s | %s",
                     $record->orderDetail->buying_quantity,
-                    $record->orderDetail->initial_quantity,
                     $record->orderDetail->provisional_quantity,
                     $record->orderDetail->final_quantity
                 );
@@ -1032,12 +1065,11 @@ class Admin
     public static function showPrices(): TextColumn
     {
         return TextColumn::make('orderDetail.buying_price')
-            ->label('Prices: B. | Ini. | Pro. | Fin.')
+            ->label('Prices: Ini. | Pro. | Fin.')
             ->state(function (Model $record): string {
                 return sprintf(
-                    "%s | %s | %s | %s",
+                    "%s | %s | %s",
                     number_format($record->orderDetail->buying_price, 2),
-                    number_format($record->orderDetail->initial_price, 2),
                     number_format($record->orderDetail->provisional_price, 2),
                     number_format($record->orderDetail->final_price, 2)
                 );

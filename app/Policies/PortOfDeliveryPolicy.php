@@ -30,7 +30,7 @@ class PortOfDeliveryPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'PortOfDelivery');
+        return AccessLevel::hasPermissionForModel('create', 'PortOfDelivery');
     }
 
     /**
@@ -38,7 +38,7 @@ class PortOfDeliveryPolicy
      */
     public function update(User $user, PortOfDelivery $portOfDelivery): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'PortOfDelivery');
+        return AccessLevel::hasPermissionForModel('edit', 'PortOfDelivery');
     }
 
     /**
@@ -46,7 +46,7 @@ class PortOfDeliveryPolicy
      */
     public function delete(User $user, PortOfDelivery $portOfDelivery): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'PortOfDelivery');
+        return AccessLevel::hasPermissionForModel('delete', 'PortOfDelivery');
     }
 
     /**
@@ -54,6 +54,6 @@ class PortOfDeliveryPolicy
      */
     public function restore(User $user, PortOfDelivery $portOfDelivery): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'PortOfDelivery');
+        return AccessLevel::hasPermissionForModel('restore', 'PortOfDelivery');
     }
 }

@@ -31,7 +31,7 @@ class BuyerPolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Buyer');
+        return AccessLevel::hasPermissionForModel('create', 'Buyer');
     }
 
     /**
@@ -39,7 +39,7 @@ class BuyerPolicy
      */
     public function update(User $user, Buyer $buyer): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Buyer');
+        return AccessLevel::hasPermissionForModel('edit', 'Buyer');
     }
 
     /**
@@ -47,7 +47,7 @@ class BuyerPolicy
      */
     public function delete(User $user, Buyer $buyer): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Buyer');
+        return AccessLevel::hasPermissionForModel('delete', 'Buyer');
     }
 
     /**
@@ -55,6 +55,6 @@ class BuyerPolicy
      */
     public function restore(User $user, Buyer $buyer): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'Buyer');
+        return AccessLevel::hasPermissionForModel('restore', 'Buyer');
     }
 }

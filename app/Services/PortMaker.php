@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
+
 class PortMaker
 {
     protected static array $iranianPorts = [
@@ -41,15 +43,19 @@ class PortMaker
 
     public static function getIranianPorts(): array
     {
-        $sortedPorts = self::$iranianPorts;
-        sort($sortedPorts);
-        return $sortedPorts;
+        return Cache::remember('iranian_ports', 600, function () {
+            $sortedPorts = self::$iranianPorts;
+            sort($sortedPorts);
+            return $sortedPorts;
+        });
     }
 
     public static function getChinesePorts(): array
     {
-        $sortedPorts = self::$chinesePorts;
-        sort($sortedPorts);
-        return $sortedPorts;
+        return Cache::remember('chinese_ports', 600, function () {
+            $sortedPorts = self::$chinesePorts;
+            sort($sortedPorts);
+            return $sortedPorts;
+        });
     }
 }

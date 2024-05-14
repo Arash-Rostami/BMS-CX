@@ -9,6 +9,9 @@ class QuoteToken extends Model
 {
     use HasFactory;
 
+    public static $filamentDetection = false;
+
+
     protected $fillable = [
         'token',
         'quote_id',

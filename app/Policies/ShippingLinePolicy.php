@@ -31,7 +31,7 @@ class ShippingLinePolicy
      */
     public function create(User $user): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'ShippingLine');
+        return AccessLevel::hasPermissionForModel('create', 'ShippingLine');
 
     }
 
@@ -40,7 +40,7 @@ class ShippingLinePolicy
      */
     public function update(User $user, ShippingLine $shippingLine): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'ShippingLine');
+        return AccessLevel::hasPermissionForModel('edit', 'ShippingLine');
 
     }
 
@@ -49,7 +49,7 @@ class ShippingLinePolicy
      */
     public function delete(User $user, ShippingLine $shippingLine): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'ShippingLine');
+        return AccessLevel::hasPermissionForModel('delete', 'ShippingLine');
 
     }
 
@@ -58,7 +58,6 @@ class ShippingLinePolicy
      */
     public function restore(User $user, ShippingLine $shippingLine): bool
     {
-        return AccessLevel::hasPermissionForModel('view', 'ShippingLine');
-
+        return AccessLevel::hasPermissionForModel('restore', 'ShippingLine');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 
+use App\Filament\Resources\PaymentRequestResource;
 use App\Filament\Resources\PaymentResource;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
@@ -20,5 +21,11 @@ class ListPayments extends ListRecords
             ExcelImportAction::make()
                 ->color("success"),
         ];
+    }
+
+
+    protected function getHeaderWidgets(): array
+    {
+        return PaymentResource::getWidgets();
     }
 }

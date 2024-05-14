@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Vite;
 use Laravel\Sanctum\HasApiTokens;
 use Filament\Models\Contracts\FilamentUser;
@@ -170,7 +171,8 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
 
     public static function isAdmin()
     {
-        return self::role === 'Admin';
+        $user = auth()->user();
+        return $user && $user->role === 'Admin';
     }
 
     public static function isUserAuthorizedForOrderStatus()
@@ -183,24 +185,47 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
 
     public static function getManager()
     {
-        return self::where('role', '=', 'manager')->orwhere('role', '=', 'admin')->get();
+        $cacheKey = 'users_with_role_manager_or_admin';
+
+        return Cache::remember($cacheKey, 60, function () {
+            return self::where('role', 'manager')
+                ->orWhere('role', 'admin')
+                ->get();
+        });
     }
 
     public static function getAccountant()
     {
-        return self::where('role', '=', 'accountant')->orwhere('role', '=', 'admin')->get();
+        $cacheKey = 'users_with_role_accountant_or_admin';
+
+        return Cache::remember($cacheKey, 60, function () {
+            return self::where('role', 'accountant')
+                ->orWhere('role', 'admin')
+                ->get();
+        });
     }
 
     public static function getAgent()
     {
-        return self::where('role', '=', 'agent')->orwhere('role', '=', 'admin')->get();
+        $cacheKey = 'users_with_role_agent_or_admin';
+
+        return Cache::remember($cacheKey, 60, function () {
+            return self::where('role', 'agent')
+                ->orWhere('role', 'admin')
+                ->get();
+        });
     }
 
     public static function getPartner()
     {
-        return self::where('role', '=', 'partner')->orwhere('role', '=', 'admin')->get();
-    }
+        $cacheKey = 'users_with_role_partner_or_admin';
 
+        return Cache::remember($cacheKey, 60, function () {
+            return self::where('role', 'partner')
+                ->orWhere('role', 'admin')
+                ->get();
+        });
+    }
 
     public function scopeByRole($query, $role)
     {

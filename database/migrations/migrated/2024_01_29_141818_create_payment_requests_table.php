@@ -35,7 +35,7 @@ return new class extends Migration {
             $table->integer('part')->nullable();
             $table->text('reason_for_payment')->nullable();
             $table->enum('type_of_payment', self::$typesOfPayment)->nullable()->default('advance');
-            $table->enum('departments', self::$departments)->nullable();
+            $table->text('departments')->nullable();
             $table->text('purpose')->nullable();
             $table->enum('status', self::$status)->default('pending');
             // Amounts and Deadline
@@ -65,6 +65,8 @@ return new class extends Migration {
             $table->foreign('contractor_id')->references('id')->on('contractors');
             $table->integer('payee_id')->unsigned()->index()->nullable();
             $table->foreign('payee_id')->references('id')->on('payees');
+            $table->integer('department_id')->unsigned()->index()->nullable();
+            $table->foreign('department_id')->references('id')->on('departments');
             $table->integer('attachment_id')->unsigned()->index()->nullable();
             $table->foreign('attachment_id')->references('id')->on('attachments');
             // Additional Data

@@ -6,6 +6,7 @@ use Egulias\EmailValidator\Result\Reason\Reason;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class PaymentRequest extends Model
 {
@@ -17,41 +18,6 @@ class PaymentRequest extends Model
         'deadline' => 'datetime',
         'extra' => 'json',
     ];
-
-//    public static array $organizationalReasonsForPayment = [
-//        'AdvertisingAndMarketingExpenses' => 'Advertising and Marketing Expenses',
-//        'CharitableDonationsOrSponsorships' => 'Charitable Donations or Sponsorships',
-//        'ConsultingFees' => 'Consulting Fees',
-//        'EmployeesSalariesWagesBenefitsOrPotentialBonuses' => 'Employees\' Wages, Benefits, or Potential Bonuses',
-//        'InsurancePremiums' => 'Insurance Premiums',
-//        'InterOrganizationalTransfers' => 'Inter-Organizational Transfers',
-//        'ITAndSoftwareServices' => 'IT and Software Services',
-//        'LegalFees' => 'Legal Fees',
-//        'MaintenanceAndRepair' => 'Maintenance and Repair',
-//        'PersonalExpenses' => 'Personal Expenses',
-//        'PortExpenses' => 'Port Expenses',
-//        'PurchaseOfTradingGoods' => 'Purchase of Trading Goods',
-//        'PurchaseOfNonTradingGoods' => 'Purchase of Non-Trading Goods',
-//        'PurchaseOfTradingServices' => 'Purchase of Trading Services',
-//        'PurchaseOfNonTradingServices' => 'Purchase of Non-Trading Services',
-//        'RDExpenses' => 'R&D Expenses',
-//        'TransportationFees' => 'Transportation Fees',
-//        'TravelAndAccommodationExpenses' => 'Travel and Accommodation Expenses',
-//    ];
-
-//    public static array $reasonsForPayment = [
-//        'Order' => 'Order',
-//        'ContainerDemurrage' => 'Container Demurrage',
-//        'CustomsAndPortFees' => 'Customs & Port Fees',
-//        'ContainerAcceptance' => 'Container Acceptance',
-//        'ShrinkWrap' => 'Shrink Wrap',
-//        'ContainerLashing' => 'Container Lashing',
-//        'SgsReport' => 'SGS Report',
-//        'JumboBoxPallet' => 'Jumbo/Box/Pallet',
-//        'DrumPackaging' => 'Drum Packaging',
-//        'Trucking' => 'Trucking',
-//        'Other' => 'Other',
-//    ];
 
 
     protected $fillable = [
@@ -82,6 +48,7 @@ class PaymentRequest extends Model
         'supplier_id',
         'contractor_id',
         'payee_id',
+        'department_id',
     ];
 
     public static array $typesOfPayment = [
@@ -107,10 +74,35 @@ class PaymentRequest extends Model
     ];
 
 
+//
+//    /**
+//     * Get the attachment associated with the payment request (nullable).
+//     */
+//    public function attachment()
+//    {
+//        return $this->belongsTo(Attachment::class, 'attachment_id');
+//    }
+
     public function attachments()
     {
         return $this->hasMany(Attachment::class);
     }
+
+
+    /**
+     * Get the user that owns the payment request.
+     */
+    public
+    function contractor()
+    {
+        return $this->belongsTo(Contractor::class);
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
 
     protected static function booted()
     {
@@ -121,12 +113,30 @@ class PaymentRequest extends Model
 
     public static function getStatusCounts()
     {
-        return static::select('status')
-            ->selectRaw('count(*) as count')
-            ->groupBy('status')
-            ->get()
-            ->keyBy('status')
-            ->map(fn($item) => $item->count);
+        $cacheKey = 'payment_request_status_counts';
+
+        return Cache::remember($cacheKey, 60, function () {
+            return static::select('status')
+                ->selectRaw('count(*) as count')
+                ->groupBy('status')
+                ->get()
+                ->keyBy('status')
+                ->map(fn($item) => $item->count);
+        });
+    }
+
+    public static function showApproved($orderId)
+    {
+        $cacheKey = 'approved_payment_requests_' . $orderId;
+
+        return Cache::remember($cacheKey, 60, function () use ($orderId) {
+            return self::whereNotIn('status', ['cancelled', 'rejected', 'completed'])
+                ->where('order_id', $orderId)
+                ->pluck('type_of_payment', 'id')
+                ->map(function ($type) {
+                    return self::$typesOfPayment[$type] ?? $type;
+                });
+        });
     }
 
 
@@ -142,21 +152,17 @@ class PaymentRequest extends Model
         return $displayName;
     }
 
-
-    public static function showApproved($orderId)
+    public function getRemainingAmountAttribute()
     {
-        return self::whereNotIn('status', ['cancelled', 'rejected', 'completed'])
-            ->where('order_id', $orderId)
-            ->pluck('type_of_payment', 'id')
-            ->map(function ($type) {
-                return self::$typesOfPayment[$type] ?? $type;
-            });
+        return $this->total_amount - $this->requested_amount;
     }
+
 
     public static function showAmongAllReasons($reason)
     {
         return Allocation::find($reason)->reason;
     }
+
 
     public function order()
     {
@@ -173,19 +179,20 @@ class PaymentRequest extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public function reason()
-    {
-        return $this->belongsTo(Reason::class, 'reason_for_payment');
-    }
 
     /**
-     * Get the user that owns the payment request.
+     * Get the payee associated with the payment request (nullable).
      */
-    public
-    function contractor()
+    public function payee()
     {
-        return $this->belongsTo(Contractor::class);
+        return $this->belongsTo(Payee::class, 'payee_id');
     }
+
+    public function reason()
+    {
+        return $this->belongsTo(Allocation::class, 'reason_for_payment');
+    }
+
 
     /**
      * Get the user that owns the payment request.
@@ -204,21 +211,4 @@ class PaymentRequest extends Model
     {
         return $this->belongsTo(User::class);
     }
-
-    /**
-     * Get the payee associated with the payment request (nullable).
-     */
-    public function payee()
-    {
-        return $this->belongsTo(Payee::class, 'payee_id');
-    }
-
-    /**
-     * Get the attachment associated with the payment request (nullable).
-     */
-    public function attachment()
-    {
-        return $this->belongsTo(Attachment::class, 'attachment_id');
-    }
-
 }
