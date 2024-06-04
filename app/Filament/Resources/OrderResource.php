@@ -9,6 +9,7 @@ use App\Filament\Resources\Operational\OrderResource\Widgets\StatsOverview;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Resources\OrderResource\RelationManagers;
 use App\Models\Order;
+use App\Services\TableObserver;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Repeater;
@@ -99,24 +100,33 @@ class OrderResource extends Resource
                     ->schema([
                         Forms\Components\Group::make()
                             ->schema([
+                                Admin::getPercentage(),
+                                Admin::getCurrency(),
+                                Admin::getPayment(),
+                                Admin::getTotal(),
+                            ])
+                            ->columns(4)
+                            ->columnSpanFull(),
+                        Forms\Components\Group::make()
+                            ->schema([
+                                Forms\Components\Section::make(new HtmlString('<span class="text-sm grayscale">💰 Unit Price</span>'))
+                                    ->schema([
+                                        Admin::getPrice(),
+                                        Admin::getProvisionalPrice(),
+                                        Admin::getFinalPrice(),
+                                    ])->columns(3)
+                            ]),
+                        Forms\Components\Group::make()
+                            ->schema([
                                 Forms\Components\Section::make(new HtmlString('<span class="text-sm grayscale">⏲️ Quantity</span>'))
                                     ->schema([
                                         Admin::getQuantity(),
                                         Admin::getProvisionalQuantity(),
                                         Admin::getFinalQuantity(),
                                     ])->columns(3)
-                            ])->columnSpan(2),
-                        Forms\Components\Group::make()
-                            ->schema([
-                                Forms\Components\Section::make(new HtmlString('<span class="text-sm grayscale">💰 Price</span>'))
-                                    ->schema([
-                                        Admin::getPrice(),
-                                        Admin::getProvisionalPrice(),
-                                        Admin::getFinalPrice(),
-                                    ])->columns(3)
-                            ])->columnSpan(2)
-                    ])->columns(4)
-                    ->columnSpanFull()
+                            ])
+                    ])
+                    ->columns(2)
                     ->collapsible(),
 
                 /*Logistics Info*/
@@ -151,23 +161,23 @@ class OrderResource extends Resource
                             ->schema([
                                 Forms\Components\Section::make()
                                     ->schema([
-                                        Admin::getFCL(),
-                                        Admin::getFCLType(),
-                                        Admin::getNumberOfContainer(),
-                                        Admin::getOcceanFreight(),
-                                        Admin::getTHC(),
                                         Admin::getBookingNumber(),
                                         Admin::getFreeTime(),
-                                    ])->columns(4),
+                                        Admin::getOcceanFreight(),
+                                        Admin::getGrossWeight(),
+                                        Admin::getNetWeight(),
+                                    ])->columns(5),
                                 Forms\Components\Group::make()
                                     ->schema([
                                         Admin::getContainerShipping(),
                                         Forms\Components\Section::make()
                                             ->schema([
-                                                Admin::getGrossWeight(),
-                                                Admin::getNetWeight(),
+                                                Admin::getFCL(),
+                                                Admin::getFCLType(),
+                                                Admin::getNumberOfContainer(),
+                                                Admin::getTHC(),
                                             ])
-                                            ->columns(2)
+                                            ->columns(4)
                                             ->visible(fn(Get $get) => $get('container_shipping'))
                                     ]),
                             ])->columnSpan(4),
@@ -180,26 +190,28 @@ class OrderResource extends Resource
                 Section::make('Shipping Docs:')
                     ->relationship('doc')
                     ->schema([
+                        Admin::getDeclarationNumber(),
+                        Admin::getDeclarationDate(),
                         Forms\Components\Group::make()
                             ->schema([
                                 Section::make(new HtmlString('<span class="text-sm">1️⃣⛴</span>'))
                                     ->schema([
                                         Admin::getVoyageNumber(),
-                                        Admin::getDeclarationNumber(),
-                                        Admin::getDeclarationDate(),
                                         Admin::getBLNumber(),
                                         Admin::getBLDate(),
-                                    ])->columns(5),
+                                    ])->columns(3),
+                            ]),
+                        Forms\Components\Group::make()
+                            ->schema([
                                 Section::make(new HtmlString('<span class="text-sm">2️⃣⛴</span>'))
                                     ->schema([
-                                        Admin::getVoyageNumber(),
-                                        Admin::getDeclarationNumber(),
-                                        Admin::getDeclarationDate(),
-                                        Admin::getBLNumber(),
-                                        Admin::getBLDate(),
-                                    ])->columns(5),
+                                        Admin::getVoyageNumberSecondLeg(),
+                                        Admin::getBLNumberSecondLeg(),
+                                        Admin::getBLDateSecondLeg(),
+                                    ])->columns(3),
                             ]),
                     ])
+                    ->columns(2)
                     ->collapsed()
                     ->collapsible(),
 
@@ -264,8 +276,8 @@ class OrderResource extends Resource
     {
         return [
             Operational\OrderResource\RelationManagers\OrderRequestRelationManager::class,
-//            Operational\OrderResource\RelationManagers\PaymentRequestsRelationManager::class,
-//            Operational\OrderResource\RelationManagers\PaymentsRelationManager::class,
+            Operational\OrderResource\RelationManagers\PaymentRequestsRelationManager::class,
+            Operational\OrderResource\RelationManagers\PaymentsRelationManager::class,
         ];
     }
 
@@ -318,17 +330,19 @@ class OrderResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->poll(60)
             ->groups([
-                Admin::groupByCategory(),
-                Admin::groupByProduct(),
                 Admin::groupByBuyer(),
-                Admin::groupBySupplier(),
+                Admin::groupByCategory(),
+                Admin::groupByCurrency(),
+                Admin::groupByDeliveryTerm(),
+                Admin::groupByInvoiceNumber(),
                 Admin::groupByPackaging(),
+                Admin::groupByPart(),
+                Admin::groupByProduct(),
+                Admin::groupByProformaNumber(),
                 Admin::groupByShippingLine(),
                 Admin::groupByStage(),
                 Admin::groupByStatus(),
-                Admin::groupByDeliveryTerm(),
-                Admin::groupByInvoiceNumber(),
-                Admin::groupByProformaNumber(),
+                Admin::groupBySupplier(),
             ]);
     }
 
@@ -342,6 +356,7 @@ class OrderResource extends Resource
                             Split::make([
                                 Admin::showProformaNumber(),
                                 Admin::showProformaDate(),
+                                Admin::showPercentage(),
                                 Admin::showInvoiceNumber(),
                                 Admin::showOrderPart(),
                             ]),
@@ -349,15 +364,18 @@ class OrderResource extends Resource
                                 Admin::showCategory(),
                                 Admin::showProduct(),
                                 Admin::showGrade(),
+                                Admin::showPurchaseStatus(),
                                 Admin::showOrderStatus(),
+
                             ]),
                             Split::make([
                                 Stack::make([
                                     Admin::showOrderNumber(),
-                                    Admin::showPurchaseStatus(),
                                 ]),
-//                                Admin::showPaymentRequests(),
+//                                TableObserver::showMissingDataWithRel(-12),
+                                Admin::showPaymentRequests(),
                                 Admin::showPayments(),
+
                             ]),
                         ])->space(2),
                     ])
@@ -370,6 +388,7 @@ class OrderResource extends Resource
     {
         return $table
             ->columns([
+                TableObserver::showMissingDataWithRel(-12),
                 Admin::showProformaNumber(),
                 Admin::showProformaDate(),
                 Admin::showInvoiceNumber(),
@@ -383,12 +402,16 @@ class OrderResource extends Resource
                 Admin::showBuyer(),
                 Admin::showQuantities(),
                 Admin::showPrices(),
+                Admin::showPercentage(),
                 Admin::showDeliveryTerm(),
                 Admin::showPackaging(),
                 Admin::showShippingLine(),
                 Admin::showPortOfDelivery(),
                 Admin::showChangeOfDestination(),
+                Admin::showLoadingStartline(),
                 Admin::showLoadingDeadline(),
+                Admin::showEtd(),
+                Admin::showEta(),
                 Admin::showFCL(),
                 Admin::showFCLType(),
                 Admin::showNumberOfContainers(),
@@ -398,11 +421,14 @@ class OrderResource extends Resource
                 Admin::showGrossWeight(),
                 Admin::showNetWeight(),
                 Admin::showBookingNumber(),
-                Admin::showVoyageNumber(),
                 Admin::showDeclarationNumber(),
-                Admin::showBLNumber(),
                 Admin::showDeclarationDate(),
+                Admin::showVoyageNumber(),
+                Admin::showBLNumber(),
                 Admin::showBLDate(),
+                Admin::showVoyageNumberLegTwo(),
+                Admin::showBLNumberLegTwo(),
+                Admin::showBLDateLegTwo(),
                 Admin::showOrderNumber(),
             ])
             ->striped();

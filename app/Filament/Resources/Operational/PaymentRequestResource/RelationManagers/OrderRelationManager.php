@@ -44,7 +44,13 @@ class OrderRelationManager extends RelationManager
                 AdminOrder::filterSoftDeletes()
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->url(function (?Model $record) {
+                        if (!$record || !$record->id) {
+                            return null;
+                        }
+                        return OrderResource::getUrl('view', ['record' => $record->id]);
+                    }, shouldOpenInNewTab: true),
                 Tables\Actions\EditAction::make()
                     ->icon('heroicon-m-arrow-top-right-on-square')
                     ->url(function (?Model $record) {

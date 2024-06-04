@@ -275,11 +275,8 @@ class Admin
      */
     public static function showBuyer(): TextColumn
     {
-        return TextColumn::make('buyer_id')
+        return TextColumn::make('buyer.name')
             ->label('Buyer')
-            ->state(function (Model $record): string {
-                return $record->buyer->name;
-            })
             ->sortable()
             ->searchable()
             ->color('secondary');
@@ -306,11 +303,8 @@ class Admin
      */
     public static function showSupplier(): TextColumn
     {
-        return TextColumn::make('supplier_id')
+        return TextColumn::make('supplier.name')
             ->label('Supplier')
-            ->state(function (Model $record): string|null {
-                return optional($record->supplier)->name;
-            })
             ->sortable()
             ->searchable()
             ->toggleable()

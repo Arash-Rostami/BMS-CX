@@ -14,28 +14,28 @@ class StatsOverview extends BaseWidget
         $statusCounts = Order::getStatusCounts(); // Fetch the status counts using the static method
 
         return [
-            Stat::make('In Transit', $statusCounts->get(2, 0))
+            Stat::make('In Transit', $statusCounts->get(3, 0))
                 ->extraAttributes([
                     'class' => 'hidden md:block border-2 border-red-500',
                 ])
                 ->label(new HtmlString("<span class='grayscale'>🚧 In Transit</span>"))
                 ->color('secondary'),
 
-            Stat::make('Customs', $statusCounts->get(3, 0))
+            Stat::make('Customs', $statusCounts->get(4, 0))
                 ->extraAttributes([
                     'class' => 'hidden md:block',
                 ])
                 ->label(new HtmlString("<span class='grayscale'>👮 Customs</span>"))
                 ->color('secondary'),
 
-            Stat::make('Delivered', $statusCounts->get(4, 0))
+            Stat::make('Delivered', $statusCounts->get(5, 0))
                 ->extraAttributes([
                     'class' => 'hidden md:block',
                 ])
                 ->label(new HtmlString("<span class='grayscale'>🚚 Delivered</span>"))
                 ->color('secondary'),
 
-            Stat::make('Shipped', $statusCounts->get(5, 0))
+            Stat::make('Shipped', $statusCounts->get(6, 0))
                 ->extraAttributes([
                     'class' => 'hidden md:block',
                 ])

@@ -34,10 +34,11 @@ class ListOrders extends ListRecords
         return [
             null => Tab::make('All'),
             'Pending' => Tab::make()->query(fn ($query) => $query->where('purchase_status_id', 1)),
-            'In Transit' => Tab::make()->query(fn ($query) => $query->where('purchase_status_id', 2)),
-            'Customs' => Tab::make()->query(fn ($query) => $query->where('purchase_status_id', 3)),
-            'Delivered' => Tab::make()->query(fn ($query) => $query->where('purchase_status_id', 4)),
-            'Shipped' => Tab::make()->query(fn ($query) => $query->where('purchase_status_id', 5)),
+            'Released' => Tab::make()->query(fn ($query) => $query->where('purchase_status_id', 2)),
+            'In Transit' => Tab::make()->query(fn ($query) => $query->where('purchase_status_id', 3)),
+            'Customs' => Tab::make()->query(fn ($query) => $query->where('purchase_status_id', 4)),
+            'Delivered' => Tab::make()->query(fn ($query) => $query->where('purchase_status_id', 5)),
+            'Shipped' => Tab::make()->query(fn ($query) => $query->where('purchase_status_id', 6)),
         ];
     }
 }

@@ -21,6 +21,7 @@ use Filament\Forms\Get;
 use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\Tabs\Tab;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -34,6 +35,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -114,10 +116,9 @@ class PaymentRequestResource extends Resource
                                                     ->schema([
                                                         Section::make()
                                                             ->schema([
-                                                                Admin::getAttacmentFileName()
+                                                                Admin::getAttachmentFileName()
                                                             ])
                                                     ])
-                                                    ->hidden(fn($operation) => $operation == 'edit')
                                                     ->columnSpan(2)
                                             ])->columns(4)
                                             ->itemLabel('Attachments:')
@@ -326,7 +327,7 @@ class PaymentRequestResource extends Resource
     {
         return $table
             ->columns([
-                TableObserver::showMissingData(-6),
+                TableObserver::showMissingData(-5),
                 Admin::showDepartment(),
                 Admin::showCostCenter(),
                 Admin::showInvoiceNumber(),

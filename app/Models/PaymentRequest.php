@@ -74,14 +74,6 @@ class PaymentRequest extends Model
     ];
 
 
-//
-//    /**
-//     * Get the attachment associated with the payment request (nullable).
-//     */
-//    public function attachment()
-//    {
-//        return $this->belongsTo(Attachment::class, 'attachment_id');
-//    }
 
     public function attachments()
     {
@@ -143,7 +135,7 @@ class PaymentRequest extends Model
     public function getCustomizedDisplayName(): string
     {
         $invoiceNumber = $this->order_invoice_number;
-        $partInfo = !is_null($this->part) ? ' (part ' . $this->part . ')' : '';
+        $partInfo = !is_null($this->part) ? ' (part ' . Order::find($this->part)->part . ')' : '';
         $formattedDate = $this->deadline->format('Y-m-d');
 
         $displayName = $invoiceNumber ?? self::showAmongAllReasons($this->reason_for_payment);

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Filament\Resources\Operational\PaymentResource\Pages\CreatePayment;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,6 +37,7 @@ class Payment extends Model
         static::creating(function ($post) {
             $post->user_id = auth()->id();
         });
+
     }
 
 
@@ -64,6 +66,7 @@ class Payment extends Model
                 ->toArray();
         });
     }
+
     public function order()
     {
         return $this->hasOneThrough(Order::class, PaymentRequest::class, 'id', 'invoice_number', 'payment_request_id', 'order_invoice_number');

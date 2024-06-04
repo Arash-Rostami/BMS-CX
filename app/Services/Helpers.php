@@ -15,6 +15,11 @@ function capitalizeFirstLetters(string $text): string
     return implode(' ', $processedWords);
 }
 
+function configureIfAppIsOnline()
+{
+    return config('app.storage') === 'production';
+}
+
 function getTableDesign()
 {
     return data_get(optional(auth()->user()->info), 'tableDesign');

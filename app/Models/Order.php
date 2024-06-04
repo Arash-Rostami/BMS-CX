@@ -113,14 +113,6 @@ class Order extends Model
     }
 
 
-//    /**
-//     * Get the payment requests for the user.
-//     */
-//    public function paymentRequests()
-//    {
-//        return $this->hasMany(PaymentRequest::class, 'pa');
-//    }
-
 
     /**
      * Get the stock associated with the order.
@@ -151,7 +143,8 @@ class Order extends Model
      */
     public function payments()
     {
-        return $this->hasMany(Payment::class, 'order_id');
+        return $this->hasManyThrough(Payment::class, PaymentRequest::class, 'order_invoice_number', 'payment_request_id', 'invoice_number', 'id');
+
     }
 
     /**
@@ -159,7 +152,7 @@ class Order extends Model
      */
     public function paymentRequests()
     {
-        return $this->hasMany(PaymentRequest::class, 'order_id');
+        return $this->hasMany(PaymentRequest::class, 'order_invoice_number', 'invoice_number');
     }
 
 

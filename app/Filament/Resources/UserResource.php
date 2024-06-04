@@ -219,7 +219,7 @@ class UserResource extends Resource
             'index' => Core\UserResource\Pages\ListUsers::route('/'),
             'create' => Core\UserResource\Pages\CreateUser::route('/create'),
             'edit' => Core\UserResource\Pages\EditUser::route('/{record}/edit'),
-            'setting' => Core\UserResource\Pages\Settings::route('/abc/{record}'),
+            'version' => Core\UserResource\Pages\Versions::route('/versions'),
         ];
     }
 

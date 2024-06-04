@@ -45,15 +45,13 @@ return [
         ],
         'filament' => [
             'driver' => 'local',
-            'root' => public_path(''), // dev
-//            'root' => realpath(base_path().'/../public_html/trade'), // prod
+            'root' => configureIfAppIsOnline() ? realpath(base_path() . '/../public_html/trade') : public_path(''),
             'url' => env('APP_URL'),
             'visibility' => 'public',
         ],
         'quote' => [
             'driver' => 'local',
-            'root' => public_path(''), // dev
-//            'root' => realpath(base_path().'/../public_html/trade'), // prod
+            'root' => configureIfAppIsOnline() ? realpath(base_path() . '/../public_html/trade') : public_path(''),
             'url' => env('APP_URL'),
             'visibility' => 'public',
         ],

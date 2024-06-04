@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 use App\Models\Order;
 use App\Models\PaymentRequest;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Rules\EnglishAlphabet;
 use App\Services\NotificationManager;
 use Carbon\Carbon;
@@ -22,7 +23,6 @@ use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Component as Livewire;
@@ -41,7 +41,7 @@ class Admin
         return function (TemporaryUploadedFile $file, Get $get, ?Model $record, Livewire $livewire): string {
             $name = $get('name') ?? $record->name;
 
-            $invoiceNumber = $livewire->data['invoice_number'] ?? 'Unknown-Invoice';
+            $paymentRequest = $livewire->data['payment_request_id'] ?? 'Unknown-Request';
 
             // File extension
             $extension = $file->getClientOriginalExtension();
@@ -49,7 +49,7 @@ class Admin
             // Unique identifier
             $timestamp = Carbon::now()->format('YmdHis');
             // New filename with extension
-            $newFileName = "Payment-{$invoiceNumber}-{$timestamp}-{$name}";
+            $newFileName = "Payment-{$paymentRequest}-{$timestamp}-{$name}";
 
             // Sanitizing the file name
             return Str::slug($newFileName, '-') . ".{$extension}";
@@ -347,14 +347,18 @@ class Admin
             })
             ->badge()
             ->summarize([
-                Summarizer::make()
-                    ->label('Total')
-                    ->using(function (Builder $query) {
-                        return $query->selectRaw('SUM(total_amount - requested_amount) AS total_remaining')
-                            ->whereNull('deleted_at')
-                            ->value('total_remaining');
-                    })
-
+//                Summarizer::make()->label('Sum')
+//                    ->using(fn(Builder $query) => $query->from('payment_requests')
+//                        ->rightJoin('payments', 'payment_requests.id', '=', 'payments.payment_request_id')
+//                        ->selectRaw('COALESCE(SUM(payment_requests.total_amount) - SUM(payments.amount), 0) AS total_remaining')
+//                        ->whereNull('payment_requests.deleted_at')
+//                        ->whereNull('payments.deleted_at')
+//                        ->value('total_remaining')),
+                Summarizer::make()->label('Total')
+                    ->using(fn(Builder $query) => $query
+                        ->selectRaw('COALESCE(SUM(total_amount - requested_amount), 0) AS total_remaining')
+                        ->whereNull('deleted_at')
+                        ->value('total_remaining')),
             ]);
     }
 
@@ -563,15 +567,15 @@ class Admin
 
     public static function send(Model $record): void
     {
-        $data = [
-            'record' => $record->order->invoice_number,
-            'type' => 'delete',
-            'module' => 'payment',
-            'url' => route('filament.admin.resources.payments.index'),
-            'recipients' => User::all()
-        ];
 
-        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => $record->paymentRequests->order_invoice_number ?? $record->paymentRequests->reason->reason,
+                'type' => 'delete',
+                'module' => 'payment',
+                'url' => route('filament.admin.resources.payments.index'),
+            ]));
+        }
     }
 
 
@@ -643,7 +647,7 @@ class Admin
         $currency = $record->paymentRequests->currency ?? '';
         $requestedAmount = number_format($record->paymentRequests->requested_amount ?? 0);
         $totalAmount = number_format($record->paymentRequests->total_amount ?? 0);
-        $remainingAmount = number_format($record->paymentRequests->total_amount - $record->paymentRequests->requested_amount ?? 0);
+        $remainingAmount = number_format($record->paymentRequests->total_amount - $record->amount ?? 0);
 
         return [$currency, $requestedAmount, $totalAmount, $remainingAmount];
     }

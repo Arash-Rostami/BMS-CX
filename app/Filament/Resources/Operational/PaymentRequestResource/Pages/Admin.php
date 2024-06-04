@@ -15,6 +15,7 @@ use App\Policies\PaymentRequestPolicy;
 use App\Rules\EnglishAlphabet;
 use App\Services\NotificationManager;
 use Carbon\Carbon;
+use Closure;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -29,6 +30,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Support\Str;
@@ -471,10 +473,10 @@ class Admin
      */
     public static function getTotalOrPart(): ButtonGroup
     {
-        return ButtonGroup::make('total')
+        return ButtonGroup::make('extra.collectivePayment')
             ->label('')
-            ->options(['total' => 'Total', 'part' => 'Part'])
-            ->default('total')
+            ->options([1 => 'Total', 0 => 'Part'])
+            ->default(1)
             ->live()
             ->columnSpan(1)
             ->hint(new HtmlString('<span class="grayscale">🔍 </span>Scope<span class="red"> *</span>'))
@@ -487,9 +489,9 @@ class Admin
         return Select::make('part')
             ->options(function (Get $get): array {
                 $invoiceNumber = $get('order_invoice_number');
-                $total = $get('total');
+                $total = $get('extra.collectivePayment');
 
-                if ($invoiceNumber && $total == 'part') {
+                if ($invoiceNumber && $total == 0) {
                     return Order::where('order_status', '<>', 'closed')
                         ->where('invoice_number', $invoiceNumber)
                         ->get()
@@ -498,8 +500,8 @@ class Admin
                 }
                 return [];
             })
-            ->requiredIf('total', 'total')
-            ->visible(fn(Get $get) => $get('total') == 'part')
+            ->requiredIf('extra.collectivePayment', 1)
+            ->visible(fn(Get $get) => $get('extra.collectivePayment') == 0)
             ->live()
             ->label('')
             ->hintColor('primary')
@@ -526,6 +528,10 @@ class Admin
                     ->imageEditor()
                     ->openable()
                     ->downloadable()
+                    ->rules(['max:2500'])
+                    ->validationMessages([
+                        'max' => 'The file size must NOT exceed 2.5 MB!',
+                    ])
                     ->columnSpanFull()
             ]);
     }
@@ -533,9 +539,9 @@ class Admin
     /**
      * @return TextInput
      */
-    public static function getAttacmentFileName(): TextInput
+    public static function getAttachmentFileName(): TextInput
     {
-        return TextInput::make('attachment_name')
+        return TextInput::make('name')
             ->label('')
             ->placeholder('Type in English ONLY')
             ->hint(new HtmlString('<span class="grayscale">ℹ️️️ </span>Title/Name'))
@@ -545,26 +551,6 @@ class Admin
             ->columnSpanFull();
     }
 
-
-//    public static function showMissingData(): TextColumn
-//    {
-//        return TextColumn::make('data')
-//            ->label('Missing Info')
-//            ->grow(false)
-//            ->state(function (Model $record) {
-//                $nullCount = -6;
-//                foreach ($record->getAttributes() as $key => $value) {
-//                    if (is_null($value)) {
-//                        $nullCount++;
-//                    }
-//                }
-//                return $nullCount === 0 ? 'None' : "$nullCount Missing";
-//            })
-//            ->icon(fn($state): string => 'heroicon-s-puzzle-piece')
-//            ->color('danger')
-//            ->toggleable()
-//            ->badge();
-//    }
 
     /**
      * @return TextColumn
@@ -1273,10 +1259,16 @@ class Admin
      */
     public static function getOrderRelation(Model $record)
     {
-        if (isset($record->part)) {
-            return $record->part != null ? $record->orderPart->invoice_number : $record->order->invoice_number;
+
+        if (!isset($record->order_invoice_number)) {
+            return PaymentRequest::showAmongAllReasons($record->reason_for_payment);
         }
-        return PaymentRequest::showAmongAllReasons($record->reason_for_payment);
+
+        if (isset($record->part) && $record->part != null) {
+            return $record->orderPart->invoice_number;
+        }
+
+        return $record->order->invoice_number;
     }
 
 
@@ -1286,14 +1278,15 @@ class Admin
     public static function nameUploadedFile(): \Closure
     {
         return function (TemporaryUploadedFile $file, Get $get, ?Model $record): string {
-            $name = $get('attachment_name') ?? $record->name;
+
+            $name = $get('name') ?? $file->getClientOriginalName();
             // File extension
             $extension = $file->getClientOriginalExtension();
 
             // Unique identifier
             $timestamp = Carbon::now()->format('YmdHis');
             // New filename with extension
-            $newFileName = "Payment-{$timestamp}-{$name}";
+            $newFileName = "Payment-Request-{$timestamp}-{$name}";
 
             // Sanitizing the file name
             return Str::slug($newFileName, '-') . ".{$extension}";

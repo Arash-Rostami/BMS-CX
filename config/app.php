@@ -26,6 +26,9 @@ return [
 
     'update' => env('APP_UPDATE'),
 
+    'storage' => env('STORAGE_LOCATION'),
+
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

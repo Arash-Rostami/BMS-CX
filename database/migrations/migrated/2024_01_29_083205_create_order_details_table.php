@@ -12,14 +12,14 @@ return new class extends Migration {
     {
         Schema::create('order_details', function (Blueprint $table) {
             $table->increments('id')->unsigned()->index();
-            $table->double('buying_quantity')->default(0);
-            $table->double('initial_quantity')->nullable();
-            $table->double('provisional_quantity')->nullable();
-            $table->double('final_quantity')->nullable();
-            $table->decimal('buying_price',12,4);
-            $table->decimal('initial_price',12,4)->nullable();
-            $table->decimal('provisional_price',12,4)->nullable();
-            $table->decimal('final_price',12,4)->nullable();
+            $table->decimal('buying_quantity', 12, 2)->default(0);
+            $table->decimal('initial_quantity', 12, 2)->nullable();
+            $table->decimal('provisional_quantity', 12, 2)->nullable();
+            $table->decimal('final_quantity', 12, 2)->nullable();
+            $table->decimal('buying_price', 12, 2)->default(0);
+            $table->decimal('initial_price', 12, 2)->nullable();
+            $table->decimal('provisional_price', 12, 2)->nullable();
+            $table->decimal('final_price', 12, 2)->nullable();
             $table->json('extra')->nullable();
             // Foreign keys
             $table->integer('user_id')->unsigned()->index();

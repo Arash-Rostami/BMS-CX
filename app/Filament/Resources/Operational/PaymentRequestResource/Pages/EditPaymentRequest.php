@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\NotificationManager;
 use App\Services\RetryableEmailService;
@@ -41,15 +42,14 @@ class EditPaymentRequest extends EditRecord
 
     protected function sendEditNotification()
     {
-        $data = [
-            'record' => $this->record->order->invoice_number,
-            'type' => 'edit',
-            'module' => 'paymentRequest',
-            'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $this->record->id]),
-            'recipients' => User::getUsersByRole('admin')
-        ];
-
-        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => Admin::getOrderRelation($this->record),
+                'type' => 'edit',
+                'module' => 'paymentRequest',
+                'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $this->record->id]),
+            ]));
+        }
     }
 
     protected function sendStatusNotification()
@@ -58,18 +58,16 @@ class EditPaymentRequest extends EditRecord
 
         if ($newStatus && $newStatus !== session('old_status_payment')) {
 
-            $statusData = [
-                'record' => $this->record->order->invoice_number,
-                'type' => $newStatus,
-                'module' => 'payment',
-                'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $this->record->id]),
-//                'recipients' => User::getUsersExcludingRole('partner'),
-                'recipients' => User::getUsersByRole('admin')
-            ];
+            foreach (User::getUsersByRole('admin') as $recipient) {
+                $recipient->notify(new FilamentNotification([
+                    'record' => Admin::getOrderRelation($this->record),
+                    'type' => $newStatus,
+                    'module' => 'payment',
+                    'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $this->record->id]),
+                ], true));
+            }
 
-            $this->notifyViaEmail($statusData['type']);
-
-            NotificationManager::send($statusData, true);
+            $this->notifyViaEmail($newStatus);
         }
     }
 

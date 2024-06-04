@@ -30,6 +30,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Component as Livewire;
@@ -102,18 +103,8 @@ class PaymentResource extends Resource
                     ->addActionLabel('➕')
                     ->columnSpanFull()
                     ->collapsible()
-//                    ->deleteAction(
-//                        function (Action $action, $state, Repeater $component) {
-//                            $itemData = $state;
-//                            dd($itemData);
-////                            $attachment = Attachment::where();
-////                            if ($attachment) {
-////                                File::delete($attachment->file_path);
-////                                $attachment->delete();
-////                            }
-//                        }
-//                    )
-                    ->collapsed(fn($operation) => $operation == 'edit'),
+                    ->collapsed(),
+
             ]);
     }
 

@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 
+use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
 use App\Filament\Resources\PaymentResource;
 use App\Models\Balance;
 use App\Models\Payment;
 use App\Models\PaymentRequest;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Services\NotificationManager;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -28,18 +30,16 @@ class CreatePayment extends CreateRecord
         return static::getModel()::create($processedData);
     }
 
-
     protected function afterCreate(): void
     {
-//        $data = [
-//            'record' => $this->record->order->invoice_number,
-//            'type' => 'new',
-//            'module' => 'payment',
-//            'url' => route('filament.admin.resources.payments.index'),
-//            'recipients' => User::getUsersByRole('admin')
-//        ];
-//
-//        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => $this->record->paymentRequests->order_invoice_number ??  $this->record->paymentRequests->reason->reason,
+                'type' => 'new',
+                'module' => 'payment',
+                'url' => route('filament.admin.resources.payments.index'),
+            ]));
+        }
     }
 
 
@@ -66,7 +66,7 @@ class CreatePayment extends CreateRecord
                 'payment_request_id' => $paymentRequest->id,
                 'amount' => $payableAmount,
                 'extra' => [
-                    'balanceStatus' => $remainder > 0 ? 'debit' : ($remainder < 0 ? 'credit' : 'Settled'),
+                    'balanceStatus' => $remainder > 0 ? 'debit' : ($remainder < 0 ? 'credit' : 'settled'),
                     'remainderSum' => $remainder,
                     'note' => $data['extra']['note']
                 ]

@@ -4,10 +4,13 @@ namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 
 use App\Filament\Resources\PaymentResource;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Services\NotificationManager;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 class EditPayment extends EditRecord
 {
@@ -36,17 +39,15 @@ class EditPayment extends EditRecord
         return $data;
     }
 
-
     protected function afterSave(): void
     {
-        $data = [
-            'record' => $this->record->paymentRequests->reason->reason,
-            'type' => 'edit',
-            'module' => 'payment',
-            'url' => route('filament.admin.resources.payments.edit', ['record' => $this->record->id]),
-            'recipients' => User::getUsersByRole('admin')
-        ];
-
-        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => $this->record->paymentRequests->order_invoice_number ??  $this->record->paymentRequests->reason->reason,
+                'type' => 'edit',
+                'module' => 'payment',
+                'url' => route('filament.admin.resources.payments.edit', ['record' => $this->record->id]),
+            ]));
+        }
     }
 }

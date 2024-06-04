@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\OrderRequestResource\Pages;
 
 use App\Filament\Resources\OrderRequestResource;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Notifications\OrderRequestStatusNotification;
 use App\Services\NotificationManager;
 use App\Services\RetryableEmailService;
@@ -42,14 +43,14 @@ class EditOrderRequest extends EditRecord
 
     protected function sendEditNotification()
     {
-        $data = [
-            'record' => $this->record->product->name,
-            'type' => 'edit',
-            'module' => 'orderRequest',
-            'url' => route('filament.admin.resources.order-requests.edit', ['record' => $this->record->id]),
-            'recipients' => User::getUsersByRole('admin'),
-        ];
-        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => $this->record->product->name,
+                'type' => 'edit',
+                'module' => 'orderRequest',
+                'url' => route('filament.admin.resources.order-requests.edit', ['record' => $this->record->id]),
+            ]));
+        }
     }
 
     protected function sendStatusNotification()
@@ -58,18 +59,14 @@ class EditOrderRequest extends EditRecord
 
         if ($newStatus && $newStatus !== session('old_status')) {
 
-            $statusData = [
-                'record' => $this->record->product->name,
-                'type' => $newStatus === 'review' ? 'processing' : ($newStatus === 'fulfilled' ? 'completed' : $newStatus),
-                'module' => 'order',
-                'url' => route('filament.admin.resources.order-requests.edit', ['record' => $this->record->id]),
-//                'recipients' => ($newStatus == 'approved') ? User::getUsersByRole('agent') : User::getUsersByRole('partner'),
-                'recipients' => User::getUsersByRole('admin'),
-            ];
-
-            $this->notifyViaEmail($statusData['type']);
-
-            NotificationManager::send($statusData, true);
+            foreach (User::getUsersByRole('admin') as $recipient) {
+                $recipient->notify(new FilamentNotification([
+                    'record' => $this->record->product->name,
+                    'type' => $newStatus === 'review' ? 'processing' : ($newStatus === 'fulfilled' ? 'completed' : $newStatus),
+                    'module' => 'order',
+                    'url' => route('filament.admin.resources.order-requests.edit', ['record' => $this->record->id]),
+                ], true));
+            }
         }
     }
 

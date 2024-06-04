@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Services\NotificationManager;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -24,15 +25,13 @@ class EditOrder extends EditRecord
 
     protected function afterSave(): void
     {
-        $data = [
-            'record' => $this->record->invoice_number,
-            'type' => 'edit',
-            'module' => 'order',
-            'url' => route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
-//            'recipients' => User::getUsersByRole('agent')
-            'recipients' => User::getUsersByRole('admin')
-        ];
-
-        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => $this->record->invoice_number,
+                'type' => 'edit',
+                'module' => 'order',
+                'url' => route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
+            ]));
+        }
     }
 }

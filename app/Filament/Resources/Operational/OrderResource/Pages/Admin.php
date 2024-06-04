@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\ShippingLine;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Notifications\FilamentNotification;
 use App\Rules\EnglishAlphabet;
 use App\Services\NotificationManager;
 use Carbon\Carbon;
@@ -154,12 +155,15 @@ class Admin
         return Select::make('order_request_id')
             ->options(OrderRequest::getApproved())
             ->live()
+            ->formatStateUsing(fn($state, $operation) => $operation == 'edit' ? (OrderRequest::find($state))?->formatted_value : ucwords($state))
             ->afterStateUpdated(function (Set $set, ?string $state) {
                 self::updateForm($state, $set);
             })
+            ->required()
+            ->disabled(fn($operation) => $operation == 'edit')
             ->searchable()
             ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🛍️ </span>Order Request'))
+            ->hint(new HtmlString('<span class="grayscale">🛍️ </span>Order Request <span class="red"> *</span>'))
             ->hintColor('primary');
     }
 
@@ -168,10 +172,11 @@ class Admin
      */
     public static function getManualInvoiceNumber(): TextInput
     {
-        return TextInput::make('extra.invoice_number')
+        return TextInput::make('extra.manual_invoice_number')
             ->label('')
             ->placeholder('Enter a manual invoice number to back-date records, or leave blank for automatic generation')
             ->columnSpanFull()
+            ->disabled(fn($operation) => $operation == 'edit')
             ->dehydrateStateUsing(fn(?string $state) => strtoupper($state))
             ->hint(new HtmlString('<span class="grayscale">🗂 </span>Manual Invoice Number (optional)'))
             ->hintColor('primary');
@@ -328,12 +333,79 @@ class Admin
     /**
      * @return TextInput
      */
+    public static function getPercentage(): TextInput
+    {
+        return TextInput::make('extra.percentage')
+            ->label('')
+            ->hint(new HtmlString('<span class="grayscale"></span>Percentage<span class="red"> *</span>'))
+            ->hintColor('primary')
+            ->required()
+            ->afterStateUpdated(fn(Get $get, Set $set) => self::calculatePaymentAndTotal($get, $set))
+            ->live(debounce: 1000)
+            ->placeholder('Enter the percentage number without any %')
+            ->numeric()
+            ->in(range(0, 100))
+            ->validationMessages([
+                'in' => 'The percentage point should be a number between 0 and 100!',
+            ]);
+    }
+
+    /**
+     * @return Select
+     */
+    public static function getCurrency(): Select
+    {
+        return Select::make('extra.currency')
+            ->options(showCurrencies())
+            ->required()
+            ->label('')
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale"></span>Currency<span class="red"> *</span>'));
+    }
+
+    /**
+     * @return TextInput
+     */
+    public static function getPayment(): TextInput
+    {
+        return TextInput::make('extra.payment')
+            ->label('')
+            ->hint(new HtmlString('Payment ⚠<span class="grayscale text-xs"> Read Only</span>'))
+            ->placeholder('± Automatic Computation')
+            ->readOnly()
+            ->hintColor('primary');
+    }
+
+    /**
+     * @return TextInput
+     */
+    public static function getTotal(): TextInput
+    {
+        return TextInput::make('extra.total')
+            ->label('')
+            ->hint(new HtmlString('Total ⚠<span class="grayscale text-xs"> Read Only</span>'))
+            ->placeholder('± Automatic Computation')
+            ->readOnly()
+            ->hintColor('primary');
+    }
+
+
+    /**
+     * @return TextInput
+     */
     public static function getQuantity(): TextInput
     {
         return TextInput::make('buying_quantity')
             ->label('')
             ->hint(new HtmlString('<span class="grayscale"></span>Initial<span class="red"> *</span>'))
             ->hintColor('primary')
+            ->afterStateUpdated(function (?float $state, Get $get, Set $set) {
+                if (!empty($state)) {
+                    self::updateQuantityAndCalculate($state, $get, $set);
+                }
+            })
+            ->live(debounce: 2000)
+            ->default(0)
             ->required()
             ->numeric();
     }
@@ -371,7 +443,12 @@ class Admin
         return TextInput::make('buying_price')
             ->label('')
             ->hint(new HtmlString('<span class="grayscale"></span>Initial<span class="red"> *</span>'))
-//            ->formatStateUsing(fn(?string $state) => $state ? number_format($state, 2) : null)
+            ->formatStateUsing(fn($state) => ($state !== null) ? (float)$state : 0)
+            ->afterStateUpdated(function (?float $state, Get $get, Set $set) {
+                if (!empty($state)) {
+                    self::updatePriceAndCalculate($state, $get, $set);
+                }
+            })->live(debounce: 1000)
             ->hintColor('primary')
             ->required()
             ->numeric();
@@ -386,7 +463,7 @@ class Admin
         return TextInput::make('provisional_price')
             ->label('')
             ->hint(new HtmlString('<span class="grayscale"></span>Provisional'))
-//            ->formatStateUsing(fn(?string $state) => $state ? number_format($state, 2) : null)
+            ->formatStateUsing(fn($state) => ($state !== null) ? (float)$state : 0)
             ->hintColor('primary')
             ->numeric();
     }
@@ -399,7 +476,7 @@ class Admin
         return TextInput::make('final_price')
             ->label('')
             ->hint(new HtmlString('<span class="grayscale"></span>Final'))
-//            ->formatStateUsing(fn(?string $state) => $state ? number_format($state, 2) : null)
+            ->formatStateUsing(fn($state) => ($state !== null) ? (float)$state : 0)
             ->hintColor('primary')
             ->numeric();
     }
@@ -521,7 +598,7 @@ class Admin
      */
     public static function getLoadingStartLine(): DatePicker
     {
-        return DatePicker::make('loading_startline')
+        return DatePicker::make('extra.loading_startline')
             ->label('')
             ->native(false)
             ->hintColor('primary')
@@ -545,11 +622,11 @@ class Admin
      */
     public static function getETD(): DatePicker
     {
-        return DatePicker::make('etd')
+        return DatePicker::make('extra.etd')
             ->label('')
             ->native(false)
             ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⌛ </span>ETD (BND)'));
+            ->hint(new HtmlString('<span class="grayscale">⌛ </span>ETD'));
     }
 
     /**
@@ -557,11 +634,11 @@ class Admin
      */
     public static function getETA(): DatePicker
     {
-        return DatePicker::make('eta')
+        return DatePicker::make('extra.eta')
             ->label('')
             ->native(false)
             ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⌛ </span>ETA (China)'));
+            ->hint(new HtmlString('<span class="grayscale">⌛ </span>ETA'));
     }
 
     /**
@@ -682,7 +759,6 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">⚖ </span>Gross Weight'))
             ->hintColor('primary')
-            ->visible(fn(Get $get) => $get('container_shipping'))
             ->numeric();
     }
 
@@ -695,7 +771,6 @@ class Admin
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">⚖ </span>Net Weight'))
             ->hintColor('primary')
-            ->visible(fn(Get $get) => $get('container_shipping'))
             ->numeric();
     }
 
@@ -707,6 +782,18 @@ class Admin
         return TextInput::make('voyage_number')
             ->label('')
             ->hint(new HtmlString('<span class="grayscale">🛳️ </span>Voyage No.'))
+            ->hintColor('primary')
+            ->maxLength(255);
+    }
+
+    /**
+     * @return TextInput
+     */
+    public static function getVoyageNumberSecondLeg(): TextInput
+    {
+        return TextInput::make('extra.voyage_number_second_leg')
+            ->label('')
+            ->hint(new HtmlString('<span class="grayscale">🛳️ </span>Voyage No. (ii)'))
             ->hintColor('primary')
             ->maxLength(255);
     }
@@ -757,6 +844,31 @@ class Admin
             ->native(false)
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">️📅 ️</span>BL Date'));
+    }
+
+
+    /**
+     * @return TextInput
+     */
+    public static function getBLNumberSecondLeg(): TextInput
+    {
+        return TextInput::make('extra.BL_number_second_leg')
+            ->label('')
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">#️⃣ ️ </span>BL No. (ii)'))
+            ->maxLength(255);
+    }
+
+    /**
+     * @return DatePicker
+     */
+    public static function getBLDateSecondLeg(): DatePicker
+    {
+        return DatePicker::make('extra.BL_date_second_leg')
+            ->label('')
+            ->native(false)
+            ->hintColor('primary')
+            ->hint(new HtmlString('<span class="grayscale">️📅 ️</span>BL Date (ii)'));
     }
 
     /**
@@ -831,7 +943,7 @@ class Admin
         return TextColumn::make('proforma_date')
             ->color('secondary')
             ->badge()
-            ->grow()
+            ->grow(false)
             ->tooltip(fn(string $state): string => "Pro forma Invoice Date")
             ->date()
             ->sortable();
@@ -862,8 +974,9 @@ class Admin
             ->label('Stage')
             ->numeric()
             ->badge()
-            ->toggleable()
             ->alignRight()
+            ->toggleable()
+            ->searchable()
             ->color(getTableDesign() === 'modern' ? '' : 'secondary')
             ->sortable();
     }
@@ -907,6 +1020,7 @@ class Admin
         return TextColumn::make('grade')
             ->badge()
             ->color('secondary')
+            ->grow()
             ->searchable()
             ->sortable();
     }
@@ -923,14 +1037,12 @@ class Admin
             ->color(fn($state): string => self::$statusColors[$state] ?? null)
             ->sortable()
             ->alignRight()
+            ->grow(false)
             ->badge()
             ->toggleable()
             ->searchable();
     }
 
-    /**
-     * @return TextColumn
-     */
     public static function showInvoiceNumber(): TextColumn
     {
         return TextColumn::make('invoice_number')
@@ -951,6 +1063,7 @@ class Admin
             ->tooltip(fn(string $state): string => "Unique Order Number")
             ->sortable()
             ->searchable()
+            ->grow(false)
             ->color('gray')
             ->toggleable()
             ->size(TextColumnSize::ExtraSmall)
@@ -968,11 +1081,11 @@ class Admin
                 return 'Payment requests: ' . count($record->paymentRequests);
             })
             ->alignRight()
-            ->color('danger')
+            ->color(fn($state) => $state == 'Payment requests: 0' ? 'secondary' : 'warning')
             ->icon('heroicon-s-arrow-right-on-rectangle')
             ->iconPosition(IconPosition::Before)
             ->grow(false)
-            ->hidden(fn($record) => is_null($record) || $record->paymentRequests->isEmpty())
+//            ->hidden(fn($record) => is_null($record) || $record->paymentRequests->isEmpty())
             ->badge();
     }
 
@@ -988,7 +1101,7 @@ class Admin
             ->alignRight()
             ->icon('heroicon-o-credit-card')
             ->iconPosition(IconPosition::Before)
-            ->color('secondary')
+            ->color(fn($state) => $state == 'Payment: 0' ? 'secondary' : 'success')
             ->grow(false)
             ->badge();
     }
@@ -1013,11 +1126,8 @@ class Admin
      */
     public static function showSupplier(): TextColumn
     {
-        return TextColumn::make('party.supplier_id')
+        return TextColumn::make('party.supplier.name')
             ->label('Supplier')
-            ->state(function (Model $record): string {
-                return $record->party->supplier->name;
-            })
             ->sortable()
             ->searchable()
             ->toggleable()
@@ -1029,11 +1139,8 @@ class Admin
      */
     public static function showBuyer(): TextColumn
     {
-        return TextColumn::make('party.buyer_id')
+        return TextColumn::make('party.buyer.name')
             ->label('Buyer')
-            ->state(function (Model $record): string {
-                return $record->party->buyer->name;
-            })
             ->sortable()
             ->searchable()
             ->toggleable()
@@ -1046,13 +1153,13 @@ class Admin
     public static function showQuantities(): TextColumn
     {
         return TextColumn::make('orderDetail.buying_quantity')
-            ->label('Quantities: Ini. | Pro. | Fin.')
+            ->label('Ini. | Pro. | Fin. Quantities')
             ->state(function (Model $record): string {
                 return sprintf(
                     "%s | %s | %s",
                     $record->orderDetail->buying_quantity,
-                    $record->orderDetail->provisional_quantity,
-                    $record->orderDetail->final_quantity
+                    $record->orderDetail->provisional_quantity ?? 0,
+                    $record->orderDetail->final_quantity ?? 0
                 );
             })
             ->color('info')
@@ -1065,7 +1172,7 @@ class Admin
     public static function showPrices(): TextColumn
     {
         return TextColumn::make('orderDetail.buying_price')
-            ->label('Prices: Ini. | Pro. | Fin.')
+            ->label('Ini. | Pro. | Fin. Prices')
             ->state(function (Model $record): string {
                 return sprintf(
                     "%s | %s | %s",
@@ -1081,14 +1188,35 @@ class Admin
     /**
      * @return TextColumn
      */
+    public static function showPercentage(): TextColumn
+    {
+        return TextColumn::make('orderDetail.extra')
+            ->label('Percentage')
+            ->state(function (Model $record): string {
+                if ($record->orderDetail->extra) {
+                    return sprintf(
+                        "%s%% (%s %s/%s)",
+                        $record->orderDetail->extra['percentage'],
+                        $record->orderDetail->extra['currency'],
+                        number_format($record->orderDetail->extra['payment'], 0),
+                        number_format($record->orderDetail->extra['total'], 0),
+                    );
+                }
+                return 'N/A';
+            })
+            ->grow()
+            ->color('secondary')
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
     public static function showDeliveryTerm(): TextColumn
     {
-        return TextColumn::make('logistic.delivery_term_id')
+        return TextColumn::make('logistic.deliveryTerm.name')
             ->label('Delivery Term')
             ->color('secondary')
-            ->state(function (Model $record): string {
-                return optional($record->logistic->deliveryTerm)->name ?? 'N/A';
-            })
             ->searchable()
             ->sortable()
             ->color('secondary');
@@ -1099,12 +1227,9 @@ class Admin
      */
     public static function showPackaging(): TextColumn
     {
-        return TextColumn::make('logistic.packaging_id')
+        return TextColumn::make('logistic.packaging.name')
             ->label('Packaging')
             ->color('primary')
-            ->state(function (Model $record): string {
-                return optional($record->logistic->packaging)->name ?? 'N/A';
-            })
             ->badge()
             ->searchable()
             ->toggleable()
@@ -1116,12 +1241,9 @@ class Admin
      */
     public static function showShippingLine(): TextColumn
     {
-        return TextColumn::make('logistic.shipping_line_id')
+        return TextColumn::make('logistic.shippingLine.name')
             ->label('Shipping Line')
             ->color('secondary')
-            ->state(function (Model $record): string {
-                return optional($record->logistic->shippingLine)->name ?? 'N/A';
-            })
             ->searchable()
             ->sortable()
             ->color('secondary');
@@ -1132,12 +1254,9 @@ class Admin
      */
     public static function showPortOfDelivery(): TextColumn
     {
-        return TextColumn::make('logistic.port_of_delivery_id')
+        return TextColumn::make('logistic.portOfDelivery.name')
             ->label('Port of Delivery')
             ->color('secondary')
-            ->state(function (Model $record): string {
-                return optional($record->logistic->portOfDelivery)->name ?? 'N/A';
-            })
             ->searchable()
             ->sortable()
             ->color('secondary');
@@ -1150,9 +1269,20 @@ class Admin
     {
         return ToggleColumn::make('logistic.change_of_destination')
             ->label('Change of Destination')
-            ->searchable()
             ->toggleable()
             ->sortable();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showLoadingStartline(): TextColumn
+    {
+        return TextColumn::make('logistic.extra.loading_startline')
+            ->label('Delivery Start Date')
+            ->color('secondary')
+            ->date()
+            ->badge();
     }
 
     /**
@@ -1161,25 +1291,46 @@ class Admin
     public static function showLoadingDeadline(): TextColumn
     {
         return TextColumn::make('logistic.loading_deadline')
-            ->label('Loading Deadline')
-            ->color('secondary')
-            ->formatStateUsing(fn(string $state) => Carbon::parse($state)->format('Y-m-d'))
-            ->searchable()
+            ->label('Delivery End Date')
+            ->color('danger')
             ->sortable()
             ->date()
-            ->color('secondary')
             ->badge();
     }
 
     /**
      * @return TextColumn
      */
-    public static function showFCL(): TextColumn
+    public static function showEtd(): TextColumn
+    {
+        return TextColumn::make('logistic.extra.etd')
+            ->label('ETD')
+            ->color('secondary')
+            ->date()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showEta(): TextColumn
+    {
+        return TextColumn::make('logistic.extra.eta')
+            ->label('ETA')
+            ->color('secondary')
+            ->date()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public
+    static function showFCL(): TextColumn
     {
         return TextColumn::make('logistic.FCL')
             ->label('FCL')
             ->color('secondary')
-            ->searchable()
             ->sortable()
             ->color('secondary');
     }
@@ -1187,7 +1338,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showFCLType(): TextColumn
+    public
+    static function showFCLType(): TextColumn
     {
         return TextColumn::make('logistic.full_container_load_type')
             ->label('FCL Type')
@@ -1199,7 +1351,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showNumberOfContainers(): TextColumn
+    public
+    static function showNumberOfContainers(): TextColumn
     {
         return TextColumn::make('logistic.number_of_containers')
             ->label('No. of Containers')
@@ -1209,7 +1362,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showOceanFreight(): TextColumn
+    public
+    static function showOceanFreight(): TextColumn
     {
         return TextColumn::make('logistic.ocean_freight')
             ->label('Ocean Freight')
@@ -1219,7 +1373,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showTHC(): TextColumn
+    public
+    static function showTHC(): TextColumn
     {
         return TextColumn::make('logistic.terminal_handling_charges')
             ->label('THC')
@@ -1230,7 +1385,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showFreeTimePOD(): TextColumn
+    public
+    static function showFreeTimePOD(): TextColumn
     {
         return TextColumn::make('logistic.free_time_POD')
             ->label('Free Time (POD)')
@@ -1241,7 +1397,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showGrossWeight(): TextColumn
+    public
+    static function showGrossWeight(): TextColumn
     {
         return TextColumn::make('logistic.gross_weight')
             ->label('Gross Weight')
@@ -1252,7 +1409,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showNetWeight(): TextColumn
+    public
+    static function showNetWeight(): TextColumn
     {
         return TextColumn::make('logistic.net_weight')
             ->label('Net Weight')
@@ -1263,7 +1421,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showBookingNumber(): TextColumn
+    public
+    static function showBookingNumber(): TextColumn
     {
         return TextColumn::make('logistic.booking_number')
             ->color('amber')
@@ -1275,7 +1434,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showVoyageNumber(): TextColumn
+    public
+    static function showVoyageNumber(): TextColumn
     {
         return TextColumn::make('doc.voyage_number')
             ->label('Voyage Number')
@@ -1288,7 +1448,23 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showDeclarationNumber(): TextColumn
+    public
+    static function showVoyageNumberLegTwo(): TextColumn
+    {
+        return TextColumn::make('doc.extra.voyage_number_second_leg')
+            ->label('Voyage Number ii')
+            ->color('amber')
+            ->badge()
+            ->searchable(query: function (Builder $query, string $search): Builder {
+                return $query->whereJsonContains('extra->voyage_number_second_leg', $search);
+            });
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public
+    static function showDeclarationNumber(): TextColumn
     {
         return TextColumn::make('doc.declaration_number')
             ->label('Declaration Number')
@@ -1301,7 +1477,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showBLNumber(): TextColumn
+    public
+    static function showBLNumber(): TextColumn
     {
         return TextColumn::make('doc.BL_number')
             ->label('BL Number')
@@ -1314,7 +1491,23 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showDeclarationDate(): TextColumn
+    public
+    static function showBLNumberLegTwo(): TextColumn
+    {
+        return TextColumn::make('doc.extra.BL_number_second_leg')
+            ->label('BL Number ii')
+            ->color('amber')
+            ->badge()
+            ->searchable(query: function (Builder $query, string $search): Builder {
+                return $query->whereJsonContains('extra->BL_number_second_leg', $search);
+            });
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public
+    static function showDeclarationDate(): TextColumn
     {
         return TextColumn::make('doc.declaration_date')
             ->color('secondary')
@@ -1327,7 +1520,8 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showBLDate(): TextColumn
+    public
+    static function showBLDate(): TextColumn
     {
         return TextColumn::make('doc.BL_date')
             ->color('secondary')
@@ -1338,10 +1532,24 @@ class Admin
     }
 
     /**
+     * @return TextColumn
+     */
+    public
+    static function showBLDateLegTwo(): TextColumn
+    {
+        return TextColumn::make('doc.extra.BL_date_second_leg')
+            ->color('secondary')
+            ->badge()
+            ->label('BL Date ii')
+            ->date();
+    }
+
+    /**
      * @return SelectFilter
      * @throws \Exception
      */
-    public static function filterOrderStatus(): SelectFilter
+    public
+    static function filterOrderStatus(): SelectFilter
     {
         return SelectFilter::make('order_status')
             ->label('Status')
@@ -1356,7 +1564,8 @@ class Admin
      * @return Filter
      * @throws \Exception
      */
-    public static function filterCreatedAt(): Filter
+    public
+    static function filterCreatedAt(): Filter
     {
         return Filter::make('created_at')
             ->form([
@@ -1393,7 +1602,8 @@ class Admin
      * @return TrashedFilter
      * @throws \Exception
      */
-    public static function filterSoftDeletes(): TrashedFilter
+    public
+    static function filterSoftDeletes(): TrashedFilter
     {
         return TrashedFilter::make();
     }
@@ -1401,7 +1611,8 @@ class Admin
     /**
      * @return \Closure
      */
-    public static function nameUploadedFile(): \Closure
+    public
+    static function nameUploadedFile(): \Closure
     {
         return function (TemporaryUploadedFile $file, Get $get, ?Model $record, Livewire $livewire): string {
             $name = $get('name') ?? $record->name;
@@ -1422,7 +1633,8 @@ class Admin
     /**
      * @return Group
      */
-    public static function groupByCategory(): Group
+    public
+    static function groupByCategory(): Group
     {
         return Group::make('category_id')->label('Category')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->category->name));
@@ -1431,7 +1643,8 @@ class Admin
     /**
      * @return Group
      */
-    public static function groupByProduct(): Group
+    public
+    static function groupByProduct(): Group
     {
         return Group::make('product_id')->label('Product')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->product->name));
@@ -1440,7 +1653,8 @@ class Admin
     /**
      * @return Group
      */
-    public static function groupByStage(): Group
+    public
+    static function groupByStage(): Group
     {
         return Group::make('purchase_status_id')->label('Stage')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->purchaseStatus->name));
@@ -1450,7 +1664,8 @@ class Admin
     /**
      * @return Group
      */
-    public static function groupByStatus(): Group
+    public
+    static function groupByStatus(): Group
     {
         return Group::make('order_status')->label('Status')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->order_status));
@@ -1459,7 +1674,8 @@ class Admin
     /**
      * @return Group
      */
-    public static function groupByInvoiceNumber(): Group
+    public
+    static function groupByInvoiceNumber(): Group
     {
         return Group::make('invoice_number')->label('Invoice Number')
             ->collapsible();
@@ -1468,17 +1684,18 @@ class Admin
     /**
      * @return Group
      */
-    public static function groupByProformaNumber(): Group
+    public
+    static function groupByProformaNumber(): Group
     {
         return Group::make('proforma_number')->label('Pro forma Number')
-            ->collapsible()
-            ->orderQueryUsing(fn(Builder $query, string $direction) => $query->orderBy('part', $direction));
+            ->collapsible();
     }
 
     /**
      * @return Group
      */
-    public static function groupByPackaging(): Group
+    public
+    static function groupByPackaging(): Group
     {
         return Group::make('logistic.packaging_id')->label('Packaging')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->packaging)->name ?? 'N/A');
@@ -1488,7 +1705,8 @@ class Admin
     /**
      * @return Group
      */
-    public static function groupByDeliveryTerm(): Group
+    public
+    static function groupByDeliveryTerm(): Group
     {
         return Group::make('logistic.delivery_term_id')->label('Delivery Term')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->deliveryTerm)->name ?? 'N/A');
@@ -1498,9 +1716,10 @@ class Admin
     /**
      * @return Group
      */
-    public static function groupByShippingLine(): Group
+    public
+    static function groupByShippingLine(): Group
     {
-        return Group::make('logistic.shipping_line_id')->label('Shipping')->collapsible()
+        return Group::make('logistic.shipping_line_id')->label('Shipping Carrier')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->shippingLine)->name ?? 'N/A');
 
     }
@@ -1508,7 +1727,8 @@ class Admin
     /**
      * @return Group
      */
-    public static function groupByBuyer(): Group
+    public
+    static function groupByBuyer(): Group
     {
         return Group::make('party.buyer_id')->label('Buyer')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->party->buyer)->name ?? 'N/A');
@@ -1518,10 +1738,35 @@ class Admin
     /**
      * @return Group
      */
-    public static function groupBySupplier(): Group
+    public
+    static function groupBySupplier(): Group
     {
         return Group::make('party.supplier_id')->label('Supplier')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->party->supplier)->name ?? 'N/A');
+
+    }
+
+    /**
+     * @return Group
+     */
+    public
+    static function groupByPart(): Group
+    {
+        return Group::make('part')->label('Part')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->part ?? 'N/A');
+
+    }
+
+    /**
+     * @return Group
+     */
+    public
+    static function groupByCurrency(): Group
+    {
+        return Group::make('orderDetail.extra')->label('Currency')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->orderDetail)->extra['currency'] ?? 'N/A')
+            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->orderDetail)->extra['currency'] ?? 'N/A');
+
 
     }
 
@@ -1530,7 +1775,8 @@ class Admin
      * @param Set $set
      * @return void
      */
-    private static function updateForm(?string $state, Set $set): void
+    private
+    static function updateForm(?string $state, Set $set): void
     {
         if ($state) {
             $orderRequest = OrderRequest::findOrFail($state);
@@ -1549,17 +1795,17 @@ class Admin
      * @param Model $record
      * @return void
      */
-    public static function send(Model $record): void
+    public
+    static function send(Model $record): void
     {
-        $data = [
-            'record' => $record->invoice_number,
-            'type' => 'delete',
-            'module' => 'order',
-            'url' => route('filament.admin.resources.orders.index'),
-            'recipients' => User::getUsersByRole('agent')
-        ];
-
-        NotificationManager::send($data);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => $record->invoice_number,
+                'type' => 'delete',
+                'module' => 'order',
+                'url' => route('filament.admin.resources.orders.index'),
+            ]));
+        }
     }
 
     /**
@@ -1568,7 +1814,8 @@ class Admin
      * @param Set $set
      * @return mixed
      */
-    public static function updateFormBasedOnPreviousRecords(Get $get, Set $set, ?string $state): mixed
+    public
+    static function updateFormBasedOnPreviousRecords(Get $get, Set $set, ?string $state): mixed
     {
         $orderRequestId = $get('order_request_id');
 
@@ -1586,5 +1833,37 @@ class Admin
 
         return $orderRequestId;
     }
+
+
+    protected
+    static function updateQuantityAndCalculate($state, $get, $set): void
+    {
+        $set('initial_quantity', sprintf("%.2f", (float)($state ?? 0)));
+
+        static::calculatePaymentAndTotal($get, $set);
+    }
+
+    protected
+    static function updatePriceAndCalculate($state, $get, $set): void
+    {
+        $set('initial_price', sprintf("%.2f", (float)($state ?? 0)));
+
+        static::calculatePaymentAndTotal($get, $set);
+    }
+
+    protected
+    static function calculatePaymentAndTotal($get, $set): void
+    {
+        $percentage = (float)$get('extra.percentage') ?? 0;
+        $price = (float)$get('initial_price') ?? 0;
+        $quantity = (float)$get('initial_quantity') ?? 0;
+
+        $total = $quantity * $price;
+        $payment = ($percentage * $total) / 100;
+
+        $set('extra.payment', sprintf("%.2f", $payment));
+        $set('extra.total', sprintf("%.2f", $total));
+    }
+
 
 }

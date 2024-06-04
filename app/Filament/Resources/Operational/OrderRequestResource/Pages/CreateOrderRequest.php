@@ -20,6 +20,15 @@ class CreateOrderRequest extends CreateRecord
     protected static string $resource = OrderRequestResource::class;
 
 
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        if (empty($data['request_status']) || $data['request_status'] == 'pending') {
+            $data['request_status'] = 'approved';
+        }
+        return $data;
+    }
+
+
     protected function afterCreate(): void
     {
         foreach (User::getUsersByRole('admin') as $recipient) {
@@ -60,7 +69,7 @@ class CreateOrderRequest extends CreateRecord
     public function notifyViaEmail(): void
     {
 //        $arguments = [User::getUsersByRole('manager'), new OrderRequestStatusNotification($this->record)];
-        $arguments = [User::all(), new OrderRequestStatusNotification($this->record)];
+        $arguments = [User::getUsersByRole('admin'), new OrderRequestStatusNotification($this->record)];
 
         RetryableEmailService::dispatchEmail('order request', ...$arguments);
     }

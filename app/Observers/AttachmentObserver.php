@@ -37,11 +37,8 @@ class AttachmentObserver
      */
     public function deleting(Attachment $attachment)
     {
-        if ($attachment->id) {
-            $attachment = Attachment::find($attachment->id);
-            if ($attachment) {
-                Storage::disk('filament')->delete($attachment->file_path);
-            }
+        if ($attachment->file_path) {
+            Storage::disk('filament')->delete($attachment->file_path);
         }
     }
 

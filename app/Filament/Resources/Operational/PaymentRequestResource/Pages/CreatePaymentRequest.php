@@ -25,6 +25,7 @@ class CreatePaymentRequest extends CreateRecord
         if ($partExists) {
             $data['order_id'] = $data['part'];
         }
+
         return $data;
     }
 
@@ -39,7 +40,6 @@ class CreatePaymentRequest extends CreateRecord
             ]));
         }
 
-
         $this->notifyViaEmail();
 
         $this->notifyManagement();
@@ -50,16 +50,14 @@ class CreatePaymentRequest extends CreateRecord
      */
     public function notifyManagement(): void
     {
-        $dataStatus = [
-            'record' => Admin::getOrderRelation($this->record),
-            'type' => 'pending',
-            'module' => 'payment',
-            'url' => route('filament.admin.resources.payment-requests.index'),
-//            'recipients' => User::getUsersByRoles(['accountant', 'agent'])
-            'recipients' => User::getUsersByRole('admin')
-        ];
-
-        NotificationManager::send($dataStatus, true);
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => Admin::getOrderRelation($this->record),
+                'type' => 'pending',
+                'module' => 'payment',
+                'url' => route('filament.admin.resources.payment-requests.index'),
+            ],true));
+        }
     }
 
     /**

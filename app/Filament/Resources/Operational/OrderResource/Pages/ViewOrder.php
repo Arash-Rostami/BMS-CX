@@ -69,6 +69,7 @@ class ViewOrder extends ViewRecord
                                         $this->viewBuyer(),
                                         $this->viewPrice(),
                                         $this->viewQuantity(),
+                                        $this->viewPercentage()
                                     ]),
                                 Section::make()
                                     ->columns([
@@ -82,7 +83,10 @@ class ViewOrder extends ViewRecord
                                         $this->viewDeliveryTerm(),
                                         $this->viewShippingLine(),
                                         $this->viewPortOfDelivery(),
+                                        $this->viewLoadingStartline(),
                                         $this->viewLoadingDeadline(),
+                                        $this->viewEtd(),
+                                        $this->viewEta(),
                                         $this->viewChangeOfDestination(),
 
                                         $this->viewFCL(),
@@ -105,11 +109,14 @@ class ViewOrder extends ViewRecord
                                         'xl' => 3,
                                         '2xl' => 3,
                                     ])->schema([
-                                        $this->viewVoyageNumber(),
                                         $this->viewDeclarationNumber(),
-                                        $this->viewBLNumber(),
                                         $this->viewDeclarationDate(),
+                                        $this->viewVoyageNumber(),
+                                        $this->viewBLNumber(),
                                         $this->viewBLDate(),
+                                        $this->viewVoyageNumberSecondLeg(),
+                                        $this->viewBLNumberSecondLeg(),
+                                        $this->viewBLDateSecondLeg(),
                                     ]),
                                 Section::make('Attachments')
                                     ->description('Click to view all files attached in this Order ↓')
@@ -267,12 +274,11 @@ class ViewOrder extends ViewRecord
     public function viewPrice(): TextEntry
     {
         return TextEntry::make('orderDetail.buying_price')
-            ->label('Prices: B. | Ini. | Pro. | Fin.')
+            ->label('Ini. | Pro. | Fin. Prices')
             ->state(function (Model $record): string {
                 return sprintf(
-                    "%s | %s | %s | %s",
+                    "%s | %s | %s",
                     number_format($record->orderDetail->buying_price, 2),
-                    number_format($record->orderDetail->initial_price, 2),
                     number_format($record->orderDetail->provisional_price, 2),
                     number_format($record->orderDetail->final_price, 2)
                 );
@@ -286,15 +292,36 @@ class ViewOrder extends ViewRecord
     public function viewQuantity(): TextEntry
     {
         return TextEntry::make('orderDetail.buying_quantity')
-            ->label('Quantities B. | Ini. | Pro. | Fin.')
+            ->label('Ini. | Pro. | Fin. Quantities')
             ->state(function (Model $record): string {
                 return sprintf(
-                    "%s | %s | %s | %s",
+                    "%s | %s | %s",
                     $record->orderDetail->buying_quantity,
-                    $record->orderDetail->initial_quantity,
-                    $record->orderDetail->provisional_quantity,
-                    $record->orderDetail->final_quantity
+                    $record->orderDetail->provisional_quantity ?? 0,
+                    $record->orderDetail->final_quantity ?? 0
                 );
+            })
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public function viewPercentage(): TextEntry
+    {
+        return TextEntry::make('orderDetail.extra')
+            ->label('Percentage')
+            ->state(function (Model $record): string {
+                if ($record->orderDetail->extra) {
+                    return sprintf(
+                        "%s%% (%s %s/%s)",
+                        $record->orderDetail->extra['percentage'],
+                        $record->orderDetail->extra['currency'],
+                        number_format($record->orderDetail->extra['payment'], 0),
+                        number_format($record->orderDetail->extra['total'], 0),
+                    );
+                }
+                return 'N/A';
             })
             ->badge();
     }
@@ -344,10 +371,45 @@ class ViewOrder extends ViewRecord
     /**
      * @return TextEntry
      */
+    public function viewLoadingStartLine(): TextEntry
+    {
+        return TextEntry::make('logistic.extra.loading_startline')
+            ->label('Delivery Start Date')
+            ->color('secondary')
+            ->formatStateUsing(fn(?string $state) => $this->formatDate($state))
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
     public function viewLoadingDeadline(): TextEntry
     {
         return TextEntry::make('logistic.loading_deadline')
-            ->label('Loading Deadline')
+            ->label('Delivery Deadline')
+            ->color('secondary')
+            ->formatStateUsing(fn(?string $state) => $this->formatDate($state))
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public function viewEtd(): TextEntry
+    {
+        return TextEntry::make('logistic.extra.etd')
+            ->label('ETD')
+            ->color('secondary')
+            ->formatStateUsing(fn(?string $state) => $this->formatDate($state))
+            ->badge();
+    }
+    /**
+     * @return TextEntry
+     */
+    public function viewEta(): TextEntry
+    {
+        return TextEntry::make('logistic.extra.eta')
+            ->label('ETA')
             ->color('secondary')
             ->formatStateUsing(fn(?string $state) => $this->formatDate($state))
             ->badge();
@@ -479,6 +541,16 @@ class ViewOrder extends ViewRecord
             ->color('secondary')
             ->badge();
     }
+ /**
+     * @return TextEntry
+     */
+    public function viewVoyageNumberSecondLeg(): TextEntry
+    {
+        return TextEntry::make('doc.extra.voyage_number_second_leg')
+            ->label('Voyage Number ii')
+            ->color('secondary')
+            ->badge();
+    }
 
     /**
      * @return TextEntry
@@ -505,6 +577,17 @@ class ViewOrder extends ViewRecord
     /**
      * @return TextEntry
      */
+    public function viewBLNumberSecondLeg(): TextEntry
+    {
+        return TextEntry::make('doc.extra.BL_number_second_leg')
+            ->label('BL Number ii')
+            ->color('secondary')
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
     public function viewDeclarationDate(): TextEntry
     {
         return TextEntry::make('doc.declaration_date')
@@ -521,6 +604,18 @@ class ViewOrder extends ViewRecord
     {
         return TextEntry::make('doc.BL_date')
             ->label('BL Date')
+            ->color('secondary')
+            ->formatStateUsing(fn(?string $state) => $this->formatDate($state))
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public function viewBLDateSecondLeg(): TextEntry
+    {
+        return TextEntry::make('doc.extra.BL_date_second_leg')
+            ->label('BL Date ii')
             ->color('secondary')
             ->formatStateUsing(fn(?string $state) => $this->formatDate($state))
             ->badge();
