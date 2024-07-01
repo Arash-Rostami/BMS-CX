@@ -21,6 +21,7 @@ class CreatePaymentRequest extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $partExists = isset($data['part']) && $data['part'];
+        $data['extra']['made_by'] = auth()->user()->full_name;
 
         if ($partExists) {
             $data['order_id'] = $data['part'];
@@ -56,7 +57,7 @@ class CreatePaymentRequest extends CreateRecord
                 'type' => 'pending',
                 'module' => 'payment',
                 'url' => route('filament.admin.resources.payment-requests.index'),
-            ],true));
+            ], true));
         }
     }
 

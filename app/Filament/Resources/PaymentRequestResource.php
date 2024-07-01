@@ -301,6 +301,7 @@ class PaymentRequestResource extends Resource
                         Stack::make([
                             Split::make([
                                 Admin::showDepartment(),
+                                Admin::showReferenceNumber(),
                                 Admin::showInvoiceNumber(),
                                 Admin::showPart(),
                                 Admin::showReasonForPayment(),
@@ -329,17 +330,18 @@ class PaymentRequestResource extends Resource
             ->columns([
                 TableObserver::showMissingData(-5),
                 Admin::showDepartment(),
-                Admin::showCostCenter(),
+                Admin::showStatus(),
+                Admin::showReferenceNumber(),
                 Admin::showInvoiceNumber(),
                 Admin::showPart(),
                 Admin::showReasonForPayment(),
                 Admin::showType(),
                 Admin::showPayableAmount(),
+                Admin::showCostCenter(),
                 Admin::showBeneficiaryName(),
                 Admin::showBeneficiaryAddress(),
                 Admin::showBankName(),
                 Admin::showBankAddress(),
-                Admin::showStatus(),
                 Admin::showDeadline(),
                 Admin::showExtraDescription(),
                 Admin::showBankName(),
@@ -347,7 +349,9 @@ class PaymentRequestResource extends Resource
                 Admin::showSwiftCode(),
                 Admin::showIBAN(),
                 Admin::showIFSC(),
-                Admin::showMICR()
+                Admin::showMICR(),
+                Admin::showRequestMaker(),
+                Admin::showStatusChanger()
             ])->striped();
     }
 }

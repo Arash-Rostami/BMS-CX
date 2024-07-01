@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Scope;
+use Illuminate\Database\Eloquent\Builder;
+
 
 class Order extends Model
 {
@@ -60,7 +63,14 @@ class Order extends Model
 
     public function getInvoiceNumberWithPartAttribute()
     {
-        return "{$this->invoice_number} (part-{$this->part})";
+        $firstIdentifier = $this->logistic->booking_number ?? 'N/A';
+        $secondIdentifier = $this->extra['reference_number'] ?? 'N/A';
+        return "Booking# {$firstIdentifier} 🔗 Ref: {$secondIdentifier}";
+    }
+
+    public function getInvoiceNumberWithReferenceNumberAttribute()
+    {
+        return "{$this->invoice_number} (Ref: {$this->extra['reference_number']})";
     }
 
     /**
@@ -111,7 +121,6 @@ class Order extends Model
 
         return $category . $product . $proforma . $party . $orderDetail . $logistic . $doc;
     }
-
 
 
     /**
@@ -171,6 +180,20 @@ class Order extends Model
     {
         return $this->belongsTo(PurchaseStatus::class, 'purchase_status_id');
     }
+
+    public function scopeUniqueInvoiceNumber(Builder $query)
+    {
+        return $query->where('order_request_id', '<>', null)
+            ->where('order_status', '<>', 'closed')
+            ->get()
+            ->sortBy('invoice_number')
+            ->filter(function ($order) {
+                static $seenRequestIds = [];
+                return !isset($seenRequestIds[$order->invoice_number]) &&
+                    $seenRequestIds[$order->invoice_number] = true;
+            });
+    }
+
     /**
      * @param $post
      */

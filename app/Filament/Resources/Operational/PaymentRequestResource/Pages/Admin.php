@@ -31,12 +31,14 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Wallo\FilamentSelectify\Components\ButtonGroup;
 use App\Filament\Resources\Master\PayeeResource\Pages\Admin as PayeeAdmin;
+use Illuminate\Database\Eloquent\Builder;
 
 
 class Admin
@@ -197,12 +199,18 @@ class Admin
     {
         return DatePicker::make('deadline')
             ->label('')
-            ->hint(new HtmlString('<span class="grayscale">📅 </span>Deadline<span class="red"> *</span>'))
+            ->requiredUnless('department_id', '6')
+            ->hint(function (Get $get) {
+                return new HtmlString(
+                    $get('department_id') == 6
+                        ? '<span class="grayscale"> </span>Deadline (optional)'
+                        : '<span class="grayscale"> </span>Deadline<span class="red"> *</span>'
+                );
+            })
             ->hintColor('primary')
             ->closeOnDateSelection()
             ->minDate(now()->subDays(1))
-            ->native(false)
-            ->required();
+            ->native(false);
     }
 
     /**
@@ -246,8 +254,8 @@ class Admin
             ->visible(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'supplier')
             ->required(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'supplier')
             ->label('')
-            ->options(Supplier::all()->pluck('name', 'id'))
-            ->searchable(['name'])
+            ->relationship('supplier', 'name')
+            ->searchable()
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">🤝 </span>Supplier Name<span class="red"> *</span>'))
             ->createOptionForm([
@@ -277,7 +285,7 @@ class Admin
             ->visible(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'contractor')
             ->required(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'contractor')
             ->label('')
-            ->options(Contractor::all()->pluck('name', 'id'))
+            ->relationship('contractor', 'name')
             ->searchable()
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">🤝 </span>Contractor Name<span class="red"> *</span>'))
@@ -457,16 +465,19 @@ class Admin
     public static function getOrderNumber(): Select
     {
         return Select::make('order_invoice_number')
-            ->options(fn() => Order::where('order_status', '<>', 'closed')->pluck('invoice_number', 'invoice_number')->unique())
+            ->options(Order::uniqueInvoiceNumber()->pluck('invoice_number_with_reference_number', 'invoice_number')->toArray())
             ->required(fn(Get $get) => $get('department_id') == 6)
             ->live()
+            ->searchable()
+            ->disabled(fn($operation) => $operation == 'edit')
             ->afterStateUpdated(function (Get $get, Set $set, ?string $old, ?string $state) {
-                return $set('part', []);
+                $set('part', []);
             })
             ->label('')
             ->hintColor('primary')
             ->hint(new HtmlString('<span class="grayscale">🛒 </span>Order<span class="red"> *</span>'));
     }
+
 
     /**
      * @return ButtonGroup
@@ -476,6 +487,7 @@ class Admin
         return ButtonGroup::make('extra.collectivePayment')
             ->label('')
             ->options([1 => 'Total', 0 => 'Part'])
+            ->disabled(fn($operation) => $operation == 'edit')
             ->default(1)
             ->live()
             ->columnSpan(1)
@@ -484,24 +496,14 @@ class Admin
             ->required();
     }
 
+
     public static function getOrderPart(): Select
     {
         return Select::make('part')
-            ->options(function (Get $get): array {
-                $invoiceNumber = $get('order_invoice_number');
-                $total = $get('extra.collectivePayment');
-
-                if ($invoiceNumber && $total == 0) {
-                    return Order::where('order_status', '<>', 'closed')
-                        ->where('invoice_number', $invoiceNumber)
-                        ->get()
-                        ->pluck('invoice_number_with_part', 'id')
-                        ->toArray();
-                }
-                return [];
-            })
+            ->options(fn(Get $get) => static::getOrderPartsOptions($get))
             ->requiredIf('extra.collectivePayment', 1)
             ->visible(fn(Get $get) => $get('extra.collectivePayment') == 0)
+            ->disabled(fn($operation) => $operation == 'edit')
             ->live()
             ->label('')
             ->hintColor('primary')
@@ -524,7 +526,7 @@ class Admin
                     ->disk('filament')
                     ->directory('/attachments/payment-attachments')
                     ->maxSize(2500)
-                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf'])
+                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
                     ->imageEditor()
                     ->openable()
                     ->downloadable()
@@ -551,6 +553,26 @@ class Admin
             ->columnSpanFull();
     }
 
+    /**
+     * @return TextColumn
+     */
+    public static function showReferenceNumber(): TextColumn
+    {
+        return TextColumn::make('order.extra.reference_number')
+            ->label('Ref. No.')
+            ->grow(false)
+            ->searchable(query: function (Builder $query, string $search): Builder {
+                return $query->whereHas('order', function ($order) use ($search) {
+                    $order->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.reference_number')) LIKE ?", ["%{$search}%"]);
+                });
+            })
+            ->sortable(query: function (Builder $query, string $direction) {
+                $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.reference_number')) $direction");
+            })
+            ->color('info')
+            ->badge();
+    }
+
 
     /**
      * @return TextColumn
@@ -558,9 +580,11 @@ class Admin
     public static function showInvoiceNumber(): TextColumn
     {
         return TextColumn::make('order.invoice_number')
-            ->label('Invoice Number')
+            ->label('Invoice')
+            ->sortable(query: function (Builder $query, string $direction): Builder {
+                return $query->orderBy('order_invoice_number', $direction);
+            })
             ->grow(false)
-            ->sortable()
             ->searchable()
             ->badge();
     }
@@ -575,7 +599,6 @@ class Admin
             ->label('Part')
             ->grow(false)
             ->formatStateUsing(fn($state) => $state != null && getTableDesign() == "modern" ? "PART: {$state}" : $state)
-            ->searchable()
             ->badge();
     }
 
@@ -602,6 +625,7 @@ class Admin
         return TextColumn::make('department.code')
             ->label('Department')
             ->grow(false)
+            ->tooltip(fn(Model $record) => $record->department->name)
             ->color('secondary')
             ->sortable()
             ->searchable(['code', 'name'])
@@ -616,9 +640,9 @@ class Admin
         return TextColumn::make('extra.costCenter')
             ->label('Cost Center')
             ->grow(false)
+            ->tooltip(fn(Model $record) => $record->department->name)
             ->formatStateUsing(fn($state, Model $record) => $record->department->getByCode($state))
             ->color('secondary')
-            ->sortable()
             ->badge();
     }
 
@@ -654,7 +678,19 @@ class Admin
                     ?? null;
             })->tooltip('Beneficiary Name')
             ->toggleable()
-            ->searchable()
+            ->searchable(query: function (Builder $query, string $search): Builder {
+                return $query->where(function ($query) use ($search) {
+                    $query->whereHas('contractor', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', '%' . $search . '%');
+                    })
+                        ->orWhereHas('supplier', function ($subQuery) use ($search) {
+                            $subQuery->where('name', 'like', '%' . $search . '%');
+                        })
+                        ->orWhereHas('payee', function ($subQuery) use ($search) {
+                            $subQuery->where('name', 'like', '%' . $search . '%');
+                        });
+                });
+            })
             ->badge();
     }
 
@@ -702,7 +738,6 @@ class Admin
             ->state(fn(?Model $record) => self::concatenateSum($record))
             ->sortable()
             ->toggleable()
-            ->searchable()
             ->badge();
     }
 
@@ -935,6 +970,43 @@ class Admin
             ->sortable()
             ->toggleable()
             ->searchable()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showRequestMaker(): TextColumn
+    {
+        return TextColumn::make('extra.made_by')
+            ->label('Made By')
+            ->tooltip(fn(Model $record) => $record->created_at)
+            ->color('secondary')
+            ->toggleable()
+            ->searchable(query: function (Builder $query, string $search): Builder {
+                return $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.made_by')) LIKE ?", ["%{$search}%"]);
+            })
+            ->sortable(query: function (Builder $query, string $direction) {
+                $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.made_by')) $direction");
+            })
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showStatusChanger(): TextColumn
+    {
+        return TextColumn::make('extra.statusChangeInfo.changed_by')
+            ->tooltip(fn(Model $record) => Arr::get($record->extra, 'statusChangeInfo.changed_at', 'No status change recorded'))
+            ->label('Status Changed By')
+            ->toggleable()
+            ->searchable(query: function (Builder $query, string $search): Builder {
+                return $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.statusChangeInfo.changed_by')) LIKE ?", ["%{$search}%"]);
+            })
+            ->sortable(query: function (Builder $query, string $direction) {
+                $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.statusChangeInfo.changed_by')) $direction");
+            })
             ->badge();
     }
 
@@ -1293,4 +1365,18 @@ class Admin
         };
     }
 
+    protected static function getOrderPartsOptions(Get $get): array
+    {
+        $orderNumber = $get('order_invoice_number');
+        $total = $get('extra.collectivePayment');
+
+        if (!$orderNumber && $total !== 0) return [];
+
+
+        return Order::where('invoice_number', $orderNumber)
+            ->where('order_status', '<>', 'closed')
+            ->get()
+            ->pluck('invoice_number_with_part', 'id')
+            ->toArray();
+    }
 }

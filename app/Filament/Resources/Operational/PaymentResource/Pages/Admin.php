@@ -178,7 +178,7 @@ class Admin
             ->disk('filament')
             ->directory('/attachments/payment-attachments')
             ->maxSize(2500)
-            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'])
+            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
             ->imageEditor()
             ->openable()
             ->downloadable()

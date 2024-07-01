@@ -5,7 +5,7 @@
     "src": "resources/css/app.css"
   },
   "resources/css/filament/admin/theme.css": {
-    "file": "assets/theme-nde5Fo0q.css",
+    "file": "assets/theme-bPH6jN3-.css",
     "isEntry": true,
     "src": "resources/css/filament/admin/theme.css"
   },
@@ -83,7 +83,7 @@
     "src": "resources/images/bms-main-logo.png"
   },
   "resources/images/cloud.svg": {
-    "file": "assets/cloud-o1xcuPZq.svg",
+    "file": "assets/cloud-KMB3wBWF.svg",
     "src": "resources/images/cloud.svg"
   },
   "resources/images/main-bg.png": {
@@ -91,8 +91,60 @@
     "src": "resources/images/main-bg.png"
   },
   "resources/images/star.svg": {
-    "file": "assets/star-LWxXvt9a.svg",
+    "file": "assets/star-Jpveviwm.svg",
     "src": "resources/images/star.svg"
+  },
+  "resources/images/stats/approve.png": {
+    "file": "assets/approve-qt8p1x73.png",
+    "src": "resources/images/stats/stats_approve.png"
+  },
+  "resources/images/stats/cancel.png": {
+    "file": "assets/cancel-NO8G6Zz4.png",
+    "src": "resources/images/stats/cancel.png"
+  },
+  "resources/images/stats/customs.png": {
+    "file": "assets/customs-Fd26vqd8.png",
+    "src": "resources/images/stats/customs.png"
+  },
+  "resources/images/stats/delivered.png": {
+    "file": "assets/delivered-B2DIbFlK.png",
+    "src": "resources/images/stats/delivered.png"
+  },
+  "resources/images/stats/dollar.png": {
+    "file": "assets/dollar-SnaWBkmP.png",
+    "src": "resources/images/stats/dollar.png"
+  },
+  "resources/images/stats/fulfill.png": {
+    "file": "assets/fulfill-hTjdbti3.png",
+    "src": "resources/images/stats/stats_fulfill.png"
+  },
+  "resources/images/stats/reject.png": {
+    "file": "assets/reject-_yvccRbw.png",
+    "src": "resources/images/stats/reject.png"
+  },
+  "resources/images/stats/review.png": {
+    "file": "assets/review-907uRu95.png",
+    "src": "resources/images/stats/stats_review.png"
+  },
+  "resources/images/stats/shipped.png": {
+    "file": "assets/shipped-2hV15iqE.png",
+    "src": "resources/images/stats/shipped.png"
+  },
+  "resources/images/stats/stats_approve.png": {
+    "file": "assets/approve-qt8p1x73.png",
+    "src": "resources/images/stats/stats_approve.png"
+  },
+  "resources/images/stats/stats_fulfill.png": {
+    "file": "assets/fulfill-hTjdbti3.png",
+    "src": "resources/images/stats/stats_fulfill.png"
+  },
+  "resources/images/stats/stats_review.png": {
+    "file": "assets/review-907uRu95.png",
+    "src": "resources/images/stats/stats_review.png"
+  },
+  "resources/images/stats/transit.png": {
+    "file": "assets/transit-YTLZc0V2.png",
+    "src": "resources/images/stats/transit.png"
   },
   "resources/js/app.js": {
     "file": "assets/app-ecWDpuvf.js",

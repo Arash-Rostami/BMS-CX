@@ -357,6 +357,7 @@ class OrderResource extends Resource
                                 Admin::showProformaNumber(),
                                 Admin::showProformaDate(),
                                 Admin::showPercentage(),
+                                Admin::showReferenceNumber(),
                                 Admin::showInvoiceNumber(),
                                 Admin::showOrderPart(),
                             ]),
@@ -389,10 +390,12 @@ class OrderResource extends Resource
         return $table
             ->columns([
                 TableObserver::showMissingDataWithRel(-12),
+                Admin::showReferenceNumber(),
                 Admin::showProformaNumber(),
                 Admin::showProformaDate(),
                 Admin::showInvoiceNumber(),
                 Admin::showOrderPart(),
+                Admin::showBookingNumber(),
                 Admin::showOrderStatus(),
                 Admin::showCategory(),
                 Admin::showProduct(),
@@ -420,7 +423,6 @@ class OrderResource extends Resource
                 Admin::showFreeTimePOD(),
                 Admin::showGrossWeight(),
                 Admin::showNetWeight(),
-                Admin::showBookingNumber(),
                 Admin::showDeclarationNumber(),
                 Admin::showDeclarationDate(),
                 Admin::showVoyageNumber(),

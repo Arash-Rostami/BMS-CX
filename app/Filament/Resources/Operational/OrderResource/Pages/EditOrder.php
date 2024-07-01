@@ -14,6 +14,7 @@ class EditOrder extends EditRecord
 {
     protected static string $resource = OrderResource::class;
 
+
     protected function getHeaderActions(): array
     {
         return [
@@ -21,6 +22,13 @@ class EditOrder extends EditRecord
                 ->icon('heroicon-o-trash')
                 ->successNotification(fn(Model $record) => Admin::send($record)),
         ];
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['extra'] = data_get($this->form->getRawState(), 'extra');
+
+        return $data;
     }
 
     protected function afterSave(): void

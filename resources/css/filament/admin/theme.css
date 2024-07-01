@@ -15,13 +15,13 @@
 
 ::-webkit-scrollbar {
     width: 4px;
-    height: 2px;
+    height: 4px;
 }
 
 /* Target the scrollbar within the fi-sidebar-nav class */
 .fi-sidebar-nav::-webkit-scrollbar {
-    width: 2px;
-    height: 1px;
+    width: 4px;
+    height: 4px;
 }
 
 /* Track */

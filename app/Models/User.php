@@ -73,7 +73,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
 
     public function canAccessPanel(Panel $panel): bool
     {
-        $allowedDomains = ['persolco.com', 'gmail.com', 'time-gr.com'];
+        $allowedDomains = ['persolco.com', 'gmail.com', 'time-gr.com', 'solsuntrading.com'];
         return in_array(substr(strrchr($this->email, '@'), 1), $allowedDomains);
     }
 

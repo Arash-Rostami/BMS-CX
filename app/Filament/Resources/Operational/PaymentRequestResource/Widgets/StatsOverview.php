@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Widgets;
 
 use App\Models\PaymentRequest;
+use App\Services\IconMaker;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\HtmlString;
@@ -11,37 +12,26 @@ class StatsOverview extends BaseWidget
 {
     protected function getStats(): array
     {
+        $statuses = ['approved', 'rejected', 'completed', 'cancelled'];
         $statusCounts = PaymentRequest::getStatusCounts();
+        $icons = $this->getIcons($statuses);
 
-        return [
-            Stat::make('approved', $statusCounts->get('approved', 0))
+        return array_map(function ($status) use ($statusCounts, $icons) {
+            return Stat::make($status, $statusCounts->get($status, 0))
                 ->extraAttributes([
-                    'class' => 'hidden md:block',
+                    'class' => "hidden md:block" . ($status === 'cancelled' ? ' border-2 border-red-500' : ''),
                 ])
-                ->label(new HtmlString("<span class='grayscale'>✅ Approved</span>"))
-                ->color('secondary'),
+                ->label(new HtmlString("<img class='inline-block' src='{$icons[$status]}' width='30' height='20' ><span class='grayscale'> " . ucfirst($status) . "</span>"))
+                ->color('secondary');
+        }, $statuses);
+    }
 
-            Stat::make('rejected', $statusCounts->get('rejected', 0))
-                ->extraAttributes([
-                    'class' => 'hidden md:block',
-                ])
-                ->label(new HtmlString("<span class='grayscale'>⛔ Rejected</span>"))
-                ->color('secondary'),
-
-
-            Stat::make('Completed', $statusCounts->get('completed', 0))
-                ->extraAttributes([
-                    'class' => 'hidden md:block',
-                ])
-                ->label(new HtmlString("<span class='grayscale'>🏁 Completed</span>"))
-                ->color('secondary'),
-
-            Stat::make('Cancelled', $statusCounts->get('cancelled', 0))
-                ->extraAttributes([
-                    'class' => 'hidden md:block border-2 border-red-500',
-                ])
-                ->label(new HtmlString("<span class='grayscale'>❌ Cancelled</span>"))
-                ->color('secondary')
-        ];
+    private function getIcons(array $statuses): array
+    {
+        $icons = [];
+        foreach ($statuses as $status) {
+            $icons[$status] = IconMaker::getIcon($status);
+        }
+        return $icons;
     }
 }

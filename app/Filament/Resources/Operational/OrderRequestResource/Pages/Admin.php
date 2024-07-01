@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\OrderRequestResource\Pages;
 
 use App\Filament\Resources\OrderRequestResource;
 use App\Models\Buyer;
+use App\Models\Category;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Notifications\FilamentNotification;
@@ -73,6 +74,9 @@ class Admin
                     ->disableAllToolbarButtons()
                     ->unique()
             ])
+            ->createOptionUsing(function (array $data): int {
+                return Category::create($data)->getKey();
+            })
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new category')
@@ -99,6 +103,9 @@ class Admin
             )
             ->required()
             ->createOptionForm([
+                Select::make('category_id')
+                    ->relationship('category', 'name')
+                    ->required(),
                 TextInput::make('name')
                     ->required()
                     ->maxLength(255)
@@ -170,10 +177,10 @@ class Admin
     public static function getBuyer(): Select
     {
         return Select::make('buyer_id')
-            ->label('')
+            ->label('Select Buyer')
             ->hint(new HtmlString('<span class="grayscale">📥 </span>Buyer<span class="red"> *</span>'))
             ->hintColor('primary')
-            ->options(Buyer::all()->pluck('name', 'id'))
+            ->options(Buyer::all()->pluck('name', 'id'))  // Consider using a more efficient query if the dataset is large
             ->searchable()
             ->required()
             ->createOptionForm([
@@ -186,6 +193,9 @@ class Admin
                     ->disableAllToolbarButtons()
                     ->unique()
             ])
+            ->createOptionUsing(function (array $data): int {
+                return Buyer::create($data)->getKey();
+            })
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new buyer')
@@ -215,6 +225,9 @@ class Admin
                     ->disableAllToolbarButtons()
                     ->unique()
             ])
+            ->createOptionUsing(function (array $data): int {
+                return Supplier::create($data)->getKey();
+            })
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new supplier')

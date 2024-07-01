@@ -1,5 +1,20 @@
 <x-filament-panels::page>
     <div class="max-w-4xl mx-auto py-8 text-gray-900 dark:text-gray-200">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.1
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(June 27, 2024)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>Dashboard Improvements: Scrollbar Enlargement, 3D icons in Stats.</li>
+            <li>Order Improvements: Unique Ref. No, Excel File Support, Computational Support.
+            </li>
+            <li>Order Request Improvements: Supplier, Buyer, Category, and Product Shortcut Bux Fix.</li>
+            <li>Payment Request Enhancements: Automated Status Changer's Name and Time, Automated Requester's Name &
+                Time, Re-ordering of Columns, Auto-required fields, Searchable Order Number, Booking No. in Part
+                Selection, Excel File Support, Multiple and Single Payment Relationship Support.
+            </li>
+            <li>Database Maintenance & Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
         <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.0
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(May 27, 2024)</span>
         </h1>

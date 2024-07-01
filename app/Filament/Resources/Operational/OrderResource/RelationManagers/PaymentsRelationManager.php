@@ -5,12 +5,14 @@ namespace App\Filament\Resources\Operational\OrderResource\RelationManagers;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\PaymentRequestResource;
 use App\Filament\Resources\PaymentResource;
+use App\Models\Payment;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class PaymentsRelationManager extends RelationManager
@@ -29,16 +31,32 @@ class PaymentsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
+        $ownRecord = $this->ownerRecord;
+
+        $table = self::configureCommonTableSettings($table, $ownRecord);
 
         return (getTableDesign() != 'classic')
             ? PaymentResource::getModernLayout($table)
             : PaymentResource::getClassicLayout($table);
     }
 
-    public static function configureCommonTableSettings(Table $table): Table
+    public static function configureCommonTableSettings(Table $table, $ownRecord): Table
     {
         return $table
+            ->query(function () use ($ownRecord) {
+                $invoice_number = !is_null($ownRecord->order_invoice_number) ? $ownRecord->order_invoice_number : $ownRecord->invoice_number;
+                $order_id = !is_null($ownRecord->order_invoice_number) ? $ownRecord->order->id : $ownRecord->id;
+
+                return
+                    Payment::query()
+                        ->whereHas('paymentRequests', function (Builder $query) use ($invoice_number, $order_id) {
+                            $query->whereNull('part')
+                                ->where('order_invoice_number', $invoice_number)
+                                ->orWhere('part', $order_id);
+                        });
+
+
+            })
             ->filters([
                 AdminOrder::filterCreatedAt(),
                 AdminOrder::filterSoftDeletes()

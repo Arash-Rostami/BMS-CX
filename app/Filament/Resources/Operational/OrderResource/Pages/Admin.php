@@ -126,11 +126,20 @@ class Admin
     {
         return Select::make('product_id')
             ->label('')
-            ->options(fn(Get $get) => Product::filterCategory($get('category_id'))->pluck('name', 'id'))
             ->hint(new HtmlString('<span class="grayscale">📦 </span>Product<span class="red"> *</span>'))
             ->hintColor('primary')
             ->required()
+            ->relationship('product', 'name',
+                function (Builder $query, Get $get) {
+                    if ($get('category_id')) {
+                        $query->where('category_id', $get('category_id'));
+                    }
+                }
+            )
             ->createOptionForm([
+                Select::make('category_id')
+                    ->relationship('category', 'name')
+                    ->required(),
                 TextInput::make('name')
                     ->required()
                     ->maxLength(255)
@@ -138,6 +147,7 @@ class Admin
                 MarkdownEditor::make('description')
                     ->maxLength(65535)
                     ->disableAllToolbarButtons()
+                    ->unique()
             ])
             ->createOptionAction(function (Action $action) {
                 return $action
@@ -292,7 +302,11 @@ class Admin
                 MarkdownEditor::make('description')
                     ->maxLength(65535)
                     ->disableAllToolbarButtons()
+                    ->unique()
             ])
+            ->createOptionUsing(function (array $data): int {
+                return Buyer::create($data)->getKey();
+            })
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new buyer')
@@ -321,7 +335,11 @@ class Admin
                 MarkdownEditor::make('description')
                     ->maxLength(65535)
                     ->disableAllToolbarButtons()
+                    ->unique()
             ])
+            ->createOptionUsing(function (array $data): int {
+                return Supplier::create($data)->getKey();
+            })
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new supplier')
@@ -501,6 +519,9 @@ class Admin
                     ->maxLength(65535)
                     ->disableAllToolbarButtons()
             ])
+            ->createOptionUsing(function (array $data): int {
+                return Packaging::create($data)->getKey();
+            })
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new package')
@@ -529,6 +550,9 @@ class Admin
                     ->maxLength(65535)
                     ->disableAllToolbarButtons()
             ])
+            ->createOptionUsing(function (array $data): int {
+                return DeliveryTerm::create($data)->getKey();
+            })
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new delivery term')
@@ -557,6 +581,9 @@ class Admin
                     ->maxLength(65535)
                     ->disableAllToolbarButtons()
             ])
+            ->createOptionUsing(function (array $data): int {
+                return ShippingLine::create($data)->getKey();
+            })
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new Cargo carrier (shipping co)')
@@ -585,6 +612,9 @@ class Admin
                     ->maxLength(65535)
                     ->disableAllToolbarButtons()
             ])
+            ->createOptionUsing(function (array $data): int {
+                return PortOfDelivery::create($data)->getKey();
+            })
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new port of delivery')
@@ -884,7 +914,7 @@ class Admin
             ->disk('filament')
             ->directory('/attachments/order-attachments')
             ->maxSize(2500)
-            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf'])
+            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
             ->imageEditor()
             ->openable()
             ->downloadable()
@@ -1046,12 +1076,31 @@ class Admin
     public static function showInvoiceNumber(): TextColumn
     {
         return TextColumn::make('invoice_number')
+            ->label('Invoice')
             ->color('primary')
             ->grow(false)
             ->size(TextColumnSize::ExtraSmall)
             ->sortable()
             ->toggleable()
             ->searchable();
+    }
+
+    public static function showReferenceNumber(): TextColumn
+    {
+        return TextColumn::make('extra.reference_number')
+            ->label('Ref. No.')
+            ->badge()
+            ->color('info')
+            ->grow(false)
+            ->size(TextColumnSize::ExtraSmall)
+            ->sortable()
+            ->toggleable()
+            ->sortable(query: function (Builder $query, string $direction) {
+                $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.reference_number')) $direction");
+            })
+            ->searchable(query: function (Builder $query, string $search): Builder {
+                return $query->whereJsonContains('extra->reference_number', $search);
+            });
     }
 
     /**
@@ -1677,7 +1726,7 @@ class Admin
     public
     static function groupByInvoiceNumber(): Group
     {
-        return Group::make('invoice_number')->label('Invoice Number')
+        return Group::make('invoice_number')->label('Invoice')
             ->collapsible();
     }
 
@@ -1785,8 +1834,6 @@ class Admin
             $set('grade', $orderRequest->grade);
             $set('party.buyer_id', $orderRequest->buyer_id);
             $set('party.supplier_id', $orderRequest->supplier_id);
-            $set('orderDetail.buying_quantity', $orderRequest->quantity);
-            $set('orderDetail.buying_price', $orderRequest->price);
         }
     }
 
@@ -1855,8 +1902,8 @@ class Admin
     static function calculatePaymentAndTotal($get, $set): void
     {
         $percentage = (float)$get('extra.percentage') ?? 0;
-        $price = (float)$get('initial_price') ?? 0;
-        $quantity = (float)$get('initial_quantity') ?? 0;
+        $price = (float)$get('initial_price') ?? $get('orderDetail.initial_price') ?? 0;
+        $quantity = (float)$get('initial_quantity') ?? $get('orderDetail.initial_quantity') ?? 0;
 
         $total = $quantity * $price;
         $payment = ($percentage * $total) / 100;
@@ -1864,6 +1911,4 @@ class Admin
         $set('extra.payment', sprintf("%.2f", $payment));
         $set('extra.total', sprintf("%.2f", $total));
     }
-
-
 }

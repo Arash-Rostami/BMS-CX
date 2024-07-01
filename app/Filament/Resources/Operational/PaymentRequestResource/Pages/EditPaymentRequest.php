@@ -17,6 +17,7 @@ class EditPaymentRequest extends EditRecord
 {
     protected static string $resource = PaymentRequestResource::class;
 
+
     protected function getHeaderActions(): array
     {
         return [
@@ -24,6 +25,13 @@ class EditPaymentRequest extends EditRecord
                 ->icon('heroicon-o-trash')
                 ->successNotification(fn(Model $record) => Admin::send($record)),
         ];
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['extra'] = data_get($this->form->getRawState(), 'extra');
+
+        return $data;
     }
 
     protected function beforeSave()
@@ -57,6 +65,8 @@ class EditPaymentRequest extends EditRecord
         $newStatus = $this->record['status'];
 
         if ($newStatus && $newStatus !== session('old_status_payment')) {
+
+            $this->persistStatusChanger();
 
             foreach (User::getUsersByRole('admin') as $recipient) {
                 $recipient->notify(new FilamentNotification([
@@ -92,5 +102,23 @@ class EditPaymentRequest extends EditRecord
         ];
 
         RetryableEmailService::dispatchEmail('payment request', ...$arguments);
+    }
+
+
+    /**
+     * @return void
+     */
+    public function persistStatusChanger(): void
+    {
+        $statusChangeInfo = [
+            'changed_by' => auth()->user()->full_name,
+            'changed_at' => now()->toDateTimeString(),
+        ];
+
+        $extra = $this->record->extra ?? [];
+        $extra['statusChangeInfo'] = $statusChangeInfo;
+
+        $this->record->extra = $extra;
+        $this->record->save();
     }
 }

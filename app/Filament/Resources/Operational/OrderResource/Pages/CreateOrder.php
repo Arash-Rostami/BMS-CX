@@ -27,6 +27,8 @@ class CreateOrder extends CreateRecord
     protected function afterCreate(): void
     {
         $this->persistInvoiceNumbers();
+        $this->persistReferenceNumber();
+
 
 //        $data = [
 ////            'recipients' => User::getUsersByRoles(['manager','agent'])
@@ -62,6 +64,22 @@ class CreateOrder extends CreateRecord
         $this->record->save();
     }
 
+    protected function persistReferenceNumber(): void
+    {
+        $yearSuffix = date('y');
+        $orderIndex = $this->record->id;
+
+        $referenceNumber = sprintf('%s%04d', $yearSuffix, $orderIndex);
+
+        $extra = $this->record->extra ?? [];
+
+        $extra['reference_number'] = $referenceNumber;
+
+        $this->record->extra = $extra;
+
+        $this->record->save();
+    }
+
     /**
      * @return string
      */
@@ -70,11 +88,10 @@ class CreateOrder extends CreateRecord
         $product = $this->record->product->name;
         $supplier = $this->record->party->supplier->name;
 
-        $formattedCalendar = date('Y', time());
-
+//        $formattedDate = date('Y', time());
 
         return sprintf(
-            'ORD-%s-%s-%s', $product, $supplier, $formattedCalendar,
+            'ORD-%s-%s', $product, $supplier,
         );
     }
 }

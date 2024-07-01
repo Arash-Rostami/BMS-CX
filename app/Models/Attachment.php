@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 class Attachment extends Model
@@ -43,7 +44,7 @@ class Attachment extends Model
         });
 
         static::deleting(function ($attachment) {
-            if ($attachment->file_path) {
+            if ($attachment->file_path && File::exists(public_path($attachment->file_path))) {
                 Storage::disk('public')->delete($attachment->file_path);
             }
         });

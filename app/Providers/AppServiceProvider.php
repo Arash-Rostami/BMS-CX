@@ -8,6 +8,7 @@ use App\Models\PaymentRequest;
 use App\Observers\AttachmentObserver;
 use App\Observers\PaymentObserver;
 use App\Policies\PaymentRequestPolicy;
+use App\Services\IconMaker;
 use Filament\Support\Assets\Js;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\VerticalAlignment;
@@ -35,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+
     }
 
     /**
@@ -51,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         Attachment::observe(AttachmentObserver::class);
+
 //        Notifications::alignment(Alignment::Start);
 //        Notifications::verticalAlignment(VerticalAlignment::End);
     }

@@ -28,15 +28,17 @@ class PaymentRequestsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
+        $ownRecord = $this->ownerRecord->paymentRequests;
+
+        $table = self::configureCommonTableSettings($table, $ownRecord);
 
         return (getTableDesign() != 'classic')
             ? PaymentRequestResource::getModernLayout($table)
             : PaymentRequestResource::getClassicLayout($table);
     }
 
-    public static function configureCommonTableSettings(Table $table): Table
+    public static function configureCommonTableSettings(Table $table, $ownRecord): Table
     {
-        return OrderPaymentRequests::configureCommonTableSettings($table);
+        return OrderPaymentRequests::configureCommonTableSettings($table, $ownRecord);
     }
 }
