@@ -10,7 +10,7 @@
             <li>Order Request Improvements: Supplier, Buyer, Category, and Product Shortcut Bux Fix.</li>
             <li>Payment Request Enhancements: Automated Status Changer's Name and Time, Automated Requester's Name &
                 Time, Re-ordering of Columns, Auto-required fields, Searchable Order Number, Booking No. in Part
-                Selection, Excel File Support, Multiple and Single Payment Relationship Support.
+                Selection, Excel File Support, Attachment Edit Mode, Multiple and Single Payment Relationship Support.
             </li>
             <li>Database Maintenance & Backup.</li>
         </ul>

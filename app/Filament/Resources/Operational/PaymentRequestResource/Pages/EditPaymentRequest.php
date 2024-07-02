@@ -9,8 +9,10 @@ use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\NotificationManager;
 use App\Services\RetryableEmailService;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
+use Filament\Forms\Components\Repeater;
 
 
 class EditPaymentRequest extends EditRecord
@@ -27,6 +29,7 @@ class EditPaymentRequest extends EditRecord
         ];
     }
 
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['extra'] = data_get($this->form->getRawState(), 'extra');
@@ -36,8 +39,20 @@ class EditPaymentRequest extends EditRecord
 
     protected function beforeSave()
     {
+
+        if (!$this->record->payments->isEmpty()) {
+            Notification::make()
+                ->warning()
+                ->title('Record Locked: Payment Received')
+                ->persistent()
+                ->send();
+
+            $this->halt();
+        }
+
         session(['old_status_payment' => $this->record->getOriginal('status')]);
     }
+
 
     protected function afterSave(): void
     {
