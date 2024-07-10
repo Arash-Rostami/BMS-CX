@@ -1,5 +1,16 @@
 <x-filament-panels::page>
     <div class="max-w-4xl mx-auto py-8 text-gray-900 dark:text-gray-200">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.2
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(July 4, 2024)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>Payment Request Improvements: Record Lock for Deletion or Editing.</li>
+            <li>Order Improvements: Re-arrangement of Columns.
+            </li>
+            <li>Dashboard: Analytics/Charts for Product/Category, Buyer Frequency, Status Distribution, and Yearly Trend.</li>
+            <li>Database Maintenance & Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
         <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.1
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(June 27, 2024)</span>
         </h1>

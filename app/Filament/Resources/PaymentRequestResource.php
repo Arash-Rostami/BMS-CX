@@ -124,7 +124,7 @@ class PaymentRequestResource extends Resource
                                             ])->columns(4)
                                             ->itemLabel('Attachments:')
                                             ->addActionLabel('➕')
-                                            ->deletable(fn(Model $record) => ($record->payments->isEmpty()))
+                                            ->deletable(fn(?Model $record) => $record ? $record->payments->isEmpty() : true)
                                             ->columnSpanFull()
                                             ->collapsible()
                                             ->collapsed(),
@@ -263,18 +263,8 @@ class PaymentRequestResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
-//                    ->before(function (EditAction $action, Model $record) {
-////                        if ($record->payments) {
-//                            Notification::make()
-//                                ->warning()
-//                                ->title('You cannot delete attachment while the payment has been made for it!')
-//                                ->body('Choose a plan to continue.')
-//                                ->persistent()
-//                                ->send();
-//                            $action->halt();
-////                        }
-//                    }),
                 Tables\Actions\DeleteAction::make()
+                    ->hidden(fn(?Model $record) => $record ? $record->payments->isNotEmpty() : false)
                     ->successNotification(fn(Model $record) => Admin::send($record)),
                 Tables\Actions\RestoreAction::make(),
             ])

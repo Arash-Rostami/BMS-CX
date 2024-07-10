@@ -12,7 +12,6 @@ use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
-use Filament\Forms\Components\Repeater;
 
 
 class EditPaymentRequest extends EditRecord
@@ -24,6 +23,7 @@ class EditPaymentRequest extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
+                ->hidden(fn(?Model $record) => $record ? $record->payments->isNotEmpty() : false)
                 ->icon('heroicon-o-trash')
                 ->successNotification(fn(Model $record) => Admin::send($record)),
         ];
@@ -39,15 +39,8 @@ class EditPaymentRequest extends EditRecord
 
     protected function beforeSave()
     {
-
-        if (!$this->record->payments->isEmpty()) {
-            Notification::make()
-                ->warning()
-                ->title('Record Locked: Payment Received')
-                ->persistent()
-                ->send();
-
-            $this->halt();
+        if ($this->record->payments->isNotEmpty()) {
+            $this->haltProcess();
         }
 
         session(['old_status_payment' => $this->record->getOriginal('status')]);
@@ -63,7 +56,7 @@ class EditPaymentRequest extends EditRecord
         $this->clearSessionData();
     }
 
-    protected function sendEditNotification()
+    private function sendEditNotification()
     {
         foreach (User::getUsersByRole('admin') as $recipient) {
             $recipient->notify(new FilamentNotification([
@@ -75,7 +68,7 @@ class EditPaymentRequest extends EditRecord
         }
     }
 
-    protected function sendStatusNotification()
+    private function sendStatusNotification()
     {
         $newStatus = $this->record['status'];
 
@@ -96,16 +89,13 @@ class EditPaymentRequest extends EditRecord
         }
     }
 
-    protected function clearSessionData()
+    private function clearSessionData()
     {
         session()->forget('old_status_payment');
     }
 
 
-    /**
-     * @return void
-     */
-    public function notifyViaEmail($status): void
+    private function notifyViaEmail($status): void
     {
 //        $arguments = [
 //            ($status == 'allowed') ? User::getUsersByRoles(['manager', 'agent']) : User::getUsersByRole('agent'),
@@ -120,10 +110,7 @@ class EditPaymentRequest extends EditRecord
     }
 
 
-    /**
-     * @return void
-     */
-    public function persistStatusChanger(): void
+    private function persistStatusChanger(): void
     {
         $statusChangeInfo = [
             'changed_by' => auth()->user()->full_name,
@@ -135,5 +122,17 @@ class EditPaymentRequest extends EditRecord
 
         $this->record->extra = $extra;
         $this->record->save();
+    }
+
+
+    private function haltProcess(): void
+    {
+        Notification::make()
+            ->warning()
+            ->title('Record Locked: Payment Received')
+            ->persistent()
+            ->send();
+
+        $this->halt();
     }
 }

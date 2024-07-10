@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Scope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 
 
 class Order extends Model
@@ -58,6 +59,107 @@ class Order extends Model
         static::updating(function ($post) {
             $post->order_number = self::makeOrderNumber($post);
         });
+    }
+
+    public static function countOrdersByMonth($year)
+    {
+        $cacheKey = 'orders_count_by_month_' . $year;
+
+        return Cache::remember($cacheKey, 300, function () use ($year) {
+            $query = static::query();
+
+            if ($year !== 'all') {
+                $query->whereYear('proforma_date', $year);
+            }
+
+            return $query->selectRaw('MONTH(proforma_date) as month, COUNT(*) as count')
+                ->groupBy('month')
+                ->orderBy('month', 'asc')
+                ->get()
+                ->pluck('count', 'month');
+        });
+    }
+
+    public static function countOrdersByBuyer($year)
+    {
+        $cacheKey = 'orders_count_by_Buyer_' . $year;
+
+        return Cache::remember($cacheKey, 300, function () use ($year) {
+            $query = static::query();
+
+            if ($year !== 'all') {
+                $query->whereYear('proforma_date', $year);
+            }
+
+            return $query->with('party.buyer')
+                ->get()
+                ->groupBy(function ($order) {
+                    return $order->party && $order->party->buyer ? $order->party->buyer->name : 'Unknown';
+                })
+                ->mapWithKeys(function ($group, $key) {
+                    return [$key => count($group)];
+                });
+        });
+    }
+
+    public static function countOrdersByCategory($year)
+    {
+        $cacheKey = 'orders_count_by_category_' . $year;
+
+        return Cache::remember($cacheKey, 300, function () use ($year) {
+            $query = static::query()->with('category');
+
+            if ($year !== 'all') {
+                $query->whereYear('proforma_date', $year);
+            }
+
+            return $query->get()
+                ->groupBy('category_id')
+                ->map(function ($orders) {
+                    $category = $orders->first()->category;
+                    return [
+                        'name' => $category ? $category->name : 'Unknown',
+                        'count' => $orders->count(),
+                    ];
+                });
+        });
+    }
+
+    public static function countOrdersByProduct($year)
+    {
+        $cacheKey = 'orders_count_by_product_' . $year;
+
+        return Cache::remember($cacheKey, 300, function () use ($year) {
+            $query = static::query()->with('product');
+
+            if ($year !== 'all') {
+                $query->whereYear('proforma_date', $year);
+            }
+
+            return $query->get()
+                ->groupBy('product_id')
+                ->map(function ($orders) {
+                    $product = $orders->first()->product;
+                    return [
+                        'name' => $product ? $product->name : 'Unknown',
+                        'count' => $orders->count(),
+                    ];
+                });
+        });
+    }
+
+    public static function countOrdersByStatus($year)
+    {
+        $query = static::query();
+
+        if ($year !== 'all') {
+            $query->whereYear('proforma_date', $year);
+        }
+
+        return $query->selectRaw('order_status, COUNT(*) as total')
+            ->groupBy('order_status')
+            ->get()
+            ->pluck('total', 'order_status');
     }
 
 
