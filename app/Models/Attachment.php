@@ -106,4 +106,10 @@ class Attachment extends Model
         return $this->belongsTo(OrderRequest::class, 'order_request_id');
     }
 
+    public static function hasTitleContainingPart($title, $orderId)
+    {
+        return self::where('order_id', $orderId)
+            ->where('file_path', 'LIKE', "%{$title}%")
+            ->exists();
+    }
 }

@@ -16,6 +16,8 @@ class OrderRequestRelationManager extends RelationManager
 {
     protected static string $relationship = 'orderRequest';
 
+    protected static ?string $title = 'Pro forma Invoice';
+
     public function form(Form $form): Form
     {
         return $form->schema([ ]);
@@ -40,7 +42,7 @@ class OrderRequestRelationManager extends RelationManager
     {
         return $table
             ->filters([
-                AdminOrder::filterCreatedAt(),
+                AdminOrder::filterProforma(),
                 AdminOrder::filterSoftDeletes()
             ])
             ->actions([

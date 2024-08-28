@@ -34,37 +34,39 @@ class EditOrderRequest extends EditRecord
 
     protected function afterSave()
     {
-        $this->sendEditNotification();
+        $agents = (new CreateOrderRequest())->fetchAgents();
 
-        $this->sendStatusNotification();
+        $this->sendEditNotification($agents);
+
+        $this->sendStatusNotification($agents);
 
         $this->clearSessionData();
     }
 
-    protected function sendEditNotification()
+    protected function sendEditNotification($agents)
     {
-        foreach (User::getUsersByRole('admin') as $recipient) {
+        foreach ($agents as $recipient) {
             $recipient->notify(new FilamentNotification([
                 'record' => $this->record->product->name,
                 'type' => 'edit',
                 'module' => 'orderRequest',
-                'url' => route('filament.admin.resources.order-requests.edit', ['record' => $this->record->id]),
+                'url' => route('filament.admin.resources.profroma-invoices.edit', ['record' => $this->record->id]),
             ]));
         }
     }
 
-    protected function sendStatusNotification()
+    protected function sendStatusNotification($agents)
     {
         $newStatus = $this->record['request_status'];
 
         if ($newStatus && $newStatus !== session('old_status')) {
 
-            foreach (User::getUsersByRole('admin') as $recipient) {
+            foreach ($agents as $recipient) {
                 $recipient->notify(new FilamentNotification([
                     'record' => $this->record->product->name,
                     'type' => $newStatus === 'review' ? 'processing' : ($newStatus === 'fulfilled' ? 'completed' : $newStatus),
                     'module' => 'order',
-                    'url' => route('filament.admin.resources.order-requests.edit', ['record' => $this->record->id]),
+                    'url' => route('filament.admin.resources.profroma-invoices.edit', ['record' => $this->record->id]),
                 ], true));
             }
         }
@@ -80,12 +82,8 @@ class EditOrderRequest extends EditRecord
      */
     public function notifyViaEmail($status): void
     {
-//        $arguments = [
-//            ($status == 'approved') ? User::getUsersByRole('agent') : User::getUsersByRole('partner'),
-//            new OrderRequestStatusNotification($this->record, $status)
-//        ];
         $arguments = [
-            User::getUsersByRole('admin'),
+            ($status == 'approved') ? User::getUsersByRole('agent') : User::getUsersByRole('partner'),
             new OrderRequestStatusNotification($this->record, $status)
         ];
 

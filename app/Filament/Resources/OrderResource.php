@@ -9,12 +9,16 @@ use App\Filament\Resources\Operational\OrderResource\Widgets\StatsOverview;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Resources\OrderResource\RelationManagers;
 use App\Models\Order;
+use App\Services\OrderPaymentCalculationService;
 use App\Services\TableObserver;
+use Archilex\ToggleIconColumn\Columns\ToggleIconColumn;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
+use Filament\Forms\Components\Fieldset;
+use Filament\Tables\Actions\Action as TableAction;
+use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -28,13 +32,15 @@ use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
-use Filament\Tables\Filters\Filter;
+use Filament\Tables\Columns\Layout\View;
+use Filament\Forms\Components\View as ComponentView;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
+use Livewire\Livewire;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -43,11 +49,16 @@ class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
 
     protected static ?string $navigationGroup = 'Operational Data';
 
+
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
+
+    /**
+     * @return ToggleIconColumn|string|null
+     */
 
 
     public static function form(Form $form): Form
@@ -58,12 +69,15 @@ class OrderResource extends Resource
                     ->schema([
                         Forms\Components\Section::make()
                             ->schema([
-                                Admin::getOrderRequestNumber(),
-                                Admin::getPart(),
+                                Fieldset::make()
+                                    ->schema([
+                                        Admin::getOrderRequestNumber(),
+                                        Admin::getPart(),
+                                    ])->columns(3),
                                 Admin::getManualInvoiceNumber(),
                                 Admin::getCategory(),
                                 Admin::getProduct(),
-                                Forms\Components\Section::make()
+                                Fieldset::make()
                                     ->schema([
                                         Admin::getProformaNumber(),
                                         Admin::getProformaDate(),
@@ -71,10 +85,9 @@ class OrderResource extends Resource
                                     ])->columns(3),
                             ])
                             ->columns(2),
-                    ]),
+                    ])->columnSpan(3),
                 Forms\Components\Group::make()
                     ->schema([
-                        Admin::getDocumentsReceived(),
                         Forms\Components\Section::make('Status:')
                             ->schema([
                                 Admin::getPurchaseStatus(),
@@ -89,45 +102,76 @@ class OrderResource extends Resource
                                 Admin::getSupplier(),
                             ])->columns(2)
                             ->columnSpanFull()
-                            ->collapsed()
                             ->collapsible(),
-                    ]),
+                    ])->columnSpan(2),
 
 
-                /*Order Detailed*/
-                Section::make(new HtmlString("Details: <span class='red'>*</span>"))
-                    ->relationship('orderDetail')
+                Group::make()
                     ->schema([
-                        Forms\Components\Group::make()
+                        /*Order Detailed*/
+                        Section::make(new HtmlString("Details: <span class='red'>*</span>"))
+                            ->relationship('orderDetail')
+                            ->headerActions([
+                                Action::make('Compute')
+                                    ->label('')
+                                    ->tooltip('Compute')
+                                    ->icon('heroicon-o-calculator')
+                                    ->action(function (Get $get, Set $set, ?Model $record) {
+                                        OrderPaymentCalculationService::processPaymentStub($get, $set, $record);
+                                    })])
                             ->schema([
-                                Admin::getPercentage(),
-                                Admin::getCurrency(),
-                                Admin::getPayment(),
-                                Admin::getTotal(),
-                            ])
-                            ->columns(4)
-                            ->columnSpanFull(),
-                        Forms\Components\Group::make()
-                            ->schema([
-                                Forms\Components\Section::make(new HtmlString('<span class="text-sm grayscale">💰 Unit Price</span>'))
+                                Group::make()
                                     ->schema([
-                                        Admin::getPrice(),
-                                        Admin::getProvisionalPrice(),
-                                        Admin::getFinalPrice(),
-                                    ])->columns(3)
-                            ]),
-                        Forms\Components\Group::make()
-                            ->schema([
-                                Forms\Components\Section::make(new HtmlString('<span class="text-sm grayscale">⏲️ Quantity</span>'))
+                                        Forms\Components\Group::make()
+                                            ->schema([
+                                                Forms\Components\Fieldset::make()
+                                                    ->label(new HtmlString('<span class="text-sm grayscale">💻 Metrics</span>'))
+                                                    ->schema([
+                                                        Admin::getPercentage(),
+                                                        Admin::getCurrency(),
+                                                        Admin::getLastOrder(),
+                                                    ])->columns(3),
+                                                Forms\Components\Fieldset::make(new HtmlString('<span class="text-sm grayscale">💰 Price (unit)</span>'))
+                                                    ->schema([
+                                                        Admin::getPrice(),
+                                                        Admin::getProvisionalPrice(),
+                                                        Admin::getFinalPrice(),
+                                                    ])->columns(3),
+                                                Forms\Components\Fieldset::make(new HtmlString('<span class="text-sm grayscale">⏲️ Quantity (mt)</span>'))
+                                                    ->schema([
+                                                        Admin::getQuantity(),
+                                                        Admin::getProvisionalQuantity(),
+                                                        Admin::getFinalQuantity(),
+                                                    ])->columns(3)
+                                            ]),
+                                    ])->columnSpan(2),
+                                Group::make()
                                     ->schema([
-                                        Admin::getQuantity(),
-                                        Admin::getProvisionalQuantity(),
-                                        Admin::getFinalQuantity(),
-                                    ])->columns(3)
+                                        Forms\Components\Fieldset::make()
+                                            ->label(new HtmlString('⚠ Payment Stub<span class="text-gray-400 text-xs"> - auto computed by BMS</span> '))
+                                            ->schema([
+                                                // HIDDEN inputs to store date sent by COMPONENT VIEW page
+                                                Admin::getPayment(),
+                                                Admin::getRemaining(),
+                                                Admin::getTotal(),
+                                                Admin::getInitialPayment(),
+                                                Admin::getInitialTotal(),
+                                                Admin::getProvisionalTotal(),
+                                                Admin::getFinalTotal(),
+                                                Admin::getHiddenBuyingQuantity(),
+                                                Admin::getHiddenBuyingPrice(),
+                                                Admin::getHiddenPayableQuantity(),
+                                                // COMPONENT VIEW page
+                                                ComponentView::make('slip')
+                                                    ->view('filament.orders.financial-details'),
+                                            ])->columns(1),
+                                    ])->columnSpan(2),
                             ])
+                            ->columnSpanFull()
+                            ->columns(4),
+
                     ])
-                    ->columns(2)
-                    ->collapsible(),
+                    ->columnSpanFull(),
 
                 /*Logistics Info*/
                 Section::make('Logistics:')
@@ -215,32 +259,41 @@ class OrderResource extends Resource
                     ->collapsed()
                     ->collapsible(),
 
-                /*Additional Attachments*/
+
+                /* Attachments Section */
                 Repeater::make('attachments')
                     ->relationship('attachments')
-                    ->label('Attachments')
                     ->schema([
-                        Forms\Components\Group::make()
+                        // General attachment fields
+                        Forms\Components\Section::make()
                             ->schema([
-                                Forms\Components\Section::make()
-                                    ->schema([
-                                        Admin::getFileUpload()
-                                    ])
-                            ])->columnSpan(2),
-                        Forms\Components\Group::make()
-                            ->schema([
-                                Forms\Components\Section::make()
-                                    ->schema([
-                                        Admin::getAttachmentTitle(),
-                                    ])
-                            ])->columnSpan(2)
-                    ])->columns(4)
-                    ->itemLabel('Attachments:')
-                    ->addActionLabel('➕')
+                                Admin::getFileUpload(),
+                                Admin::getAttachmentTitle(),
+                            ])->columns(2),
+                    ])
+                    ->columns(4)
+                    ->itemLabel('🧷')
+                    ->addActionLabel('➕ Add Attachment')
                     ->columnSpanFull()
                     ->collapsible()
                     ->collapsed(),
-            ]);
+
+                /* Tag Section */
+                Repeater::make('tags')
+                    ->relationship('tags')
+                    ->schema([
+                        Admin::getTagsInput(),
+                        Admin::getModule(),
+                    ])
+                    ->columns(1)
+                    ->itemLabel('🏷️')
+                    ->addActionLabel('Add Tag(s)')
+                    ->minItems(0)
+                    ->maxItems(1)
+                    ->columnSpanFull()
+                    ->collapsible()
+                    ->collapsed(),
+            ])->columns(5);
     }
 
     /**
@@ -308,7 +361,17 @@ class OrderResource extends Resource
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
-            ->filters([Admin::filterOrderStatus(), Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
+
+            ->recordClasses(fn(Model $record) => ($record->part == 1) ? 'major-row' : 'collapsed')
+            ->defaultGroup('invoice_number')
+            ->paginated([10, 15, 20])
+            ->groupingSettingsInDropdownOnDesktop()
+            ->filters([
+                Admin::filterSoftDeletes(),
+                Admin::filterBasedOnQuery()
+//                Admin::filterOrderStatus(), Admin::filterCreatedAt(),
+            ], layout: Tables\Enums\FiltersLayout::AboveContentCollapsible)
+            ->filtersTriggerAction(fn(TableAction $action) => $action->button()->label('')->tooltip('Filter records'))
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
@@ -327,8 +390,9 @@ class OrderResource extends Resource
                     ExportBulkAction::make(),
                 ])
             ])
-            ->defaultSort('created_at', 'desc')
-            ->poll(60)
+            ->defaultSort('part', 'asc')
+            ->deferLoading()
+            ->poll('120s')
             ->groups([
                 Admin::groupByBuyer(),
                 Admin::groupByCategory(),
@@ -343,6 +407,7 @@ class OrderResource extends Resource
                 Admin::groupByStage(),
                 Admin::groupByStatus(),
                 Admin::groupBySupplier(),
+                Admin::groupByTags(),
             ]);
     }
 
@@ -354,63 +419,74 @@ class OrderResource extends Resource
                     Panel::make([
                         Stack::make([
                             Split::make([
-                                Admin::showProformaNumber(),
-                                Admin::showProformaDate(),
-                                Admin::showPercentage(),
                                 Admin::showReferenceNumber(),
                                 Admin::showInvoiceNumber(),
                                 Admin::showOrderPart(),
+                                Admin::showSupplier(),
+                                Admin::showBuyer(),
                             ]),
                             Split::make([
-                                Admin::showCategory(),
+                                Admin::showProformaNumber(),
+                                Admin::showProformaDate(),
+                                Admin::showPercentage(),
+                            ]),
+                            Split::make([
                                 Admin::showProduct(),
                                 Admin::showGrade(),
                                 Admin::showPurchaseStatus(),
                                 Admin::showOrderStatus(),
-
                             ]),
                             Split::make([
-                                Stack::make([
-                                    Admin::showOrderNumber(),
-                                ]),
+                                Admin::showBookingNumber(),
+                                Admin::showBLNumber(),
 //                                TableObserver::showMissingDataWithRel(-12),
+                            ]),
+                            Split::make([
                                 Admin::showPaymentRequests(),
                                 Admin::showPayments(),
-
                             ]),
                         ])->space(2),
                     ])
                 ])->columnSpanFull(),
+//                Split::make([
+//                    View::make('filament.orders.collapsible-row-content')
+//                ]),
+                Split::make([
+                    Admin::showOrderNumber(),
+                ]),
                 Admin::showUpdatedAt(),
             ]);
     }
 
     public static function getClassicLayout(Table $table): Table
     {
+        $showAllDocs = Admin::showAllDocs();
         return $table
             ->columns([
-                TableObserver::showMissingDataWithRel(-12),
                 Admin::showReferenceNumber(),
+                Admin::showInvoiceNumber(),
+                Admin::showSupplier(),
                 Admin::showProformaNumber(),
                 Admin::showProformaDate(),
-                Admin::showInvoiceNumber(),
-                Admin::showOrderPart(),
-                Admin::showBookingNumber(),
-                Admin::showOrderStatus(),
-                Admin::showCategory(),
                 Admin::showProduct(),
                 Admin::showGrade(),
-                Admin::showPurchaseStatus(),
-                Admin::showSupplier(),
-                Admin::showBuyer(),
+                Admin::showOrderPart(),
                 Admin::showQuantities(),
                 Admin::showPrices(),
+                Admin::showPortOfDelivery(),
+                Admin::showBookingNumber(),
+                Admin::showBLNumber(),
+                Admin::showBLDate(),
+                Admin::showVoyageNumber(),
+                Admin::showGrossWeight(),
+                Admin::showNetWeight(),
+                Admin::showPurchaseStatus(),
+                Admin::showCategory(),
+                Admin::showBuyer(),
                 Admin::showPercentage(),
                 Admin::showDeliveryTerm(),
                 Admin::showPackaging(),
                 Admin::showShippingLine(),
-                Admin::showPortOfDelivery(),
-                Admin::showChangeOfDestination(),
                 Admin::showLoadingStartline(),
                 Admin::showLoadingDeadline(),
                 Admin::showEtd(),
@@ -421,18 +497,29 @@ class OrderResource extends Resource
                 Admin::showOceanFreight(),
                 Admin::showTHC(),
                 Admin::showFreeTimePOD(),
-                Admin::showGrossWeight(),
-                Admin::showNetWeight(),
                 Admin::showDeclarationNumber(),
                 Admin::showDeclarationDate(),
-                Admin::showVoyageNumber(),
-                Admin::showBLNumber(),
-                Admin::showBLDate(),
-                Admin::showVoyageNumberLegTwo(),
                 Admin::showBLNumberLegTwo(),
                 Admin::showBLDateLegTwo(),
+                Admin::showVoyageNumberLegTwo(),
                 Admin::showOrderNumber(),
-            ])
-            ->striped();
+                Admin::showChangeOfDestination(),
+                ...$showAllDocs,
+                Admin::showOrderStatus(),
+                TableObserver::showMissingDataWithRel(-12),
+            ]);
+    }
+
+    /**
+     * @return null
+     */
+    public static function getAllDocs()
+    {
+        return Admin::showAllDocs();
+    }
+
+    public static function getTableQuery()
+    {
+        return parent::getTableQuery()->orderBy('part', 'asc')->orderBy('created_at', 'desc');
     }
 }

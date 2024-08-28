@@ -8,6 +8,19 @@ use Illuminate\Support\Facades\Auth;
 
 class ColorTheme
 {
+    public const DarkMaroon = [
+        50 => '223, 207, 212',
+        100 => '213, 192, 199',
+        200 => '203, 177, 186',
+        300 => '193, 162, 173',
+        400 => '183, 147, 160',
+        500 => '173, 132, 147',
+        600 => '163, 117, 134',
+        700 => '153, 102, 121',
+        800 => '143, 87, 108',
+        900 => '133, 72, 95',
+        950 => '123, 57, 82',
+    ];
 
     public static function getRandomColorForWidget()
     {
@@ -31,16 +44,16 @@ class ColorTheme
      */
     public static function getRandomFontTheme(): array
     {
+
         $colors = [
+//            'blue' => Color::Blue,
+            'maroon' => self::DarkMaroon,
 //            'orange' => Color::Orange,
 //            'slate' => Color::Slate,
 //            'zinc' => Color::Zinc,
-            'indigo' => Color::Indigo,
-//            'indigo-second' => [400 => '242, 217, 159']
+//            'indigo' => Color::Indigo,
         ];
 
         return $colors[array_rand($colors)];
     }
-
-
 }

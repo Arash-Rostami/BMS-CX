@@ -3,14 +3,12 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
-use App\Models\Order;
 use App\Models\User;
 use App\Notifications\FilamentNotification;
 use App\Notifications\PaymentRequestStatusNotification;
-use App\Services\NotificationManager;
 use App\Services\RetryableEmailService;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Notification as EmailNotification;
+use Illuminate\Support\Facades\Cache;
 
 
 class CreatePaymentRequest extends CreateRecord
@@ -32,7 +30,11 @@ class CreatePaymentRequest extends CreateRecord
 
     protected function afterCreate(): void
     {
-        foreach (User::getUsersByRole('admin') as $recipient) {
+        $accountants = $this->fetchAccountants();
+        $this->persistReferenceNumber();
+
+
+        foreach ($accountants as $recipient) {
             $recipient->notify(new FilamentNotification([
                 'record' => Admin::getOrderRelation($this->record),
                 'type' => 'new',
@@ -41,9 +43,25 @@ class CreatePaymentRequest extends CreateRecord
             ]));
         }
 
-        $this->notifyViaEmail();
+        $this->notifyViaEmail($accountants);
 
-        $this->notifyManagement();
+//        $this->notifyManagement();
+    }
+
+    protected function persistReferenceNumber(): void
+    {
+        $yearSuffix = date('y');
+        $orderIndex = $this->record->id;
+
+        $referenceNumber = sprintf('PR-%s%04d', $yearSuffix, $orderIndex);
+
+        $extra = $this->record->extra ?? [];
+
+        $extra['reference_number'] = $referenceNumber;
+
+        $this->record->extra = $extra;
+
+        $this->record->save();
     }
 
     /**
@@ -51,7 +69,7 @@ class CreatePaymentRequest extends CreateRecord
      */
     public function notifyManagement(): void
     {
-        foreach (User::getUsersByRole('admin') as $recipient) {
+        foreach (User::getUsersByRole('manager') as $recipient) {
             $recipient->notify(new FilamentNotification([
                 'record' => Admin::getOrderRelation($this->record),
                 'type' => 'pending',
@@ -64,11 +82,23 @@ class CreatePaymentRequest extends CreateRecord
     /**
      * @return void
      */
-    public function notifyViaEmail(): void
+    public function notifyViaEmail($accountants): void
     {
-//        $arguments = [User::getUsersByRole('accountant'), new PaymentRequestStatusNotification($this->record)];
-        $arguments = [User::getUsersByRole('admin'), new PaymentRequestStatusNotification($this->record)];
+        $arguments = [$accountants, new PaymentRequestStatusNotification($this->record)];
+// FOR TEST PURPOSE
+//       $arguments = [User::getUsersByRole('admin'), new PaymentRequestStatusNotification($this->record)];
 
         RetryableEmailService::dispatchEmail('payment request', ...$arguments);
+    }
+
+
+    /**
+     * @return mixed
+     */
+    public function fetchAccountants(): mixed
+    {
+        return Cache::remember('accountants', 480, function () {
+            return User::getUsersByRole('accountant');
+        });
     }
 }

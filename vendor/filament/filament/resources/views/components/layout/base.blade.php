@@ -94,7 +94,7 @@
 </head>
 
 <body
-    class="fi-body min-h-screen bg-gray-100 font-normal text-gray-950 antialiased dark:bg-gray-950 dark:text-white"
+    class="fi-body min-h-screen bg-gray-100 font-normal text-gray-950 antialiased dark:bg-gray-950/75 dark:text-white"
 >
 
 {{ \Filament\Support\Facades\FilamentView::renderHook('panels::body.start') }}

@@ -44,12 +44,11 @@ class AdminPanelProvider extends PanelProvider
             ->passwordReset()
             ->emailVerification()
             ->colors([
-                'gray' => Color::Gray, // bg color
-//                'primary' => ColorTheme::getRandomFontTheme(), //initial text color
+//                'gray' => Color::Gray, // bg color
+                'primary' => ColorTheme::getRandomFontTheme(), //initial text color
                 'secondary' => Color::Slate, //secondary text color
                 'danger' => Color::Rose,
                 'info' => Color::Blue,
-                'primary' => Color::Indigo,
                 'success' => Color::Emerald,
                 'warning' => Color::Orange,
             ])

@@ -34,6 +34,11 @@ function formatNumber(int $number)
     return Number::format($number / 1000000, 2) . 'm';
 }
 
+function numberify($number)
+{
+    return number_format((float)$number, 2, '.', ',');
+}
+
 function getTableDesign()
 {
     return data_get(optional(auth()->user()->info), 'tableDesign');
@@ -77,4 +82,9 @@ function showCurrencies()
 function showCurrencyWithoutHTMLTags($record)
 {
     return strip_tags(showCurrencies()[$record]);
+}
+
+function slugify($string)
+{
+    return strtolower(str_replace(' ', '-', trim($string)));
 }

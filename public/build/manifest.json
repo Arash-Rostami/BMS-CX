@@ -1,11 +1,11 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-EBVV0f0U.css",
+    "file": "assets/app-HwznlM_S.css",
     "isEntry": true,
     "src": "resources/css/app.css"
   },
   "resources/css/filament/admin/theme.css": {
-    "file": "assets/theme-bPH6jN3-.css",
+    "file": "assets/theme-mUg3K4A1.css",
     "isEntry": true,
     "src": "resources/css/filament/admin/theme.css"
   },
@@ -94,6 +94,10 @@
     "file": "assets/star-Jpveviwm.svg",
     "src": "resources/images/star.svg"
   },
+  "resources/images/stats/allowed.png": {
+    "file": "assets/allowed-u3HIzlL3.png",
+    "src": "resources/images/stats/allowed.png"
+  },
   "resources/images/stats/approve.png": {
     "file": "assets/approve-qt8p1x73.png",
     "src": "resources/images/stats/stats_approve.png"
@@ -117,6 +121,10 @@
   "resources/images/stats/fulfill.png": {
     "file": "assets/fulfill-hTjdbti3.png",
     "src": "resources/images/stats/stats_fulfill.png"
+  },
+  "resources/images/stats/pending.png": {
+    "file": "assets/pending-rQyTC_FM.png",
+    "src": "resources/images/stats/pending.png"
   },
   "resources/images/stats/reject.png": {
     "file": "assets/reject-_yvccRbw.png",
@@ -142,12 +150,16 @@
     "file": "assets/review-907uRu95.png",
     "src": "resources/images/stats/stats_review.png"
   },
+  "resources/images/stats/total.png": {
+    "file": "assets/total-uDoAiZwZ.png",
+    "src": "resources/images/stats/total.png"
+  },
   "resources/images/stats/transit.png": {
     "file": "assets/transit-YTLZc0V2.png",
     "src": "resources/images/stats/transit.png"
   },
   "resources/js/app.js": {
-    "file": "assets/app-ecWDpuvf.js",
+    "file": "assets/app-PJsjoUJA.js",
     "isEntry": true,
     "src": "resources/js/app.js"
   }

@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
+use App\Filament\Resources\Operational\OrderRequestResource\Pages\CreateOrderRequest;
 use App\Filament\Resources\OrderResource;
-use App\Models\User;
+use App\Models\Order;
 use App\Notifications\FilamentNotification;
-use App\Services\NotificationManager;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +24,7 @@ class EditOrder extends EditRecord
         ];
     }
 
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['extra'] = data_get($this->form->getRawState(), 'extra');
@@ -33,7 +34,9 @@ class EditOrder extends EditRecord
 
     protected function afterSave(): void
     {
-        foreach (User::getUsersByRole('admin') as $recipient) {
+        $agents = (new CreateOrderRequest())->fetchAgents();
+
+        foreach ($agents as $recipient) {
             $recipient->notify(new FilamentNotification([
                 'record' => $this->record->invoice_number,
                 'type' => 'edit',

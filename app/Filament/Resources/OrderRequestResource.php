@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\NotificationManager;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Repeater;
 use Filament\Infolists\Infolist;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
@@ -36,7 +37,11 @@ class OrderRequestResource extends Resource
 {
     protected static ?string $model = OrderRequest::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+
+    protected static ?string $modelLabel = 'Pro-forma invoice';
+
+    protected static ?string $slug = 'profroma-invoices';
 
     protected static ?string $navigationGroup = 'Operational Data';
 
@@ -47,20 +52,47 @@ class OrderRequestResource extends Resource
             ->schema([
                 Group::make()
                     ->schema([
-                        Section::make()
+                        Section::make('Contract')
                             ->schema([
-                                Admin::getCategory(),
-                                Admin::getProduct(),
-                                Admin::getDetails(),
-                            ])->columns(2),
-                        Section::make('Details')
-                            ->schema([
+                                Admin::getProformaNumber(),
+                                Admin::getProformaDate(),
                                 Admin::getGrade(),
-                                Admin::getQuantity(),
+                                Admin::getPercentage(),
                                 Admin::getPrice(),
+                                Admin::getQuantity(),
                             ])
                             ->columns(3)
                             ->collapsible(),
+                        Section::make('Details')
+                            ->schema([
+                                Admin::getCategory(),
+                                Admin::getProduct(),
+                                /*Additional Attachments*/
+                                Repeater::make('attachments')
+                                    ->relationship('attachments')
+                                    ->label('Attachments')
+                                    ->schema([
+                                        Group::make()
+                                            ->schema([
+                                                Section::make()
+                                                    ->schema([
+                                                        Admin::getFileUpload()
+                                                    ])
+                                            ])->columnSpan(2),
+                                        Group::make()
+                                            ->schema([
+                                                Section::make()
+                                                    ->schema([
+                                                        Admin::getAttachmentTitle(),
+                                                    ])
+                                            ])->columnSpan(2)
+                                    ])->columns(4)
+                                    ->itemLabel('Attachments:')
+                                    ->addActionLabel('➕')
+                                    ->columnSpanFull()
+                                    ->collapsible()
+                                    ->collapsed(),
+                            ])->columns(2),
                     ])->columnSpan(2),
 
                 Group::make()
@@ -72,10 +104,15 @@ class OrderRequestResource extends Resource
                             ])->collapsible(),
                         Section::make(new HtmlString('Status <span class="red"> </span>'))
                             ->schema([
-                                Admin::getStatus()
+                                Admin::getStatus(),
                             ])
                             ->collapsible()
-                            ->collapsed()
+                            ->collapsed(),
+                        Section::make(new HtmlString('Notes <span class="red"> </span>'))
+                            ->schema([
+                                Admin::getDetails()
+                                ])
+                            ->collapsible(),
                     ])->columnSpan(1),
 
 
@@ -95,15 +132,19 @@ class OrderRequestResource extends Resource
     {
         return $infolist
             ->schema([
+                Admin::viewProformaInvoice(),
+                Admin::viewProformaDate(),
                 Admin::viewCategory(),
                 Admin::viewProduct(),
                 Admin::viewGrade(),
                 Admin::viewStatus(),
                 Admin::viewBuyer(),
                 Admin::viewSupplier(),
+                Admin::viewPercentage(),
                 Admin::viewQuantity(),
                 Admin::viewPrice(),
-            ])->columns(2);
+                Admin::viewTotal()
+            ])->columns(3);
     }
 
     public static function getEloquentQuery(): Builder
@@ -122,7 +163,10 @@ class OrderRequestResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            Operational\OrderRequestResource\RelationManagers\OrdersRelationManager::class,
+            Operational\OrderRequestResource\RelationManagers\PaymentrequestsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
@@ -159,7 +203,7 @@ class OrderRequestResource extends Resource
     private static function configureCommonTableSettings(Table $table): Table
     {
         return $table
-            ->filters([AdminOrder::filterCreatedAt(), AdminOrder::filterSoftDeletes()])
+            ->filters([AdminOrder::filterProforma(), AdminOrder::filterSoftDeletes()])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
@@ -181,8 +225,10 @@ class OrderRequestResource extends Resource
                 ])
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll(60)
+            ->poll('120s')
+            ->groupingSettingsInDropdownOnDesktop()
             ->groups([
+                Admin::groupProformaInvoiceRecords(),
                 Admin::groupCategoryRecords(),
                 Admin::groupProductRecords(),
                 Admin::groupBuyerRecords(),
@@ -204,12 +250,13 @@ class OrderRequestResource extends Resource
                                 Admin::showBuyer(),
                             ]),
                             Split::make([
+                                Admin::showProformaNumber(),
+                                Admin::showProformaDate(),
                                 Admin::showStatus(),
                             ]),
                             Split::make([
                                 Admin::showGrade(),
-                                Admin::showQuantity(),
-                                Admin::showPrice(),
+                                Admin::showTotal(),
                             ]),
                         ])->space(2)
 
@@ -223,14 +270,19 @@ class OrderRequestResource extends Resource
     {
         return $table
             ->columns([
-                Admin::showCategory(),
-                Admin::showProduct(),
-                Admin::showStatus(),
+                Admin::showID(),
+                Admin::showProformaNumber(),
+                Admin::showProformaDate(),
                 Admin::showBuyer(),
                 Admin::showSupplier(),
+                Admin::showCategory(),
+                Admin::showProduct(),
                 Admin::showGrade(),
-                Admin::showQuantity(),
                 Admin::showPrice(),
+                Admin::showQuantity(),
+                Admin::showPercentage(),
+                Admin::showTotal(),
+                Admin::showStatus(),
             ])->striped();
     }
 

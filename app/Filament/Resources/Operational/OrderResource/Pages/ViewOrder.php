@@ -310,19 +310,11 @@ class ViewOrder extends ViewRecord
     public function viewPercentage(): TextEntry
     {
         return TextEntry::make('orderDetail.extra')
-            ->label('Percentage')
-            ->state(function (Model $record): string {
-                if ($record->orderDetail->extra) {
-                    return sprintf(
-                        "%s%% (%s %s/%s)",
-                        $record->orderDetail->extra['percentage'],
-                        $record->orderDetail->extra['currency'],
-                        number_format($record->orderDetail->extra['payment'], 0),
-                        number_format($record->orderDetail->extra['total'], 0),
-                    );
-                }
-                return 'N/A';
-            })
+            ->label('Payslip')
+            ->state(fn(Model $record) => $this->formatPayslip($record))
+            ->tooltip(fn(Model $record) => $this->formatPayslip($record))
+            ->grow()
+            ->color('primary')
             ->badge();
     }
 
@@ -403,6 +395,7 @@ class ViewOrder extends ViewRecord
             ->formatStateUsing(fn(?string $state) => $this->formatDate($state))
             ->badge();
     }
+
     /**
      * @return TextEntry
      */
@@ -541,7 +534,8 @@ class ViewOrder extends ViewRecord
             ->color('secondary')
             ->badge();
     }
- /**
+
+    /**
      * @return TextEntry
      */
     public function viewVoyageNumberSecondLeg(): TextEntry
@@ -655,5 +649,25 @@ class ViewOrder extends ViewRecord
     protected function formatDate(?string $date): ?string
     {
         return isset($date) ? Carbon::parse($date)->format('Y-m-d') : null;
+    }
+
+    /**
+     * @param Model $record
+     * @return string
+     */
+    protected function formatPayslip(Model $record): string
+    {
+        if (!$record->orderDetail || !$record->orderDetail->extra) {
+            return 'N/A';
+        }
+
+        $extra = $record->orderDetail->extra;
+        return sprintf(
+            '%s: %s / %s ( %s )',
+            $extra['currency'] ?? '',
+            numberify($extra['payment'] ?? 0),
+            numberify($extra['total'] ?? 0),
+            numberify($extra['remaining'] ?? 0)
+        );
     }
 }

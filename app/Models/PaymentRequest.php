@@ -107,14 +107,18 @@ class PaymentRequest extends Model
     {
         $cacheKey = 'payment_request_status_counts';
 
-        return Cache::remember($cacheKey, 60, function () {
-            return static::select('status')
+//        return Cache::remember($cacheKey, 60, function () {
+            $countsByStatus = static::select('status')
                 ->selectRaw('count(*) as count')
                 ->groupBy('status')
                 ->get()
                 ->keyBy('status')
                 ->map(fn($item) => $item->count);
-        });
+
+            $countsByStatus->put('total', static::count());
+
+            return $countsByStatus;
+//        });
     }
 
     public static function showApproved($orderId)
@@ -131,17 +135,23 @@ class PaymentRequest extends Model
         });
     }
 
-
     public function getCustomizedDisplayName(): string
     {
-        $invoiceNumber = $this->order_invoice_number;
-        $partInfo = !is_null($this->part) ? ' (part ' . Order::find($this->part)->part . ')' : '';
+        $invoiceNumber = $this->order_invoice_number ?? self::showAmongAllReasons($this->reason_for_payment);
+        $partInfo = $this->getPartInfo();
         $formattedDate = $this->deadline->format('Y-m-d');
 
-        $displayName = $invoiceNumber ?? self::showAmongAllReasons($this->reason_for_payment);
-        $displayName .= $partInfo . ' ┆ 📅 ' . $formattedDate;
+        return $invoiceNumber . $partInfo . ' ┆ 📅 ' . $formattedDate;
+    }
 
-        return $displayName;
+    private function getPartInfo(): string
+    {
+        if (is_null($this->part)) {
+            return '';
+        }
+
+        $order = Order::find($this->part);
+        return $order ? ' (part ' . $order->part . ')' : '';
     }
 
     public function getRemainingAmountAttribute()
@@ -164,6 +174,12 @@ class PaymentRequest extends Model
     public function orderPart()
     {
         return $this->belongsTo(Order::class, 'part');
+    }
+
+    public function mainOrder()
+    {
+        return $this->belongsTo(Order::class, 'order_invoice_number', 'invoice_number')
+            ->where('part', 1);
     }
 
     public function payments()

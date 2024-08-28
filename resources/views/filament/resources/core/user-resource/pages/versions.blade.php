@@ -1,5 +1,44 @@
 <x-filament-panels::page>
     <div class="max-w-4xl mx-auto py-8 text-gray-900 dark:text-gray-200">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.6
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(August 17, 2024)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>Order Request Improvement: Converted into Pro forma Invoice with Additional Data including Initial
+                Price, Quantity, Percentage, and Attachment.
+            </li>
+            <li>Order Improvements: New Feature Payment Stub (as an update on Auto Computed Slip on Initial,
+                Provisional, Final, and Total), Automated Attachment Handling, Automatic Attachment Labeling, and Record Tagging System.
+            </li>
+            <li>
+                Naming Feature: Enhanced Labeling for Attachment (for improved consistency)
+            </li>
+            <li>
+                UI Enhancement: Enhanced Coloring Scheme and Animations for Dark and Light Modes
+            </li>
+            <li>Application Maintenance & Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.3
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(July 30, 2024)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>Feature for Personalized Reporting: Filterable Columns in Order (Order status, Invoice Number,
+                Initial/Provisional/Final Price, Initial/Provisional/Final Quantity,
+                Proforma Number/Date, Loading Start Date/Deadline, ETD, ETA, With Payment, and Disjunction).
+            </li>
+            <li>Order Improvements: Auto Computed Details on Initial, Provisional, Final, and Total,
+                Re-designed/Re-arranged Looks (Modern and Classic), Clickable Stats, Docs Overview, Personalized Column
+                Toggles, Exclusive SearchBox for Invoice, Proforma, Booking, and BL Numbers.
+            </li>
+            <li>Payment Request, Order, Order Request Update: Change in Email & In-app Notifications.
+            <li>Order Update: Validation Update in Attachment Title, Change in Email & In-app Notifications.
+            <li>Dashboard: Analytics/Charts for Supplier Frequency, Total Purchase Quantity and Price, Packaging Type
+                Distribution.
+            </li>
+            <li>Application Maintenance & Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
         <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.2
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(July 4, 2024)</span>
         </h1>
@@ -7,7 +46,9 @@
             <li>Payment Request Improvements: Record Lock for Deletion or Editing.</li>
             <li>Order Improvements: Re-arrangement of Columns.
             </li>
-            <li>Dashboard: Analytics/Charts for Product/Category, Buyer Frequency, Status Distribution, and Yearly Trend.</li>
+            <li>Dashboard: Analytics/Charts for Product/Category, Buyer Frequency, Status Distribution, and Yearly
+                Trend.
+            </li>
             <li>Database Maintenance & Backup.</li>
         </ul>
         <hr class="my-8 dark:border-gray-600">

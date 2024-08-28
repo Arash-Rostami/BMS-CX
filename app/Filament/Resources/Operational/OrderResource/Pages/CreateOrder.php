@@ -2,10 +2,9 @@
 
 namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
+use App\Filament\Resources\Operational\OrderRequestResource\Pages\CreateOrderRequest;
 use App\Filament\Resources\OrderResource;
-use App\Models\User;
 use App\Notifications\FilamentNotification;
-use App\Services\NotificationManager;
 use Filament\Resources\Pages\CreateRecord;
 use Livewire\Livewire;
 use Livewire\Component as LivewireData;
@@ -26,15 +25,12 @@ class CreateOrder extends CreateRecord
 
     protected function afterCreate(): void
     {
+        $agents = (new CreateOrderRequest())->fetchAgents();
         $this->persistInvoiceNumbers();
         $this->persistReferenceNumber();
 
 
-//        $data = [
-////            'recipients' => User::getUsersByRoles(['manager','agent'])
-//        ];
-
-        foreach (User::getUsersByRole('admin') as $recipient) {
+        foreach ($agents as $recipient) {
             $recipient->notify(new FilamentNotification([
                 'record' => $this->record->invoice_number,
                 'type' => 'new',
@@ -47,6 +43,7 @@ class CreateOrder extends CreateRecord
     /**
      * @return void
      */
+    // THIS HAS CHANGED INTO PROJECT NAME
     protected function persistInvoiceNumbers(): void
     {
         $newInvoiceNumber = $this->makeInvoiceNumber();
@@ -69,7 +66,7 @@ class CreateOrder extends CreateRecord
         $yearSuffix = date('y');
         $orderIndex = $this->record->id;
 
-        $referenceNumber = sprintf('%s%04d', $yearSuffix, $orderIndex);
+        $referenceNumber = sprintf('O-%s%04d', $yearSuffix, $orderIndex);
 
         $extra = $this->record->extra ?? [];
 
@@ -85,13 +82,11 @@ class CreateOrder extends CreateRecord
      */
     public function makeInvoiceNumber(): string
     {
-        $product = $this->record->product->name;
-        $supplier = $this->record->party->supplier->name;
+        $product = trim($this->record->product->name ?? '');
+        $supplier = trim($this->record->party->supplier->name ?? '');
 
 //        $formattedDate = date('Y', time());
 
-        return sprintf(
-            'ORD-%s-%s', $product, $supplier,
-        );
+        return sprintf('ORD-%s-%s', $product, $supplier);
     }
 }

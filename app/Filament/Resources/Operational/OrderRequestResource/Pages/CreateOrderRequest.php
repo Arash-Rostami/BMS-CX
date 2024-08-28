@@ -12,6 +12,7 @@ use Exception;
 use Filament\Notifications\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification as EmailNotification;
 
 
@@ -31,18 +32,38 @@ class CreateOrderRequest extends CreateRecord
 
     protected function afterCreate(): void
     {
-        foreach (User::getUsersByRole('admin') as $recipient) {
+        $agents = $this->fetchAgents();
+        $this->persistReferenceNumber();
+
+
+        foreach ($agents as $recipient) {
             $recipient->notify(new FilamentNotification([
                 'record' => $this->record->product->name,
                 'type' => 'new',
                 'module' => 'orderRequest',
-                'url' => route('filament.admin.resources.order-requests.index'),
+                'url' => route('filament.admin.resources.profroma-invoices.index'),
             ]));
         }
 
-        $this->notifyViaEmail();
+//        $this->notifyViaEmail($agents);
 
 //        $this->notifyManagement();
+    }
+
+    protected function persistReferenceNumber(): void
+    {
+        $yearSuffix = date('y');
+        $orderIndex = $this->record->id;
+
+        $referenceNumber = sprintf('PI-%s%04d', $yearSuffix, $orderIndex);
+
+        $extra = $this->record->extra ?? [];
+
+        $extra['reference_number'] = $referenceNumber;
+
+        $this->record->extra = $extra;
+
+        $this->record->save();
     }
 
 
@@ -55,7 +76,7 @@ class CreateOrderRequest extends CreateRecord
             'record' => $this->record->product->name,
             'type' => 'pending',
             'module' => 'order',
-            'url' => route('filament.admin.resources.order-requests.index'),
+            'url' => route('filament.admin.resources.profroma-invoices.index'),
 //            'recipients' => User::getUsersByRole('manager').
             'recipients' => User::getUsersByRole('admin')
         ];
@@ -66,11 +87,23 @@ class CreateOrderRequest extends CreateRecord
     /**
      * @return void
      */
-    public function notifyViaEmail(): void
+    public function notifyViaEmail($agents): void
     {
-//        $arguments = [User::getUsersByRole('manager'), new OrderRequestStatusNotification($this->record)];
-        $arguments = [User::getUsersByRole('admin'), new OrderRequestStatusNotification($this->record)];
+        $arguments = [$agents, new OrderRequestStatusNotification($this->record)];
+// FOR TEST PURPOSE
+//       $arguments = [User::getUsersByRole('admin'), new OrderRequestStatusNotification($this->record)];
 
         RetryableEmailService::dispatchEmail('order request', ...$arguments);
+    }
+
+
+    /**
+     * @return mixed
+     */
+    public function fetchAgents(): mixed
+    {
+        return Cache::remember('agents', 480, function () {
+            return User::getUsersByRole('agent');
+        });
     }
 }

@@ -22,6 +22,7 @@ use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\Tabs\Tab;
 use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
+use Filament\Pages\SubNavigationPosition;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -49,6 +50,8 @@ class PaymentRequestResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
     protected static ?string $navigationGroup = 'Operational Data';
+
+    protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
 
     public static function form(Form $form): Form
@@ -119,8 +122,7 @@ class PaymentRequestResource extends Resource
                                                             ->schema([
                                                                 Admin::getAttachmentFileName()
                                                             ])
-                                                    ])
-                                                    ->columnSpan(2)
+                                                    ])->columnSpan(2)
                                             ])->columns(4)
                                             ->itemLabel('Attachments:')
                                             ->addActionLabel('➕')
@@ -281,7 +283,7 @@ class PaymentRequestResource extends Resource
                 ])
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll(60)
+            ->poll('120s')
             ->groups([
                 Admin::filterByDepartment(),
                 Admin::filterByOrder(),
@@ -331,11 +333,11 @@ class PaymentRequestResource extends Resource
     {
         return $table
             ->columns([
-                TableObserver::showMissingData(-5),
+                Admin::showID(),
                 Admin::showDepartment(),
                 Admin::showStatus(),
-                Admin::showReferenceNumber(),
                 Admin::showInvoiceNumber(),
+                Admin::showReferenceNumber(),
                 Admin::showPart(),
                 Admin::showReasonForPayment(),
                 Admin::showType(),
@@ -354,7 +356,8 @@ class PaymentRequestResource extends Resource
                 Admin::showIFSC(),
                 Admin::showMICR(),
                 Admin::showRequestMaker(),
-                Admin::showStatusChanger()
+                Admin::showStatusChanger(),
+                TableObserver::showMissingData(-5),
             ])->striped();
     }
 }

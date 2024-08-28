@@ -48,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
             Js::make('fullscreen', __DIR__ . '/../../resources/js/fullscreen.js'),
             Js::make('lightBox', 'https://cdn.jsdelivr.net/npm/fslightbox@3.4.1/index.min.js'),
             Js::make('lightBoxInit', __DIR__ . '/../../resources/js/lightBoxInit.js'),
+            Js::make('connectionStatus', __DIR__ . '/../../resources/js/connectionStatus.js'),
 
         ]);
 

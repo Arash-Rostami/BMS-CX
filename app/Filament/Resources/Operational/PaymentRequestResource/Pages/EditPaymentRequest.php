@@ -49,16 +49,18 @@ class EditPaymentRequest extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->sendEditNotification();
+        $allRecipients = (new CreatePaymentRequest())->fetchAccountants();
 
-        $this->sendStatusNotification();
+        $this->sendEditNotification($allRecipients);
+
+        $this->sendStatusNotification($allRecipients);
 
         $this->clearSessionData();
     }
 
-    private function sendEditNotification()
+    private function sendEditNotification($allRecipients)
     {
-        foreach (User::getUsersByRole('admin') as $recipient) {
+        foreach ($allRecipients as $recipient) {
             $recipient->notify(new FilamentNotification([
                 'record' => Admin::getOrderRelation($this->record),
                 'type' => 'edit',
@@ -68,7 +70,7 @@ class EditPaymentRequest extends EditRecord
         }
     }
 
-    private function sendStatusNotification()
+    private function sendStatusNotification($allRecipients)
     {
         $newStatus = $this->record['status'];
 
@@ -76,7 +78,15 @@ class EditPaymentRequest extends EditRecord
 
             $this->persistStatusChanger();
 
-            foreach (User::getUsersByRole('admin') as $recipient) {
+            $madeBy = $this->record['extra']['made_by'] ?? null;
+            $specificRecipient = !empty($madeBy) ? $this->findUserByName($madeBy) : null;
+
+
+            if ($specificRecipient && !$allRecipients->contains('id', $specificRecipient->id)) {
+                $allRecipients->push($specificRecipient);
+            }
+
+            foreach ($allRecipients as $recipient) {
                 $recipient->notify(new FilamentNotification([
                     'record' => Admin::getOrderRelation($this->record),
                     'type' => $newStatus,
@@ -85,7 +95,7 @@ class EditPaymentRequest extends EditRecord
                 ], true));
             }
 
-            $this->notifyViaEmail($newStatus);
+            $this->notifyViaEmail($newStatus, $allRecipients);
         }
     }
 
@@ -95,16 +105,9 @@ class EditPaymentRequest extends EditRecord
     }
 
 
-    private function notifyViaEmail($status): void
+    private function notifyViaEmail($status, $allRecipients): void
     {
-//        $arguments = [
-//            ($status == 'allowed') ? User::getUsersByRoles(['manager', 'agent']) : User::getUsersByRole('agent'),
-//            new PaymentRequestStatusNotification($this->record, $status)
-//        ];
-        $arguments = [
-            User::getUsersByRole('admin'),
-            new PaymentRequestStatusNotification($this->record, $status)
-        ];
+        $arguments = [$allRecipients, new PaymentRequestStatusNotification($this->record, $status)];
 
         RetryableEmailService::dispatchEmail('payment request', ...$arguments);
     }
@@ -134,5 +137,40 @@ class EditPaymentRequest extends EditRecord
             ->send();
 
         $this->halt();
+    }
+
+    public function findUserByName($madeBy)
+    {
+        // Explode the name into parts, removing any empty strings
+        $nameParts = array_filter(explode(' ', trim($madeBy)), fn($value) => $value !== '');
+
+        // Initialize the array pointer to the first element
+        reset($nameParts);
+
+        // Determine how many parts and construct the query
+        switch (count($nameParts)) {
+            case 2:  // Assuming only first and last names are provided
+                $firstName = current($nameParts);
+                $lastName = next($nameParts);
+                $user = User::where('first_name', $firstName)
+                    ->where('last_name', $lastName)
+                    ->first();
+                break;
+
+            case 3:  // Assuming first, middle, and last names are provided
+                $firstName = current($nameParts);
+                $middleName = next($nameParts);
+                $lastName = next($nameParts);
+                $user = User::where('first_name', $firstName)
+                    ->where('middle_name', $middleName)
+                    ->where('last_name', $lastName)
+                    ->first();
+                break;
+
+            default:
+                $user = null;
+                break;
+        }
+        return $user;
     }
 }

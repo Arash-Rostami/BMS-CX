@@ -39,6 +39,7 @@ class Order extends Model
     protected $casts = [
         'extra' => 'json',
         'proforma_date' => 'date',
+        'extra.docs_received' => 'json'
     ];
 
     protected $table = 'orders';
@@ -48,6 +49,12 @@ class Order extends Model
     {
         return $this->hasMany(Attachment::class);
     }
+
+    public function docAttachment()
+    {
+        return $this->hasOne(Attachment::class);
+    }
+
 
     protected static function booted()
     {
@@ -102,6 +109,28 @@ class Order extends Model
         });
     }
 
+    public static function countOrdersBySupplier($year)
+    {
+        $cacheKey = 'orders_count_by_Supplier_' . $year;
+
+        return Cache::remember($cacheKey, 300, function () use ($year) {
+            $query = static::query();
+
+            if ($year !== 'all') {
+                $query->whereYear('proforma_date', $year);
+            }
+
+            return $query->with('party.supplier')
+                ->get()
+                ->groupBy(function ($order) {
+                    return $order->party && $order->party->supplier ? $order->party->supplier->name : 'Unknown';
+                })
+                ->mapWithKeys(function ($group, $key) {
+                    return [$key => count($group)];
+                });
+        });
+    }
+
     public static function countOrdersByCategory($year)
     {
         $cacheKey = 'orders_count_by_category_' . $year;
@@ -148,33 +177,6 @@ class Order extends Model
         });
     }
 
-    public static function countOrdersByStatus($year)
-    {
-        $query = static::query();
-
-        if ($year !== 'all') {
-            $query->whereYear('proforma_date', $year);
-        }
-
-        return $query->selectRaw('order_status, COUNT(*) as total')
-            ->groupBy('order_status')
-            ->get()
-            ->pluck('total', 'order_status');
-    }
-
-
-    public function getInvoiceNumberWithPartAttribute()
-    {
-        $firstIdentifier = $this->logistic->booking_number ?? 'N/A';
-        $secondIdentifier = $this->extra['reference_number'] ?? 'N/A';
-        return "Booking# {$firstIdentifier} 🔗 Ref: {$secondIdentifier}";
-    }
-
-    public function getInvoiceNumberWithReferenceNumberAttribute()
-    {
-        return "{$this->invoice_number} (Ref: {$this->extra['reference_number']})";
-    }
-
     /**
      * Get the category associated with the order.
      */
@@ -182,6 +184,26 @@ class Order extends Model
     {
         return $this->belongsTo(Category::class, 'category_id');
     }
+
+
+    public static function countOrdersByStatus($year)
+    {
+        $cacheKey = 'orders_count_by_status_' . $year;
+
+        return Cache::remember($cacheKey, 300, function () use ($year) {
+            $query = static::query();
+
+            if ($year !== 'all') {
+                $query->whereYear('proforma_date', $year);
+            }
+
+            return $query->selectRaw('order_status, COUNT(*) as total')
+                ->groupBy('order_status')
+                ->get()
+                ->pluck('total', 'order_status');
+        });
+    }
+
 
     /**
      * Get the doc associated with the order.
@@ -191,16 +213,50 @@ class Order extends Model
         return $this->belongsTo(Doc::class, 'doc_id');
     }
 
+
+    public function getInvoiceNumberWithPartAttribute()
+    {
+        $firstIdentifier = $this->logistic->booking_number ?? 'N/A';
+        $secondIdentifier = $this->extra['reference_number'] ?? 'N/A';
+        return "Booking# {$firstIdentifier} 💢Ref: {$secondIdentifier}";
+    }
+
+    public function getInvoiceNumberWithReferenceNumberAttribute()
+    {
+        $prjNum = $this->invoice_number;
+        $refNum = $this->extra['reference_number'] ?? 'No Ref. No.';
+
+        return "{$prjNum} (Ref: {$refNum})";
+    }
+
+    public static function findByOrderRequestId($orderRequestId)
+    {
+        return self::where('order_request_id', $orderRequestId)
+            ->where('part', 1)
+            ->get();
+    }
+
+    public static function findByProjectNumber($orderRequestId, $mainPart = true)
+    {
+        $query = self::where('invoice_number', $orderRequestId);
+
+        return ($mainPart)
+            ? $query->where('part', 1)->first()
+            : $query->where('part', '!=', 1)->get();
+    }
+
     /**
      * Get the logistic associated with the order.
      */
-    public function logistic()
+    public
+    function logistic()
     {
         return $this->belongsTo(Logistic::class, 'logistic_id');
     }
 
 
-    public static function getStatusCounts()
+    public
+    static function getStatusCounts()
     {
         return static::select('purchase_status_id')
             ->selectRaw('count(*) as count')
@@ -211,7 +267,8 @@ class Order extends Model
     }
 
 
-    public static function makeOrderNumber($post): string
+    public
+    static function makeOrderNumber($post): string
     {
         $category = "C" . $post->category_id;
         $product = "-P" . $post->product_id;
@@ -224,11 +281,18 @@ class Order extends Model
         return $category . $product . $proforma . $party . $orderDetail . $logistic . $doc;
     }
 
+    public
+    function names()
+    {
+        return $this->hasMany(Name::class);
+    }
+
 
     /**
      * Get the stock associated with the order.
      */
-    public function orderDetail()
+    public
+    function orderDetail()
     {
         return $this->belongsTo(OrderDetail::class, 'order_detail_id');
     }
@@ -241,10 +305,47 @@ class Order extends Model
         return $this->belongsTo(OrderRequest::class, 'order_request_id');
     }
 
+    public function suborders()
+    {
+        return $this->hasMany(Order::class, 'invoice_number', 'invoice_number')
+            ->where('part', '<>', 1);
+    }
+
+    // Order.php
+    public
+    function aggregateSuborderDetails()
+    {
+        return $this->suborders()->get()->reduce(function ($carry, $item) {
+            $data = json_decode($item->extra);
+            $carry->totalInitialPayment += $data->initialPayment ?? 0;
+            $carry->totalProvisionalPayment += $data->provisionalPayment ?? 0;
+            $carry->totalFinalPayment += $data->finalPayment ?? 0;
+            $carry->totalInitialQuantity += $data->initialTotal ?? 0;
+            $carry->totalProvisionalQuantity += $data->provisionalTotal ?? 0;
+            $carry->totalFinalQuantity += $data->finalTotal ?? 0;
+            $carry->totalCumulative += $data->payment ?? 0;
+            $carry->totalAmount += $data->total ?? 0;
+            $carry->totalRemaining += $data->remaining ?? 0;
+            return $carry;
+        }, (object)[
+            'totalInitialPayment' => 0,
+            'totalProvisionalPayment' => 0,
+            'totalFinalPayment' => 0,
+            'totalInitialQuantity' => 0,
+            'totalProvisionalQuantity' => 0,
+            'totalFinalQuantity' => 0,
+            'totalCumulative' => 0,
+            'totalAmount' => 0,
+            'totalRemaining' => 0,
+        ]);
+    }
+
+
     /**
      * Get the party associated with the order.
      */
-    public function party()
+    public
+    function party()
     {
         return $this->belongsTo(Party::class,);
     }
@@ -252,7 +353,8 @@ class Order extends Model
     /**
      * Get the product associated with the order.
      */
-    public function payments()
+    public
+    function payments()
     {
         return $this->hasManyThrough(Payment::class, PaymentRequest::class, 'order_invoice_number', 'payment_request_id', 'invoice_number', 'id');
 
@@ -276,17 +378,20 @@ class Order extends Model
     }
 
     /**
-     * Get the logistic associated with the order.
+     * Get the Status associated with the order.
      */
-    public function purchaseStatus()
+    public
+    function purchaseStatus()
     {
         return $this->belongsTo(PurchaseStatus::class, 'purchase_status_id');
     }
 
-    public function scopeUniqueInvoiceNumber(Builder $query)
+    public
+    function scopeUniqueInvoiceNumber(Builder $query)
     {
         return $query->where('order_request_id', '<>', null)
             ->where('order_status', '<>', 'closed')
+            ->where('part','=',1)
             ->get()
             ->sortBy('invoice_number')
             ->filter(function ($order) {
@@ -296,13 +401,19 @@ class Order extends Model
             });
     }
 
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class, 'order_tag', 'order_id', 'tag_id');
+    }
+
     /**
      * @param $post
      */
     /**
      * Get the user that owns the order.
      * //     */
-    public function user()
+    public
+    function user()
     {
         return $this->belongsTo(User::class);
     }

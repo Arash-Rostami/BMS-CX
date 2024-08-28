@@ -5,11 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class Logistic extends Model
 {
     use HasFactory;
     use SoftDeletes;
+
+    protected $casts = [
+        'extra' => 'json',
+        'loading_startline' => 'date',
+        'eta' => 'date',
+        'etd' => 'date',
+    ];
 
     protected $fillable = [
         'loading_deadline',
@@ -32,10 +41,13 @@ class Logistic extends Model
         'packaging_id',
     ];
 
-    protected $casts = [
-        'loading_deadline' => 'date',
-        'extra' => 'json',
-    ];
+    public function getLoadingStartlineAttribute()
+    {
+        return isset($this->extra['loading_startline'])
+            ? Carbon::parse($this->extra['loading_startline'])
+            : null;
+    }
+
 
     public static bool $filamentDetection = false;
 
@@ -64,7 +76,7 @@ class Logistic extends Model
      */
     public function order()
     {
-        return $this->belongsTo(Order::class);
+        return $this->hasOne(Order::class, 'logistic_id');
     }
 
     /**
@@ -98,5 +110,31 @@ class Logistic extends Model
     public function deliveryTerm()
     {
         return $this->belongsTo(DeliveryTerm::class);
+    }
+
+    public static function countByPackagingType($year)
+    {
+        $cacheKey = 'orders_data_by_category_' . $year;
+
+        return Cache::remember($cacheKey, 300, function () use ($year) {
+            $query = self::query()
+                ->with('packaging')
+                ->selectRaw('packaging_id, count(*) as total')
+                ->groupBy('packaging_id');
+
+            if ($year !== 'all') {
+                $query->whereHas('order', function ($subQuery) use ($year) {
+                    $subQuery->whereYear('proforma_date', $year);
+                });
+            }
+
+            return $query->get()
+                ->map(function ($item) {
+                    return [
+                        'name' => $item->packaging ? $item->packaging->name : 'Unknown',
+                        'total' => $item->total
+                    ];
+                });
+        });
     }
 }

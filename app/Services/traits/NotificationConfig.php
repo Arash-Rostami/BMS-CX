@@ -29,10 +29,10 @@ trait NotificationConfig
 
     public static array $body = [
         'orderRequest' => [
-            'new' => 'One order request for %s made.',
-            'edit' => 'Order request for %s updated.',
-            'delete' => 'Order request for %s deleted.',
-            'reminder' => 'Order request for %s requires your attention.'
+            'new' => 'One pro forma invoice for %s made.',
+            'edit' => 'Pro forma invoice for %s updated.',
+            'delete' => 'Pro forma invoice for %s deleted.',
+            'reminder' => 'Pro forma invoice for %s requires your attention.'
         ],
         'order' => [
             'new' => 'The order - %s - created.',

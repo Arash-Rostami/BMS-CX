@@ -27,6 +27,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Illuminate\Database\Eloquent\Model;
@@ -204,7 +205,7 @@ class Admin
                 return new HtmlString(
                     $get('department_id') == 6
                         ? '<span class="grayscale"> </span>Deadline (optional)'
-                        : '<span class="grayscale"> </span>Deadline<span class="red"> *</span>'
+                        : '<span class="grayscale">⏲ </span>Deadline<span class="red"> *</span>'
                 );
             })
             ->hintColor('primary')
@@ -501,13 +502,16 @@ class Admin
     {
         return Select::make('part')
             ->options(fn(Get $get) => static::getOrderPartsOptions($get))
-            ->requiredIf('extra.collectivePayment', 1)
+            ->requiredIf('extra.collectivePayment', 0)
             ->visible(fn(Get $get) => $get('extra.collectivePayment') == 0)
             ->disabled(fn($operation) => $operation == 'edit')
             ->live()
             ->label('')
             ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">🔢 </span>Part<span class="red"> *</span>'));
+            ->hint(new HtmlString('<span class="grayscale">🔢 </span>Part<span class="red"> *</span>'))
+            ->validationMessages([
+                'required_if' => 'This field is required when the payment scope is based on the part.'
+            ]);
     }
 
 
@@ -559,8 +563,9 @@ class Admin
     public static function showReferenceNumber(): TextColumn
     {
         return TextColumn::make('order.extra.reference_number')
-            ->label('Ref. No.')
+            ->label('Order Ref. No.')
             ->grow(false)
+            ->formatStateUsing(fn(Model $record, $state) => $record->part ? ($record->orderPart ? $record->orderPart->extra['reference_number'] : 'N/A') : $record->mainOrder->extra['reference_number'] ?? 'N/A')
             ->searchable(query: function (Builder $query, string $search): Builder {
                 return $query->whereHas('order', function ($order) use ($search) {
                     $order->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.reference_number')) LIKE ?", ["%{$search}%"]);
@@ -569,6 +574,7 @@ class Admin
             ->sortable(query: function (Builder $query, string $direction) {
                 $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.reference_number')) $direction");
             })
+            ->toggleable()
             ->color('info')
             ->badge();
     }
@@ -580,7 +586,7 @@ class Admin
     public static function showInvoiceNumber(): TextColumn
     {
         return TextColumn::make('order.invoice_number')
-            ->label('Invoice')
+            ->label('Project No.')
             ->sortable(query: function (Builder $query, string $direction): Builder {
                 return $query->orderBy('order_invoice_number', $direction);
             })
@@ -595,10 +601,17 @@ class Admin
      */
     public static function showPart(): TextColumn
     {
-        return TextColumn::make('orderPart.part')
+        return TextColumn::make('order.part')
             ->label('Part')
             ->grow(false)
-            ->formatStateUsing(fn($state) => $state != null && getTableDesign() == "modern" ? "PART: {$state}" : $state)
+            ->formatStateUsing(fn(Model $record) => $record->part
+                ? (getTableDesign() === 'modern' ? 'PART: ' . ($record->orderPart?->part ? $record->orderPart->part - 1 : 'N/A') : ($record->orderPart?->part ? $record->orderPart->part - 1 : 'N/A'))
+                : '⭐'
+            )
+            ->tooltip(fn(Model $record) => $record->part
+                ? ($record->orderPart->logistic->booking_number ?? 'Booking Number Unavailable')
+                : ($record->mainOrder->logistic->booking_number ?? 'Booking Number Unavailable')
+            )
             ->badge();
     }
 
@@ -616,6 +629,29 @@ class Admin
             ->badge();
     }
 
+    public static function showID(): TextColumn
+    {
+        return TextColumn::make('id')
+            ->label(new HtmlString('<span class="text-primary-500 cursor-pointer" title="Record Unique ID">Ref. No. ⋮ ID</span>'))
+            ->weight(FontWeight::ExtraLight)
+            ->sortable()
+            ->formatStateUsing(fn(Model $record) => $record->extra['reference_number'] ?? sprintf('PR-%s%04d', $record->created_at->format('y'), $record->id))
+            ->grow(false)
+            ->tooltip(fn(?string $state): ?string => ($state) ? "Payment Request Ref. No. / ID" : '')
+            ->toggleable()
+            ->searchable(query: function (Builder $query, string $search): Builder {
+                return $query->where(function ($query) use ($search) {
+                    $search = strtolower($search);
+                    if (str_starts_with($search, 'pr-')) {
+                        return $query->whereRaw("DATE_FORMAT(created_at, '%y') = ?", [substr($search, 3, 2)])
+                            ->whereRaw("id = ?", [ltrim(substr($search, 5), '0')]);
+                    } else {
+                        return $query->whereRaw("LOWER(json_extract(extra, '$.reference_number')) LIKE ?", ['%' . $search . '%']);
+                    }
+                });
+            });
+    }
+
 
     /**
      * @return TextColumn
@@ -623,7 +659,7 @@ class Admin
     public static function showDepartment(): TextColumn
     {
         return TextColumn::make('department.code')
-            ->label('Department')
+            ->label('Dept.')
             ->grow(false)
             ->tooltip(fn(Model $record) => $record->department->name)
             ->color('secondary')
@@ -1263,12 +1299,9 @@ class Admin
      */
     public static function send(Model $record): void
     {
-//        $data = [
-//
-//            'recipients' => User::getUsersExcludingRoles(['partner'])
-//        ];
+        $accountants = (new CreatePaymentRequest())->fetchAccountants();
 
-        foreach (User::getUsersByRole('admin') as $recipient) {
+        foreach ($accountants as $recipient) {
             $recipient->notify(new FilamentNotification([
                 'record' => self::getOrderRelation($record),
                 'type' => 'delete',
@@ -1375,6 +1408,7 @@ class Admin
 
         return Order::where('invoice_number', $orderNumber)
             ->where('order_status', '<>', 'closed')
+            ->where('part', '<>', 1)
             ->get()
             ->pluck('invoice_number_with_part', 'id')
             ->toArray();

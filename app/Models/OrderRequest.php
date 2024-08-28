@@ -16,19 +16,21 @@ class OrderRequest extends Model
     protected $table = 'order_requests';
 
     protected $fillable = [
-        'grade', 'quantity', 'price', 'details', 'request_status',
+        'grade', 'quantity', 'price', 'details', 'request_status', 'extra',
         'user_id', 'category_id', 'product_id', 'buyer_id', 'supplier_id'
     ];
 
     protected $casts = [
-        'details' => 'array',
+        'details' => 'json',
+        'extra' => 'json',
         'request_status' => 'string',
     ];
 
     public function attachments()
     {
-        return $this->hasMany(Attachment::class, 'order_request_id');
+        return $this->hasMany(Attachment::class);
     }
+
 
     protected static function booted()
     {
@@ -55,9 +57,11 @@ class OrderRequest extends Model
     {
         $cacheKey = 'approved_order_requests';
 
+        Cache::forget('approved_order_requests');
         return Cache::remember($cacheKey, 60, function () {
             return static::where('request_status', 'approved')
                 ->with('product', 'category', 'buyer')
+                ->orderBy('id', 'desc')
                 ->get()
                 ->pluck('formatted_value', 'id');
         });
@@ -65,8 +69,22 @@ class OrderRequest extends Model
 
     public function getFormattedValueAttribute()
     {
-        return "{$this->buyer->name} - {$this->product->name} ({$this->category->name})  - {$this->created_at->format('Y-m-d')}";
+        $proformaInvoice = optional($this->extra)['proforma_number'];
+        $referenceNumber = $this->extra['reference_number'] ?? sprintf('PI-%s%04d', $this->created_at->format('y'), $this->id);
+
+        if ($proformaInvoice) {
+            return sprintf('%s 💢 Ref: %s', $proformaInvoice, $referenceNumber);
+        }
+
+        return sprintf(
+            '%s - %s (%s) 💢 Ref: %s',
+            $this->buyer->name,
+            $this->product->name,
+            $this->category->name,
+            $referenceNumber
+        );
     }
+
 
     public function user()
     {
@@ -76,6 +94,16 @@ class OrderRequest extends Model
     public function category()
     {
         return $this->belongsTo(Category::class, 'category_id');
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'order_request_id');
+    }
+
+    public function paymentRequests()
+    {
+        return $this->hasManyThrough(PaymentRequest::class, Order::class, 'order_request_id', 'order_invoice_number', 'id', 'invoice_number');
     }
 
     public function product()

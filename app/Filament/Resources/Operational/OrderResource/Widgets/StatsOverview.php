@@ -20,7 +20,9 @@ class StatsOverview extends BaseWidget
         return array_map(function ($statusId, $statusLabel) use ($statusCounts, $icons) {
             return Stat::make($statusLabel, $statusCounts->get($statusId, 0))
                 ->extraAttributes([
-                    'class' => "hidden md:block" . ($statusId === 3 ? ' border-2 border-red-500' : ''),
+                    'class' => "hidden md:block cursor-pointer" . ($statusId === 3 ? ' border-2 border-red-500' : ''),
+                    'wire:click' => "\$dispatch('setShipmentStatusFilter', { filter: '$statusId' })",
+
                 ])
                 ->label(new HtmlString("<img class='inline-block' src='{$icons[$statusId]}' width='30' height='" . ($statusId === 6 ? '15' : '25') . "' > <span class='grayscale relative top-" . ($statusId === 4 || $statusId === 5 ? '2' : '1') . "'>{$statusLabel}</span>"))
                 ->color('secondary');
