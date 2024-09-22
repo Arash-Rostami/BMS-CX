@@ -13,11 +13,11 @@ class Logistic extends Model
     use HasFactory;
     use SoftDeletes;
 
+    public static bool $filamentDetection = false;
+
+
     protected $casts = [
         'extra' => 'json',
-        'loading_startline' => 'date',
-        'eta' => 'date',
-        'etd' => 'date',
     ];
 
     protected $fillable = [
@@ -34,34 +34,25 @@ class Logistic extends Model
         'net_weight',
         'extra',
         'user_id',
-        'order_id',
         'shipping_line_id',
         'port_of_delivery_id',
         'delivery_term_id',
         'packaging_id',
     ];
 
-    public function getLoadingStartlineAttribute()
+    protected static function booted()
     {
-        return isset($this->extra['loading_startline'])
-            ? Carbon::parse($this->extra['loading_startline'])
-            : null;
+        static::creating(function ($logistic) {
+            $logistic->user_id = auth()->id();
+        });
     }
 
-
-    public static bool $filamentDetection = false;
 
     public function attachments()
     {
         return $this->hasMany(Attachment::class, 'logistic_id');
     }
 
-    protected static function booted()
-    {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
-        });
-    }
 
     /**
      * Get the user that owns the logistic.
@@ -71,13 +62,6 @@ class Logistic extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the order associated with the logistic.
-     */
-    public function order()
-    {
-        return $this->hasOne(Order::class, 'logistic_id');
-    }
 
     /**
      * Get the packaging associated with the party.
@@ -111,6 +95,29 @@ class Logistic extends Model
     {
         return $this->belongsTo(DeliveryTerm::class);
     }
+
+
+    public function getLoadingStartlineAttribute()
+    {
+        return isset($this->extra['loading_startline'])
+            ? Carbon::parse($this->extra['loading_startline'])
+            : null;
+    }
+
+    public function getEtaAttribute()
+    {
+        return isset($this->extra['eta'])
+            ? Carbon::parse($this->extra['eta'])
+            : null;
+    }
+
+    public function getEtdAttribute()
+    {
+        return isset($this->extra['etd'])
+            ? Carbon::parse($this->extra['etd'])
+            : null;
+    }
+
 
     public static function countByPackagingType($year)
     {

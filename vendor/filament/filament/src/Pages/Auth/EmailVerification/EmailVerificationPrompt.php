@@ -28,12 +28,35 @@ class EmailVerificationPrompt extends SimplePage
 
     public function mount(): void
     {
-        /** @var MustVerifyEmail $user */
-        $user = Filament::auth()->user();
-
-        if ($user->hasVerifiedEmail()) {
+        if ($this->getVerifiable()->hasVerifiedEmail()) {
             redirect()->intended(Filament::getUrl());
         }
+    }
+
+    protected function getVerifiable(): MustVerifyEmail
+    {
+        /** @var MustVerifyEmail */
+        $user = Filament::auth()->user();
+
+        return $user;
+    }
+
+    protected function sendEmailVerificationNotification(MustVerifyEmail $user): void
+    {
+        if ($user->hasVerifiedEmail()) {
+            return;
+        }
+
+        if (! method_exists($user, 'notify')) {
+            $userClass = $user::class;
+
+            throw new Exception("Model [{$userClass}] does not have a [notify()] method.");
+        }
+
+        $notification = app(VerifyEmail::class);
+        $notification->url = Filament::getVerifyEmailUrl($user);
+
+        $user->notify($notification);
     }
 
     public function resendNotificationAction(): Action
@@ -45,39 +68,32 @@ class EmailVerificationPrompt extends SimplePage
                 try {
                     $this->rateLimit(2);
                 } catch (TooManyRequestsException $exception) {
-                    Notification::make()
-                        ->title(__('filament-panels::pages/auth/email-verification/email-verification-prompt.notifications.notification_resend_throttled.title', [
-                            'seconds' => $exception->secondsUntilAvailable,
-                            'minutes' => ceil($exception->secondsUntilAvailable / 60),
-                        ]))
-                        ->body(array_key_exists('body', __('filament-panels::pages/auth/email-verification/email-verification-prompt.notifications.notification_resend_throttled') ?: []) ? __('filament-panels::pages/auth/email-verification/email-verification-prompt.notifications.notification_resend_throttled.body', [
-                            'seconds' => $exception->secondsUntilAvailable,
-                            'minutes' => ceil($exception->secondsUntilAvailable / 60),
-                        ]) : null)
-                        ->danger()
-                        ->send();
+                    $this->getRateLimitedNotification($exception)?->send();
 
                     return;
                 }
 
-                $user = Filament::auth()->user();
-
-                if (! method_exists($user, 'notify')) {
-                    $userClass = $user::class;
-
-                    throw new Exception("Model [{$userClass}] does not have a [notify()] method.");
-                }
-
-                $notification = new VerifyEmail();
-                $notification->url = Filament::getVerifyEmailUrl($user);
-
-                $user->notify($notification);
+                $this->sendEmailVerificationNotification($this->getVerifiable());
 
                 Notification::make()
                     ->title(__('filament-panels::pages/auth/email-verification/email-verification-prompt.notifications.notification_resent.title'))
                     ->success()
                     ->send();
             });
+    }
+
+    protected function getRateLimitedNotification(TooManyRequestsException $exception): ?Notification
+    {
+        return Notification::make()
+            ->title(__('filament-panels::pages/auth/email-verification/email-verification-prompt.notifications.notification_resend_throttled.title', [
+                'seconds' => $exception->secondsUntilAvailable,
+                'minutes' => $exception->minutesUntilAvailable,
+            ]))
+            ->body(array_key_exists('body', __('filament-panels::pages/auth/email-verification/email-verification-prompt.notifications.notification_resend_throttled') ?: []) ? __('filament-panels::pages/auth/email-verification/email-verification-prompt.notifications.notification_resend_throttled.body', [
+                'seconds' => $exception->secondsUntilAvailable,
+                'minutes' => $exception->minutesUntilAvailable,
+            ]) : null)
+            ->danger();
     }
 
     public function getTitle(): string | Htmlable

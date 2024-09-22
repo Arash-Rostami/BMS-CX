@@ -12,7 +12,7 @@
     $items = \Illuminate\Support\Arr::except($items, ['account', 'logout', 'profile']);
 @endphp
 
-{{ \Filament\Support\Facades\FilamentView::renderHook('panels::user-menu.before') }}
+{{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::USER_MENU_BEFORE) }}
 
 <x-filament::dropdown
     placement="bottom-end"
@@ -28,12 +28,12 @@
             type="button"
             class="shrink-0"
         >
-            <x-filament-panels::avatar.user :user="$user"/>
+            <x-filament-panels::avatar.user :user="$user" />
         </button>
     </x-slot>
 
     @if ($profileItem?->isVisible() ?? true)
-        {{ \Filament\Support\Facades\FilamentView::renderHook('panels::user-menu.profile.before') }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::USER_MENU_PROFILE_BEFORE) }}
 
         @if ($hasProfileItem)
             <x-filament::dropdown.list>
@@ -56,36 +56,42 @@
             </x-filament::dropdown.header>
         @endif
 
-        {{ \Filament\Support\Facades\FilamentView::renderHook('panels::user-menu.profile.after') }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::USER_MENU_PROFILE_AFTER) }}
     @endif
 
     @if (filament()->hasDarkMode() && (! filament()->hasDarkModeForced()))
         <x-filament::dropdown.list>
-            <x-filament-panels::theme-switcher/>
+            <x-filament-panels::theme-switcher />
         </x-filament::dropdown.list>
     @endif
 
     <x-filament::dropdown.list>
         @foreach ($items as $key => $item)
+            @php
+                $itemPostAction = $item->getPostAction();
+            @endphp
+
             <x-filament::dropdown.list.item
+                :action="$itemPostAction"
                 :color="$item->getColor()"
                 :href="$item->getUrl()"
-                :target="$item->shouldOpenUrlInNewTab() ? '_blank' : null"
                 :icon="$item->getIcon()"
-                tag="a"
+                :method="filled($itemPostAction) ? 'post' : null"
+                :tag="filled($itemPostAction) ? 'form' : 'a'"
+                :target="$item->shouldOpenUrlInNewTab() ? '_blank' : null"
             >
                 {{ $item->getLabel() }}
             </x-filament::dropdown.list.item>
         @endforeach
 
-        <x-filament::dropdown.list.item
-            :color="$logoutItem?->getColor()"
-            :icon="'heroicon-s-arrows-pointing-out'"
-        >
+            <x-filament::dropdown.list.item
+                :color="$logoutItem?->getColor()"
+                :icon="'heroicon-s-arrows-pointing-out'"
+            >
              <span onclick="toggleFullScreen()"
                    title="Toggle fullscreen mode"> Fullscreen </span>
 
-        </x-filament::dropdown.list.item>
+            </x-filament::dropdown.list.item>
 
         <x-filament::dropdown.list.item
             :action="$logoutItem?->getUrl() ?? filament()->getLogoutUrl()"
@@ -94,11 +100,9 @@
             method="post"
             tag="form"
         >
-
-
             {{ $logoutItem?->getLabel() ?? __('filament-panels::layout.actions.logout.label') }}
         </x-filament::dropdown.list.item>
     </x-filament::dropdown.list>
 </x-filament::dropdown>
 
-{{ \Filament\Support\Facades\FilamentView::renderHook('panels::user-menu.after') }}
+{{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::USER_MENU_AFTER) }}

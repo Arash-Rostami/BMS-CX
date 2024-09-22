@@ -219,17 +219,26 @@ class PowerJoinClause extends JoinClause
      */
     public function onlyTrashed(): self
     {
-        if (! $this->getModel() || ! in_array(SoftDeletes::class, class_uses_recursive($this->getModel()))) {
+        if (! $this->getModel()
+            || ! in_array(SoftDeletes::class, class_uses_recursive($this->getModel()))
+        ) {
             return $this;
         }
 
-        $this->wheres = array_map(function ($where) {
+        $hasCondition = null;
+
+        $this->wheres = array_map(function ($where) use (&$hasCondition) {
             if ($where['type'] === 'Null' && Str::contains($where['column'], $this->getModel()->getDeletedAtColumn())) {
                 $where['type'] = 'NotNull';
+                $hasCondition = true;
             }
 
             return $where;
         }, $this->wheres);
+
+        if (! $hasCondition) {
+            $this->whereNotNull($this->getModel()->getQualifiedDeletedAtColumn());
+        }
 
         return $this;
     }
@@ -247,9 +256,15 @@ class PowerJoinClause extends JoinClause
         } else {
             if (static::hasMacro($name)) {
                 return $this->macroCall($name, $arguments);
-            } else {
-                throw new InvalidArgumentException(sprintf('Method %s does not exist in PowerJoinClause class', $name));
             }
+
+            $eloquentBuilder = $this->getModel()->newEloquentBuilder($this);
+            if (method_exists($eloquentBuilder, $name)) {
+                $eloquentBuilder->setModel($this->getModel());
+                return $eloquentBuilder->{$name}(...$arguments);
+            }
+
+            throw new InvalidArgumentException(sprintf('Method %s does not exist in PowerJoinClause class', $name));
         }
     }
 }

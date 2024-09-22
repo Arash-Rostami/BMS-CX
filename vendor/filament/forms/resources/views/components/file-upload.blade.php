@@ -14,7 +14,7 @@
     $alignment = $getAlignment() ?? Alignment::Start;
 
     if (! $alignment instanceof Alignment) {
-        $alignment = Alignment::tryFrom($alignment) ?? $alignment;
+        $alignment = filled($alignment) ? (Alignment::tryFrom($alignment) ?? $alignment) : null;
     }
 @endphp
 
@@ -25,7 +25,7 @@
 >
     <div
         @if (FilamentView::hasSpaMode())
-            ax-load="visible"
+            {{-- format-ignore-start --}}ax-load="visible || event (ax-modal-opened)"{{-- format-ignore-end --}}
         @else
             ax-load
         @endif
@@ -62,13 +62,15 @@
                     isOpenable: @js($isOpenable()),
                     isPreviewable: @js($isPreviewable()),
                     isReorderable: @js($isReorderable()),
+                    itemPanelAspectRatio: @js($getItemPanelAspectRatio()),
                     loadingIndicatorPosition: @js($getLoadingIndicatorPosition()),
                     locale: @js(app()->getLocale()),
                     panelAspectRatio: @js($getPanelAspectRatio()),
                     panelLayout: @js($getPanelLayout()),
                     placeholder: @js($getPlaceholder()),
-                    maxSize: @js(($size = $getMaxSize()) ? "'{$size} KB'" : null),
-                    minSize: @js(($size = $getMinSize()) ? "'{$size} KB'" : null),
+                    maxFiles: @js($getMaxFiles()),
+                    maxSize: @js(($size = $getMaxSize()) ? "{$size}KB" : null),
+                    minSize: @js(($size = $getMinSize()) ? "{$size}KB" : null),
                     removeUploadedFileUsing: async (fileKey) => {
                         return await $wire.removeFormUploadedFile(@js($statePath), fileKey)
                     },
@@ -81,6 +83,7 @@
                     shouldTransformImage: @js($imageCropAspectRatio || $imageResizeTargetHeight || $imageResizeTargetWidth),
                     state: $wire.{{ $applyStateBindingModifiers("\$entangle('{$statePath}')") }},
                     uploadButtonPosition: @js($getUploadButtonPosition()),
+                    uploadingMessage: @js($getUploadingMessage()),
                     uploadProgressIndicatorPosition: @js($getUploadProgressIndicatorPosition()),
                     uploadUsing: (fileKey, file, success, error, progress) => {
                         $wire.upload(
@@ -106,13 +109,11 @@
                 ->merge($getExtraAttributes(), escape: false)
                 ->merge($getExtraAlpineAttributes(), escape: false)
                 ->class([
-                    'fi-fo-file-upload flex [&_.filepond--root]:font-sans',
+                    'fi-fo-file-upload flex flex-col gap-y-2 [&_.filepond--root]:font-sans',
                     match ($alignment) {
-                        Alignment::Start => 'justify-start',
-                        Alignment::Center => 'justify-center',
-                        Alignment::End => 'justify-end',
-                        Alignment::Left => 'justify-left',
-                        Alignment::Right => 'justify-right',
+                        Alignment::Start, Alignment::Left => 'items-start',
+                        Alignment::Center => 'items-center',
+                        Alignment::End, Alignment::Right => 'items-end',
                         default => $alignment,
                     },
                 ])
@@ -138,15 +139,22 @@
             />
         </div>
 
+        <div
+            x-show="error"
+            x-text="error"
+            x-cloak
+            class="text-sm text-danger-600 dark:text-danger-400"
+        ></div>
+
         @if ($hasImageEditor && (! $isDisabled))
             <div
                 x-show="isEditorOpen"
                 x-cloak
-                x-on:click.stop
+                x-on:click.stop=""
                 x-trap.noscroll="isEditorOpen"
                 x-on:keydown.escape.window="closeEditor"
                 @class([
-                    'fixed inset-0 isolate z-50 h-screen w-screen p-2 sm:p-10 md:p-20',
+                    'fixed inset-0 isolate z-50 h-[100dvh] w-screen p-2 sm:p-10 md:p-20',
                     'fi-fo-file-upload-circle-cropper' => $hasCircleCropper,
                 ])
             >
@@ -246,18 +254,14 @@
                                                     >
                                                         @foreach ($groupedActions as $action)
                                                             <x-filament::button
-                                                                :x-tooltip="'{ content: ' . \Illuminate\Support\Js::from($action['label']) . ', theme: $store.theme }'"
-                                                                x-on:click.stop.prevent="{{ $action['alpineClickHandler'] }}"
                                                                 color="gray"
                                                                 grouped
+                                                                :icon="new \Illuminate\Support\HtmlString($action['iconHtml'])"
+                                                                label-sr-only
+                                                                x-on:click.stop.prevent="{{ $action['alpineClickHandler'] }}"
+                                                                :x-tooltip="'{ content: ' . \Illuminate\Support\Js::from($action['label']) . ', theme: $store.theme }'"
                                                             >
-                                                                {!! $action['iconHtml'] !!}
-
-                                                                <span
-                                                                    class="sr-only"
-                                                                >
-                                                                    {{ $action['label'] }}
-                                                                </span>
+                                                                {{ $action['label'] }}
                                                             </x-filament::button>
                                                         @endforeach
                                                     </x-filament::button.group>

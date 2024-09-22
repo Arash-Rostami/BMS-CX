@@ -13,6 +13,10 @@ class RelationGroup extends Component
 
     protected string | Closure | null $badge = null;
 
+    protected string | Closure | null $badgeColor = null;
+
+    protected string | Closure | null $badgeTooltip = null;
+
     protected ?Model $ownerRecord = null;
 
     protected ?string $pageClass = null;
@@ -23,8 +27,7 @@ class RelationGroup extends Component
     public function __construct(
         protected string | Closure $label,
         protected array | Closure $managers,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<class-string<RelationManager> | RelationManagerConfiguration>  $managers
@@ -54,6 +57,20 @@ class RelationGroup extends Component
     public function badge(string | Closure | null $badge): static
     {
         $this->badge = $badge;
+
+        return $this;
+    }
+
+    public function badgeColor(string | Closure | null $color): static
+    {
+        $this->badgeColor = $color;
+
+        return $this;
+    }
+
+    public function badgeTooltip(string | Closure | null $tooltip): static
+    {
+        $this->badgeTooltip = $tooltip;
 
         return $this;
     }
@@ -97,6 +114,16 @@ class RelationGroup extends Component
     public function getBadge(): ?string
     {
         return $this->evaluate($this->badge);
+    }
+
+    public function getBadgeColor(): ?string
+    {
+        return $this->evaluate($this->badgeColor);
+    }
+
+    public function getBadgeTooltip(): ?string
+    {
+        return $this->evaluate($this->badgeTooltip);
     }
 
     public function getOwnerRecord(): ?Model

@@ -37,7 +37,7 @@ class AttachmentObserver
      */
     public function deleting(Attachment $attachment)
     {
-        if ($attachment->file_path && File::exists(public_path($attachment->file_path))) {
+        if (!$attachment->isUsedElsewhere() && $attachment->file_path && File::exists(public_path($attachment->file_path))) {
             Storage::disk('filament')->delete($attachment->file_path);
         }
     }

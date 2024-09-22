@@ -1,14 +1,27 @@
+@php
+    $canWrap = $canWrap();
+
+    $arrayState = $getState();
+
+    if ($arrayState instanceof \Illuminate\Support\Collection) {
+        $arrayState = $arrayState->all();
+    }
+
+    $arrayState = \Illuminate\Support\Arr::wrap($arrayState);
+@endphp
+
 <div
     {{
         $attributes
             ->merge($getExtraAttributes(), escape: false)
             ->class([
-                'fi-ta-color flex flex-wrap gap-1.5',
+                'fi-ta-color flex gap-1.5',
+                'flex-wrap' => $canWrap,
                 'px-3 py-4' => ! $isInline(),
             ])
     }}
 >
-    @if (count($arrayState = \Illuminate\Support\Arr::wrap($getState())))
+    @if (count($arrayState))
         @foreach ($arrayState as $state)
             @php
                 $itemIsCopyable = $isCopyable($state);

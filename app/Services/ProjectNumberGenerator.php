@@ -6,7 +6,8 @@ use Carbon\Carbon;
 
 class ProjectNumberGenerator
 {
-    public static function generate() {
+    public static function generate()
+    {
         $now = Carbon::now();
 
         $yearLastTwoDigits = $now->format('y');
@@ -17,6 +18,10 @@ class ProjectNumberGenerator
 
         $minuteSecond = $now->format('is');
 
-        return "PN-{$yearLastTwoDigits}{$monthDay}-{$hourInAlphabet}{$minuteSecond}";
+        $url = request()->url();
+
+        $prefix = str_contains($url, 'proforma') ? 'CT' : 'PN';
+
+        return "{$prefix}-{$yearLastTwoDigits}{$monthDay}-{$hourInAlphabet}{$minuteSecond}";
     }
 }

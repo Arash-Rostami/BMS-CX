@@ -20,9 +20,7 @@ return new class extends Migration {
             $table->json('extra')->nullable();
             // Foreign keys
             $table->integer('user_id')->unsigned()->index();
-            $table->integer('order_id')->unsigned()->index()->nullable();
             $table->foreign('user_id')->references('id')->on('users');
-            $table->foreign('order_id')->references('id')->on('orders');
             $table->timestamps();
             $table->softDeletes();
         });

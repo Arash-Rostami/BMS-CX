@@ -11,15 +11,67 @@ return [
             ],
 
             'add' => [
+
                 'label' => 'Añadir a :label',
+
+                'modal' => [
+
+                    'heading' => 'Añadir a :label',
+
+                    'actions' => [
+
+                        'add' => [
+                            'label' => 'Añadir',
+                        ],
+
+                    ],
+
+                ],
+
             ],
 
             'add_between' => [
-                'label' => 'Insertar',
+
+                'label' => 'Insertar entre bloques',
+
+                'modal' => [
+
+                    'heading' => 'Añadir a :label',
+
+                    'actions' => [
+
+                        'add' => [
+                            'label' => 'Añadir',
+                        ],
+
+                    ],
+
+                ],
+
             ],
 
             'delete' => [
                 'label' => 'Borrar',
+            ],
+
+            'edit' => [
+
+                'label' => 'Editar',
+
+                'modal' => [
+
+                    'heading' => 'Editar bloque',
+
+                    'actions' => [
+
+                        'save' => [
+                            'label' => 'Guardar cambios',
+                        ],
+
+                    ],
+
+                ],
+
             ],
 
             'reorder' => [
@@ -365,6 +417,7 @@ return [
                         'create' => [
                             'label' => 'Crear',
                         ],
+
                         'create_another' => [
                             'label' => 'Crear y crear otro',
                         ],
@@ -416,6 +469,31 @@ return [
 
     'tags_input' => [
         'placeholder' => 'Nueva etiqueta',
+    ],
+
+    'text_input' => [
+
+        'actions' => [
+
+            'hide_password' => [
+                'label' => 'Ocultar contraseña',
+            ],
+
+            'show_password' => [
+                'label' => 'Mostrar contraseña',
+            ],
+
+        ],
+
+    ],
+
+    'toggle_buttons' => [
+
+        'boolean' => [
+            'true' => 'Sí',
+            'false' => 'No',
+        ],
+
     ],
 
     'wizard' => [

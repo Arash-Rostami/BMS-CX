@@ -2,16 +2,21 @@
 
 namespace App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents;
 
+use App\Models\Order;
 use Carbon\Carbon;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\IconPosition;
 use Filament\Tables\Columns\Summarizers\Count;
+use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Filament\Tables\Columns\ToggleColumn;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as SummaryBuilder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
+
 
 trait Table
 {
@@ -57,9 +62,7 @@ trait Table
             ->badge()
             ->label('Part')
             ->grow(true)
-            ->state(fn(Model $record) => $record->part == 1 ? '⭐' : $record->part - 1)
-            ->color(fn(Model $record) => $record->part == 1 ? 'danger' : 'secondary')
-            ->tooltip(fn(Model $record) => $record->part == 1 ? 'Main Order' : "Suborder part " . $record->part - 1)
+            ->tooltip(fn(Model $record) => 'Order Part ' . $record->part)
             ->sortable()
             ->toggleable()
             ->summarize(
@@ -123,12 +126,27 @@ trait Table
      */
     public static function showGrade(): TextColumn
     {
-        return TextColumn::make('grade')
+        return TextColumn::make('grade.name')
+            ->icon('heroicon-m-ellipsis-horizontal-circle')
             ->badge()
             ->color('secondary')
             ->grow()
             ->toggleable()
             ->searchable()
+            ->sortable();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showCreator(): TextColumn
+    {
+        return TextColumn::make('user.fullName')
+            ->label('Created by')
+            ->badge()
+            ->color('secondary')
+            ->searchable(['first_name', 'middle_name', 'last_name'])
+            ->toggleable()
             ->sortable();
     }
 
@@ -150,36 +168,33 @@ trait Table
             ->searchable();
     }
 
-    public static function showInvoiceNumber(): TextColumn
+    public static function showProjectNumber(): TextColumn
     {
         return TextColumn::make('invoice_number')
             ->label('Project No.')
             ->color('primary')
             ->grow(false)
+            ->state(fn(Model $record) => $record->invoice_number ?? 'N/A')
             ->size(TextColumnSize::ExtraSmall)
             ->tooltip(fn(string $state): string => "Invoice Number")
             ->sortable()
             ->toggleable()
-            ->searchable(isIndividual: true,);
+            ->searchable(isIndividual: true);
     }
 
     public static function showReferenceNumber(): TextColumn
     {
-        return TextColumn::make('extra.reference_number')
+        return TextColumn::make('reference_number')
             ->label(new HtmlString('<span class="text-primary-500 cursor-pointer" title="Record Unique ID">Ref. No. ⋮ ID</span>'))
             ->grow(false)
             ->weight(FontWeight::ExtraLight)
             ->tooltip(fn(?string $state): ?string => "Order Ref. No. / ID")
             ->sortable()
             ->toggleable()
-            ->formatStateUsing(fn(Model $record) => $record->extra['reference_number'] ?? sprintf('O-%s%04d', $record->created_at->format('y'), $record->id))
-            ->sortable(query: function (Builder $query, string $direction) {
-                $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.reference_number')) $direction");
-            })
+            ->formatStateUsing(fn(Model $record) => $record->reference_number ?? sprintf('O-%s%04d', $record->created_at->format('y'), $record->id))
+            ->sortable()
             ->extraAttributes(['class' => 'col-freeze'])
-            ->searchable(query: function (Builder $query, string $search): Builder {
-                return $query->whereJsonContains('extra->reference_number', $search);
-            });
+            ->searchable();
     }
 
     /**
@@ -205,14 +220,13 @@ trait Table
     {
         return TextColumn::make('paymentRequest')
             ->state(function (Model $record): string {
-                return 'Payment requests: ' . count($record->paymentRequests);
+                return 'Payment requests: ' . count($record->paymentRequests) ?? 0;
             })
             ->alignRight()
             ->color(fn($state) => $state == 'Payment requests: 0' ? 'secondary' : 'warning')
             ->icon('heroicon-s-arrow-right-on-rectangle')
             ->iconPosition(IconPosition::Before)
             ->grow()
-//            ->hidden(fn($record) => is_null($record) || $record->paymentRequests->isEmpty())
             ->badge();
     }
 
@@ -222,9 +236,7 @@ trait Table
     public static function showPayments(): TextColumn
     {
         return TextColumn::make('payments')
-            ->state(function (Model $record): string {
-                return 'Payment: ' . count($record->payments);
-            })
+            ->state(fn(Model $record) => 'Payment: ' . ($record->paymentRequests->pluck('payments')->flatten()->count()))
             ->alignRight()
             ->icon('heroicon-o-credit-card')
             ->iconPosition(IconPosition::Before)
@@ -283,8 +295,8 @@ trait Table
      */
     public static function showQuantities(): TextColumn
     {
-        return TextColumn::make('orderDetail.buying_quantity')
-            ->label('Ini. | Pro. | Fin. Quantities')
+        return TextColumn::make('orderDetail.extra.payableQuantity')
+            ->label('Ini | Pro | Fin Quantities')
             ->state(function (Model $record): string {
                 return sprintf(
                     "%s | %s | %s (mt)",
@@ -293,27 +305,39 @@ trait Table
                     numberify($record->orderDetail->final_quantity ?? 0)
                 );
             })
+            ->summarize(Summarizer::make()->label('Pro | Fin')->using(fn(SummaryBuilder $query) => self::calculateSummaries('quantity', $query)))
             ->toggleable()
             ->color('info')
             ->badge();
     }
 
-    /**
-     * @return TextColumn
-     */
-    public static function showPrices(): TextColumn
+    public static function showAllPayments(): TextColumn
     {
-        return TextColumn::make('orderDetail.buying_price')
-            ->label('Ini. | Pro. | Fin. Prices')
+        return TextColumn::make('orderDetail.extra.provisionalTotal')
+            ->label('Ini | Pro | Fin Price')
+            ->toggleable()
+            ->color('info')
             ->state(function (Model $record): string {
                 return sprintf(
                     "%s %s | %s | %s",
                     $record->orderDetail->extra['currency'] ?? '',
-                    numberify($record->orderDetail->buying_price ?? 0),
-                    numberify($record->orderDetail->provisional_price ?? 0),
-                    numberify($record->orderDetail->final_price ?? 0)
+                    numberify($record->orderDetail?->extra['initialPayment'] ?? $record->orderDetail->buying_price ?? 0),
+                    numberify($record->orderDetail?->extra['provisionalTotal'] ?? $record->orderDetail->provisional_price ?? 0),
+                    numberify($record->orderDetail?->extra['finalTotal'] ?? $record->orderDetail->final_price ?? 0)
                 );
             })
+            ->summarize(Summarizer::make()->label('Ini | Pro | Fin')->using(fn(SummaryBuilder $query) => self::calculateSummaries('payment', $query)))
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public
+    static function showProvisionalPayment(): TextColumn
+    {
+        return TextColumn::make('orderDetail.extra.provisionalTotal')
+            ->label('Initial Payment')
             ->toggleable()
             ->color('info')
             ->badge();
@@ -322,24 +346,22 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showPercentage(): TextColumn
+    public
+    static function showFinalPayment(): TextColumn
     {
-        return TextColumn::make('orderDetail.extra')
-            ->label('Payslip')
-            ->state(function (Model $record): string {
-                return static::formatPaySlip($record);
-            })
-            ->grow()
+        return TextColumn::make('orderDetail.extra.finalTotal')
+            ->label('Initial Payment')
             ->toggleable()
-            ->color('secondary')
-            ->badge()
-            ->html();
+            ->color('info')
+            ->badge();
     }
+
 
     /**
      * @return TextColumn
      */
-    public static function showDeliveryTerm(): TextColumn
+    public
+    static function showDeliveryTerm(): TextColumn
     {
         return TextColumn::make('logistic.deliveryTerm.name')
             ->label('Delivery Term')
@@ -353,7 +375,8 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showPackaging(): TextColumn
+    public
+    static function showPackaging(): TextColumn
     {
         return TextColumn::make('logistic.packaging.name')
             ->label('Packaging')
@@ -367,7 +390,8 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showShippingLine(): TextColumn
+    public
+    static function showShippingLine(): TextColumn
     {
         return TextColumn::make('logistic.shippingLine.name')
             ->label('Shipping Line')
@@ -381,7 +405,8 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showPortOfDelivery(): TextColumn
+    public
+    static function showPortOfDelivery(): TextColumn
     {
         return TextColumn::make('logistic.portOfDelivery.name')
             ->label('Port of Delivery')
@@ -395,7 +420,8 @@ trait Table
     /**
      * @return ToggleColumn
      */
-    public static function showChangeOfDestination(): ToggleColumn
+    public
+    static function showChangeOfDestination(): ToggleColumn
     {
         return ToggleColumn::make('logistic.change_of_destination')
             ->label('Change of Destination')
@@ -406,7 +432,8 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showLoadingStartline(): TextColumn
+    public
+    static function showLoadingStartline(): TextColumn
     {
         return TextColumn::make('logistic.extra.loading_startline')
             ->label('Loading Start Date')
@@ -419,7 +446,8 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showLoadingDeadline(): TextColumn
+    public
+    static function showLoadingDeadline(): TextColumn
     {
         return TextColumn::make('logistic.loading_deadline')
             ->label('Loading End Date')
@@ -433,7 +461,8 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showEtd(): TextColumn
+    public
+    static function showEtd(): TextColumn
     {
         return TextColumn::make('logistic.extra.etd')
             ->label('ETD')
@@ -446,7 +475,8 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showEta(): TextColumn
+    public
+    static function showEta(): TextColumn
     {
         return TextColumn::make('logistic.extra.eta')
             ->label('ETA')

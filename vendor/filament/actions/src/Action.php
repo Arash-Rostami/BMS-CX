@@ -4,9 +4,8 @@ namespace Filament\Actions;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Js;
-use Livewire\Component;
 
-class Action extends MountableAction implements Contracts\Groupable, Contracts\HasRecord
+class Action extends MountableAction implements Contracts\HasRecord
 {
     use Concerns\CanSubmitForm;
     use Concerns\HasMountableArguments;
@@ -25,6 +24,10 @@ class Action extends MountableAction implements Contracts\Groupable, Contracts\H
 
         if (is_string($this->action)) {
             return $this->action;
+        }
+
+        if ($event = $this->getLivewireEventClickHandler()) {
+            return $event;
         }
 
         $argumentsParameter = '';
@@ -64,11 +67,6 @@ class Action extends MountableAction implements Contracts\Groupable, Contracts\H
             Model::class, $record::class => [$record],
             default => parent::resolveDefaultClosureDependencyForEvaluationByType($parameterType),
         };
-    }
-
-    public function getLivewire(): Component
-    {
-        return $this->livewire;
     }
 
     public function shouldClearRecordAfter(): bool

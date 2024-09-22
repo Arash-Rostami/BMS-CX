@@ -72,11 +72,17 @@ trait CanOpenModal
 
     protected MaxWidth | string | Closure | null $modalWidth = null;
 
-    protected bool | Closure | null $isModalHidden = false;
+    protected bool | Closure | null $hasModal = null;
+
+    protected bool | Closure | null $isModalHidden = null;
 
     protected bool | Closure | null $hasModalCloseButton = null;
 
     protected bool | Closure | null $isModalClosedByClickingAway = null;
+
+    protected bool | Closure | null $isModalClosedByEscaping = null;
+
+    protected bool | Closure | null $isModalAutofocused = null;
 
     protected string | Closure | null $modalIcon = null;
 
@@ -88,6 +94,13 @@ trait CanOpenModal
     public function closeModalByClickingAway(bool | Closure | null $condition = true): static
     {
         $this->isModalClosedByClickingAway = $condition;
+
+        return $this;
+    }
+
+    public function closeModalByEscaping(bool | Closure | null $condition = true): static
+    {
+        $this->isModalClosedByEscaping = $condition;
 
         return $this;
     }
@@ -114,6 +127,13 @@ trait CanOpenModal
     public function modalCloseButton(bool | Closure | null $condition = true): static
     {
         $this->hasModalCloseButton = $condition;
+
+        return $this;
+    }
+
+    public function modalAutofocus(bool | Closure | null $condition = true): static
+    {
+        $this->isModalAutofocused = $condition;
 
         return $this;
     }
@@ -302,7 +322,14 @@ trait CanOpenModal
         return null;
     }
 
-    public function modalHidden(bool | Closure | null $condition = false): static
+    public function modal(bool | Closure | null $condition = true): static
+    {
+        $this->hasModal = $condition;
+
+        return $this;
+    }
+
+    public function modalHidden(bool | Closure | null $condition = true): static
     {
         $this->isModalHidden = $condition;
 
@@ -407,7 +434,8 @@ trait CanOpenModal
 
         if (
             ($this instanceof HasRecord) &&
-            ($action instanceof HasRecord)
+            ($action instanceof HasRecord) &&
+            (! $action->hasRecord())
         ) {
             $action->record($this->getRecord());
         }
@@ -485,7 +513,7 @@ trait CanOpenModal
 
     public function getModalAlignment(): Alignment | string
     {
-        return $this->evaluate($this->modalAlignment) ?? (in_array($this->getModalWidth(), [MaxWidth::ExtraSmall, MaxWidth::Small, 'xs', 'sm'])) ? Alignment::Center : Alignment::Start;
+        return $this->evaluate($this->modalAlignment) ?? (in_array($this->getModalWidth(), [MaxWidth::ExtraSmall, MaxWidth::Small, 'xs', 'sm']) ? Alignment::Center : Alignment::Start);
     }
 
     public function getModalSubmitActionLabel(): string
@@ -508,6 +536,16 @@ trait CanOpenModal
         return $this->evaluate($this->modalContentFooter);
     }
 
+    public function hasModalContent(): bool
+    {
+        return $this->modalContent !== null;
+    }
+
+    public function hasModalContentFooter(): bool
+    {
+        return $this->modalContentFooter !== null;
+    }
+
     public function getCustomModalHeading(): string | Htmlable | null
     {
         return $this->evaluate($this->modalHeading);
@@ -518,9 +556,19 @@ trait CanOpenModal
         return $this->getCustomModalHeading() ?? $this->getLabel();
     }
 
+    public function hasCustomModalHeading(): bool
+    {
+        return filled($this->getCustomModalHeading());
+    }
+
     public function getModalDescription(): string | Htmlable | null
     {
         return $this->evaluate($this->modalDescription);
+    }
+
+    public function hasModalDescription(): bool
+    {
+        return filled($this->getModalDescription());
     }
 
     public function getModalWidth(): MaxWidth | string
@@ -543,9 +591,22 @@ trait CanOpenModal
         return (bool) $this->evaluate($this->isModalSlideOver);
     }
 
-    public function isModalHidden(): bool
+    public function shouldOpenModal(?Closure $checkForFormUsing = null): bool
     {
-        return (bool) $this->evaluate($this->isModalHidden);
+        if (is_bool($hasModal = $this->evaluate($this->hasModal))) {
+            return $hasModal;
+        }
+
+        if ($this->evaluate($this->isModalHidden)) {
+            return false;
+        }
+
+        return $this->hasCustomModalHeading() ||
+            $this->hasModalDescription() ||
+            $this->hasModalContent() ||
+            $this->hasModalContentFooter() ||
+            $this->getInfolist() ||
+            (value($checkForFormUsing, $this) ?? false);
     }
 
     public function hasModalCloseButton(): bool
@@ -556,6 +617,16 @@ trait CanOpenModal
     public function isModalClosedByClickingAway(): bool
     {
         return (bool) ($this->evaluate($this->isModalClosedByClickingAway) ?? Modal::$isClosedByClickingAway);
+    }
+
+    public function isModalClosedByEscaping(): bool
+    {
+        return (bool) ($this->evaluate($this->isModalClosedByEscaping) ?? Modal::$isClosedByEscaping);
+    }
+
+    public function isModalAutofocused(): bool
+    {
+        return $this->evaluate($this->isModalAutofocused) ?? Modal::$isAutofocused;
     }
 
     /**

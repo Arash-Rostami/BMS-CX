@@ -11,7 +11,14 @@ return [
     'columns' => [
 
         'text' => [
+
+            'actions' => [
+                'collapse_list' => 'Mostrar :count menos',
+                'expand_list' => 'Mostrar :count más',
+            ],
+
             'more_list_items' => 'y :count más',
+
         ],
 
     ],
@@ -105,6 +112,10 @@ return [
     'filters' => [
 
         'actions' => [
+
+            'apply' => [
+                'label' => 'Aplicar filtros',
+            ],
 
             'remove' => [
                 'label' => 'Quitar filtro',

@@ -25,7 +25,7 @@ return new class extends Migration {
             $table->softDeletes();
             $table->timestamp('last_login')->nullable();
             $table->string('password');
-            $table->json('info')->nullable();
+            $table->json('info')->nullable()->index();
             $table->string('image')->nullable();
             $table->rememberToken();
             $table->timestamps();

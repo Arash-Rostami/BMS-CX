@@ -11,15 +11,12 @@ title: Upgrading from v2.x
 
 Please upgrade Filament before upgrading to Livewire v3. Instructions on how to upgrade Livewire can be found [here](https://livewire.laravel.com/docs/upgrading).
 
-> **Livewire v3 is recently released!**<br />
-> The Livewire team have done a great job in making it stable, but it was a complete rewrite of Livewire v2. You may encounter issues, so we recommend testing your application thoroughly before using Filament v3 in production.
-
 ## Upgrading automatically
 
 The easiest way to upgrade your app is to run the automated upgrade script. This script will automatically upgrade your application to the latest version of Filament, and make changes to your code which handle most breaking changes.
 
 ```bash
-composer require filament/upgrade:"^3.0-stable" -W --dev
+composer require filament/upgrade:"^3.2" -W --dev
 vendor/bin/filament-v3
 ```
 
@@ -70,7 +67,7 @@ The Heroicons library has been updated to v2. This means that any icons you use 
 
 #### Date-time pickers
 
-The date-time picker form field now uses the browser's native date picker by default. It usually has a better UX than the old date picker, but you may notice features missing, bad browser compatibility, or behavioural bugs. If you want to revert to the old date picker, you can use the `native(false)` method:
+The date-time picker form field now uses the browser's native date picker by default. It usually has a better UX than the old date picker, but you may notice features missing, bad browser compatibility, or behavioral bugs. If you want to revert to the old date picker, you can use the `native(false)` method:
 
 ```php
 use Filament\Forms\Components\DateTimePicker;

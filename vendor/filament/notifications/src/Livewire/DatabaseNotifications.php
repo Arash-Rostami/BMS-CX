@@ -15,6 +15,7 @@ use Illuminate\Notifications\DatabaseNotificationCollection;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Models\Notification as NotificationModel;
 
 class DatabaseNotifications extends Component
 {
@@ -24,7 +25,7 @@ class DatabaseNotifications extends Component
 
     public static ?string $trigger = null;
 
-    public static ?string $pollingInterval = '30s';
+    public static ?string $pollingInterval = '10s';
 
     public static ?string $authGuard = null;
 
@@ -36,9 +37,14 @@ class DatabaseNotifications extends Component
     #[On('notificationClosed')]
     public function removeNotification(string $id): void
     {
-        $this->getNotificationsQuery()
-            ->where('id', $id)
-            ->delete();
+//        $this->getNotificationsQuery()
+//            ->where('id', $id);
+////            ->delete();
+        $notification = NotificationModel::find($id);
+        if ($notification) {
+            $notification->update(['read_at' => now()]);
+            $notification->delete();
+        }
     }
 
     #[On('markedNotificationAsRead')]
@@ -59,7 +65,13 @@ class DatabaseNotifications extends Component
 
     public function clearNotifications(): void
     {
-        $this->getNotificationsQuery()->delete();
+//        $this->getNotificationsQuery()->delete();
+
+        NotificationModel::where('notifiable_id', auth()->id())
+            ->update(['read_at' => now()]);
+
+        NotificationModel::where('notifiable_id', auth()->id())
+            ->delete();
     }
 
     public function markAllNotificationsAsRead(): void
@@ -67,14 +79,14 @@ class DatabaseNotifications extends Component
         $this->getUnreadNotificationsQuery()->update(['read_at' => now()]);
     }
 
-    public function getNotifications(): DatabaseNotificationCollection | Paginator
+    public function getNotifications(): DatabaseNotificationCollection|Paginator
     {
-        if (! $this->isPaginated()) {
+        if (!$this->isPaginated()) {
             /** @phpstan-ignore-next-line */
             return $this->getNotificationsQuery()->get();
         }
 
-        return $this->getNotificationsQuery()->simplePaginate(50);
+        return $this->getNotificationsQuery()->simplePaginate(50, pageName: 'database-notifications-page');
     }
 
     public function isPaginated(): bool
@@ -82,13 +94,13 @@ class DatabaseNotifications extends Component
         return static::$isPaginated;
     }
 
-    public function getNotificationsQuery(): Builder | Relation
+    public function getNotificationsQuery(): Builder|Relation
     {
         /** @phpstan-ignore-next-line */
         return $this->getUser()->notifications()->where('data->format', 'filament');
     }
 
-    public function getUnreadNotificationsQuery(): Builder | Relation
+    public function getUnreadNotificationsQuery(): Builder|Relation
     {
         /** @phpstan-ignore-next-line */
         return $this->getNotificationsQuery()->unread();
@@ -115,7 +127,7 @@ class DatabaseNotifications extends Component
         return view($viewPath);
     }
 
-    public function getUser(): Model | Authenticatable | null
+    public function getUser(): Model|Authenticatable|null
     {
         return auth(static::$authGuard)->user();
     }
@@ -124,7 +136,7 @@ class DatabaseNotifications extends Component
     {
         $user = $this->getUser();
 
-        if (! $user) {
+        if (!$user) {
             return null;
         }
 

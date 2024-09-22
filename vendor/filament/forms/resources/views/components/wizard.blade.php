@@ -9,12 +9,6 @@
     x-data="{
         step: null,
 
-        init: function () {
-            this.$watch('step', () => this.updateQueryString())
-
-            this.step = this.getSteps().at({{ $getStartStep() - 1 }})
-        },
-
         nextStep: function () {
             let nextStepIndex = this.getStepIndex(this.step) + 1
 
@@ -42,7 +36,9 @@
         },
 
         scrollToTop: function () {
-            this.$root.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            this.$nextTick(() =>
+                this.$root.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+            )
         },
 
         autofocusFields: function () {
@@ -54,7 +50,15 @@
         },
 
         getStepIndex: function (step) {
-            return this.getSteps().findIndex((indexedStep) => indexedStep === step)
+            let index = this.getSteps().findIndex(
+                (indexedStep) => indexedStep === step,
+            )
+
+            if (index === -1) {
+                return 0
+            }
+
+            return index
         },
 
         getSteps: function () {
@@ -69,8 +73,10 @@
             return this.getStepIndex(this.step) + 1 >= this.getSteps().length
         },
 
-        isStepAccessible: function (step, index) {
-            return @js($isSkippable()) || this.getStepIndex(step) > index
+        isStepAccessible: function (stepId) {
+            return (
+                @js($isSkippable()) || this.getStepIndex(this.step) > this.getStepIndex(stepId)
+            )
         },
 
         updateQueryString: function () {
@@ -84,6 +90,13 @@
             history.pushState(null, document.title, url.toString())
         },
     }"
+    x-init="
+        $watch('step', () => updateQueryString())
+
+        step = getSteps().at({{ $getStartStep() - 1 }})
+
+        autofocusFields()
+    "
     x-on:next-wizard-step.window="if ($event.detail.statePath === '{{ $statePath }}') nextStep()"
     {{
         $attributes
@@ -116,20 +129,26 @@
         @endif
         role="list"
         @class([
-            'fi-fo-wizard-header grid divide-y divide-gray-200 dark:divide-white/5 md:grid-flow-col md:divide-y-0',
+            'fi-fo-wizard-header grid divide-y divide-gray-200 dark:divide-white/5 md:grid-flow-col md:divide-y-0 md:overflow-x-auto',
             'border-b border-gray-200 dark:border-white/10' => $isContained,
             'rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10' => ! $isContained,
         ])
     >
         @foreach ($getChildComponentContainer()->getComponents() as $step)
-            <li class="fi-fo-wizard-header-step relative flex">
+            <li
+                class="fi-fo-wizard-header-step relative flex"
+                x-bind:class="{
+                    'fi-active': getStepIndex(step) === {{ $loop->index }},
+                    'fi-completed': getStepIndex(step) > {{ $loop->index }},
+                }"
+            >
                 <button
                     type="button"
                     x-bind:aria-current="getStepIndex(step) === {{ $loop->index }} ? 'step' : null"
                     x-on:click="step = @js($step->getId())"
-                    x-bind:disabled="! isStepAccessible(step, {{ $loop->index }})"
+                    x-bind:disabled="! isStepAccessible(@js($step->getId()))"
                     role="step"
-                    class="flex h-full w-full items-center gap-x-4 px-6 py-4"
+                    class="fi-fo-wizard-header-step-button flex h-full items-center gap-x-4 px-6 py-4 text-start"
                 >
                     <div
                         class="fi-fo-wizard-header-step-icon-ctn flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
@@ -143,9 +162,13 @@
                                 getStepIndex(step) < {{ $loop->index }},
                         }"
                     >
+                        @php
+                            $completedIcon = $step->getCompletedIcon();
+                        @endphp
+
                         <x-filament::icon
-                            alias="forms::components.wizard.completed-step"
-                            icon="heroicon-o-check"
+                            :alias="filled($completedIcon) ? null : 'forms::components.wizard.completed-step'"
+                            :icon="$completedIcon ?? 'heroicon-o-check'"
                             x-cloak="x-cloak"
                             x-show="getStepIndex(step) > {{ $loop->index }}"
                             class="fi-fo-wizard-header-step-icon h-6 w-6 text-white"
@@ -165,7 +188,7 @@
                         @else
                             <span
                                 x-show="getStepIndex(step) <= {{ $loop->index }}"
-                                class="text-sm font-medium"
+                                class="fi-fo-wizard-header-step-indicator text-sm font-medium"
                                 x-bind:class="{
                                     'text-gray-500 dark:text-gray-400':
                                         getStepIndex(step) !== {{ $loop->index }},
@@ -178,7 +201,7 @@
                         @endif
                     </div>
 
-                    <div class="grid justify-items-start">
+                    <div class="grid justify-items-start md:w-max md:max-w-60">
                         @if (! $step->isLabelHidden())
                             <span
                                 class="fi-fo-wizard-header-step-label text-sm font-medium"
@@ -196,7 +219,7 @@
 
                         @if (filled($description = $step->getDescription()))
                             <span
-                                class="fi-fo-wizard-header-step-description text-sm text-gray-500 dark:text-gray-400"
+                                class="fi-fo-wizard-header-step-description text-start text-sm text-gray-500 dark:text-gray-400"
                             >
                                 {{ $description }}
                             </span>
@@ -207,13 +230,13 @@
                 @if (! $loop->last)
                     <div
                         aria-hidden="true"
-                        class="absolute end-0 hidden w-5 md:block"
+                        class="fi-fo-wizard-header-step-separator absolute end-0 hidden h-full w-5 md:block"
                     >
                         <svg
                             fill="none"
                             preserveAspectRatio="none"
                             viewBox="0 0 22 80"
-                            class="h-full w-full text-gray-200 rtl:rotate-180 dark:text-white/5"
+                            class="h-full w-full text-gray-200 dark:text-white/5 rtl:rotate-180"
                         >
                             <path
                                 d="M0 -2L20 40L0 82"

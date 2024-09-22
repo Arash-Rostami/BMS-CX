@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
 use App\Models\Order;
+use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Resources\Components\Tab;
@@ -27,6 +28,7 @@ class ListOrders extends ListRecords
                 ->icon('heroicon-o-sparkles'),
             ExcelImportAction::make()
                 ->color("success"),
+            PrintAction::make(),
         ];
     }
 

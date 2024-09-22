@@ -17,14 +17,15 @@ class Order extends Model
 
     protected $fillable = [
         'order_number',
+        'reference_number',
         'invoice_number',
         'part',
-        'grade',
+        'grade_id',
         'proforma_number',
         'proforma_date',
         'order_status',
         'extra',
-        'order_request_id',
+        'proforma_invoice_id',
         'user_id',
         'purchase_status_id',
         'category_id',
@@ -33,13 +34,11 @@ class Order extends Model
         'party_id',
         'logistic_id',
         'doc_id',
-        'attachment_id',
     ];
 
     protected $casts = [
         'extra' => 'json',
         'proforma_date' => 'date',
-        'extra.docs_received' => 'json'
     ];
 
     protected $table = 'orders';
@@ -50,23 +49,164 @@ class Order extends Model
         return $this->hasMany(Attachment::class);
     }
 
-    public function docAttachment()
-    {
-        return $this->hasOne(Attachment::class);
-    }
-
 
     protected static function booted()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
-            $post->order_number = self::makeOrderNumber($post);
+        static::creating(function ($order) {
+            $order->user_id = auth()->id();
+            $order->order_number = self::makeOrderNumber($order);
         });
 
-        static::updating(function ($post) {
-            $post->order_number = self::makeOrderNumber($post);
+        static::saving(function ($order) {
+            $order->attachments->each(function ($attachment) {
+                if (empty($attachment->file_path) || empty($attachment->name)) {
+                    $attachment->delete();
+                }
+            });
+        });
+
+        static::updating(function ($order) {
+            $order->order_number = self::makeOrderNumber($order);
         });
     }
+
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'category_id');
+    }
+
+    public function doc()
+    {
+        return $this->belongsTo(Doc::class, 'doc_id');
+    }
+
+    public function grade()
+    {
+        return $this->belongsTo(Grade::class, 'grade_id');
+    }
+
+
+    public function logistic()
+    {
+        return $this->belongsTo(Logistic::class, 'logistic_id');
+    }
+
+
+    public function names()
+    {
+        return $this->hasMany(Name::class);
+    }
+
+    public function orderDetail()
+    {
+        return $this->belongsTo(OrderDetail::class, 'order_detail_id');
+    }
+
+
+    public function proformaInvoice()
+    {
+        return $this->belongsTo(ProformaInvoice::class, 'proforma_invoice_id', 'id');
+    }
+
+
+    public function party()
+    {
+        return $this->belongsTo(Party::class,);
+    }
+
+
+    public function payments()
+    {
+        return $this->belongsToMany(
+            Payment::class,
+            'payment_payment_request',
+            'payment_request_id',
+            'payment_id'
+        );
+    }
+
+    public function paymentRequests()
+    {
+        return $this->hasMany(PaymentRequest::class, 'order_id');
+    }
+
+    public function associatedPaymentRequests()
+    {
+        return $this->proformaInvoice->associatedPaymentRequests();
+    }
+
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id');
+    }
+
+
+    public function purchaseStatus()
+    {
+        return $this->belongsTo(PurchaseStatus::class, 'purchase_status_id');
+    }
+
+
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class, 'order_tag', 'order_id', 'tag_id');
+    }
+
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+
+    // Computational Methods //
+    public static function aggrgateOrderGroupTotals($record)
+    {
+        $orders = $record->getRelatedOrdersByInvoiceNumber();
+
+        $payment = $orders->sum(function ($order) {
+            return
+                data_get($order, 'orderDetail.extra.initialPayment', 0) +
+                data_get($order, 'orderDetail.extra.provisionalTotal', 0) +
+                data_get($order, 'orderDetail.extra.finalTotal', 0);
+        });
+
+        $quantity = $orders->sum(function ($order) {
+            return data_get($order, 'orderDetail.final_quantity', 0)
+                ?: data_get($order, 'orderDetail.provisional_quantity', 0);
+        });
+
+        return [
+            'payment' => numberify($payment),
+            'quantity' => $quantity,
+            'totalQuantity' => optional($record->proformaInvoice)->quantity ?? 'Undefined',
+            'totalPayment' => numberify(optional($record->proformaInvoice)->price ?? 1 * optional($record->proformaInvoice)->quantity) ?? 'Undefined',
+            'shipmentPart' => optional($record->proformaInvoice)->part ?? 'Undefined',
+            'daysPassed' => optional($record->proformaInvoice)->daysPassed ?? 'Undefined'
+        ];
+    }
+
+
+    public static function countOrdersByStatus($year)
+    {
+        $cacheKey = 'orders_count_by_status_' . $year;
+
+        return Cache::remember($cacheKey, 300, function () use ($year) {
+            $query = static::query();
+
+            if ($year !== 'all') {
+                $query->whereYear('proforma_date', $year);
+            }
+
+            return $query->selectRaw('order_status, COUNT(*) as total')
+                ->groupBy('order_status')
+                ->get()
+                ->pluck('total', 'order_status');
+        });
+    }
+
 
     public static function countOrdersByMonth($year)
     {
@@ -177,47 +317,25 @@ class Order extends Model
         });
     }
 
-    /**
-     * Get the category associated with the order.
-     */
-    public function category()
+    public static function getOrdersCached()
     {
-        return $this->belongsTo(Category::class, 'category_id');
+        $key = 'orders_list';
+
+        if (Cache::has($key)) {
+            $orders = Cache::get($key);
+        } else {
+            $orders = self::pluck('reference_number', 'id')->toArray();
+            Cache::put($key, $orders, 5);
+        }
+
+        return $orders;
     }
-
-
-    public static function countOrdersByStatus($year)
-    {
-        $cacheKey = 'orders_count_by_status_' . $year;
-
-        return Cache::remember($cacheKey, 300, function () use ($year) {
-            $query = static::query();
-
-            if ($year !== 'all') {
-                $query->whereYear('proforma_date', $year);
-            }
-
-            return $query->selectRaw('order_status, COUNT(*) as total')
-                ->groupBy('order_status')
-                ->get()
-                ->pluck('total', 'order_status');
-        });
-    }
-
-
-    /**
-     * Get the doc associated with the order.
-     */
-    public function doc()
-    {
-        return $this->belongsTo(Doc::class, 'doc_id');
-    }
-
 
     public function getInvoiceNumberWithPartAttribute()
     {
         $firstIdentifier = $this->logistic->booking_number ?? 'N/A';
         $secondIdentifier = $this->extra['reference_number'] ?? 'N/A';
+
         return "Booking# {$firstIdentifier} 💢Ref: {$secondIdentifier}";
     }
 
@@ -229,34 +347,7 @@ class Order extends Model
         return "{$prjNum} (Ref: {$refNum})";
     }
 
-    public static function findByOrderRequestId($orderRequestId)
-    {
-        return self::where('order_request_id', $orderRequestId)
-            ->where('part', 1)
-            ->get();
-    }
-
-    public static function findByProjectNumber($orderRequestId, $mainPart = true)
-    {
-        $query = self::where('invoice_number', $orderRequestId);
-
-        return ($mainPart)
-            ? $query->where('part', 1)->first()
-            : $query->where('part', '!=', 1)->get();
-    }
-
-    /**
-     * Get the logistic associated with the order.
-     */
-    public
-    function logistic()
-    {
-        return $this->belongsTo(Logistic::class, 'logistic_id');
-    }
-
-
-    public
-    static function getStatusCounts()
+    public static function getStatusCounts()
     {
         return static::select('purchase_status_id')
             ->selectRaw('count(*) as count')
@@ -267,8 +358,48 @@ class Order extends Model
     }
 
 
-    public
-    static function makeOrderNumber($post): string
+    public function getAllPaymentRequests()
+    {
+        return $this->hasMany(PaymentRequest::class)
+            ->whereNull('deleted_at')
+            ->orWhere(function ($query) {
+//                $query->whereRaw("FIND_IN_SET(?, proforma_invoice_number) > 0", [$this->proforma_number])
+                $query->whereRaw("proforma_invoice_number REGEXP CONCAT('(^|,\\s)', ?, '(\\s,|$)')", [addslashes($this->proforma_number)])
+                    ->whereNull('deleted_at')
+                    ->whereNull('order_id');
+            });
+    }
+
+    public function getRelatedOrdersByInvoiceNumber()
+    {
+        $cacheKey = 'related_orders_' . $this->invoice_number;
+
+        return Cache::remember($cacheKey, 60, function () {
+            return $this->query()
+                ->with('orderDetail:id,extra,provisional_quantity,final_quantity')
+                ->where('invoice_number', $this->invoice_number)
+                ->whereNull('deleted_at')
+                ->get();
+        });
+    }
+
+
+    public static function findByProformaInvoiceId($proformaInvoiceId)
+    {
+        return self::where('proforma_invoice_id', $proformaInvoiceId)
+            ->whereNull('deleted_at')
+            ->get();
+    }
+
+    public static function findByProjectNumber($proformaInvoiceId)
+    {
+        return self::where('invoice_number', $proformaInvoiceId)
+            ->whereNull('deleted_at')
+            ->get();
+    }
+
+
+    public static function makeOrderNumber($post): string
     {
         $category = "C" . $post->category_id;
         $product = "-P" . $post->product_id;
@@ -279,142 +410,5 @@ class Order extends Model
         $doc = "-D" . $post->doc_id;
 
         return $category . $product . $proforma . $party . $orderDetail . $logistic . $doc;
-    }
-
-    public
-    function names()
-    {
-        return $this->hasMany(Name::class);
-    }
-
-
-    /**
-     * Get the stock associated with the order.
-     */
-    public
-    function orderDetail()
-    {
-        return $this->belongsTo(OrderDetail::class, 'order_detail_id');
-    }
-
-    /**
-     * Get the stock associated with the order.
-     */
-    public function orderRequest()
-    {
-        return $this->belongsTo(OrderRequest::class, 'order_request_id');
-    }
-
-    public function suborders()
-    {
-        return $this->hasMany(Order::class, 'invoice_number', 'invoice_number')
-            ->where('part', '<>', 1);
-    }
-
-    // Order.php
-    public
-    function aggregateSuborderDetails()
-    {
-        return $this->suborders()->get()->reduce(function ($carry, $item) {
-            $data = json_decode($item->extra);
-            $carry->totalInitialPayment += $data->initialPayment ?? 0;
-            $carry->totalProvisionalPayment += $data->provisionalPayment ?? 0;
-            $carry->totalFinalPayment += $data->finalPayment ?? 0;
-            $carry->totalInitialQuantity += $data->initialTotal ?? 0;
-            $carry->totalProvisionalQuantity += $data->provisionalTotal ?? 0;
-            $carry->totalFinalQuantity += $data->finalTotal ?? 0;
-            $carry->totalCumulative += $data->payment ?? 0;
-            $carry->totalAmount += $data->total ?? 0;
-            $carry->totalRemaining += $data->remaining ?? 0;
-            return $carry;
-        }, (object)[
-            'totalInitialPayment' => 0,
-            'totalProvisionalPayment' => 0,
-            'totalFinalPayment' => 0,
-            'totalInitialQuantity' => 0,
-            'totalProvisionalQuantity' => 0,
-            'totalFinalQuantity' => 0,
-            'totalCumulative' => 0,
-            'totalAmount' => 0,
-            'totalRemaining' => 0,
-        ]);
-    }
-
-
-    /**
-     * Get the party associated with the order.
-     */
-    public
-    function party()
-    {
-        return $this->belongsTo(Party::class,);
-    }
-
-    /**
-     * Get the product associated with the order.
-     */
-    public
-    function payments()
-    {
-        return $this->hasManyThrough(Payment::class, PaymentRequest::class, 'order_invoice_number', 'payment_request_id', 'invoice_number', 'id');
-
-    }
-
-    /**
-     * Get the product associated with the order.
-     */
-    public function paymentRequests()
-    {
-        return $this->hasMany(PaymentRequest::class, 'order_invoice_number', 'invoice_number');
-    }
-
-
-    /**
-     * Get the product associated with the order.
-     */
-    public function product()
-    {
-        return $this->belongsTo(Product::class, 'product_id');
-    }
-
-    /**
-     * Get the Status associated with the order.
-     */
-    public
-    function purchaseStatus()
-    {
-        return $this->belongsTo(PurchaseStatus::class, 'purchase_status_id');
-    }
-
-    public
-    function scopeUniqueInvoiceNumber(Builder $query)
-    {
-        return $query->where('order_request_id', '<>', null)
-            ->where('order_status', '<>', 'closed')
-            ->where('part','=',1)
-            ->get()
-            ->sortBy('invoice_number')
-            ->filter(function ($order) {
-                static $seenRequestIds = [];
-                return !isset($seenRequestIds[$order->invoice_number]) &&
-                    $seenRequestIds[$order->invoice_number] = true;
-            });
-    }
-
-    public function tags()
-    {
-        return $this->belongsToMany(Tag::class, 'order_tag', 'order_id', 'tag_id');
-    }
-
-    /**
-     * @param $post
-     */
-    /**
-     * Get the user that owns the order.
-     * //     */
-    public
-    function user()
-    {
-        return $this->belongsTo(User::class);
     }
 }

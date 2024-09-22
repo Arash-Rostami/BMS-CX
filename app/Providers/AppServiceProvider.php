@@ -9,6 +9,7 @@ use App\Observers\AttachmentObserver;
 use App\Observers\PaymentObserver;
 use App\Policies\PaymentRequestPolicy;
 use App\Services\IconMaker;
+use Filament\Forms\Components\Component;
 use Filament\Support\Assets\Js;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\VerticalAlignment;
@@ -51,6 +52,14 @@ class AppServiceProvider extends ServiceProvider
             Js::make('connectionStatus', __DIR__ . '/../../resources/js/connectionStatus.js'),
 
         ]);
+
+        Component::configureUsing(function ($component) {
+            if (method_exists($component, 'validationMessages')) {
+                $component->validationMessages([
+                    'required' => '🚫 This field is required.',
+                ]);
+            }
+        });
 
         Attachment::observe(AttachmentObserver::class);
 

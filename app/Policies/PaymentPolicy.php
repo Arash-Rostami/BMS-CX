@@ -22,6 +22,10 @@ class PaymentPolicy
      */
     public function view(User $user, Payment $payment): bool
     {
+        if ($payment->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('view', 'Payment');
     }
 
@@ -38,6 +42,10 @@ class PaymentPolicy
      */
     public function update(User $user, Payment $payment): bool
     {
+        if ($payment->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('edit', 'Payment');
     }
 
@@ -46,6 +54,10 @@ class PaymentPolicy
      */
     public function delete(User $user, Payment $payment): bool
     {
+        if ($payment->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('delete', 'Payment');
     }
 

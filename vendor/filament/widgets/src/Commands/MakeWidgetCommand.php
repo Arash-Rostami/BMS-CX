@@ -9,10 +9,12 @@ use Filament\Support\Commands\Concerns\CanManipulateFiles;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Symfony\Component\Console\Attribute\AsCommand;
 
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
 
+#[AsCommand(name: 'make:filament-widget')]
 class MakeWidgetCommand extends Command
 {
     use CanManipulateFiles;
@@ -79,7 +81,7 @@ class MakeWidgetCommand extends Command
             $panel = $this->option('panel');
 
             if ($panel) {
-                $panel = Filament::getPanel($panel);
+                $panel = Filament::getPanel($panel, isStrict: false);
             }
 
             if (! $panel) {

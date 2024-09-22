@@ -6,11 +6,12 @@ use App\Models\Buyer;
 use App\Models\DeliveryTerm;
 use App\Models\Name;
 use App\Models\Order;
-use App\Models\OrderRequest;
 use App\Models\Packaging;
 use App\Models\PortOfDelivery;
+use App\Models\ProformaInvoice;
 use App\Models\ShippingLine;
 use App\Models\Supplier;
+use App\Models\Tag;
 use App\Rules\EnglishAlphabet;
 use App\Rules\NoMultipleProjectNumbers;
 use App\Rules\UniqueTitleInOrder;
@@ -33,6 +34,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Wallo\FilamentSelectify\Components\ToggleButton;
 use Livewire\Component as FormLivewire;
+use function PHPUnit\Framework\isEmpty;
 
 
 trait Form
@@ -43,9 +45,7 @@ trait Form
     public static function getCategory(): Select
     {
         return Select::make('category_id')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">📂 </span>Category<span class="red"> *</span>'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">📂 </span><span class="text-primary-500 font-normal">Category</span>'))
             ->relationship('category', 'name')
             ->required()
             ->live()
@@ -72,11 +72,10 @@ trait Form
     public static function getProduct(): Select
     {
         return Select::make('product_id')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">📦 </span>Product<span class="red"> *</span>'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">📦 </span><span class="text-primary-500 font-normal">Product</span>'))
             ->required()
-            ->relationship('product', 'name')
+            ->live()
+            ->relationship('product', 'name', fn (Builder $query) => $query->orderBy('name'))
             ->createOptionForm([
                 Select::make('category_id')
                     ->relationship('category', 'name')
@@ -101,12 +100,12 @@ trait Form
     /**
      * @return Select
      */
-    public static function getOrderRequestNumber(): Select
+    public static function getProformaInvoice(): Select
     {
-        return Select::make('order_request_id')
-            ->options(OrderRequest::getApproved())
+        return Select::make('proforma_invoice_id')
+            ->options(ProformaInvoice::getApproved())
             ->live()
-            ->formatStateUsing(fn($state, $operation) => $operation == 'edit' ? (OrderRequest::find($state))?->formatted_value : ucwords($state))
+            ->formatStateUsing(fn($state, $operation) => $operation == 'edit' ? (ProformaInvoice::find($state))?->formatted_value : ucwords($state))
             ->afterStateUpdated(function (Set $set, ?string $state) {
                 self::updateForm($state, $set);
             })
@@ -114,31 +113,26 @@ trait Form
             ->columnSpan(2)
             ->disabled(fn($operation) => $operation == 'edit')
             ->searchable()
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🛍️ </span>Pro forma Invoice <span class="red"> *</span>'))
-            ->hintColor('primary');
+            ->label(fn() => new HtmlString('<span class="grayscale">🛍️ </span><span class="text-primary-500 font-normal">Pro forma Invoice</span>'));
     }
 
     /**
      * @return TextInput
      */
-    public static function getManualInvoiceNumber(): TextInput
+    public static function getManualProjectNumber(): TextInput
     {
-        return TextInput::make('extra.manual_invoice_number')
-            ->label('')
-            ->placeholder('Enter a manual invoice number to back-date records, or leave blank for automatic generation')
+        return TextInput::make('invoice_number')
+            ->label(fn() => new HtmlString('<span class="grayscale">🗂 </span><span class="text-primary-500 font-normal">Project No. (optional)</span>'))
+            ->placeholder('Enter a manual project number to back-date records, or leave blank for automatic generation')
             ->columnSpanFull()
             ->formatStateUsing(function (?Model $record, $operation) {
-                if ($record && $operation === 'edit' && isset($record->invoice_number)) {
+                if ($record && $operation === 'edit') {
                     return $record->invoice_number;
                 }
-                return $record->extra['manual_invoice_number'] ?? null;
+                return "N/A";
             })
-            ->disabled(fn($operation) => $operation == 'edit')
             ->dehydrateStateUsing(fn(?string $state) => strtoupper($state))
-            ->hint(new HtmlString('<span class="grayscale">🗂 </span>Project Number (optional)'))
-            ->rule(fn($operation) => $operation == 'create' ? new NoMultipleProjectNumbers() : null)
-            ->hintColor('primary');
+            ->rule(fn($operation) => $operation == 'create' ? new NoMultipleProjectNumbers() : null);
     }
 
     /**
@@ -147,9 +141,7 @@ trait Form
     public static function getProformaNumber(): TextInput
     {
         return TextInput::make('proforma_number')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">#️⃣  </span>Pro forma Invoice No.<span class="red"> *</span>'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">#️⃣  </span><span class="text-primary-500 font-normal">Pro forma Invoice No.</span>'))
             ->placeholder('')
             ->required()
             ->maxLength(255);
@@ -161,9 +153,7 @@ trait Form
     public static function getProformaDate(): DatePicker
     {
         return DatePicker::make('proforma_date')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">📅 </span>Pro forma Date<span class="red"> *</span>'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">📅 </span><span class="text-primary-500 font-normal">Pro forma Date</span>'))
             ->native(false)
             ->required();
     }
@@ -174,37 +164,56 @@ trait Form
     public static function getPart(): Select
     {
         return Select::make('part')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">📑 </span>Part<span class="red"> *</span>'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">📑 </span><span class="text-primary-500 font-normal">Part</span>'))
             ->required()
             ->live()
             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                 self::updateFormBasedOnPreviousRecords($get, $set, $state);
             })
             ->columnSpan(1)
-            ->default('main')
-            ->options(function () {
-                self::$parts[1] = "Main Part ⭐";
-                for ($i = 2; $i <= 50; $i++) {
-                    $userFriendly = $i - 1;
-                    self::$parts[$i] = "Part $userFriendly";
-                }
-                return self::$parts;
+            ->options(function (Get $get, ?Model $record) {
+                $proformaInvoiceId = $record->proforma_invoice_id ?? (int)$get('proforma_invoice_id');
+
+                $existingParts = Order::where('proforma_invoice_id', $proformaInvoiceId)
+                    ->when($record, fn($query, $record) => $query->where('id', '<>', $record->id))
+                    ->pluck('part')
+                    ->toArray();
+
+                return array_map(function ($value) {
+                    return 'Part ' . $value;
+                }, array_diff(array_combine(range(1, 99), range(1, 99)), $existingParts));
             });
     }
 
     /**
-     * @return TextInput
+     * @return Select
      */
-    public static function getGrade(): TextInput
+    public static function getGrade(): Select
     {
-        return TextInput::make('grade')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">📏 </span>Grade<span class="red"> *</span>'))
-            ->hintColor('primary')
-            ->dehydrateStateUsing(fn(?string $state) => strtoupper($state))
-            ->maxLength(255);
+        return Select::make('grade_id')
+            ->label(fn() => new HtmlString('<span class="grayscale">♠️ </span><span class="text-primary-500 font-normal">Grade</span>'))
+            ->relationship('grade', 'name', fn (Builder $query) => $query->orderBy('name'))
+            ->live()
+            ->default(0)
+            ->createOptionForm([
+                Select::make('product_id')
+                    ->relationship('product', 'name')
+                    ->required(),
+                TextInput::make('name')
+                    ->required()
+                    ->maxLength(255)
+                    ->dehydrateStateUsing(fn(?string $state) => strtoupper($state)),
+                MarkdownEditor::make('description')
+                    ->maxLength(65535)
+                    ->disableAllToolbarButtons()
+                    ->unique()
+            ])
+            ->createOptionAction(function (Action $action) {
+                return $action
+                    ->modalHeading('Create new grade')
+                    ->modalButton('Create')
+                    ->modalWidth('lg');
+            });
     }
 
     /**
@@ -213,10 +222,8 @@ trait Form
     public static function getPurchaseStatus(): Select
     {
         return Select::make('purchase_status_id')
-            ->label('')
+            ->label(fn() => new HtmlString('<span class="grayscale">🚢 </span><span class="text-primary-500 font-normal">Shipment</span>'))
             ->relationship('purchaseStatus', 'name')
-            ->hint(new HtmlString('<span class="grayscale">🚢 </span>Shipment<span class="red"> *</span>'))
-            ->hintColor('primary')
             ->live()
             ->required();
     }
@@ -227,9 +234,7 @@ trait Form
     public static function getOrderStatus(): Select
     {
         return Select::make('order_status')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🛒 </span>Order<span class="red"> *</span>'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">🛒 </span><span class="text-primary-500 font-normal">Order</span>'))
             ->options([
                 'processing' => 'Processing',
                 'closed' => 'Closed',
@@ -243,12 +248,9 @@ trait Form
      */
     public static function getBuyer(): Select
     {
-//        return Buyer::all()->pluck('name', 'id');
 
         return Select::make('buyer_id')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">📥 </span>Buyer<span class="red"> *</span>'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">📥 </span><span class="text-primary-500 font-normal">Buyer</span>'))
             ->options(Buyer::all()->pluck('name', 'id'))
             ->searchable()
             ->required()
@@ -279,9 +281,7 @@ trait Form
     public static function getSupplier(): Select
     {
         return Select::make('supplier_id')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">📤 </span>Supplier<span class="red"> *</span>'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale"> 📤</span><span class="text-primary-500 font-normal">Supplier</span>'))
             ->options(Supplier::all()->pluck('name', 'id'))
             ->searchable()
             ->required()
@@ -312,13 +312,11 @@ trait Form
     public static function getPercentage(): TextInput
     {
         return TextInput::make('extra.percentage')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">°/•</span>Payable Percentage<span class="red"> *</span>'))
-            ->hintColor('primary')
-            ->required(fn(Get $get, FormLivewire $livewire) => ($get('part') ?? data_get($livewire, 'data.part')) && ($get('part') ?? data_get($livewire, 'data.part') == 1))
+            ->label(fn() => new HtmlString('<span class="grayscale">°/• </span><span class="text-primary-500 font-normal">Payable Percentage</span>'))
+            ->formatStateUsing(fn(?Model $record) => $record ? (float)optional($record->order)->proformaInvoice?->percentage ?? null : null)
             ->placeholder('Enter the percentage number without any %')
             ->numeric()
-            ->disabled(fn(Get $get, FormLivewire $livewire) => ($get('part') ?? data_get($livewire, 'data.part')) && ($get('part') ?? data_get($livewire, 'data.part') != 1))
+            ->disabled(true)
             ->in(range(0, 100))
             ->validationMessages([
                 'in' => 'The percentage point should be a number between 0 and 100!',
@@ -333,10 +331,22 @@ trait Form
         return Select::make('extra.currency')
             ->options(showCurrencies())
             ->required()
-            ->label('')
+            ->label(fn() => new HtmlString('<span class="grayscale">💱 </span><span class="text-primary-500 font-normal">Currency</span>'))
+            ->live();
+    }
+
+
+    /**
+     * @return Toggle
+     */
+    public static function getManualComputation(): Toggle
+    {
+        return Toggle::make('extra.manualComputation')
+            ->label(fn() => new HtmlString('<span title="Allocate this project\'s remaining pre-payments" class="text-primary-500 font-normal">Manual</span>'))
             ->live()
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale"></span>Currency<span class="red"> *</span>'));
+            ->extraAttributes([
+                'class' => 'cursor-pointer mx-auto',
+            ]);
     }
 
     /**
@@ -345,13 +355,24 @@ trait Form
     public static function getLastOrder(): Toggle
     {
         return Toggle::make('extra.lastOrder')
-            ->label('')
+            ->label(fn() => new HtmlString('<span title="Allocate this project\'s remaining pre-payments" class="text-primary-500 font-normal">Last Order</span>'))
             ->live()
             ->extraAttributes([
                 'class' => 'cursor-pointer mx-auto',
-            ])
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span title="Checking this will allocate the remaining initial payment for this record.">Last order</span>'));
+            ]);
+    }
+
+    /**
+     * @return Toggle
+     */
+    public static function getAllOrders(): Toggle
+    {
+        return Toggle::make('extra.allOrders')
+            ->label(fn() => new HtmlString('<span title="Ignore shares, allocate all remaining pre-payments" class="text-primary-500 font-normal">All</span>'))
+            ->live()
+            ->extraAttributes([
+                'class' => 'cursor-pointer mx-auto',
+            ]);
     }
 
     /**
@@ -446,6 +467,39 @@ trait Form
         return Hidden::make('extra.payableQuantity');
     }
 
+    /**
+     * @return TextInput
+     */
+    public static function getManualInitialPayment(): TextInput
+    {
+        return TextInput::make('extra.initialPayment')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Init. Advance</span>'))
+            ->placeholder('Optional')
+            ->numeric();
+    }
+
+    /**
+     * @return TextInput
+     */
+    public static function getManualProvisionalPayment(): TextInput
+    {
+        return TextInput::make('extra.provisionalTotal')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Prov. Payment</span>'))
+            ->placeholder('Optional')
+            ->numeric();
+    }
+
+    /**
+     * @return TextInput
+     */
+    public static function getManualFinalPayment(): TextInput
+    {
+        return TextInput::make('extra.finalTotal')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Fin. Payment</span>'))
+            ->placeholder('Optional')
+            ->numeric();
+    }
+
 
     /**
      * @return TextInput
@@ -453,21 +507,8 @@ trait Form
     public static function getQuantity(): TextInput
     {
         return TextInput::make('buying_quantity')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Initial<span class="red"> *</span>'))
-            ->formatStateUsing(function ($operation, $state, ?Model $record) {
-                if ($operation == 'edit') {
-                    $part = optional($record->order)->part;
-                    $proformaQuantity = (float)optional($record->order)->orderRequest->quantity;
-                    if ($proformaQuantity != (float)$state && $part != 1) {
-                        return $proformaQuantity;
-                    }
-                    return $state;
-                }
-            })
-            ->
-            disabled(fn(Get $get, FormLivewire $livewire) => ($get('part') ?? data_get($livewire, 'data.part')) && ($get('part') ?? data_get($livewire, 'data.part') != 1))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Initial</span>'))
+            ->disabled(true)
             ->placeholder('Metric ton')
             ->required()
             ->numeric();
@@ -480,10 +521,7 @@ trait Form
     public static function getProvisionalQuantity(): TextInput
     {
         return TextInput::make('provisional_quantity')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Provisional'))
-            ->disabled(fn($livewire) => self::shouldDisableInput($livewire))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Provisional</span>'))
             ->placeholder('Metric ton')
             ->numeric();
     }
@@ -494,10 +532,7 @@ trait Form
     public static function getFinalQuantity(): TextInput
     {
         return TextInput::make('final_quantity')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Final'))
-            ->disabled(fn($livewire) => self::shouldDisableInput($livewire))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Final</span>'))
             ->placeholder('Metric ton')
             ->numeric();
     }
@@ -508,20 +543,8 @@ trait Form
     public static function getPrice(): TextInput
     {
         return TextInput::make('buying_price')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Initial<span class="red"> *</span>'))
-            ->formatStateUsing(function ($operation, $state, ?Model $record) {
-                if ($operation == 'edit') {
-                    $part = optional($record->order)->part;
-                    $proformaPrice = (float)optional($record->order)->orderRequest->price;
-                    if ($proformaPrice != (float)$state && $part != 1) {
-                        return $proformaPrice;
-                    }
-                    return $state;
-                }
-            })
-            ->hintColor('primary')
-            ->disabled(fn(Get $get, FormLivewire $livewire) => ($get('part') ?? data_get($livewire, 'data.part')) && ($get('part') ?? data_get($livewire, 'data.part') != 1))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Initial</span>'))
+            ->disabled(true)
             ->placeholder(fn(Get $get) => $get('extra.currency'))
             ->required()
             ->numeric();
@@ -534,10 +557,7 @@ trait Form
     public static function getProvisionalPrice(): TextInput
     {
         return TextInput::make('provisional_price')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Provisional'))
-            ->hintColor('primary')
-            ->disabled(fn($livewire) => self::shouldDisableInput($livewire))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Provisional</span>'))
             ->placeholder(fn(Get $get) => $get('extra.currency'))
             ->numeric();
     }
@@ -545,14 +565,10 @@ trait Form
     /**
      * @return TextInput
      */
-    public
-    static function getFinalPrice(): TextInput
+    public static function getFinalPrice(): TextInput
     {
         return TextInput::make('final_price')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale"></span>Final'))
-            ->disabled(fn($livewire) => self::shouldDisableInput($livewire))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Final</span>'))
             ->placeholder(fn(Get $get) => $get('extra.currency'))
             ->numeric();
     }
@@ -560,15 +576,12 @@ trait Form
     /**
      * @return Select
      */
-    public
-    static function getPackaging(): Select
+    public static function getPackaging(): Select
     {
         return Select::make('packaging_id')
             ->options(Packaging::pluck('name', 'id'))
             ->searchable()
-            ->label('')
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">🗳️ </span>Packaging'))
+            ->label(fn() => new HtmlString('<span class="grayscale">🗳️ </span><span class="text-primary-500 font-normal">Packaging</span>'))
             ->createOptionForm([
                 TextInput::make('name')
                     ->required()
@@ -592,15 +605,12 @@ trait Form
     /**
      * @return Select
      */
-    public
-    static function getDeliveryTerm(): Select
+    public static function getDeliveryTerm(): Select
     {
         return Select::make('delivery_term_id')
             ->options(DeliveryTerm::all()->pluck('name', 'id'))
             ->searchable()
-            ->label('')
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">🚛 </span>Delivery Term'))
+            ->label(fn() => new HtmlString('<span class="grayscale">🚛 </span><span class="text-primary-500 font-normal">Delivery Term</span>'))
             ->createOptionForm([
                 TextInput::make('name')
                     ->required()
@@ -624,15 +634,12 @@ trait Form
     /**
      * @return Select
      */
-    public
-    static function getShippingLine(): Select
+    public static function getShippingLine(): Select
     {
         return Select::make('shipping_line_id')
             ->options(ShippingLine::all()->pluck('name', 'id'))
             ->searchable()
-            ->label('')
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⛵ </span>Shipping Company (Cargo Carrier)'))
+            ->label(fn() => new HtmlString('<span class="grayscale">⛵ </span><span class="text-primary-500 font-normal">Shipping Company (Cargo Carrier)</span>'))
             ->createOptionForm([
                 TextInput::make('name')
                     ->required()
@@ -656,15 +663,12 @@ trait Form
     /**
      * @return Select
      */
-    public
-    static function getPortOfDelivery(): Select
+    public static function getPortOfDelivery(): Select
     {
         return Select::make('port_of_delivery_id')
             ->options(fn() => PortOfDelivery::all()->pluck('name', 'id'))
             ->searchable()
-            ->label('')
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⚓ </span>Port of Delivery'))
+            ->label(fn() => new HtmlString('<span class="grayscale">⚓ </span><span class="text-primary-500 font-normal">Port of Delivery</span>'))
             ->createOptionForm([
                 TextInput::make('name')
                     ->required()
@@ -688,60 +692,47 @@ trait Form
     /**
      * @return DatePicker
      */
-    public
-    static function getLoadingStartLine(): DatePicker
+    public static function getLoadingStartLine(): DatePicker
     {
         return DatePicker::make('extra.loading_startline')
-            ->label('')
-            ->native(false)
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⌛ </span>Delivery Time Start Date'));
+            ->label(fn() => new HtmlString('<span class="grayscale">⌛ </span><span class="text-primary-500 font-normal">Delivery Time Start Date</span>'))
+            ->native(false);
     }
 
     /**
      * @return DatePicker
      */
-    public
-    static function getLoadingDeadline(): DatePicker
+    public static function getLoadingDeadline(): DatePicker
     {
         return DatePicker::make('loading_deadline')
-            ->label('')
-            ->native(false)
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⌛ </span>Delivery Time End Date'));
+            ->label(fn() => new HtmlString('<span class="grayscale">⌛ </span><span class="text-primary-500 font-normal">Delivery Time End Date</span>'))
+            ->native(false);
     }
 
     /**
      * @return DatePicker
      */
-    public
-    static function getETD(): DatePicker
+    public static function getETD(): DatePicker
     {
         return DatePicker::make('extra.etd')
-            ->label('')
-            ->native(false)
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⌛ </span>ETD'));
+            ->label(fn() => new HtmlString('<span class="grayscale">⌛ </span><span class="text-primary-500 font-normal">ETD</span>'))
+            ->native(false);
     }
 
     /**
      * @return DatePicker
      */
-    public
-    static function getETA(): DatePicker
+    public static function getETA(): DatePicker
     {
         return DatePicker::make('extra.eta')
-            ->label('')
-            ->native(false)
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">⌛ </span>ETA'));
+            ->label(fn() => new HtmlString('<span class="grayscale">⌛ </span><span class="text-primary-500 font-normal">ETA</span>'))
+            ->native(false);
     }
 
     /**
      * @return Toggle|string|null
      */
-    public
-    static function getChangeOfStatus(): Toggle
+    public static function getChangeOfStatus(): Toggle
     {
         return Toggle::make('change_of_destination')
             ->label('');
@@ -749,8 +740,7 @@ trait Form
 
     /**
      */
-    public
-    static function getContainerShipping()
+    public static function getContainerShipping()
     {
         return ToggleButton::make('container_shipping')
             ->inlineLabel()
@@ -758,46 +748,36 @@ trait Form
             ->offLabel('✖ No')
             ->columnSpanFull()
             ->live()
-            ->hint(new HtmlString('<span class="grayscale">📦 </span>For this order, is there any container shipping?'))
-            ->label('');
+            ->label(fn() => new HtmlString('<span class="grayscale">📦 </span><span class="text-primary-500 font-normal">For this order, is there any container shipping?</span>'));
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getFCL(): TextInput
+    public static function getFCL(): TextInput
     {
         return TextInput::make('FCL')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">⚖️ </span>FCL/Weight'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">⚖️ </span><span class="text-primary-500 font-normal">FCL/Weight</span>'))
             ->maxLength(255);
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getFCLType(): TextInput
+    public static function getFCLType(): TextInput
     {
         return TextInput::make('full_container_load_type')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🔤 </span>FCL Type'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">🔤 </span><span class="text-primary-500 font-normal">FCL Type</span>'))
             ->maxLength(255);
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getNumberOfContainer(): TextInput
+    public static function getNumberOfContainer(): TextInput
     {
         return TextInput::make('number_of_containers')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🗑️</span> Number of Containers'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">🗑️ </span><span class="text-primary-500 font-normal">No. of Containers</span>'))
             ->numeric()
             ->default(0);
     }
@@ -805,13 +785,10 @@ trait Form
     /**
      * @return TextInput
      */
-    public
-    static function getOcceanFreight(): TextInput
+    public static function getOceanFreight(): TextInput
     {
         return TextInput::make('ocean_freight')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🌊 </span>Ocean Freight'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">🌊 </span><span class="text-primary-500 font-normal">Ocean Freight</span>'))
             ->numeric()
             ->default(0);
     }
@@ -819,182 +796,143 @@ trait Form
     /**
      * @return TextInput
      */
-    public
-    static function getTHC(): TextInput
+    public static function getTHC(): TextInput
     {
         return TextInput::make('terminal_handling_charges')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🔚 </span>THC'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">🔚 </span><span class="text-primary-500 font-normal">THX</span>'))
             ->numeric();
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getBookingNumber(): TextInput
+    public static function getBookingNumber(): TextInput
     {
         return TextInput::make('booking_number')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🎫 </span>Booking Number'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">🎫</span><span class="text-primary-500 font-normal">Booking No.</span>'))
             ->maxLength(255);
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getFreeTime(): TextInput
+    public static function getFreeTime(): TextInput
     {
         return TextInput::make('free_time_POD')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🕘 </span>Free Time (POD)'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">🕘 </span><span class="text-primary-500 font-normal">Free Time (POD)</span>'))
             ->numeric();
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getGrossWeight(): TextInput
+    public static function getGrossWeight(): TextInput
     {
         return TextInput::make('gross_weight')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">⚖ </span>Gross Weight'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">⚖</span><span class="text-primary-500 font-normal">Gross Weight</span>'))
             ->numeric();
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getNetWeight(): TextInput
+    public static function getNetWeight(): TextInput
     {
         return TextInput::make('net_weight')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">⚖ </span>Net Weight'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">⚖ </span><span class="text-primary-500 font-normal">Net Weight</span>'))
             ->numeric();
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getVoyageNumber(): TextInput
+    public static function getVoyageNumber(): TextInput
     {
         return TextInput::make('voyage_number')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🛳️ </span>Voyage No.'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale">🛳️ </span><span class="text-primary-500 font-normal">Voyage No.</span>'))
             ->maxLength(255);
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getVoyageNumberSecondLeg(): TextInput
+    public static function getVoyageNumberSecondLeg(): TextInput
     {
         return TextInput::make('extra.voyage_number_second_leg')
-            ->label('')
-            ->hint(new HtmlString('<span class="grayscale">🛳️ </span>Voyage No. (ii)'))
-            ->hintColor('primary')
+            ->label(fn() => new HtmlString('<span class="grayscale"> 🛳️</span><span class="text-primary-500 font-normal">Voyage No. (ii)</span>'))
             ->maxLength(255);
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getDeclarationNumber(): TextInput
+    public static function getDeclarationNumber(): TextInput
     {
         return TextInput::make('declaration_number')
-            ->label('')
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">#️⃣ ️ </span>Declaration No.'))
+            ->label(fn() => new HtmlString('<span class="grayscale">#️⃣ ️  </span><span class="text-primary-500 font-normal">Declaration No.</span>'))
             ->maxLength(255);
     }
 
     /**
      * @return DatePicker
      */
-    public
-    static function getDeclarationDate(): DatePicker
+    public static function getDeclarationDate(): DatePicker
     {
         return DatePicker::make('declaration_date')
-            ->label('')
-            ->native(false)
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">️📅 ️ </span>Declaration Date'));
+            ->label(fn() => new HtmlString('<span class="grayscale">📅 </span><span class="text-primary-500 font-normal">Declaration Date</span>'))
+            ->native(false);
     }
 
     /**
      * @return TextInput
      */
-    public
-    static function getBLNumber(): TextInput
+    public static function getBLNumber(): TextInput
     {
         return TextInput::make('BL_number')
-            ->label('')
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">#️⃣ ️ </span>BL No.'))
+            ->label(fn() => new HtmlString('<span class="grayscale"> #️⃣</span><span class="text-primary-500 font-normal">BL No.</span>'))
             ->maxLength(255);
     }
 
     /**
      * @return DatePicker
      */
-    public
-    static function getBLDate(): DatePicker
+    public static function getBLDate(): DatePicker
     {
         return DatePicker::make('BL_date')
-            ->label('')
-            ->native(false)
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">️📅 ️</span>BL Date'));
+            ->label(fn() => new HtmlString('<span class="grayscale">️📅 </span><span class="text-primary-500 font-normal">BL Date</span>'))
+            ->native(false);
     }
 
 
     /**
      * @return TextInput
      */
-    public
-    static function getBLNumberSecondLeg(): TextInput
+    public static function getBLNumberSecondLeg(): TextInput
     {
         return TextInput::make('extra.BL_number_second_leg')
-            ->label('')
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">#️⃣ ️ </span>BL No. (ii)'))
+            ->label(fn() => new HtmlString('<span class="grayscale">#️ </span><span class="text-primary-500 font-normal">BL No. (ii)</span>'))
             ->maxLength(255);
     }
 
     /**
      * @return DatePicker
      */
-    public
-    static function getBLDateSecondLeg(): DatePicker
+    public static function getBLDateSecondLeg(): DatePicker
     {
         return DatePicker::make('extra.BL_date_second_leg')
-            ->label('')
-            ->native(false)
-            ->hintColor('primary')
-            ->hint(new HtmlString('<span class="grayscale">️📅 ️</span>BL Date (ii)'));
+            ->label(fn() => new HtmlString('<span class="grayscale">📅  </span><span class="text-primary-500 font-normal">BL Date (ii)</span>'))
+            ->native(false);
     }
 
     /**
      * @return FileUpload
      */
-    public
-    static function getFileUpload(): FileUpload
+    public static function getFileUpload(): FileUpload
     {
         return FileUpload::make('file_path')
             ->label('')
             ->image()
+            ->hint(fn(?Model $record) => $record ? $record->getCreatedAtBy() : 'To add an attachment, save the record.')
             ->getUploadedFileNameForStorageUsing(self::nameUploadedFile())
             ->previewable(true)
             ->disk('filament')
@@ -1006,18 +944,55 @@ trait Form
             ->downloadable();
     }
 
+
+    /**
+     * @return Toggle
+     */
+    public static function getAttachmentToggle(): Toggle
+    {
+        return Toggle::make('use_existing_attachments')
+            ->label('Use existing attachments')
+            ->default(false)
+            ->columnSpan(2)
+            ->live();
+    }
+
     /**
      * @return Select
      */
-    public
-    static function getAttachmentTitle(): Select
+    public static function getAllProformaInvoices(): Select
+    {
+        return Select::make('source_proforma_invoice')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Select Proforma Invoice (Ref No)</span>'))
+            ->options(ProformaInvoice::getProformaInvoicesCached())
+            ->live()
+            ->required()
+            ->columnSpan(2)
+            ->searchable();
+    }
+
+    /**
+     * @return Select
+     */
+    public static function getProformaInvoicesAttachments(): Select
+    {
+        return Select::make('available_attachments')
+            ->label(fn() => new HtmlString('<span class="grayscale">📌 </span><span class="text-primary-500 font-normal">Select Attachment</span>'))
+            ->required()
+            ->columnSpan(2)
+            ->live()
+            ->options(fn(Get $get, Set $set) => (!empty($get('source_proforma_invoice'))) ? ProformaInvoice::find($get('source_proforma_invoice'))->attachments->pluck('name', 'id')->toArray() : []);
+    }
+
+    /**
+     * @return Select
+     */
+    public static function getAttachmentTitle(): Select
     {
         return Select::make('name')
             ->options(Name::getSortedNamesForModule('Order'))
-            ->label('')
+            ->label(fn() => new HtmlString('<span class="grayscale">ℹ️️️  </span><span class="text-primary-500 font-normal">Title|Name</span>'))
             ->placeholder('Select or Create')
-            ->hint(new HtmlString('<span class="grayscale">ℹ️️️ </span>Title/Name'))
-            ->hintColor('primary')
             ->columnSpan(1)
             ->columns(1)
             ->requiredWith('file_path')
@@ -1028,8 +1003,7 @@ trait Form
                     ->rule(new EnglishAlphabet)
                     ->rule(new UniqueTitleInOrder)
                     ->dehydrateStateUsing(fn(?string $state) => slugify($state)),
-                TextInput::make('module')
-                    ->disabled(true)
+                Hidden::make('module')
                     ->dehydrateStateUsing(fn($state) => $state ?? 'Order')
                     ->default('Order')
             ])
@@ -1045,23 +1019,23 @@ trait Form
             });
     }
 
-    public
-    static function getDocumentsReceived()
+    public static function getDocumentsReceived()
     {
         return CheckboxList::make('extra.docs_received')
             ->options(self::$documents)
-            ->hint(new HtmlString('<span class="text-muted">Mark all documents received:</span>'))
+            ->hint(new HtmlString())
             ->live()
             ->bulkToggleable()
-            ->label('')
+            ->label(fn() => new HtmlString('<span class="text-muted">Mark all documents received:</span>'))
             ->columnSpan(4);
     }
 
     public static function getTagsInput(): TagsInput
     {
         return TagsInput::make('extra')
-            ->label('Type your words');
+            ->label(fn() => new HtmlString('<span class="grayscale">🔖 </span><span class="text-primary-500 font-normal">Type Your words</span>'));
     }
+
 
     public static function getModule(): Hidden
     {

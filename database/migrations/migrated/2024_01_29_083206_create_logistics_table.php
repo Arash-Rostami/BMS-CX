@@ -27,13 +27,11 @@ return new class extends Migration
             $table->json('extra')->nullable();
             // Foreign keys
             $table->integer('user_id')->unsigned()->index();
-            $table->integer('order_id')->unsigned()->index()->nullable();
             $table->integer('shipping_line_id')->unsigned()->index()->nullable();
             $table->integer('port_of_delivery_id')->unsigned()->index()->nullable();
             $table->integer('delivery_term_id')->unsigned()->index()->nullable();
             $table->integer('packaging_id')->unsigned()->index()->nullable();
             $table->foreign('user_id')->references('id')->on('users');
-            $table->foreign('order_id')->references('id')->on('orders');
             $table->foreign('shipping_line_id')->references('id')->on('shipping_lines');
             $table->foreign('port_of_delivery_id')->references('id')->on('port_of_deliveries');
             $table->foreign('delivery_term_id')->references('id')->on('delivery_terms');

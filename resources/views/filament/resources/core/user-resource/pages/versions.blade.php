@@ -1,5 +1,38 @@
 <x-filament-panels::page>
     <div class="max-w-4xl mx-auto py-8 text-gray-900 dark:text-gray-200">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 4.0
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(September 22, 2024)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>Re-engineered Modules: DB (majorly all tables), Pro forma Invoice, Order, Payment Request, Payment.
+            </li>
+            <li>Pro forma Invoice Improvements: Part Selection, Port/Volume Selection, Smart Attachment Selection,
+                Search Debounce, Column Specific Search Box, Smart Grade Selection, Smart CT Selection, Creator Record,
+                Printable Module, PDF Downloadable Format, Smart Payment, Auto Replication, Smart Vertical Telescopic
+                Tables for Projects, Notification Optimization, Attachment Auto Optimization, Contract & Part Grouping.
+            </li>
+            <li>Order Improvements: Multi-Projects/Multi-Orders Auto Computed Details on Initial, Provisional, Final,
+                and Total, Manual Computation, Smart Part Selection, Project Summary Overview, Total Overview, Search
+                Debounce, Column Specific Search Box, Smart Grade Selection, Smart PN Selection, Creator Record,
+                Printable Module, PDF Downloadable Format, Smart Payment, Auto Replication with Other Associated Tables,
+                Smart Attachment Selection, Smart Vertical Telescopic Tables, Tags Auto Optimization, Attachment Auto
+                Optimization, Tag Grouping.
+            </li>
+            <li>Payment Request Improvements: Chat Module with Email and Upload Features, Smart Grouping, Search
+                Debounce, Multi-Pro-forma-Invoice Selection, Printable Module, PDF Downloadable Format, Smart Payment
+                Computation & Association, Auto Replication, Smart Attachment Selection, Smart Vertical Telescopic
+                Tables, Attachment Auto Optimization.
+            </li>
+            <li>Payment Improvements: Smart Grouping (Transferring Date), Search Debounce, Printable Module, PDF
+                Downloadable Format, Smart Vertical Telescopic Tables, Transaction ID & Transferring Date,
+                Multi-Payment-Request Selection.
+            </li>
+            <li>Other Updates: Notification Module Overhaul, Global Search for Five Major Modules(Pro forma Invoice,
+                Order, Payment Request, Payment, User), Grade Module with CRU Functionalities & Shortcuts, User Module
+                Position and Department, UI Enhancement (Color Combination for Dark & Light Mode).
+            <li>Application Maintenance & Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
         <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.6
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(August 17, 2024)</span>
         </h1>
@@ -8,7 +41,8 @@
                 Price, Quantity, Percentage, and Attachment.
             </li>
             <li>Order Improvements: New Feature Payment Stub (as an update on Auto Computed Slip on Initial,
-                Provisional, Final, and Total), Automated Attachment Handling, Automatic Attachment Labeling, and Record Tagging System.
+                Provisional, Final, and Total), Automated Attachment Handling, Automatic Attachment Labeling, and Record
+                Tagging System.
             </li>
             <li>
                 Naming Feature: Enhanced Labeling for Attachment (for improved consistency)

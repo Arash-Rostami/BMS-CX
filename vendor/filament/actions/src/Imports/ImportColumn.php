@@ -5,6 +5,7 @@ namespace Filament\Actions\Imports;
 use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Support\Components\Component;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -18,6 +19,8 @@ class ImportColumn extends Component
     protected string | Closure | null $label = null;
 
     protected bool | Closure $isMappingRequired = false;
+
+    protected bool | Closure $isMappingRequiredForNewRecordsOnly = false;
 
     protected int | Closure | null $decimalPlaces = null;
 
@@ -50,7 +53,12 @@ class ImportColumn extends Component
 
     protected ?Importer $importer = null;
 
-    protected mixed $example = null;
+    /**
+     * @var array<mixed> | Closure
+     */
+    protected array | Closure $examples = [];
+
+    protected string | Closure | null $exampleHeader = null;
 
     protected string | Closure | null $relationship = null;
 
@@ -65,6 +73,12 @@ class ImportColumn extends Component
     protected array $resolvedRelatedRecords = [];
 
     protected string | Closure | null $validationAttribute = null;
+
+    protected string $evaluationIdentifier = 'column';
+
+    protected string | Htmlable | Closure | null $helperText = null;
+
+    protected bool | Closure $isSensitive = false;
 
     final public function __construct(string $name)
     {
@@ -84,7 +98,8 @@ class ImportColumn extends Component
         return Select::make($this->getName())
             ->label($this->getLabel())
             ->placeholder(__('filament-actions::import.modal.form.columns.placeholder'))
-            ->required($this->isMappingRequired());
+            ->required($this->isMappingRequired())
+            ->helperText($this->helperText);
     }
 
     public function name(string $name): static
@@ -103,7 +118,28 @@ class ImportColumn extends Component
 
     public function example(mixed $example): static
     {
-        $this->example = $example;
+        $this->examples($example);
+
+        return $this;
+    }
+
+    public function examples(mixed $examples): static
+    {
+        if (
+            (! is_array($examples)) &&
+            (! $examples instanceof Closure)
+        ) {
+            $examples = Arr::wrap($examples);
+        }
+
+        $this->examples = $examples;
+
+        return $this;
+    }
+
+    public function exampleHeader(string | Closure | null $header): static
+    {
+        $this->exampleHeader = $header;
 
         return $this;
     }
@@ -115,10 +151,24 @@ class ImportColumn extends Component
         return $this;
     }
 
+    public function requiredMappingForNewRecordsOnly(bool | Closure $condition = true): static
+    {
+        $this->isMappingRequiredForNewRecordsOnly = $condition;
+
+        return $this;
+    }
+
     public function numeric(bool | Closure $condition = true, int | Closure | null $decimalPlaces = null): static
     {
         $this->isNumeric = $condition;
         $this->decimalPlaces = $decimalPlaces;
+
+        return $this;
+    }
+
+    public function helperText(string | Htmlable | Closure | null $text): static
+    {
+        $this->helperText = $text;
 
         return $this;
     }
@@ -194,9 +244,16 @@ class ImportColumn extends Component
     public function getGuesses(): array
     {
         $guesses = $this->evaluate($this->guesses);
+
         array_unshift($guesses, $this->getName());
 
+        if (filled($label = $this->getLabel())) {
+            array_unshift($guesses, $this->getLabel());
+        }
+
         return array_reduce($guesses, function (array $carry, string $guess): array {
+            $carry[] = Str::lower($guess);
+
             $guess = (string) str($guess)
                 ->lower()
                 ->replace('-', ' ')
@@ -279,6 +336,11 @@ class ImportColumn extends Component
         return $this->name;
     }
 
+    public function getExampleHeader(): string
+    {
+        return $this->evaluate($this->exampleHeader) ?? $this->getName();
+    }
+
     /**
      * @return array<mixed>
      */
@@ -298,7 +360,7 @@ class ImportColumn extends Component
                     return;
                 }
 
-                $fail(__('validation.exists', ['attribute' => $attribute]));
+                $fail('validation.exists')->translate();
             };
         }
 
@@ -398,9 +460,20 @@ class ImportColumn extends Component
         return $this->importer;
     }
 
+    /**
+     * @deprecated Use `getExamples()` instead.
+     */
     public function getExample(): mixed
     {
-        return $this->evaluate($this->example);
+        return Arr::first($this->getExamples());
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    public function getExamples(): array
+    {
+        return Arr::wrap($this->evaluate($this->examples));
     }
 
     /**
@@ -432,12 +505,17 @@ class ImportColumn extends Component
 
     public function getRecord(): ?Model
     {
-        return $this->getImporter()->getRecord();
+        return $this->getImporter()?->getRecord();
     }
 
     public function isMappingRequired(): bool
     {
         return (bool) $this->evaluate($this->isMappingRequired);
+    }
+
+    public function isMappingRequiredForNewRecordsOnly(): bool
+    {
+        return (bool) $this->evaluate($this->isMappingRequiredForNewRecordsOnly);
     }
 
     public function hasRelationship(): bool
@@ -497,7 +575,7 @@ class ImportColumn extends Component
 
     protected function castNumericStateItem(mixed $state): int | float
     {
-        $state = floatval(preg_replace('/[^0-9.]/', '', $state));
+        $state = floatval(preg_replace('/[^0-9.-]/', '', $state));
 
         $decimalPlaces = $this->getDecimalPlaces();
 
@@ -529,5 +607,17 @@ class ImportColumn extends Component
             Model::class, $record ? $record::class : null => [$record],
             default => parent::resolveDefaultClosureDependencyForEvaluationByType($parameterType),
         };
+    }
+
+    public function sensitive(bool | Closure $condition = true): static
+    {
+        $this->isSensitive = $condition;
+
+        return $this;
+    }
+
+    public function isSensitive(): bool
+    {
+        return (bool) $this->evaluate($this->isSensitive);
     }
 }

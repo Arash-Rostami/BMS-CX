@@ -29,6 +29,9 @@ class QuoteProviderResource extends Resource
     protected static ?string $navigationGroup = 'Master Data';
 
 
+
+
+
     public static function form(Form $form): Form
     {
         return $form
@@ -61,7 +64,6 @@ class QuoteProviderResource extends Resource
                 ])->collapsible(),
                 Admin::showTimeStamp()
             ])
-            ->poll(60)
             ->filters([])
             ->contentGrid([
                 'md' => 2,

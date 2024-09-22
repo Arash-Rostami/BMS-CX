@@ -80,23 +80,15 @@ class UserResource extends Resource
                             ->schema([
                                 Section::make(new HtmlString('<span class="grayscale">💼 </span>'))
                                     ->schema([
-                                        Grid::make(2)->schema([Admin::getCompany()]),
+                                        Grid::make(2)->schema([Admin::getCompany(), Admin::getDepartment()]),
                                         Grid::make(1)->schema([Admin::getEmail()]),
                                     ])->collapsible(),
                                 Section::make(new HtmlString('<span class="grayscale">🎭 </span>'))
                                     ->schema([
-                                        Grid::make(2)->schema([Admin::getStatus()]),
+                                        Grid::make(2)->schema([Admin::getStatus(), Admin::getPosition()]),
                                         Grid::make(2)->schema([Admin::getRole()]),
                                     ])->collapsible()
                             ])->columns(1),
-                        /*Third tab*/
-                        Tabs\Tab::make('DevTools')
-                            ->schema([
-                                Textarea::make('info')
-                                    ->label('🛈')
-                                    ->hint('This part is in READONLY format for the development; do not touch!')
-                                    ->readOnly()
-                            ]),
                     ])
             ])->columns(1);
     }
@@ -115,7 +107,6 @@ class UserResource extends Resource
     private static function configureCommonTableSettings(Table $table): Table
     {
         return $table
-            ->poll(60)
             ->filters([
                 Admin::filterRole(),
                 Admin::filterStatus(),

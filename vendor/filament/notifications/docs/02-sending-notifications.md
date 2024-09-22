@@ -45,6 +45,8 @@ Notification::make()
     ->send();
 ```
 
+The title text can contain basic, safe HTML elements. To generate safe HTML with Markdown, you can use the [`Str::markdown()` helper](https://laravel.com/docs/strings#method-str-markdown): `title(Str::markdown('Saved **successfully**'))`
+
 Or with JavaScript:
 
 ```js
@@ -207,6 +209,8 @@ Notification::make()
     ->send();
 ```
 
+The body text can contain basic, safe HTML elements. To generate safe HTML with Markdown, you can use the [`Str::markdown()` helper](https://laravel.com/docs/strings#method-str-markdown): `body(Str::markdown('Changes to the **post** have been saved.'))`
+
 Or with JavaScript:
 
 ```js
@@ -275,7 +279,7 @@ Notification::make()
     ->actions([
         Action::make('view')
             ->button()
-            ->url(route('posts.show', $post), shouldOpenInNewTab: true)
+            ->url(route('posts.show', $post), shouldOpenInNewTab: true),
         Action::make('undo')
             ->color('gray'),
     ])
@@ -421,3 +425,55 @@ import { Notification, NotificationAction } from '../../vendor/filament/notifica
 
 // ...
 ```
+
+## Closing a notification with JavaScript
+
+Once a notification has been sent, you can close it on demand by dispatching a browser event on the window called `close-notification`.
+
+The event needs to contain the ID of the notification you sent. To get the ID, you can use the `getId()` method on the `Notification` object:
+
+```php
+use Filament\Notifications\Notification;
+
+$notification = Notification::make()
+    ->title('Hello')
+    ->persistent()
+    ->send()
+
+$notificationId = $notification->getId()
+```
+
+To close the notification, you can dispatch the event from Livewire:
+
+```php
+$this->dispatch('close-notification', id: $notificationId);
+```
+
+Or from JavaScript, in this case Alpine.js:
+
+```blade
+<button x-on:click="$dispatch('close-notification', { id: notificationId })" type="button">
+    Close Notification
+</button>
+```
+
+If you are able to retrieve the notification ID, persist it, and then use it to close the notification, that is the recommended approach, as IDs are generated uniquely, and you will not risk closing the wrong notification. However, if it is not possible to persist the random ID, you can pass in a custom ID when sending the notification:
+
+```php
+use Filament\Notifications\Notification;
+
+Notification::make('greeting')
+    ->title('Hello')
+    ->persistent()
+    ->send()
+```
+
+In this case, you can close the notification by dispatching the event with the custom ID:
+
+```blade
+<button x-on:click="$dispatch('close-notification', { id: 'greeting' })" type="button">
+    Close Notification
+</button>
+```
+
+Please be aware that if you send multiple notifications with the same ID, you may experience unexpected side effects, so random IDs are recommended.

@@ -26,7 +26,6 @@ class OrderDetail extends Model
         'final_price',
         'extra',
         'user_id',
-        'order_id',
     ];
 
     protected $casts = [
@@ -40,9 +39,14 @@ class OrderDetail extends Model
 
     protected static function booted()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
+        static::creating(function ($orderDetail) {
+            $orderDetail->user_id = auth()->id();
         });
+    }
+
+    public function order()
+    {
+        return $this->hasOne(Order::class);
     }
 
     /**
@@ -53,13 +57,6 @@ class OrderDetail extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the order associated with the stock.
-     */
-    public function order()
-    {
-        return $this->hasOne(Order::class, 'order_detail_id');
-    }
 
 
     protected static function baseQuery($year, array $with = [])

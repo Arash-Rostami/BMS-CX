@@ -12,14 +12,43 @@ return [
 
             'add' => [
                 'label' => 'Ajouter à :label',
+                'modal' => [
+                    'heading' => 'Ajouter à :label',
+                    'actions' => [
+                        'add' => [
+                            'label' => 'Ajouter',
+                        ],
+                    ],
+                ],
             ],
 
             'add_between' => [
                 'label' => 'Ajouter entre',
+                'modal' => [
+                    'heading' => 'Ajouter à :label',
+                    'actions' => [
+                        'add' => [
+                            'label' => 'Ajouter',
+                        ],
+                    ],
+                ],
             ],
 
             'delete' => [
                 'label' => 'Supprimer',
+            ],
+
+            'edit' => [
+                'label' => 'Modifier',
+                'modal' => [
+                    'heading' => 'Modifier',
+                    'actions' => [
+                        'save' => [
+                            'label' => 'Sauvegarder',
+                        ],
+                    ],
+                ],
+
             ],
 
             'reorder' => [
@@ -185,6 +214,15 @@ return [
 
             ],
 
+            'svg' => [
+
+                'messages' => [
+                    'confirmation' => 'La modification des fichiers SVG n\'est pas recommandée car elle peut entraîner une perte de qualité lors de la mise à l\'échelle.\n Êtes-vous sûr de vouloir continuer ?',
+                    'disabled' => 'La modification des fichiers SVG est désactivée car elle peut entraîner une perte de qualité lors de la mise à l\'échelle.',
+                ],
+
+            ],
+
         ],
 
     ],
@@ -241,12 +279,25 @@ return [
 
     ],
 
+    'radio' => [
+
+        'boolean' => [
+            'true' => 'Oui',
+            'false' => 'Non',
+        ],
+
+    ],
+
     'repeater' => [
 
         'actions' => [
 
             'add' => [
                 'label' => 'Ajouter à :label',
+            ],
+
+            'add_between' => [
+                'label' => 'Insérer entre',
             ],
 
             'delete' => [
@@ -395,6 +446,31 @@ return [
 
     'tags_input' => [
         'placeholder' => 'Nouveau tag',
+    ],
+
+    'text_input' => [
+
+        'actions' => [
+
+            'hide_password' => [
+                'label' => 'Masquer le mot de passe',
+            ],
+
+            'show_password' => [
+                'label' => 'Montrer le mot de passe',
+            ],
+
+        ],
+
+    ],
+
+    'toggle_buttons' => [
+
+        'boolean' => [
+            'true' => 'Oui',
+            'false' => 'Non',
+        ],
+
     ],
 
     'wizard' => [

@@ -11,6 +11,8 @@ use App\Models\Payment;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Models\PaymentRequest;
 use App\Services\TableObserver;
+use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
@@ -30,6 +32,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
@@ -47,6 +50,10 @@ class PaymentResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
 
+    protected static ?int $navigationSort = 5;
+
+    protected static ?string $recordTitleAttribute = 'reference_number';
+
 
     public static function form(Form $form): Form
     {
@@ -59,8 +66,8 @@ class PaymentResource extends Resource
                                 Section::make('Payment Information')
                                     ->schema([
                                         Admin::getPaymentRequest(),
-                                        Admin::getAccountNumber(),
-                                        Admin::getBankName(),
+                                        Admin::getDate(),
+                                        Admin::getTransactionID(),
                                         Admin::getNotes()
                                     ])->columns(2)
                                     ->collapsible()
@@ -131,26 +138,19 @@ class PaymentResource extends Resource
             ->schema([
                 Admin::viewOrder(),
                 Admin::viewPaymentRequest(),
+                Admin::viewPaymentRequestReason(),
                 Admin::viewPaymentType(),
                 Admin::viewTransferredAmount(),
                 Admin::viewPaymentRequestDetail(),
                 Admin::viewPayer(),
-                Admin::viewAccountNumber(),
-                Admin::viewBankName(),
-                RepeatableEntry::make('attachments')
-                    ->label('')
-                    ->schema([
-                        Admin::viewAttachments()
-                    ])
-                    ->columnSpanFull()
-                    ->hidden(fn($state) => !$state)
+                Admin::viewTransactionID(),
+                Admin::viewDate(),
             ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            Operational\PaymentResource\RelationManagers\OrderRelationManager::class,
             Operational\PaymentResource\RelationManagers\PaymentRequestsRelationManager::class,
         ];
     }
@@ -180,16 +180,43 @@ class PaymentResource extends Resource
         return 'primary';
     }
 
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return PaymentResource::getUrl('edit', ['record' => $record]);
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return '💰  ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
+    }
+
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
             ->filters([AdminOrder::filterCreatedAt(), AdminOrder::filterSoftDeletes()])
+            ->emptyStateIcon('heroicon-o-bookmark')
+            ->emptyStateDescription('Once you create your first record, it will appear here.')
+            ->searchDebounce('1000ms')
+            ->defaultGroup('date')
+            ->groupingSettingsInDropdownOnDesktop()
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make()
                     ->successNotification(fn(Model $record) => Admin::send($record)),
                 Tables\Actions\RestoreAction::make(),
+                Tables\Actions\Action::make('pdf')
+                    ->label('PDF')
+                    ->color('success')
+                    ->icon('heroicon-c-inbox-arrow-down')
+                    ->action(function (Model $record) {
+                        return response()->streamDownload(function () use ($record) {
+                            echo Pdf::loadHtml(view('filament.pdfs.payment', ['record' => $record])
+                                ->render())
+                                ->stream();
+                        }, 'BMS-' . $record->reference_number . '.pdf');
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -202,15 +229,17 @@ class PaymentResource extends Resource
                         }),
                     RestoreBulkAction::make(),
                     ExportBulkAction::make(),
+                    PrintBulkAction::make(),
                 ])
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll(60)
+            ->poll('120s')
             ->groups([
                 Admin::filterByPayer(),
                 Admin::filterByCurrency(),
                 Admin::filterByBalance(),
                 Admin::filterByPaymentRequest(),
+                Admin::filterByTransferringDate(),
             ]);
     }
 
@@ -242,17 +271,20 @@ class PaymentResource extends Resource
     {
         return $table
             ->columns([
-                TableObserver::showMissingData(-3),
+                Admin::showID(),
                 Admin::showPaymentRequest(),
                 Admin::showPaymentRequestType(),
+                Admin::showPaymentRequestID(),
                 Admin::showAmount(),
                 Admin::showBalance(),
                 Admin::showRequestedAmount(),
                 Admin::showRemainingAmount(),
+                Admin::showDate(),
                 Admin::showTimeGap(),
                 Admin::showPayer(),
-                Admin::showBankName(),
-                Admin::showAccountNumber(),
+                Admin::showTransactionID(),
+                Admin::showCreator(),
+                TableObserver::showMissingData(-3),
                 Admin::showTimeStamp()
             ])->striped();
     }

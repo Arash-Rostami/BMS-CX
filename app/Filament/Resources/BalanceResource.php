@@ -28,15 +28,17 @@ class BalanceResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
 
+    protected static ?int $navigationSort = 6;
+
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Admin::getInitialCurrency(),
-                Admin::getInitial(),
-                Admin::getSumCurrency(),
-                Admin::getAmount(),
+                Admin::getCurrency(),
+                Admin::getBase(),
+                Admin::getPayment(),
+                Admin::getDepartment(),
                 Admin::getCategory(),
                 Admin::getRecipient(),
             ]);
@@ -54,8 +56,11 @@ class BalanceResource extends Resource
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
+            ->emptyStateIcon('heroicon-o-bookmark')
+            ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->defaultSort('created_at', 'desc')
-            ->poll(60)
+            ->groupingSettingsInDropdownOnDesktop()
+            ->defaultGroup('department.code')
             ->groups([
                 Admin::groupByCategory(),
                 Admin::groupByPayee(),
@@ -81,16 +86,17 @@ class BalanceResource extends Resource
                     Panel::make([
                         Stack::make([
                             Split::make([
-                                Admin::showInitialCurrency(),
-                                Admin::showInitial(),
-                                Admin::showRecipient(),
-                            ]),
-                            Split::make([
-                                Admin::showSumCurrency(),
-                                Admin::showAmount(),
+                                Admin::showCurrency(),
+                                Admin::showBase(),
+                                Admin::showPayment(),
+                                Admin::showTotal(),
                                 Admin::showUser(),
                             ]),
-                            Admin::showTotal(),
+                            Split::make([
+                                Admin::showDepartment(),
+                                Admin::showRecipient(),
+                                Admin::showTimeStamp(),
+                            ]),
                         ])->space(2),
                     ])
                 ])->columnSpanFull(),
@@ -102,10 +108,10 @@ class BalanceResource extends Resource
     {
         return $table
             ->columns([
-                Admin::showInitialCurrency(),
-                Admin::showInitial(),
-                Admin::showSumCurrency(),
-                Admin::showAmount(),
+                Admin::showDepartment(),
+                Admin::showCurrency(),
+                Admin::showBase(),
+                Admin::showPayment(),
                 Admin::showTotal(),
                 Admin::showRecipient(),
                 Admin::showUser(),

@@ -19,6 +19,20 @@ public function infolist(Infolist $infolist): Infolist
 }
 ```
 
+If you're inside a [panel builder resource](../../panels/resources), the `infolist()` method should be static:
+
+```php
+use Filament\Infolists\Infolist;
+
+public static function infolist(Infolist $infolist): Infolist
+{
+    return $infolist
+        ->schema([
+            // ...
+        ]);
+}
+```
+
 Entries may be created using the static `make()` method, passing its unique name. You may use "dot notation" to access entries within relationships.
 
 ```php
@@ -37,6 +51,8 @@ TextEntry::make('author.name')
 - [Icon entry](icon)
 - [Image entry](image)
 - [Color entry](color)
+- [Key-value entry](key-value)
+- [Repeatable entry](repeatable)
 
 You may also [create your own custom entries](custom) to display data however you wish.
 
@@ -280,9 +296,18 @@ TextEntry::make('slug')
 
 These get merged onto the outer `<div>` element of each entry in that entry.
 
+You can also pass extra HTML attributes to the entry wrapper which surrounds the label, entry, and any other text:
+
+```php
+use Filament\Infolists\Components\TextEntry;
+
+TextEntry::make('slug')
+    ->extraEntryWrapperAttributes(['class' => 'entry-locked'])
+```
+
 ## Global settings
 
-If you wish to change the default behaviour of all entries globally, then you can call the static `configureUsing()` method inside a service provider's `boot()` method, to which you pass a Closure to modify the entries using. For example, if you wish to make all `TextEntry` components [`words(10)`](text#limiting-word-count), you can do it like so:
+If you wish to change the default behavior of all entries globally, then you can call the static `configureUsing()` method inside a service provider's `boot()` method, to which you pass a Closure to modify the entries using. For example, if you wish to make all `TextEntry` components [`words(10)`](text#limiting-word-count), you can do it like so:
 
 ```php
 use Filament\Infolists\Components\TextEntry;

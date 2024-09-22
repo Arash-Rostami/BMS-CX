@@ -124,7 +124,7 @@ function removeListStyleWhenCheckbox(htmlText) {
                 listItemChild instanceof HTMLInputElement &&
                 listItemChild.type === 'checkbox'
             ) {
-                // From Github: margin: 0 .2em .25em -1.6em;
+                // From GitHub: margin: 0 .2em .25em -1.6em;
                 listItem.style.marginLeft = '-1.5em'
                 listItem.style.listStyleType = 'none'
             }
@@ -2448,8 +2448,8 @@ EasyMDE.prototype.render = function (el) {
             options.inputStyle != undefined
                 ? options.inputStyle
                 : isMobile()
-                ? 'contenteditable'
-                : 'textarea',
+                  ? 'contenteditable'
+                  : 'textarea',
         spellcheck:
             options.nativeSpellcheck != undefined
                 ? options.nativeSpellcheck
@@ -2492,11 +2492,14 @@ EasyMDE.prototype.render = function (el) {
         this.autosave() // use to load localstorage content
         this.codemirror.on('change', function () {
             clearTimeout(self._autosave_timeout)
-            self._autosave_timeout = setTimeout(function () {
-                self.autosave()
-            }, self.options.autosave.submit_delay ||
-                self.options.autosave.delay ||
-                1000)
+            self._autosave_timeout = setTimeout(
+                function () {
+                    self.autosave()
+                },
+                self.options.autosave.submit_delay ||
+                    self.options.autosave.delay ||
+                    1000,
+            )
         })
     }
 

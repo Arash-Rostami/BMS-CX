@@ -17,6 +17,8 @@ class MenuItem extends Component
 
     protected string | Closure | null $label = null;
 
+    protected string | Closure | null $postAction = null;
+
     protected int | Closure | null $sort = null;
 
     protected string | Closure | Native | null $url = null;
@@ -27,9 +29,7 @@ class MenuItem extends Component
 
     protected bool | Closure $isVisible = true;
 
-    final public function __construct()
-    {
-    }
+    final public function __construct() {}
 
     public static function make(): static
     {
@@ -59,6 +59,13 @@ class MenuItem extends Component
     public function label(string | Closure | null $label): static
     {
         $this->label = $label;
+
+        return $this;
+    }
+
+    public function postAction(string | Closure | null $action): static
+    {
+        $this->postAction = $action;
 
         return $this;
     }
@@ -129,6 +136,11 @@ class MenuItem extends Component
     public function getLabel(): ?string
     {
         return $this->evaluate($this->label);
+    }
+
+    public function getPostAction(): ?string
+    {
+        return $this->evaluate($this->postAction);
     }
 
     public function getSort(): int

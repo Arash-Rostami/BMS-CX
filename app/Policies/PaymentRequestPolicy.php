@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\PaymentRequest;
 use App\Models\User;
 use App\Services\AccessLevel;
 use Illuminate\Database\Eloquent\Model;
@@ -27,8 +28,12 @@ class PaymentRequestPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user): bool
+    public function view(User $user, PaymentRequest $paymentRequest): bool
     {
+        if ($paymentRequest->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('view', 'PaymentRequest');
     }
 
@@ -43,18 +48,25 @@ class PaymentRequestPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user): bool
+    public function update(User $user, PaymentRequest $paymentRequest): bool
     {
+        if ($paymentRequest->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('edit', 'PaymentRequest');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user): bool
+    public function delete(User $user, PaymentRequest $paymentRequest): bool
     {
-        return AccessLevel::hasPermissionForModel('delete', 'PaymentRequest');
+        if ($paymentRequest->trashed()) {
+            return false;
+        }
 
+        return AccessLevel::hasPermissionForModel('delete', 'PaymentRequest');
     }
 
     /**

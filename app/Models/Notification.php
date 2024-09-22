@@ -4,11 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
 
 class Notification extends Model
 {
-    use HasFactory,Notifiable;
+    use SoftDeletes;
+    use HasFactory, Notifiable;
+
 
     protected $table = 'notifications';
 
@@ -27,6 +30,15 @@ class Notification extends Model
         'created_at',
         'deleted_at'
     ];
+
+    public function forceDelete()
+    {
+
+        // Option 2: Throw an exception if someone tries to force delete
+        throw new \Exception("Hard deletes are disabled for this model.");
+    }
+
+
 
     public function getDeletedAtAttribute()
     {

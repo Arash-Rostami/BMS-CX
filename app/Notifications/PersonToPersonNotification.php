@@ -42,11 +42,15 @@ class PersonToPersonNotification extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        $email = (new MailMessage)
             ->subject("⚠️ " . $this->subjectLine)
             ->greeting('Greetings,')
             ->line($this->body)
-            ->line('Thank you for your attention to this matter.');
+            ->line('Thank you for your attention.');
+
+        return isset($this->data['link'])
+            ? $email->action('View Link', $this->data['link'])
+            : $email;
     }
 
     /**

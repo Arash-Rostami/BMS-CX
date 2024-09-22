@@ -49,7 +49,6 @@ class ShippingLineResource extends Resource
                 ]),
                 Admin::showTimeStamp()
             ])
-            ->poll(60)
             ->paginated([12, 24, 36, 48, 'all'])
             ->contentGrid([
                 'md' => 2,

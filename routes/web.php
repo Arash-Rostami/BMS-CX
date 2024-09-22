@@ -11,7 +11,6 @@ Route::get('/table-design-toggle', [UserController::class, 'toggleTableDesign'])
 
 Route::get('/quote-service/{token}', [QuoteController::class, 'authenticate'])->name('quote-service');
 
-
 Route::fallback(fn() => view('errors.404'));
 
 

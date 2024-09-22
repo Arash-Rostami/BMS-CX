@@ -12,35 +12,35 @@ return new class extends Migration {
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->increments('id')->unsigned()->index();
+            $table->string('reference_number')->nullable()->index();
             $table->string('order_number');
-            $table->string('invoice_number');
+            $table->string('invoice_number')->index();
             $table->unsignedBigInteger('part');
-            $table->string('grade')->nullable();
             $table->string('proforma_number');
             $table->date('proforma_date');
             $table->string('order_status');
             $table->json('extra')->nullable();
             // Foreign keys
-            $table->integer('order_request_id')->unsigned()->index()->nullable();
+            $table->integer('proforma_invoice_id')->unsigned()->index();
             $table->integer('user_id')->unsigned()->index();
             $table->integer('purchase_status_id')->unsigned()->index()->nullable();
             $table->integer('category_id')->unsigned()->index()->nullable();
             $table->integer('product_id')->unsigned()->index()->nullable();
+            $table->integer('grade_id')->unsigned()->index()->nullable()->default(0);
             $table->integer('order_detail_id')->unsigned()->index()->nullable();
             $table->integer('party_id')->unsigned()->index()->nullable();
             $table->integer('logistic_id')->unsigned()->index()->nullable();
             $table->integer('doc_id')->unsigned()->index()->nullable();
-            $table->integer('attachment_id')->unsigned()->index()->nullable();
-            $table->foreign('order_request_id')->references('id')->on('order_requests');
+            $table->foreign('proforma_invoice')->references('id')->on('proforma_invoices');
             $table->foreign('user_id')->references('id')->on('users');
             $table->foreign('purchase_status_id')->references('id')->on('purchase_statuses');
             $table->foreign('category_id')->references('id')->on('categories');
             $table->foreign('product_id')->references('id')->on('products');
+            $table->foreign('grade_id')->references('id')->on('grades');
             $table->foreign('order_detail_id')->references('id')->on('order_details');
             $table->foreign('party_id')->references('id')->on('parties');
             $table->foreign('logistic_id')->references('id')->on('logistics');
             $table->foreign('doc_id')->references('id')->on('docs');
-            $table->foreign('attachment_id')->references('id')->on('attachments');
             $table->timestamps();
             $table->softDeletes();
         });

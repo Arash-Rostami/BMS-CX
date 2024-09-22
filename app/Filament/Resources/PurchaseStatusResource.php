@@ -53,7 +53,6 @@ class PurchaseStatusResource extends Resource
                 'md' => 2,
                 'xl' => 3,
             ])
-            ->poll(60)
             ->filters([])
             ->actions([
                 Tables\Actions\EditAction::make(),

@@ -1,9 +1,18 @@
 ---
 title: Getting started
 ---
+import LaracastsBanner from "@components/LaracastsBanner.astro"
+
 ## Overview
 
 Panels are the top-level container in Filament, allowing you to build feature-rich admin panels that include pages, resources, forms, tables, notifications, actions, infolists, and widgets. All Panels include a default dashboard that can include widgets with statistics, charts, tables, and more.
+
+<LaracastsBanner
+    title="Introduction to Filament"
+    description="Watch the Rapid Laravel Development with Filament series on Laracasts - it will teach you how to get started with the panel builder. Alternatively, continue reading this text-based guide."
+    url="https://laracasts.com/series/rapid-laravel-development-with-filament/episodes/2"
+    series="rapid-laravel-development"
+/>
 
 ## Prerequisites
 
@@ -137,7 +146,7 @@ This will create several files in the `app/Filament/Resources` directory:
 |   |   +-- ListPatients.php
 ```
 
-Visit `/admin/patients` in your browser and observe a new link called "Patients" in the sidebar. Clicking the link will display an empty table. Let's add a form to create new patients.
+Visit `/admin/patients` in your browser and observe a new link called "Patients" in the navigation. Clicking the link will display an empty table. Let's add a form to create new patients.
 
 ### Setting up the resource form
 
@@ -145,7 +154,7 @@ If you open the `PatientResource.php` file, there's a `form()` method with an em
 
 #### "Name" text input
 
-Filament bundles a large selection of [form fields](../forms/fields/getting-started). Let's start with a simple [text input field](../forms/fields/text-input):
+Filament bundles a large selection of [form fields](../forms/fields/getting-started#available-fields). Let's start with a simple [text input field](../forms/fields/text-input):
 
 ```php
 use Filament\Forms;
@@ -333,7 +342,7 @@ Open the `PatientResource.php` file. You should see a `table()` method with an e
 
 #### Adding text columns
 
-Filament bundles a large selection of [table columns](../tables/columns). Let's use a simple [text column](../tables/columns/text) for all the fields in the `patients` table:
+Filament bundles a large selection of [table columns](../tables/columns#available-columns). Let's use a simple [text column](../tables/columns/text) for all the fields in the `patients` table:
 
 ```php
 use Filament\Tables;
@@ -355,7 +364,7 @@ public static function table(Table $table): Table
 
 ##### Making columns searchable
 
-The ability to [search](/tables/columns/getting-started#searching) for patients directly in the table would be helpful as a veterinary practice grows. You can make columns searchable by chaining the `searchable()` method to the column. Let's make the patient's name and owner's name searchable.
+The ability to [search](../tables/columns/getting-started#searching) for patients directly in the table would be helpful as a veterinary practice grows. You can make columns searchable by chaining the `searchable()` method to the column. Let's make the patient's name and owner's name searchable.
 
 ```php
 use Filament\Tables;
@@ -406,7 +415,7 @@ This will add a sort icon button to the column header. Clicking it will sort the
 
 Although you can make the `type` field searchable, making it filterable is a much better user experience.
 
-Filament tables can have [filters](../tables/filters/getting-started), which are components that reduce the number of records in a table by adding a scope to the Eloquent query. Filters can even contain custom form components, making them a potent tool for building interfaces.
+Filament tables can have [filters](../tables/filters/getting-started#available-filters), which are components that reduce the number of records in a table by adding a scope to the Eloquent query. Filters can even contain custom form components, making them a potent tool for building interfaces.
 
 Filament includes a prebuilt [`SelectFilter`](../tables/filters/select) that you can add to the table's `filters()`:
 
@@ -558,7 +567,7 @@ public function form(Form $form): Form
 
 ##### Casting the price to an integer
 
-Filament stores currency values as integers (not floats) to avoid rounding and precision issues — a widely-accepted approach in the Laravel community. However, this requires creating a cast in Laravel that transforms the float into an integer when retrieved and back to an integer when stored in the database. Use the following artisan command to create the cast:
+Filament stores currency values as integers (not floats) to avoid rounding and precision issues — a widely-accepted approach in the Laravel community. However, this requires creating a cast in Laravel that transforms the integer into a float when retrieved and back to an integer when stored in the database. Use the following artisan command to create the cast:
 
 ```bash
 php artisan make:cast MoneyCast

@@ -83,7 +83,7 @@ class Admin
     public static function showCreatedTime(): TextColumn
     {
         return TextColumn::make('created_at')
-            ->label('Sent')
+            ->label('Sent ✔ ')
             ->icon(fn(Model $record) => $record->created_at != 'Unsent' ? 'heroicon-c-shield-check' : 'heroicon-c-shield-exclamation')
             ->iconColor(fn(Model $record) => $record->created_at != 'Unsent' ? 'success' : 'warning')
             ->sortable()
@@ -97,7 +97,7 @@ class Admin
     public static function showReadTime(): TextColumn
     {
         return TextColumn::make('read_at')
-            ->label('Read')
+            ->label('Read ✔  ✔ ')
             ->icon(fn(Model $record) => $record->read_at != 'Unread' ? 'heroicon-c-shield-check' : 'heroicon-c-shield-exclamation')
             ->iconColor(fn(Model $record) => $record->read_at != 'Unread' ? 'success' : 'danger')
             ->sortable()
@@ -111,7 +111,7 @@ class Admin
     public static function showClearingTime(): TextColumn
     {
         return TextColumn::make('deleted_at')
-            ->label('Cleared')
+            ->label('Cleared ☑️')
             ->icon(fn(Model $record) => $record->deleted_at != 'Uncleared' ? 'heroicon-c-shield-check' : 'heroicon-c-shield-exclamation')
             ->iconColor(fn(Model $record) => $record->deleted_at != 'Uncleared' ? 'success' : 'warning')
             ->sortable()

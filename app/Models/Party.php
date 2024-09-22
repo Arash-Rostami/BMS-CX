@@ -13,7 +13,6 @@ class Party extends Model
 
     protected $fillable = [
         'user_id',
-        'order_id',
         'packaging_id',
         'buyer_id',
         'supplier_id',
@@ -29,25 +28,9 @@ class Party extends Model
 
     protected static function booted()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
+        static::creating(function ($party) {
+            $party->user_id = auth()->id();
         });
-    }
-
-    /**
-     * Get the user that owns the party.
-     */
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Get the order associated with the party.
-     */
-    public function order()
-    {
-        return $this->belongsTo(Order::class);
     }
 
     /**
@@ -72,5 +55,13 @@ class Party extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /**
+     * Get the user that owns the party.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

@@ -15,43 +15,86 @@ class Payment extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'reference_number',
         'payer',
         'amount',
         'currency',
-        'account_number',
-        'bank_name',
+        'transaction_id',
+        'date',
+        'notes',
         'extra',
         'user_id',
-        'payment_request_id',
+        'payment_request',
         'order_id',
-        'attachment_id',
     ];
 
 
     protected $casts = [
         'extra' => 'json',
+        'date' => 'datetime',
     ];
 
     protected static function booted()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
+        static::creating(function ($payment) {
+            $payment->user_id = auth()->id();
+        });
+
+        static::saving(function ($payment) {
+            $payment->attachments->each(function ($attachment) {
+                if (empty($attachment->file_path) || empty($attachment->name)) {
+                    $attachment->delete();
+                }
+            });
         });
 
     }
-
 
     public function attachments()
     {
         return $this->hasMany(Attachment::class);
     }
 
+    public function names()
+    {
+        return $this->hasMany(Name::class);
+    }
 
-    /**
-     * Get the sum of amounts for specified currencies.
-     *
-     * @return array
-     */
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+
+    public function paymentRequests()
+    {
+        return $this->belongsToMany(
+            PaymentRequest::class,
+            'payment_payment_request'
+        );
+    }
+
+    public function approvedPaymentRequests()
+    {
+        return $this->belongsToMany(
+            PaymentRequest::class,
+            'payment_payment_request'
+        )->whereIn('status', ['processing', 'approved', 'allowed']);
+    }
+
+    public function reason()
+    {
+        return $this->hasOneThrough(Allocation::class, PaymentRequest::class, 'id', 'id', 'payment_request_id', 'reason_for_payment');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+
+    // Computational Method
     public static function sumAmountsForCurrencies(array $currencies)
     {
         $cacheKey = 'sum_amounts_for_currencies_' . implode('_', $currencies);
@@ -65,44 +108,5 @@ class Payment extends Model
                 })
                 ->toArray();
         });
-    }
-
-    public function order()
-    {
-        return $this->hasOneThrough(Order::class, PaymentRequest::class, 'id', 'invoice_number', 'payment_request_id', 'order_invoice_number');
-    }
-
-//
-//    public function orders()
-//    {
-//        return $this->hasMany(Order::class, 'id', 'order_id');
-//    }
-//
-
-    public function orderRequest()
-    {
-
-        return $this->belongsTo(OrderRequest::class, 'id', 'id' ?? null);
-
-    }
-
-
-    public function paymentRequests()
-    {
-        return $this->belongsTo(PaymentRequest::class, 'payment_request_id');
-    }
-
-    public function reason()
-    {
-        return $this->hasOneThrough(Allocation::class, PaymentRequest::class, 'id', 'id', 'payment_request_id', 'reason_for_payment');
-    }
-
-
-    /**
-     * Get the user that owns the payment.
-     */
-    public function user()
-    {
-        return $this->belongsTo(User::class);
     }
 }

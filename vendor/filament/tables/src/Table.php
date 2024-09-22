@@ -64,6 +64,8 @@ class Table extends ViewComponent
 
     public static string $defaultDateTimeDisplayFormat = 'M j, Y H:i:s';
 
+    public static ?string $defaultNumberLocale = null;
+
     public static string $defaultTimeDisplayFormat = 'H:i:s';
 
     final public function __construct(HasTable $livewire)
@@ -92,5 +94,16 @@ class Table extends ViewComponent
                 'model' => $table->getModelLabel(),
             ]);
         });
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    protected function resolveDefaultClosureDependencyForEvaluationByName(string $parameterName): array
+    {
+        return match ($parameterName) {
+            'livewire' => [$this->getLivewire()],
+            default => parent::resolveDefaultClosureDependencyForEvaluationByName($parameterName),
+        };
     }
 }

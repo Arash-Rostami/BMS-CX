@@ -20,6 +20,7 @@ use Filament\Tables\Filters\QueryBuilder\Constraints\TextConstraint;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
 use Filament\Tables\Filters\QueryBuilder;
 use Filament\Tables\Filters\SelectFilter;
@@ -62,13 +63,23 @@ class NotificationResource extends Resource
                 Admin::groupByName(),
                 Admin::groupByType()
             ])
+            ->paginated([10, 15, 20])
             ->defaultGroup('user.first_name')
             ->defaultSort('created_at', 'desc')
-            ->poll(30)
+            ->poll('30s')
             ->filters([
                 Admin::filterByRecipient()
             ]);
     }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+    }
+
 
 
     public static function getModernLayout(Table $table): Table

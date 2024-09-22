@@ -4,17 +4,26 @@ namespace Filament\Actions\Imports\Http\Controllers;
 
 use Filament\Actions\Imports\Models\FailedImportRow;
 use Filament\Actions\Imports\Models\Import;
+use Illuminate\Support\Facades\Gate;
+use League\Csv\ByteSequence;
 use League\Csv\Writer;
 use SplTempFileObject;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+
+use function Filament\authorize;
 
 class DownloadImportFailureCsv
 {
     public function __invoke(Import $import): StreamedResponse
     {
-        abort_unless($import->user->is(auth()->user()), 403);
+        if (filled(Gate::getPolicyFor($import::class))) {
+            authorize('view', $import);
+        } else {
+            abort_unless($import->user()->is(auth()->user()), 403);
+        }
 
-        $csv = Writer::createFromFileObject(new SplTempFileObject());
+        $csv = Writer::createFromFileObject(new SplTempFileObject);
+        $csv->setOutputBOM(ByteSequence::BOM_UTF8);
 
         $columnHeaders = array_keys($import->failedRows()->first()->data);
         $columnHeaders[] = __('filament-actions::import.failure_csv.error_header');
@@ -38,7 +47,7 @@ class DownloadImportFailureCsv
             }
         }, __('filament-actions::import.failure_csv.file_name', [
             'import_id' => $import->getKey(),
-            'csv_name' => $import->file_name,
+            'csv_name' => (string) str($import->file_name)->beforeLast('.')->remove('.'),
         ]) . '.csv', [
             'Content-Type' => 'text/csv',
         ]);

@@ -11,6 +11,12 @@ return [
     'columns' => [
 
         'text' => [
+
+            'actions' => [
+                'collapse_list' => 'Tunjukkan kurang :count',
+                'expand_list' => 'Tunjukkan :count lagi',
+            ],
+
             'more_list_items' => 'dan :count lagi',
         ],
 
@@ -77,7 +83,7 @@ return [
         ],
 
         'filter' => [
-            'label' => 'Penapis',
+            'label' => 'Tapisan',
         ],
 
         'group' => [
@@ -106,24 +112,28 @@ return [
 
         'actions' => [
 
+            'apply' => [
+                'label' => 'Gunakan tapisan',
+            ],
+
             'remove' => [
-                'label' => 'Buang penapis',
+                'label' => 'Buang tapisan',
             ],
 
             'remove_all' => [
-                'label' => 'Buang semua penapis',
-                'tooltip' => 'Buang semua penapis',
+                'label' => 'Buang semua tapisan',
+                'tooltip' => 'Buang semua tapisan',
             ],
 
             'reset' => [
-                'label' => 'Tetapkan semula penapis',
+                'label' => 'Tetapkan semula tapisan',
             ],
 
         ],
 
-        'heading' => 'Penapis',
+        'heading' => 'Tapisan',
 
-        'indicator' => 'Penapis aktif',
+        'indicator' => 'Tapisan aktif',
 
         'multi_select' => [
             'placeholder' => 'Semua',

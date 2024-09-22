@@ -15,7 +15,7 @@ return new class extends Migration
             $table->increments('id')->unsigned()->index();
             $table->string('name')->nullable();
             $table->string('module');
-            $table->json('extra')->nullable();
+            $table->json('extra')->nullable()->index();
             $table->unsignedInteger('created_by')->nullable()->index();
             $table->unsignedInteger('updated_by')->nullable()->index();
             $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');

@@ -9,13 +9,13 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description'];
+    protected $fillable = ['name', 'description', 'user_id'];
 
 
     protected static function booted()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
+        static::creating(function ($cat) {
+            $cat->user_id = auth()->id();
         });
     }
 

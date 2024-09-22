@@ -20,12 +20,10 @@ return new class extends Migration {
             $table->decimal('initial_price', 12, 2)->nullable();
             $table->decimal('provisional_price', 12, 2)->nullable();
             $table->decimal('final_price', 12, 2)->nullable();
-            $table->json('extra')->nullable();
+            $table->json('extra')->nullable()->index();
             // Foreign keys
             $table->integer('user_id')->unsigned()->index();
-            $table->integer('order_id')->unsigned()->index()->nullable();
             $table->foreign('user_id')->references('id')->on('users');
-            $table->foreign('order_id')->references('id')->on('orders');
             $table->timestamps();
             $table->softDeletes();
         });

@@ -15,12 +15,10 @@ return new class extends Migration
             $table->increments('id')->unsigned()->index();
             // Foreign keys
             $table->integer('user_id')->unsigned()->index();
-            $table->integer('order_id')->unsigned()->index()->nullable();
             $table->integer('packaging_id')->unsigned()->index()->nullable();
             $table->integer('buyer_id')->unsigned()->index()->nullable();
             $table->integer('supplier_id')->unsigned()->index()->nullable();
             $table->foreign('user_id')->references('id')->on('users');
-            $table->foreign('order_id')->references('id')->on('orders');
             $table->foreign('packaging_id')->references('id')->on('packagings');
             $table->foreign('buyer_id')->references('id')->on('buyers');
             $table->foreign('supplier_id')->references('id')->on('suppliers');

@@ -21,7 +21,7 @@ class PaymentRequestStatusNotification extends Notification
      */
     public function __construct($record, $status = null)
     {
-        $this->invoice = $record->order->invoice_number ?? Allocation::find($record->reason_for_payment)->reason;
+        $this->invoice = $record->order->invoice_number ?? $record->proforma_invoice_number ?? Allocation::find($record->reason_for_payment)->reason;
         $this->status = $status;
     }
 
@@ -78,11 +78,11 @@ class PaymentRequestStatusNotification extends Notification
      */
     public function fetchTeamMessage(): string
     {
-        $message = "The payment request for order's invoice number **{$this->invoice}** has been ";
+        $message = "The payment request for order's project number **{$this->invoice}** has been ";
 
         $message .= match ($this->status) {
-            'allowed' => "**allowed** by the finance department.",
-            'approved' => "**approved** by the management.",
+            'allowed' => "initially **allowed**.",
+            'approved' => "**final approval** granted.",
             'rejected' => "**declined**.",
             default => "updated with status: **{$this->status}**.",
         };

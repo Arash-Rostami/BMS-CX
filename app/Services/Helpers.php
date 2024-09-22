@@ -34,6 +34,13 @@ function formatNumber(int $number)
     return Number::format($number / 1000000, 2) . 'm';
 }
 
+function formatHTML(string $text, array $classes = [])
+{
+    $classString = implode(' ', $classes);
+
+    return new HtmlString("<span class='{$classString}'>{$text}</span>");
+}
+
 function numberify($number)
 {
     return number_format((float)$number, 2, '.', ',');

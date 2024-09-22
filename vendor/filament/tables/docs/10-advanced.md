@@ -63,6 +63,20 @@ public function table(Table $table): Table
 }
 ```
 
+### Displaying links to the first and the last pagination page
+
+To add "extreme" links to the first and the last page using the `extremePaginationLinks()` method:
+
+```php
+use Filament\Tables\Table;
+
+public function table(Table $table): Table
+{
+    return $table
+        ->extremePaginationLinks();
+}
+```
+
 ### Using simple pagination
 
 You may use simple pagination by overriding `paginateTableQuery()` method.
@@ -113,6 +127,18 @@ public function table(Table $table): Table
 ```
 
 In this example, clicking on each post will take you to the `posts.edit` route.
+
+You may also open the URL in a new tab:
+
+```php
+use Filament\Tables\Table;
+
+public function table(Table $table): Table
+{
+    return $table
+        ->openRecordUrlInNewTab();
+}
+```
 
 If you'd like to [override the URL](columns/getting-started#opening-urls) for a specific column, or instead [run an action](columns/getting-started#running-actions) when a column is clicked, see the [columns documentation](columns/getting-started#opening-urls).
 
@@ -194,6 +220,53 @@ public function table(Table $table): Table
 ```
 
 <AutoScreenshot name="tables/reordering/custom-trigger-action" alt="Table with reorderable rows and a custom trigger action" version="3.x" />
+
+## Customizing the table header
+
+You can add a heading to a table using the `$table->heading()` method:
+
+```php
+use Filament\Tables\Table;
+
+public function table(Table $table): Table
+{
+    return $table
+        ->heading('Clients')
+        ->columns([
+            // ...
+        ]);
+```
+
+You can also add a description below the heading using the `$table->description()` method:
+
+```php
+use Filament\Tables\Table;
+
+public function table(Table $table): Table
+{
+    return $table
+        ->heading('Clients')
+        ->description('Manage your clients here.')
+        ->columns([
+            // ...
+        ]);
+```
+
+You can pass a view to the `$table->header()` method to customize the entire header:
+
+```php
+use Filament\Tables\Table;
+
+public function table(Table $table): Table
+{
+    return $table
+        ->header(view('tables.header', [
+            'heading' => 'Clients',
+        ]))
+        ->columns([
+            // ...
+        ]);
+```
 
 ## Polling table content
 

@@ -33,7 +33,7 @@ class ProductResource extends Resource
             ->schema([
                 Admin::getCategory(),
                 Admin::getName(),
-                Admin::getDesription(),
+                Admin::getDescription(),
             ]);
     }
 
@@ -51,7 +51,6 @@ class ProductResource extends Resource
                 ])->space(4),
                 Admin::showTimeStamp(),
             ])
-            ->poll(60)
             ->paginated([12, 24, 36, 48, 'all'])
             ->contentGrid([
                 'md' => 2,

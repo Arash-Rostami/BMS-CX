@@ -12,6 +12,7 @@ use Filament\Infolists\Infolist;
 use Filament\Pages\Page;
 use Filament\Resources\Concerns\InteractsWithRelationshipTable;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Concerns\CanBeLazy;
 use Filament\Support\Enums\IconPosition;
 use Filament\Tables;
 use Filament\Tables\Actions\BulkAction;
@@ -27,6 +28,7 @@ use function Filament\authorize;
 class RelationManager extends Component implements Actions\Contracts\HasActions, Forms\Contracts\HasForms, Infolists\Contracts\HasInfolists, Tables\Contracts\HasTable
 {
     use Actions\Concerns\InteractsWithActions;
+    use CanBeLazy;
     use Forms\Concerns\InteractsWithForms;
     use Infolists\Concerns\InteractsWithInfolists;
     use InteractsWithRelationshipTable {
@@ -82,7 +84,9 @@ class RelationManager extends Component implements Actions\Contracts\HasActions,
 
     protected static ?string $badge = null;
 
-    protected static bool $isLazy = true;
+    protected static ?string $badgeColor = null;
+
+    protected static ?string $badgeTooltip = null;
 
     public function mount(): void
     {
@@ -116,11 +120,6 @@ class RelationManager extends Component implements Actions\Contracts\HasActions,
         ];
     }
 
-    public function placeholder(): View
-    {
-        return view('filament::components.loading-section');
-    }
-
     public function render(): View
     {
         return view(static::$view, $this->getViewData());
@@ -147,6 +146,16 @@ class RelationManager extends Component implements Actions\Contracts\HasActions,
     public static function getBadge(Model $ownerRecord, string $pageClass): ?string
     {
         return static::$badge;
+    }
+
+    public static function getBadgeColor(Model $ownerRecord, string $pageClass): ?string
+    {
+        return static::$badgeColor;
+    }
+
+    public static function getBadgeTooltip(Model $ownerRecord, string $pageClass): ?string
+    {
+        return static::$badgeTooltip;
     }
 
     public static function getTitle(Model $ownerRecord, string $pageClass): string
@@ -519,10 +528,5 @@ class RelationManager extends Component implements Actions\Contracts\HasActions,
         }
 
         return $properties;
-    }
-
-    public static function isLazy(): bool
-    {
-        return static::$isLazy;
     }
 }

@@ -7,9 +7,11 @@
 @props([
     'badge' => null,
     'badgeColor' => 'primary',
+    'badgeSize' => 'xs',
     'color' => 'primary',
     'disabled' => false,
     'form' => null,
+    'formId' => null,
     'grouped' => false,
     'href' => null,
     'icon' => null,
@@ -22,6 +24,7 @@
     'loadingIndicator' => true,
     'outlined' => false,
     'size' => ActionSize::Medium,
+    'spaMode' => null,
     'tag' => 'button',
     'target' => null,
     'tooltip' => null,
@@ -30,11 +33,11 @@
 
 @php
     if (! $iconPosition instanceof IconPosition) {
-        $iconPosition = $iconPosition ? IconPosition::tryFrom($iconPosition) : null;
+        $iconPosition = filled($iconPosition) ? (IconPosition::tryFrom($iconPosition) ?? $iconPosition) : null;
     }
 
     if (! $size instanceof ActionSize) {
-        $size = ActionSize::tryFrom($size) ?? $size;
+        $size = filled($size) ? (ActionSize::tryFrom($size) ?? $size) : null;
     }
 
     $iconSize ??= match ($size) {
@@ -43,24 +46,26 @@
     };
 
     if (! $iconSize instanceof IconSize) {
-        $iconSize = IconSize::tryFrom($iconSize) ?? $iconSize;
+        $iconSize = filled($iconSize) ? (IconSize::tryFrom($iconSize) ?? $iconSize) : null;
     }
 
     $buttonClasses = \Illuminate\Support\Arr::toCssClasses([
         ...[
             'fi-btn relative grid-flow-col items-center justify-center font-semibold outline-none transition duration-75 focus-visible:ring-2',
             'pointer-events-none opacity-70' => $disabled,
-            'flex-1' => $grouped,
             'rounded-lg' => ! $grouped,
+            'flex-1 [&:nth-child(1_of_.fi-btn)]:rounded-s-lg [&:nth-last-child(1_of_.fi-btn)]:rounded-e-lg [&:not(:nth-child(1_of_.fi-btn))]:shadow-[-1px_0_0_0_theme(colors.gray.200)] [&:not(:nth-last-child(1_of_.fi-btn))]:me-px dark:[&:not(:nth-child(1_of_.fi-btn))]:shadow-[-1px_0_0_0_theme(colors.white/20%)]' => $grouped,
+            'cursor-pointer' => $tag === 'label',
             match ($color) {
-                'gray' => 'fi-color-gray',
+                'gray' => null,
                 default => 'fi-color-custom',
             },
-            // @deprecated `fi-btn-color-*` has been replaced by `fi-color-gray` and `fi-color-custom`.
+            // @deprecated `fi-btn-color-*` has been replaced by `fi-color-*` and `fi-color-custom`.
             is_string($color) ? "fi-btn-color-{$color}" : null,
-            "fi-size-{$size->value}" => $size instanceof ActionSize,
+            is_string($color) ? "fi-color-{$color}" : null,
+            ($size instanceof ActionSize) ? "fi-size-{$size->value}" : null,
             // @deprecated `fi-btn-size-*` has been replaced by `fi-size-*`.
-            "fi-btn-size-{$size->value}" => $size instanceof ActionSize,
+            ($size instanceof ActionSize) ? "fi-btn-size-{$size->value}" : null,
             match ($size) {
                 ActionSize::ExtraSmall => 'gap-1 px-2 py-1.5 text-xs',
                 ActionSize::Small => 'gap-1 px-2.5 py-1.5 text-sm',
@@ -90,17 +95,12 @@
                 ] :
                 [
                     'shadow-sm' => ! $grouped,
-                    ...match ($color) {
-                        'gray' => [
-                            'bg-white text-gray-950 hover:bg-gray-50 dark:bg-white/5 dark:text-white dark:hover:bg-white/10',
-                            'ring-1 ring-gray-950/10 dark:ring-white/20' => ! $grouped,
-                        ],
-                        default => [
-                            'bg-custom-600 text-white hover:bg-custom-500 dark:bg-custom-500 dark:hover:bg-custom-400',
-                            'focus-visible:ring-custom-500/50 dark:focus-visible:ring-custom-400/50' => ! $grouped,
-                        ],
-                    },
-                ]
+                    'bg-white text-gray-950 hover:bg-gray-50 dark:bg-white/5 dark:text-white dark:hover:bg-white/10' => ($color === 'gray') || ($tag === 'label'),
+                    'ring-1 ring-gray-950/10 dark:ring-white/20' => (($color === 'gray') || ($tag === 'label')) && (! $grouped),
+                    'bg-custom-600 text-white hover:bg-custom-500 focus-visible:ring-custom-500/50 dark:bg-custom-500 dark:hover:bg-custom-400 dark:focus-visible:ring-custom-400/50' => ($color !== 'gray') && ($tag !== 'label'),
+                    '[input:checked+&]:bg-custom-600 [input:checked+&]:text-white [input:checked+&]:ring-0 [input:checked+&]:hover:bg-custom-500 dark:[input:checked+&]:bg-custom-500 dark:[input:checked+&]:hover:bg-custom-400 [input:checked:focus-visible+&]:ring-custom-500/50 dark:[input:checked:focus-visible+&]:ring-custom-400/50 [input:focus-visible+&]:z-10 [input:focus-visible+&]:ring-2 [input:focus-visible+&]:ring-gray-950/10 dark:[input:focus-visible+&]:ring-white/20' => ($color !== 'gray') && ($tag === 'label'),
+                    '[input:checked+&]:bg-gray-400 [input:checked+&]:text-white [input:checked+&]:ring-0 [input:checked+&]:hover:bg-gray-300 dark:[input:checked+&]:bg-gray-600 dark:[input:checked+&]:hover:bg-gray-500' => ($color === 'gray'),
+                    ]
         ),
     ]);
 
@@ -113,20 +113,19 @@
     ]);
 
     $iconClasses = \Illuminate\Support\Arr::toCssClasses([
-        'fi-btn-icon',
+        'fi-btn-icon transition duration-75',
         match ($iconSize) {
             IconSize::Small => 'h-4 w-4',
             IconSize::Medium => 'h-5 w-5',
             IconSize::Large => 'h-6 w-6',
             default => $iconSize,
         },
-        match ($color) {
-            'gray' => 'text-gray-400 dark:text-gray-500',
-            default => null,
-        },
+        'text-gray-400 dark:text-gray-500' => ($color === 'gray') || ($tag === 'label'),
+        'text-white' => ($color !== 'gray') && ($tag !== 'label') && (! $outlined),
+        '[:checked+*>&]:text-white' => $tag === 'label',
     ]);
 
-    $badgeContainerClasses = 'fi-btn-badge-ctn absolute -top-1 start-full z-[1] -ms-1 w-max -translate-x-1/2 rounded-md bg-white rtl:translate-x-1/2 dark:bg-gray-900';
+    $badgeContainerClasses = 'fi-btn-badge-ctn absolute start-full top-0 z-[1] w-max -translate-x-1/2 -translate-y-1/2 rounded-md bg-white dark:bg-gray-900 rtl:translate-x-1/2';
 
     $labelClasses = \Illuminate\Support\Arr::toCssClasses([
         'fi-btn-label',
@@ -135,8 +134,8 @@
 
     $wireTarget = $loadingIndicator ? $attributes->whereStartsWith(['wire:target', 'wire:click'])->filter(fn ($value): bool => filled($value))->first() : null;
 
-    $hasFileUploadLoadingIndicator = $type === 'submit' && filled($form);
-    $hasLoadingIndicator = filled($wireTarget) || $hasFileUploadLoadingIndicator;
+    $hasFormProcessingLoadingIndicator = $type === 'submit' && filled($form);
+    $hasLoadingIndicator = filled($wireTarget) || $hasFormProcessingLoadingIndicator;
 
     if ($hasLoadingIndicator) {
         $loadingIndicatorTarget = html_entity_decode($wireTarget ?: $form, ENT_QUOTES);
@@ -152,6 +151,8 @@
         :color="$color"
         :disabled="$disabled"
         :form="$form"
+        :form-id="$formId"
+        :href="$href"
         :icon="$icon"
         :icon-alias="$iconAlias"
         :icon-size="$iconSize"
@@ -159,6 +160,7 @@
         :label="$slot"
         :size="$size"
         :tag="$tag"
+        :target="$target"
         :tooltip="$tooltip"
         :type="$type"
         :class="
@@ -175,197 +177,156 @@
     />
 @endif
 
-@if ($tag === 'button')
-    <button
-        @if (($keyBindings || $hasTooltip) && (! $hasFileUploadLoadingIndicator))
-            x-data="{}"
-        @endif
-        @if ($keyBindings)
-            x-mousetrap.global.{{ collect($keyBindings)->map(fn (string $keyBinding): string => str_replace('+', '-', $keyBinding))->implode('.') }}
-        @endif
-        @if ($hasTooltip)
-            x-tooltip="{
-                content: @js($tooltip),
-                theme: $store.theme,
-            }"
-        @endif
-        @if ($hasFileUploadLoadingIndicator)
-            x-data="{
-                form: null,
-                isUploadingFile: false,
-            }"
-            x-init="
-                form = $el.closest('form')
+<{{ $tag }}
+    @if ($tag === 'a')
+        {{ \Filament\Support\generate_href_html($href, $target === '_blank', $spaMode) }}
+    @endif
+    @if (($keyBindings || $hasTooltip) && (! $hasFormProcessingLoadingIndicator))
+        x-data="{}"
+    @endif
+    @if ($keyBindings)
+        x-bind:id="$id('key-bindings')"
+        x-mousetrap.global.{{ collect($keyBindings)->map(fn (string $keyBinding): string => str_replace('+', '-', $keyBinding))->implode('.') }}="document.getElementById($el.id).click()"
+    @endif
+    @if ($hasTooltip)
+        x-tooltip="{
+            content: @js($tooltip),
+            theme: $store.theme,
+        }"
+    @endif
+    @if ($hasFormProcessingLoadingIndicator)
+        x-data="{
+            form: null,
+            isProcessing: false,
+            processingMessage: null,
+        }"
+        x-init="
+            form = $el.closest('form')
 
-                form?.addEventListener('file-upload-started', () => {
-                    isUploadingFile = true
-                })
+            form?.addEventListener('form-processing-started', (event) => {
+                isProcessing = true
+                processingMessage = event.detail.message
+            })
 
-                form?.addEventListener('file-upload-finished', () => {
-                    isUploadingFile = false
-                })
-            "
-            x-bind:class="{ 'enabled:opacity-70 enabled:cursor-wait': isUploadingFile }"
+            form?.addEventListener('form-processing-finished', () => {
+                isProcessing = false
+            })
+        "
+        x-bind:class="{ 'enabled:opacity-70 enabled:cursor-wait': isProcessing }"
+    @endif
+    {{
+        $attributes
+            ->merge([
+                'disabled' => $disabled,
+                'form' => $formId,
+                'type' => $tag === 'button' ? $type : null,
+                'wire:loading.attr' => $tag === 'button' ? 'disabled' : null,
+                'wire:target' => ($hasLoadingIndicator && $loadingIndicatorTarget) ? $loadingIndicatorTarget : null,
+                'x-bind:disabled' => $hasFormProcessingLoadingIndicator ? 'isProcessing' : null,
+            ], escape: false)
+            ->class([$buttonClasses])
+            ->style([$buttonStyles])
+    }}
+>
+    @if ($iconPosition === IconPosition::Before)
+        @if ($icon)
+            <x-filament::icon
+                :attributes="
+                    \Filament\Support\prepare_inherited_attributes(
+                        new \Illuminate\View\ComponentAttributeBag([
+                            'alias' => $iconAlias,
+                            'icon' => $icon,
+                            'wire:loading.remove.delay.' . config('filament.livewire_loading_delay', 'default') => $hasLoadingIndicator,
+                            'wire:target' => $hasLoadingIndicator ? $loadingIndicatorTarget : null,
+                        ])
+                    )->class([$iconClasses])
+                "
+            />
         @endif
-        {{
-            $attributes
-                ->merge([
-                    'disabled' => $disabled,
-                    'type' => $type,
-                    'wire:loading.attr' => 'disabled',
-                    'wire:target' => ($hasLoadingIndicator && $loadingIndicatorTarget) ? $loadingIndicatorTarget : null,
-                    'x-bind:disabled' => $hasFileUploadLoadingIndicator ? 'isUploadingFile' : false,
-                ], escape: false)
-                ->class([$buttonClasses])
-                ->style([$buttonStyles])
-        }}
+
+        @if ($hasLoadingIndicator)
+            <x-filament::loading-indicator
+                :attributes="
+                    \Filament\Support\prepare_inherited_attributes(
+                        new \Illuminate\View\ComponentAttributeBag([
+                            'wire:loading.delay.' . config('filament.livewire_loading_delay', 'default') => '',
+                            'wire:target' => $loadingIndicatorTarget,
+                        ])
+                    )->class([$iconClasses])
+                "
+            />
+        @endif
+
+        @if ($hasFormProcessingLoadingIndicator)
+            <x-filament::loading-indicator
+                x-cloak="x-cloak"
+                x-show="isProcessing"
+                :class="$iconClasses"
+            />
+        @endif
+    @endif
+
+    <span
+        @if ($hasFormProcessingLoadingIndicator)
+            x-show="! isProcessing"
+        @endif
+        class="{{ $labelClasses }}"
     >
-        @if ($iconPosition === IconPosition::Before)
-            @if ($icon)
-                <x-filament::icon
-                    :attributes="
-                        \Filament\Support\prepare_inherited_attributes(
-                            new \Illuminate\View\ComponentAttributeBag([
-                                'alias' => $iconAlias,
-                                'icon' => $icon,
-                                'wire:loading.remove.delay.' . config('filament.livewire_loading_delay', 'default') => $hasLoadingIndicator,
-                                'wire:target' => $hasLoadingIndicator ? $loadingIndicatorTarget : null,
-                            ])
-                        )->class([$iconClasses])
-                    "
-                />
-            @endif
+        {{ $slot }}
+    </span>
 
-            @if ($hasLoadingIndicator)
-                <x-filament::loading-indicator
-                    :attributes="
-                        \Filament\Support\prepare_inherited_attributes(
-                            new \Illuminate\View\ComponentAttributeBag([
-                                'wire:loading.delay.' . config('filament.livewire_loading_delay', 'default') => '',
-                                'wire:target' => $loadingIndicatorTarget,
-                            ])
-                        )->class([$iconClasses])
-                    "
-                />
-            @endif
-
-            @if ($hasFileUploadLoadingIndicator)
-                <x-filament::loading-indicator
-                    x-show="isUploadingFile"
-                    x-cloak="x-cloak"
-                    :class="$iconClasses"
-                />
-            @endif
-        @endif
-
+    @if ($hasFormProcessingLoadingIndicator)
         <span
-            @if ($hasFileUploadLoadingIndicator)
-                x-show="! isUploadingFile"
-            @endif
+            x-cloak
+            x-show="isProcessing"
+            x-text="processingMessage"
             class="{{ $labelClasses }}"
-        >
-            {{ $slot }}
-        </span>
+        ></span>
+    @endif
 
-        @if ($hasFileUploadLoadingIndicator)
-            <span x-show="isUploadingFile" x-cloak>
-                {{ __('filament::components/button.messages.uploading_file') }}
-            </span>
-        @endif
-
-        @if ($iconPosition === IconPosition::After)
-            @if ($icon)
-                <x-filament::icon
-                    :attributes="
-                        \Filament\Support\prepare_inherited_attributes(
-                            new \Illuminate\View\ComponentAttributeBag([
-                                'alias' => $iconAlias,
-                                'icon' => $icon,
-                                'wire:loading.remove.delay.' . config('filament.livewire_loading_delay', 'default') => $hasLoadingIndicator,
-                                'wire:target' => $hasLoadingIndicator ? $loadingIndicatorTarget : null,
-                            ])
-                        )->class([$iconClasses])
-                    "
-                />
-            @endif
-
-            @if ($hasLoadingIndicator)
-                <x-filament::loading-indicator
-                    :attributes="
-                        \Filament\Support\prepare_inherited_attributes(
-                            new \Illuminate\View\ComponentAttributeBag([
-                                'wire:loading.delay.' . config('filament.livewire_loading_delay', 'default') => '',
-                                'wire:target' => $loadingIndicatorTarget,
-                            ])
-                        )->class([$iconClasses])
-                    "
-                />
-            @endif
-
-            @if ($hasFileUploadLoadingIndicator)
-                <x-filament::loading-indicator
-                    x-show="isUploadingFile"
-                    x-cloak="x-cloak"
-                    :class="$iconClasses"
-                />
-            @endif
-        @endif
-
-        @if (filled($badge))
-            <div class="{{ $badgeContainerClasses }}">
-                <x-filament::badge :color="$badgeColor" size="xs">
-                    {{ $badge }}
-                </x-filament::badge>
-            </div>
-        @endif
-    </button>
-@elseif ($tag === 'a')
-    <a
-        {{ \Filament\Support\generate_href_html($href, $target === '_blank') }}
-        @if ($keyBindings || $hasTooltip)
-            x-data="{}"
-        @endif
-        @if ($keyBindings)
-            x-mousetrap.global.{{ collect($keyBindings)->map(fn (string $keyBinding): string => str_replace('+', '-', $keyBinding))->implode('.') }}
-        @endif
-        @if ($hasTooltip)
-            x-tooltip="{
-                content: @js($tooltip),
-                theme: $store.theme,
-            }"
-        @endif
-        {{
-            $attributes
-                ->class([$buttonClasses])
-                ->style([$buttonStyles])
-        }}
-    >
-        @if ($icon && $iconPosition === IconPosition::Before)
+    @if ($iconPosition === IconPosition::After)
+        @if ($icon)
             <x-filament::icon
-                :alias="$iconAlias"
-                :icon="$icon"
-                :class="$iconClasses"
+                :attributes="
+                    \Filament\Support\prepare_inherited_attributes(
+                        new \Illuminate\View\ComponentAttributeBag([
+                            'alias' => $iconAlias,
+                            'icon' => $icon,
+                            'wire:loading.remove.delay.' . config('filament.livewire_loading_delay', 'default') => $hasLoadingIndicator,
+                            'wire:target' => $hasLoadingIndicator ? $loadingIndicatorTarget : null,
+                        ])
+                    )->class([$iconClasses])
+                "
             />
         @endif
 
-        <span class="{{ $labelClasses }}">
-            {{ $slot }}
-        </span>
-
-        @if ($icon && $iconPosition === IconPosition::After)
-            <x-filament::icon
-                :alias="$iconAlias"
-                :icon="$icon"
-                :class="$iconClasses"
+        @if ($hasLoadingIndicator)
+            <x-filament::loading-indicator
+                :attributes="
+                    \Filament\Support\prepare_inherited_attributes(
+                        new \Illuminate\View\ComponentAttributeBag([
+                            'wire:loading.delay.' . config('filament.livewire_loading_delay', 'default') => '',
+                            'wire:target' => $loadingIndicatorTarget,
+                        ])
+                    )->class([$iconClasses])
+                "
             />
         @endif
 
-        @if (filled($badge))
-            <div class="{{ $badgeContainerClasses }}">
-                <x-filament::badge :color="$badgeColor" size="xs">
-                    {{ $badge }}
-                </x-filament::badge>
-            </div>
+        @if ($hasFormProcessingLoadingIndicator)
+            <x-filament::loading-indicator
+                x-cloak="x-cloak"
+                x-show="isProcessing"
+                :class="$iconClasses"
+            />
         @endif
-    </a>
-@endif
+    @endif
+
+    @if (filled($badge))
+        <div class="{{ $badgeContainerClasses }}">
+            <x-filament::badge :color="$badgeColor" :size="$badgeSize">
+                {{ $badge }}
+            </x-filament::badge>
+        </div>
+    @endif
+</{{ $tag }}>

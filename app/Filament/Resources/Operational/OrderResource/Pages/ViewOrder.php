@@ -36,7 +36,7 @@ class ViewOrder extends ViewRecord
                                         'xl' => 3,
                                         '2xl' => 3,
                                     ])->schema([
-                                        $this->viewInvoiceNumber(),
+                                        $this->viewProjectNumber(),
                                         $this->viewCategory(),
                                         $this->viewProduct(),
                                         $this->viewProformaNumber(),
@@ -135,10 +135,11 @@ class ViewOrder extends ViewRecord
     /**
      * @return TextEntry
      */
-    public function viewInvoiceNumber(): TextEntry
+    public function viewProjectNumber(): TextEntry
     {
         return TextEntry::make('invoice_number')
-            ->label('Invoice Number')
+            ->label('Project Number')
+            ->state(fn(Model $record) => $record->invoice_number ?? 'N/A')
             ->badge();
     }
 
@@ -197,7 +198,7 @@ class ViewOrder extends ViewRecord
      */
     public function viewGrade(): TextEntry
     {
-        return TextEntry::make('grade')
+        return TextEntry::make('grade.name')
             ->badge();
     }
 

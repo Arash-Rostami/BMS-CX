@@ -6,11 +6,18 @@ use App\Filament\Resources\PaymentRequestResource;
 use App\Models\User;
 use App\Notifications\FilamentNotification;
 use App\Notifications\PaymentRequestStatusNotification;
+use App\Services\AttachmentCreationService;
 use App\Services\NotificationManager;
+use App\Services\PaymentRequestService;
 use App\Services\RetryableEmailService;
+use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\MaxWidth;
+use Filament\Tables\Actions\ReplicateAction;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 
 
@@ -18,10 +25,36 @@ class EditPaymentRequest extends EditRecord
 {
     protected static string $resource = PaymentRequestResource::class;
 
-
     protected function getHeaderActions(): array
     {
         return [
+            PrintAction::make()
+                ->color('amber'),
+           Actions\Action::make('pdf')
+                ->label('PDF')
+                ->color('success')
+                ->icon('heroicon-c-inbox-arrow-down')
+                ->action(function (Model $record) {
+                    return response()->streamDownload(function () use ($record) {
+                        echo Pdf::loadHtml(view('filament.pdfs.paymentRequest', ['record' => $record])
+                            ->render())
+                            ->stream();
+                    }, 'BMS-' . $record->reference_number . '.pdf');
+                }),
+            Actions\ReplicateAction::make()
+                ->visible(fn() => $this->record->order_id != null || $this->record->proforma_invoice_number == null)
+                ->color('info')
+                ->icon('heroicon-o-clipboard-document-list')
+                ->modalWidth(MaxWidth::Medium)
+                ->modalIcon('heroicon-o-clipboard-document-list')
+                ->record(fn() => $this->record)
+                ->mutateRecordDataUsing(function (array $data): array {
+                    $data['user_id'] = auth()->id();
+                    return $data;
+                })
+                ->beforeReplicaSaved(fn(Model $replica) => $replica->status = 'pending')
+                ->after(fn(Model $replica) => Admin::syncPaymentRequest($replica))
+                ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.payment-requests.edit', ['record' => $replica->id,])),
             Actions\DeleteAction::make()
                 ->hidden(fn(?Model $record) => $record ? $record->payments->isNotEmpty() : false)
                 ->icon('heroicon-o-trash')
@@ -32,6 +65,7 @@ class EditPaymentRequest extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+
         $data['extra'] = data_get($this->form->getRawState(), 'extra');
 
         return $data;
@@ -44,12 +78,15 @@ class EditPaymentRequest extends EditRecord
         }
 
         session(['old_status_payment' => $this->record->getOriginal('status')]);
+
+
+        AttachmentCreationService::createFromExisting($this->form->getState(), $this->record->getOriginal('id'), 'payment_request_id');
     }
 
 
     protected function afterSave(): void
     {
-        $allRecipients = (new CreatePaymentRequest())->fetchAccountants();
+        $allRecipients = (new PaymentRequestService())->fetchAccountants();
 
         $this->sendEditNotification($allRecipients);
 
@@ -95,7 +132,7 @@ class EditPaymentRequest extends EditRecord
                 ], true));
             }
 
-            $this->notifyViaEmail($newStatus, $allRecipients);
+//            $this->notifyViaEmail($newStatus, $allRecipients);
         }
     }
 

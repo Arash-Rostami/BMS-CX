@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
+use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
@@ -26,6 +27,7 @@ class ListPaymentRequests extends ListRecords
                 ->icon('heroicon-o-sparkles'),
             ExcelImportAction::make()
                 ->color("success"),
+            PrintAction::make(),
         ];
     }
 

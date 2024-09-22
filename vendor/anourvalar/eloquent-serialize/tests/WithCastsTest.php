@@ -5,21 +5,8 @@ namespace AnourValar\EloquentSerialize\Tests;
 use AnourValar\EloquentSerialize\Tests\Models\User;
 use AnourValar\EloquentSerialize\Tests\Models\UserPhone;
 
-class WithCastsTest extends AbstractTest
+class WithCastsTest extends AbstractSuite
 {
-    /**
-     * {@inheritDoc}
-     * @see \AnourValar\EloquentSerialize\Tests\AbstractTest::setUp()
-     */
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        if (! method_exists(User::class, 'mergeCasts')) {
-            $this->markTestSkipped('Old version.');
-        }
-    }
-
     /**
      * @return void
      */

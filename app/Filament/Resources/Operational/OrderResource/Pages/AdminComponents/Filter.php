@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents;
 
+use App\Models\Order;
+use App\Models\Tag;
+use App\Services\traits\Calculator;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\QueryBuilder;
@@ -17,10 +20,13 @@ use Filament\Tables\Grouping\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Tables\Filters\Filter as FilamentFilter;
+use Illuminate\Support\Facades\Log;
 
 
 trait Filter
 {
+    use Calculator;
+
     public static function filterOrderStatus(): SelectFilter
     {
         return SelectFilter::make('order_status')
@@ -177,54 +183,79 @@ trait Filter
     public static function groupByCategory(): Group
     {
         return Group::make('category_id')->label('Category')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->category->name));
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->category->name ?? 'N/A'));
     }
 
     public static function groupByProduct(): Group
     {
         return Group::make('product_id')->label('Product')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->product->name));
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->product->name ?? 'N/A'));
+    }
+
+    public static function groupByGrade(): Group
+    {
+        return Group::make('grade_id')->label('Grade')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->grade->name ?? 'N/A'));
     }
 
     public static function groupByStage(): Group
     {
         return Group::make('purchase_status_id')->label('Stage')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->purchaseStatus->name));
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->purchaseStatus->name ?? 'N/A'));
     }
 
     public static function groupByStatus(): Group
     {
         return Group::make('order_status')->label('Status')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->order_status));
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->order_status ?? 'N/A'));
     }
 
     public static function groupByInvoiceNumber(): Group
     {
-        return Group::make('invoice_number')->label('Project No.')
-            ->collapsible();
+        return Group::make('invoice_number')->label('Project No')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record) => $record->invoice_number ?? 'N/A')
+            ->getKeyFromRecordUsing(fn(Model $record) => $record->invoice_number != null ? $record->invoice_number : $record->proforma_number)
+            ->getDescriptionFromRecordUsing(function (Model $record) {
+                $orders = Order::aggrgateOrderGroupTotals($record);
+                return sprintf(
+                    " 🔶 Tot Quant: %s/%s 🔶 Tot Pay: %s (💵 %s) 🔶 Ship Prt: %s 🔶 Dys Elpsd: %s",
+                    $orders['quantity'],
+                    $orders['totalQuantity'],
+                    $orders['payment'],
+                    $orders['totalPayment'],
+                    $orders['shipmentPart'],
+                    $orders['daysPassed']
+                );
+            });
     }
 
     public static function groupByProformaNumber(): Group
     {
-        return Group::make('proforma_number')->label('Pro forma Number')
+        return Group::make('proforma_invoice_id')
+            ->label('Pro forma Number')
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->proforma_number != 'N/A' ? $record->proforma_number : 'N/A')
+            ->getKeyFromRecordUsing(fn(Model $record): string => $record->proforma_number != 'N/A' ? $record->proforma_invoice_id : $record->proforma_number)
             ->collapsible();
     }
 
     public static function groupByPackaging(): Group
     {
         return Group::make('logistic.packaging_id')->label('Packaging')->collapsible()
+            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->logistic->packaging)->name != null ? $record->logistic->packaging->name : 'N/A')
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->packaging)->name ?? 'N/A');
     }
 
     public static function groupByDeliveryTerm(): Group
     {
         return Group::make('logistic.delivery_term_id')->label('Delivery Term')->collapsible()
+            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->logistic->deliveryTerm)->name != null ? $record->logistic->deliveryTerm->name : 'N/A')
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->deliveryTerm)->name ?? 'N/A');
     }
 
     public static function groupByShippingLine(): Group
     {
         return Group::make('logistic.shipping_line_id')->label('Shipping Carrier')->collapsible()
+            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->logistic->shippingLine)->name != null ? $record->logistic->shippingLine->name : 'N/A')
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->shippingLine)->name ?? 'N/A');
     }
 
@@ -242,8 +273,7 @@ trait Filter
 
     public static function groupByPart(): Group
     {
-        return Group::make('part')->label('Part')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => $record->part == 1 ? '⭐ Main Part' : ($record->part - 1) ?? 'N/A');
+        return Group::make('part')->label('Part')->collapsible();
     }
 
 
@@ -261,16 +291,22 @@ trait Filter
             ->getTitleFromRecordUsing(fn(Model $record): string => self::useSpecificTagValue($record));
     }
 
-    /**
-     * @param Model $record
-     * @return string
-     */
+
     protected static function useSpecificTagValue(Model $record): string
     {
-        $tags = optional($record->tags)->flatMap(function ($tag) {
-            return $tag->extra;
-        });
+        Tag::deleteEmptyOrderTags('Order');
 
-        return $tags->isNotEmpty() ? $tags->unique()->join(', ') : 'No Tag Assigned';
+        $record->load('tags');
+
+        if ($record->tags->isEmpty()) return 'No Tag Assigned';
+
+        $tagValues = $record->tags()
+//            ->filteredForUser(auth()->id())
+            ->get()
+            ->map(function ($tag) {
+                return implode(', ', array_filter($tag->extra));
+            });
+
+        return Tag::formatTags($tagValues);
     }
 }

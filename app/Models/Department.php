@@ -63,5 +63,4 @@ class Department extends Model
             return self::pluck('name', 'id')->toArray();
         });
     }
-
 }

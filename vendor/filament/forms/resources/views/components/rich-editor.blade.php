@@ -15,20 +15,16 @@
             class="fi-fo-rich-editor fi-disabled prose block w-full max-w-none rounded-lg bg-gray-50 px-3 py-3 text-gray-500 shadow-sm ring-1 ring-gray-950/10 dark:prose-invert dark:bg-transparent dark:text-gray-400 dark:ring-white/10 sm:text-sm"
         ></div>
     @else
-        <div
-            {{
-                $attributes
-                    ->merge($getExtraAttributes(), escape: false)
-                    ->class([
-                        'fi-fo-rich-editor max-w-full overflow-x-auto rounded-lg bg-white shadow-sm ring-1 transition duration-75 focus-within:ring-2 dark:bg-white/5',
-                        'ring-gray-950/10 focus-within:ring-primary-600 dark:ring-white/20 dark:focus-within:ring-primary-500' => ! $errors->has($statePath),
-                        'ring-danger-600 focus-within:ring-danger-600 dark:ring-danger-500 dark:focus-within:ring-danger-500' => $errors->has($statePath),
-                    ])
-            }}
+        <x-filament::input.wrapper
+            :valid="! $errors->has($statePath)"
+            :attributes="
+                \Filament\Support\prepare_inherited_attributes($getExtraAttributeBag())
+                    ->class(['fi-fo-rich-editor max-w-full overflow-x-auto'])
+            "
         >
             <div
                 @if (FilamentView::hasSpaMode())
-                    ax-load="visible"
+                    {{-- format-ignore-start --}}ax-load="visible || event (ax-modal-opened)"{{-- format-ignore-end --}}
                 @else
                     ax-load
                 @endif
@@ -57,16 +53,38 @@
                         },
                     )
                 "
-                x-on:trix-change="state = $event.target.value"
+                x-on:trix-change="
+                    let value = $event.target.value
+
+                    $nextTick(() => {
+                        if (! $refs.trix) {
+                            return
+                        }
+
+                        state = value
+                    })
+                "
                 @if ($isLiveDebounced())
-                    x-on:trix-change.debounce.{{ $getLiveDebounce() }}="$wire.call('$refresh')"
+                    x-on:trix-change.debounce.{{ $getLiveDebounce() }}="
+                        $nextTick(() => {
+                            if (! $refs.trix) {
+                                return
+                            }
+
+                            $wire.call('$refresh')
+                        })
+                    "
                 @endif
                 @if (! $hasToolbarButton('attachFiles'))
                     x-on:trix-file-accept="$event.preventDefault()"
                 @endif
                 {{ $getExtraAlpineAttributeBag() }}
             >
-                <input id="trix-value-{{ $id }}" type="hidden" />
+                <input
+                    id="trix-value-{{ $id }}"
+                    x-ref="trixValue"
+                    type="hidden"
+                />
 
                 <trix-toolbar
                     id="trix-toolbar-{{ $id }}"
@@ -86,7 +104,6 @@
                                         data-trix-key="b"
                                         title="{{ __('filament-forms::components.rich_editor.toolbar_buttons.bold') }}"
                                         tabindex="-1"
-                                        title="{{ __('filament-forms::components.rich_editor.toolbar_buttons.bold') }}"
                                     >
                                         <svg
                                             class="-mx-4 h-4 dark:fill-current"
@@ -134,6 +151,7 @@
                                 @if ($hasToolbarButton('underline'))
                                     <x-filament-forms::rich-editor.toolbar.button
                                         data-trix-attribute="underline"
+                                        data-trix-key="u"
                                         title="{{ __('filament-forms::components.rich_editor.toolbar_buttons.underline') }}"
                                         tabindex="-1"
                                     >
@@ -158,6 +176,7 @@
                                 @if ($hasToolbarButton('strike'))
                                     <x-filament-forms::rich-editor.toolbar.button
                                         data-trix-attribute="strike"
+                                        data-trix-key="s"
                                         title="{{ __('filament-forms::components.rich_editor.toolbar_buttons.strike') }}"
                                         tabindex="-1"
                                     >
@@ -444,7 +463,8 @@
                                     name="href"
                                     placeholder="{{ __('filament-forms::components.rich_editor.dialogs.link.placeholder') }}"
                                     required
-                                    type="url"
+                                    type="text"
+                                    inputmode="url"
                                     class="trix-input trix-input--dialog"
                                 />
 
@@ -488,6 +508,6 @@
                     }}
                 ></trix-editor>
             </div>
-        </div>
+        </x-filament::input.wrapper>
     @endif
 </x-dynamic-component>

@@ -57,7 +57,6 @@ class PortOfDeliveryResource extends Resource
                 'xl' => 3,
             ])
             ->paginated([12])
-            ->poll(60)
             ->filters([])
             ->actions([
                 Tables\Actions\EditAction::make(),

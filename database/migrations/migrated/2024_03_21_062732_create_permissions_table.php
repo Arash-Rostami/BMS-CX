@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('permissions', function (Blueprint $table) {
             $table->increments('id')->unsigned()->index();
-            $table->unsignedBigInteger('user_id');
+            $table->unsignedInteger('user_id')->index();
             $table->string('permission');
             $table->string('model');
             $table->timestamps();

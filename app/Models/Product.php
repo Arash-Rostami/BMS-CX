@@ -38,9 +38,10 @@ class Product extends Model
         return $this->hasMany(Order::class);
     }
 
-    public function orderRequests()
+
+    public function grades()
     {
-        return $this->hasMany(OrderRequest::class);
+        return $this->hasMany(Grade::class);
     }
 
 

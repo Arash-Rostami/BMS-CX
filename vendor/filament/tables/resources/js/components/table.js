@@ -1,5 +1,7 @@
 export default function table() {
     return {
+        checkboxClickController: null,
+
         collapsedGroups: [],
 
         isLoading: false,
@@ -8,7 +10,14 @@ export default function table() {
 
         shouldCheckUniqueSelection: true,
 
+        lastCheckedRecord: null,
+
+        livewireId: null,
+
         init: function () {
+            this.livewireId =
+                this.$root.closest('[wire\\:id]').attributes['wire:id'].value
+
             this.$wire.$on('deselectAllTableRecords', () =>
                 this.deselectAllRecords(),
             )
@@ -24,6 +33,19 @@ export default function table() {
 
                 this.shouldCheckUniqueSelection = false
             })
+
+            this.$nextTick(() => this.watchForCheckboxClicks())
+
+            Livewire.hook('element.init', ({ component }) => {
+                if (component.id === this.livewireId) {
+                    this.watchForCheckboxClicks()
+                }
+            })
+        },
+
+        mountAction: function (name, record = null) {
+            this.$wire.set('selectedTableRecords', this.selectedRecords, false)
+            this.$wire.mountTableAction(name, record)
         },
 
         mountBulkAction: function (name) {
@@ -64,9 +86,9 @@ export default function table() {
         getRecordsInGroupOnPage: function (group) {
             const keys = []
 
-            for (let checkbox of this.$root.getElementsByClassName(
+            for (let checkbox of this.$root?.getElementsByClassName(
                 'fi-ta-record-checkbox',
-            )) {
+            ) ?? []) {
                 if (checkbox.dataset.group !== group) {
                     continue
                 }
@@ -80,9 +102,9 @@ export default function table() {
         getRecordsOnPage: function () {
             const keys = []
 
-            for (let checkbox of this.$root.getElementsByClassName(
+            for (let checkbox of this.$root?.getElementsByClassName(
                 'fi-ta-record-checkbox',
-            )) {
+            ) ?? []) {
                 keys.push(checkbox.value)
             }
 
@@ -151,6 +173,66 @@ export default function table() {
 
         resetCollapsedGroups: function () {
             this.collapsedGroups = []
+        },
+
+        watchForCheckboxClicks: function () {
+            if (this.checkboxClickController) {
+                this.checkboxClickController.abort()
+            }
+
+            this.checkboxClickController = new AbortController()
+
+            const { signal } = this.checkboxClickController
+
+            this.$root?.addEventListener(
+                'click',
+                (event) =>
+                    event.target?.matches('.fi-ta-record-checkbox') &&
+                    this.handleCheckboxClick(event, event.target),
+                { signal },
+            )
+        },
+
+        handleCheckboxClick: function (event, checkbox) {
+            if (!this.lastChecked) {
+                this.lastChecked = checkbox
+
+                return
+            }
+
+            if (event.shiftKey) {
+                let checkboxes = Array.from(
+                    this.$root?.getElementsByClassName(
+                        'fi-ta-record-checkbox',
+                    ) ?? [],
+                )
+
+                if (!checkboxes.includes(this.lastChecked)) {
+                    this.lastChecked = checkbox
+
+                    return
+                }
+
+                let start = checkboxes.indexOf(this.lastChecked)
+                let end = checkboxes.indexOf(checkbox)
+
+                let range = [start, end].sort((a, b) => a - b)
+                let values = []
+
+                for (let i = range[0]; i <= range[1]; i++) {
+                    checkboxes[i].checked = checkbox.checked
+
+                    values.push(checkboxes[i].value)
+                }
+
+                if (checkbox.checked) {
+                    this.selectRecords(values)
+                } else {
+                    this.deselectRecords(values)
+                }
+            }
+
+            this.lastChecked = checkbox
         },
     }
 }

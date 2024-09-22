@@ -11,15 +11,67 @@ return [
             ],
 
             'add' => [
+
                 'label' => 'Thêm vào :label',
+
+                'modal' => [
+
+                    'heading' => 'Thêm vào :label',
+
+                    'actions' => [
+
+                        'add' => [
+                            'label' => 'Thêm',
+                        ],
+
+                    ],
+
+                ],
+
             ],
 
             'add_between' => [
+
                 'label' => 'Chèn vào giữa các khối',
+
+                'modal' => [
+
+                    'heading' => 'Thêm vào :label',
+
+                    'actions' => [
+
+                        'add' => [
+                            'label' => 'Thêm',
+                        ],
+
+                    ],
+
+                ],
+
             ],
 
             'delete' => [
                 'label' => 'Xóa',
+            ],
+
+            'edit' => [
+
+                'label' => 'Chỉnh sửa',
+
+                'modal' => [
+
+                    'heading' => 'Chỉnh sửa khối',
+
+                    'actions' => [
+
+                        'save' => [
+                            'label' => 'Lưu thay đổi',
+                        ],
+
+                    ],
+
+                ],
+
             ],
 
             'reorder' => [
@@ -185,6 +237,15 @@ return [
 
             ],
 
+            'svg' => [
+
+                'messages' => [
+                    'confirmation' => 'Việc chỉnh sửa các tập tin SVG không được khuyến nghị vì có thể dẫn đến mất chất lượng khi thay đổi tỷ lệ.\n Bạn có chắc chắn muốn tiếp tục không?',
+                    'disabled' => 'Việc chỉnh sửa các tập tin SVG bị vô hiệu hóa vì có thể dẫn đến mất chất lượng khi thay đổi tỷ lệ..',
+                ],
+
+            ],
+
         ],
 
     ],
@@ -241,12 +302,25 @@ return [
 
     ],
 
+    'radio' => [
+
+        'boolean' => [
+            'true' => 'Có',
+            'false' => 'Không',
+        ],
+
+    ],
+
     'repeater' => [
 
         'actions' => [
 
             'add' => [
                 'label' => 'Thêm vào :label',
+            ],
+
+            'add_between' => [
+                'label' => 'Chèn vào giữa',
             ],
 
             'delete' => [
@@ -395,6 +469,31 @@ return [
 
     'tags_input' => [
         'placeholder' => 'Thêm thẻ mới',
+    ],
+
+    'text_input' => [
+
+        'actions' => [
+
+            'hide_password' => [
+                'label' => 'Ẩn mật khẩu',
+            ],
+
+            'show_password' => [
+                'label' => 'Hiện mật khẩu',
+            ],
+
+        ],
+
+    ],
+
+    'toggle_buttons' => [
+
+        'boolean' => [
+            'true' => 'Có',
+            'false' => 'Không',
+        ],
+
     ],
 
     'wizard' => [

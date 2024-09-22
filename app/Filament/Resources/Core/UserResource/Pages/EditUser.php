@@ -17,4 +17,11 @@ class EditUser extends EditRecord
                 ->icon('heroicon-o-trash'),
         ];
     }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['info'] = array_merge(data_get($this->form->getRawState(), 'info'), data_get($this->getRecord(), 'info'));
+
+        return $data;
+    }
 }

@@ -19,7 +19,6 @@ class Doc extends Model
         'BL_date',
         'extra',
         'user_id',
-        'order_id',
     ];
 
     protected $casts = [
@@ -39,8 +38,8 @@ class Doc extends Model
 
     protected static function booted()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
+        static::creating(function ($doc) {
+            $doc->user_id = auth()->id();
         });
     }
     /**
@@ -49,13 +48,5 @@ class Doc extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Get the order associated with the doc.
-     */
-    public function order()
-    {
-        return $this->belongsTo(Order::class);
     }
 }

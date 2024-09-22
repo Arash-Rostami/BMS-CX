@@ -1,6 +1,6 @@
 ![Eloquent Power Joins](screenshots/eloquent-power-joins.jpg "Eloquent Power Joins")
 
-![Laravel Supported Versions](https://img.shields.io/badge/laravel-8.x/9.x/10.x-green.svg)
+![Laravel Supported Versions](https://img.shields.io/badge/laravel-8.x/9.x/10.x/11.x-green.svg)
 [![run-tests](https://github.com/kirschbaum-development/eloquent-power-joins/actions/workflows/ci.yaml/badge.svg)](https://github.com/kirschbaum-development/eloquent-power-joins/actions/workflows/ci.yaml)
 [![MIT Licensed](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE.md)
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/kirschbaum-development/eloquent-power-joins.svg?style=flat-square)](https://packagist.org/packages/kirschbaum-development/eloquent-power-joins)
@@ -17,7 +17,7 @@ A few things we consider is missing when using joins which are very powerful Elo
 * Ability to query relationship existence using joins instead of where exists;
 * Ability to easily sort results based on columns or aggregations from related tables;
 
-You can read a more detailed explanation on the problems this package solves on [this blog post](https://kirschbaumdevelopment.com/news-articles/adding-some-laravel-magic-to-your-eloquent-joins).
+You can read a more detailed explanation on the problems this package solves on [this blog post](https://kirschbaumdevelopment.com/insights/power-joins).
 
 ## Installation
 
@@ -332,7 +332,7 @@ Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
 ### Security
 
-If you discover any security related issues, please email luis@kirschbaumdevelopment.com or nathan@kirschbaumdevelopment.com instead of using the issue tracker.
+If you discover any security related issues, please email security@kirschbaumdevelopment.com instead of using the issue tracker.
 
 ## Credits
 

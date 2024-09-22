@@ -14,8 +14,8 @@ class ShippingLine extends Model
 
     protected static function booted()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
+        static::creating(function ($shippingLine) {
+            $shippingLine->user_id = auth()->id();
         });
     }
 

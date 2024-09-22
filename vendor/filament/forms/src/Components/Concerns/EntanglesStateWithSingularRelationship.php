@@ -64,7 +64,7 @@ trait EntanglesStateWithSingularRelationship
             if ($translatableContentDriver) {
                 $record = $translatableContentDriver->makeRecord($relatedModel, $data);
             } else {
-                $record = new $relatedModel();
+                $record = new $relatedModel;
                 $record->fill($data);
             }
 
@@ -107,7 +107,7 @@ trait EntanglesStateWithSingularRelationship
             if ($translatableContentDriver) {
                 $record = $translatableContentDriver->makeRecord($relatedModel, $data);
             } else {
-                $record = new $relatedModel();
+                $record = new $relatedModel;
                 $record->fill($data);
             }
 
@@ -129,7 +129,7 @@ trait EntanglesStateWithSingularRelationship
         $record = $this->getCachedExistingRecord();
 
         if (! $record) {
-            $this->getChildComponentContainer()->fill();
+            $this->getChildComponentContainer()->fill(andCallHydrationHooks: false, andFillStateWithNull: false);
 
             return;
         }
@@ -138,7 +138,7 @@ trait EntanglesStateWithSingularRelationship
             $this->getStateFromRelatedRecord($record),
         );
 
-        $this->getChildComponentContainer()->fill($data);
+        $this->getChildComponentContainer()->fill($data, andCallHydrationHooks: false, andFillStateWithNull: false);
     }
 
     /**
@@ -203,7 +203,23 @@ trait EntanglesStateWithSingularRelationship
             return $this->cachedExistingRecord;
         }
 
-        $record = $this->getRelationship()?->getResults();
+        $parentRecord = $this->getRecord();
+
+        if (! $parentRecord) {
+            return null;
+        }
+
+        $relationshipName = $this->getRelationshipName();
+
+        if (blank($relationshipName)) {
+            return null;
+        }
+
+        if ($parentRecord->relationLoaded($relationshipName)) {
+            $record = $parentRecord->getRelationValue($relationshipName);
+        } else {
+            $record = $this->getRelationship()?->getResults();
+        }
 
         if (! $record?->exists) {
             return null;

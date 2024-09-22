@@ -19,6 +19,7 @@ use App\Models\Product;
 use App\Models\PurchaseStatus;
 use App\Models\ShippingLine;
 use App\Models\Supplier;
+use App\Models\Tag;
 use App\Policies\BuyerPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\ContractorPolicy;
@@ -35,6 +36,7 @@ use App\Policies\ProductPolicy;
 use App\Policies\PurchaseStatusPolicy;
 use App\Policies\ShippingLinePolicy;
 use App\Policies\SupplierPolicy;
+use App\Policies\TagPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -59,6 +61,7 @@ class AuthServiceProvider extends ServiceProvider
         PortOfDelivery::class => PortOfDeliveryPolicy::class,
         Product::class => ProductPolicy::class,
         PurchaseStatus::class => PurchaseStatusPolicy::class,
+        Tag::class => TagPolicy::class,
         ShippingLine::class => ShippingLinePolicy::class,
         Supplier::class => SupplierPolicy::class
     ];

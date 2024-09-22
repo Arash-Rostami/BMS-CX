@@ -7,6 +7,7 @@
 
     $getLogoClasses = fn (bool $isDarkMode): string => \Illuminate\Support\Arr::toCssClasses([
         'fi-logo',
+        'flex' => ! $hasDarkModeBrandLogo,
         'flex dark:hidden' => $hasDarkModeBrandLogo && (! $isDarkMode),
         'hidden dark:flex' => $hasDarkModeBrandLogo && $isDarkMode,
     ]);
@@ -27,8 +28,7 @@
         </div>
     @elseif (filled($logo))
         <img
-            alt="{{ $brandName }}"
-            loading="lazy"
+            alt="{{ __('filament-panels::layout.logo.alt', ['name' => $brandName]) }}"
             src="{{ $logo }}"
             {{
                 $attributes

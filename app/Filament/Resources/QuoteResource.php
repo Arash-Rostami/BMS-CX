@@ -33,6 +33,10 @@ class QuoteResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
 
+    protected static ?int $navigationSort = 8;
+
+
+
 
     public static function form(Form $form): Form
     {
@@ -52,10 +56,11 @@ class QuoteResource extends Resource
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
+            ->emptyStateIcon('heroicon-o-bookmark')
+            ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
             ->poll(30)
             ->defaultSort('created_at', 'desc')
-            ->poll(30)
             ->paginated([12, 24, 36, 48, 'all'])
             ->actions([
                 Tables\Actions\ViewAction::make(),

@@ -20,8 +20,8 @@ class Name extends Model
 
     protected static function booted()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
+        static::creating(function ($name) {
+            $name->user_id = auth()->id();
         });
     }
 
@@ -31,11 +31,6 @@ class Name extends Model
             ->orderBy('title')
             ->pluck('title', 'title')
             ->toArray();
-    }
-
-    public function order()
-    {
-        return $this->belongsTo(Order::class);
     }
 
     public function user()

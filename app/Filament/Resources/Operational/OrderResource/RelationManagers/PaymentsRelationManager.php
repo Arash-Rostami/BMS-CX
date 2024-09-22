@@ -19,6 +19,8 @@ class PaymentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'payments';
 
+    protected static ?string $title = 'Payments';
+
     public function form(Form $form): Form
     {
         return $form->schema([]);
@@ -31,8 +33,7 @@ class PaymentsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        $ownRecord = $this->ownerRecord;
-
+        $ownRecord = ($this->ownerRecord);
         $table = self::configureCommonTableSettings($table, $ownRecord);
 
         return (getTableDesign() != 'classic')
@@ -44,18 +45,11 @@ class PaymentsRelationManager extends RelationManager
     {
         return $table
             ->query(function () use ($ownRecord) {
-                $invoice_number = !is_null($ownRecord->order_invoice_number) ? $ownRecord->order_invoice_number : $ownRecord->invoice_number;
-                $order_id = !is_null($ownRecord->order_invoice_number) ? $ownRecord->order->id : $ownRecord->id;
-
-                return
-                    Payment::query()
-                        ->whereHas('paymentRequests', function (Builder $query) use ($invoice_number, $order_id) {
-                            $query->whereNull('part')
-                                ->where('order_invoice_number', $invoice_number)
-                                ->orWhere('part', $order_id);
+                return Payment::query()
+                        ->whereNull('deleted_at')
+                        ->whereHas('paymentRequests', function (Builder $query) use ($ownRecord) {
+                            $query->whereNull('deleted_at')->where('order_id', $ownRecord->id);
                         });
-
-
             })
             ->filters([
                 AdminOrder::filterCreatedAt(),

@@ -8,13 +8,20 @@ use App\Filament\Resources\Operational\OrderResource\Pages\ViewOrder;
 use App\Filament\Resources\Operational\OrderResource\Widgets\StatsOverview;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Resources\OrderResource\RelationManagers;
+use App\Models\Attachment;
 use App\Models\Order;
+use App\Services\AttachmentDeletionService;
 use App\Services\OrderPaymentCalculationService;
 use App\Services\TableObserver;
 use Archilex\ToggleIconColumn\Columns\ToggleIconColumn;
+use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Fieldset;
+use Filament\Forms\Components\Hidden;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Actions\Action as TableAction;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
@@ -28,6 +35,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\ForceDeleteBulkAction;
+use Filament\Tables\Actions\ReplicateAction;
 use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
@@ -53,12 +61,12 @@ class OrderResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
 
+    protected static ?int $navigationSort = 3;
+
+    protected static ?string $recordTitleAttribute = 'reference_number';
+
 
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
-
-    /**
-     * @return ToggleIconColumn|string|null
-     */
 
 
     public static function form(Form $form): Form
@@ -71,10 +79,10 @@ class OrderResource extends Resource
                             ->schema([
                                 Fieldset::make()
                                     ->schema([
-                                        Admin::getOrderRequestNumber(),
+                                        Admin::getProformaInvoice(),
                                         Admin::getPart(),
                                     ])->columns(3),
-                                Admin::getManualInvoiceNumber(),
+                                Admin::getManualProjectNumber(),
                                 Admin::getCategory(),
                                 Admin::getProduct(),
                                 Fieldset::make()
@@ -105,7 +113,6 @@ class OrderResource extends Resource
                             ->collapsible(),
                     ])->columnSpan(2),
 
-
                 Group::make()
                     ->schema([
                         /*Order Detailed*/
@@ -129,7 +136,6 @@ class OrderResource extends Resource
                                                     ->schema([
                                                         Admin::getPercentage(),
                                                         Admin::getCurrency(),
-                                                        Admin::getLastOrder(),
                                                     ])->columns(3),
                                                 Forms\Components\Fieldset::make(new HtmlString('<span class="text-sm grayscale">💰 Price (unit)</span>'))
                                                     ->schema([
@@ -147,6 +153,21 @@ class OrderResource extends Resource
                                     ])->columnSpan(2),
                                 Group::make()
                                     ->schema([
+                                        Forms\Components\Fieldset::make()
+                                            ->label(new HtmlString('⚙️ Pre-payment Options '))
+                                            ->schema([
+                                                Admin::getManualComputation(),
+                                                Admin::getLastOrder(),
+                                                Admin::getAllOrders(),
+                                                Fieldset::make('🧮 Manual Computation')
+                                                    ->schema([
+                                                        Admin::getManualInitialPayment(),
+                                                        Admin::getManualProvisionalPayment(),
+                                                        Admin::getManualFinalPayment(),
+                                                    ])
+                                                    ->columns(3)
+                                                    ->visible(fn(Get $get) => $get('extra.manualComputation')),
+                                            ])->columns(3),
                                         Forms\Components\Fieldset::make()
                                             ->label(new HtmlString('⚠ Payment Stub<span class="text-gray-400 text-xs"> - auto computed by BMS</span> '))
                                             ->schema([
@@ -207,7 +228,7 @@ class OrderResource extends Resource
                                     ->schema([
                                         Admin::getBookingNumber(),
                                         Admin::getFreeTime(),
-                                        Admin::getOcceanFreight(),
+                                        Admin::getOceanFreight(),
                                         Admin::getGrossWeight(),
                                         Admin::getNetWeight(),
                                     ])->columns(5),
@@ -259,6 +280,19 @@ class OrderResource extends Resource
                     ->collapsed()
                     ->collapsible(),
 
+                /* Auto-loaded Attachments Section */
+                Group::make()
+                    ->schema([
+                        Admin::getAttachmentToggle(),
+                        Section::make()
+                            ->schema([
+                                Admin::getAllProformaInvoices(),
+                                Admin::getProformaInvoicesAttachments(),
+                            ])
+                            ->columns(4)
+                            ->visible(fn($get) => $get('use_existing_attachments')),
+                    ])->columnSpanFull(),
+
 
                 /* Attachments Section */
                 Repeater::make('attachments')
@@ -267,6 +301,7 @@ class OrderResource extends Resource
                         // General attachment fields
                         Forms\Components\Section::make()
                             ->schema([
+                                Hidden::make('id'),
                                 Admin::getFileUpload(),
                                 Admin::getAttachmentTitle(),
                             ])->columns(2),
@@ -276,6 +311,26 @@ class OrderResource extends Resource
                     ->addActionLabel('➕ Add Attachment')
                     ->columnSpanFull()
                     ->collapsible()
+                    ->extraItemActions([
+                        Action::make('deleteAttachment')
+                            ->label('deleteMe')
+                            ->visible(fn($operation) => $operation == 'edit')
+                            ->icon('heroicon-o-trash')
+                            ->color('danger')
+                            ->modalAlignment(Alignment::Center)
+                            ->action(fn(array $arguments, Repeater $component) => AttachmentDeletionService::removeAttachment($component, $arguments['item']))
+                            ->modalContent(function (Action $action, array $arguments, Repeater $component, $operation, ?Model $record) {
+                                if (str_contains($arguments['item'], 'record')) {
+                                    return AttachmentDeletionService::validateAttachmentExists($component, $arguments['item'], $operation, $action, $record);
+                                }
+                                return new HtmlString("<span>Of course, it is an empty attachment.</span>");
+                            })
+                            ->modalSubmitActionLabel('Confirm')
+                            ->modalWidth(MaxWidth::Medium)
+                            ->modalIcon('heroicon-s-exclamation-triangle')
+                    ])
+                    ->deletable(false)
+                    ->visible(fn($get) => !$get('use_existing_attachments'))
                     ->collapsed(),
 
                 /* Tag Section */
@@ -288,12 +343,16 @@ class OrderResource extends Resource
                     ->columns(1)
                     ->itemLabel('🏷️')
                     ->addActionLabel('Add Tag(s)')
-                    ->minItems(0)
-                    ->maxItems(1)
+                    ->addable(fn(Repeater $component, Get $get) => !(count($get('tags')) == 1))
                     ->columnSpanFull()
                     ->collapsible()
                     ->collapsed(),
             ])->columns(5);
+    }
+
+    public static function refreshComponent()
+    {
+        return self::refreshComponent();
     }
 
     /**
@@ -328,9 +387,10 @@ class OrderResource extends Resource
     public static function getRelations(): array
     {
         return [
-            Operational\OrderResource\RelationManagers\OrderRequestRelationManager::class,
+            Operational\OrderResource\RelationManagers\ProformaInvoiceRelationManagers::class,
+            Operational\OrderResource\RelationManagers\MainPaymentRequestsRelationManager::class,
             Operational\OrderResource\RelationManagers\PaymentRequestsRelationManager::class,
-            Operational\OrderResource\RelationManagers\PaymentsRelationManager::class,
+            Operational\OrderResource\RelationManagers\PaymentsRelationManager::class
         ];
     }
 
@@ -361,9 +421,10 @@ class OrderResource extends Resource
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
-
-            ->recordClasses(fn(Model $record) => ($record->part == 1) ? 'major-row' : 'collapsed')
             ->defaultGroup('invoice_number')
+            ->emptyStateIcon('heroicon-o-bookmark')
+            ->emptyStateDescription('Once you create your first record, it will appear here.')
+            ->searchDebounce('1000ms')
             ->paginated([10, 15, 20])
             ->groupingSettingsInDropdownOnDesktop()
             ->filters([
@@ -375,9 +436,38 @@ class OrderResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                ReplicateAction::make()
+                    ->color('info')
+                    ->modalWidth(MaxWidth::Medium)
+                    ->modalIcon('heroicon-o-clipboard-document-list')
+                    ->record(fn(Model $record) => $record)
+                    ->visible(fn ($record) => Admin::isPaymentCalculated($record))
+                    ->beforeReplicaSaved(function (Model $replica) {
+                        Admin::increasePart($replica);
+                        Admin::replicateRelatedModels($replica);
+                    })
+                    ->after(fn(Model $replica) => Admin::syncOrder($replica))
+                    ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.orders.edit', ['record' => $replica->id,])),
                 Tables\Actions\DeleteAction::make()
                     ->successNotification(fn(Model $record) => Admin::send($record)),
                 Tables\Actions\RestoreAction::make(),
+                Tables\Actions\Action::make('pdf')
+                    ->label('PDF')
+                    ->color('success')
+                    ->icon('heroicon-c-inbox-arrow-down')
+                    ->action(function (Model $record) {
+                        return response()->streamDownload(function () use ($record) {
+                            echo Pdf::loadHtml(view('filament.pdfs.order', ['record' => $record])
+                                ->render())
+                                ->stream();
+                        }, 'BMS-' . $record->reference_number . '.pdf');
+                    }),
+                Tables\Actions\Action::make('createPaymentRequest')
+                    ->label('Smart Payment')
+                    ->url(fn($record) => route('filament.admin.resources.payment-requests.create', ['id' => $record->id, 'module' => 'order']))
+                    ->icon('heroicon-o-credit-card')
+                    ->color('warning')
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -388,6 +478,7 @@ class OrderResource extends Resource
                         }),
                     RestoreBulkAction::make(),
                     ExportBulkAction::make(),
+                    PrintBulkAction::make(),
                 ])
             ])
             ->defaultSort('part', 'asc')
@@ -402,6 +493,7 @@ class OrderResource extends Resource
                 Admin::groupByPackaging(),
                 Admin::groupByPart(),
                 Admin::groupByProduct(),
+                Admin::groupByGrade(),
                 Admin::groupByProformaNumber(),
                 Admin::groupByShippingLine(),
                 Admin::groupByStage(),
@@ -420,7 +512,7 @@ class OrderResource extends Resource
                         Stack::make([
                             Split::make([
                                 Admin::showReferenceNumber(),
-                                Admin::showInvoiceNumber(),
+                                Admin::showProjectNumber(),
                                 Admin::showOrderPart(),
                                 Admin::showSupplier(),
                                 Admin::showBuyer(),
@@ -428,7 +520,7 @@ class OrderResource extends Resource
                             Split::make([
                                 Admin::showProformaNumber(),
                                 Admin::showProformaDate(),
-                                Admin::showPercentage(),
+                                Admin::showAllPayments(),
                             ]),
                             Split::make([
                                 Admin::showProduct(),
@@ -464,7 +556,7 @@ class OrderResource extends Resource
         return $table
             ->columns([
                 Admin::showReferenceNumber(),
-                Admin::showInvoiceNumber(),
+                Admin::showProjectNumber(),
                 Admin::showSupplier(),
                 Admin::showProformaNumber(),
                 Admin::showProformaDate(),
@@ -472,7 +564,7 @@ class OrderResource extends Resource
                 Admin::showGrade(),
                 Admin::showOrderPart(),
                 Admin::showQuantities(),
-                Admin::showPrices(),
+                Admin::showAllPayments(),
                 Admin::showPortOfDelivery(),
                 Admin::showBookingNumber(),
                 Admin::showBLNumber(),
@@ -483,7 +575,6 @@ class OrderResource extends Resource
                 Admin::showPurchaseStatus(),
                 Admin::showCategory(),
                 Admin::showBuyer(),
-                Admin::showPercentage(),
                 Admin::showDeliveryTerm(),
                 Admin::showPackaging(),
                 Admin::showShippingLine(),
@@ -505,6 +596,7 @@ class OrderResource extends Resource
                 Admin::showOrderNumber(),
                 Admin::showChangeOfDestination(),
                 ...$showAllDocs,
+                Admin::showCreator(),
                 Admin::showOrderStatus(),
                 TableObserver::showMissingDataWithRel(-12),
             ]);
@@ -521,5 +613,15 @@ class OrderResource extends Resource
     public static function getTableQuery()
     {
         return parent::getTableQuery()->orderBy('part', 'asc')->orderBy('created_at', 'desc');
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return OrderResource::getUrl('edit', ['record' => $record]);
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return '🛒 ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
     }
 }

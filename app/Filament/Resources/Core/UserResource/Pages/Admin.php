@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Core\UserResource\Pages;
 
+use App\Models\Department;
 use App\Models\User;
 use Closure;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Vite;
@@ -25,7 +28,7 @@ class Admin
     public static function getFirstName(): TextInput
     {
         return TextInput::make('first_name')
-            ->label(new HtmlString('<span class="grayscale">🖊 </span>Forename'))
+            ->label(fn()=>new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Forename</span>'))
             ->autocapitalize('words')
             ->placeholder('First Name in English only')
             ->minLength(2)
@@ -40,7 +43,7 @@ class Admin
     public static function getMiddleName(): TextInput
     {
         return TextInput::make('middle_name')
-            ->label(new HtmlString('<span class="grayscale">🖊 </span>Middle Name'))
+            ->label(fn()=>new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Middle Name</span>'))
             ->autocapitalize('words')
             ->placeholder('Middle Name in English only')
             ->minLength(2)
@@ -53,7 +56,7 @@ class Admin
     public static function getLastName(): TextInput
     {
         return TextInput::make('last_name')
-            ->label(new HtmlString('<span class="grayscale">🖊 </span>Surname'))
+            ->label(fn()=>new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Surname</span>'))
             ->autocapitalize('words')
             ->placeholder('Last Name in English only')
             ->minLength(2)
@@ -67,7 +70,7 @@ class Admin
     public static function getPhoneNum(): PhoneInput
     {
         return PhoneInput::make('phone')
-            ->label(new HtmlString('<span class="grayscale">📞 </span>Phone'))
+            ->label(fn()=>new HtmlString('<span class="grayscale">📞 </span><span class="text-primary-500 font-normal">Phone No.</span>'))
             ->ipLookup(function () {
                 return rescue(fn() => Http::get('http://ip-api.com/json/')->json('country'), app()->getLocale(), report: false);
             })
@@ -82,7 +85,7 @@ class Admin
     public static function getPassword(): Password
     {
         return Password::make('password')
-            ->label(new HtmlString('<span class="grayscale">🗝️ </span>Password'))
+            ->label(fn()=>new HtmlString('<span class="grayscale">🗝️</span><span class="text-primary-500 font-normal">Password</span>'))
             ->placeholder('Write your Password')
             ->visibleOn('create')
             ->password()
@@ -97,7 +100,7 @@ class Admin
     public static function getPassWordConfirmation(): Password
     {
         return Password::make('password_confirmation')
-            ->label(new HtmlString('<span class="grayscale">🗝️🗝 </span>Password Confirmation'))
+            ->label(fn()=>new HtmlString('<span class="grayscale">🗝️🗝  </span><span class="text-primary-500 font-normal">Password Confirmation</span>'))
             ->visibleOn('create')
             ->password()
             ->minLength(8)
@@ -113,9 +116,21 @@ class Admin
     public static function getCompany(): TextInput
     {
         return TextInput::make('company')
-            ->label(new HtmlString('<span class="grayscale">🏛️ </span>Company'))
+            ->label(fn()=>new HtmlString('<span class="grayscale">🏛 </span><span class="text-primary-500 font-normal">Company</span>'))
             ->placeholder('Write your Company Name')
             ->visibleOn('create')
+            ->required();
+    }
+
+    /**
+     * @return Select
+     */
+    public static function getDepartment(): Select
+    {
+        return Select::make('info.department')
+            ->label(fn()=>new HtmlString('<span class="grayscale"> 📚</span><span class="text-primary-500 font-normal">Department</span>'))
+            ->relationship('department', 'name')
+            ->default('0')
             ->required();
     }
 
@@ -125,7 +140,7 @@ class Admin
     public static function getEmail(): TextInput
     {
         return TextInput::make('email')
-            ->label(new HtmlString('<span class="grayscale">📧 </span>Email'))
+            ->label(fn()=>new HtmlString('<span class="grayscale">📧 </span><span class="text-primary-500 font-normal">Email</span>'))
             ->email()
             ->rules([self::validateEmail()])
             ->placeholder('Write your Company Email (it must end with @persoreco.com, @solsuntrading.com, or @persolco.com)')
@@ -138,6 +153,7 @@ class Admin
     public static function getStatus(): ButtonGroup
     {
         return ButtonGroup::make('status')
+            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Status</span>'))
             ->options([
                 'active' => 'Active ✅',
                 'inactive' => 'Inactive ❌',
@@ -148,12 +164,28 @@ class Admin
             ->required();
     }
 
+
+    public static function getPosition(): ButtonGroup
+    {
+        return ButtonGroup::make('info.position')
+            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Positions</span>'))
+            ->options([
+                'jnr' => 'Junior 🟡',
+                'mdr' => 'Medior 🟠',
+                'snr' => 'Senior 🟢',
+            ])
+            ->default('jnr')
+            ->onColor('primary')
+            ->offColor('gray');
+    }
+
     /**
      * @return ButtonGroup
      */
     public static function getRole(): ButtonGroup
     {
         return ButtonGroup::make('role')
+            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Role</span>'))
             ->options([
                 'agent' => 'Agent 🎧',
                 'accountant' => 'Accountant 💰',
@@ -245,6 +277,15 @@ class Admin
             ->searchable()
             ->sortable()
             ->toggleable()
+            ->state(function (?Model $record) {
+                if (!$record->company && !isset($record->info['department'])) {
+                    return 'N/A';
+                }
+
+                $departmentName = isset($record->info['department']) ? Department::find($record->info['department'])->name : null;
+
+                return $record->company . ($departmentName ? ' (' . $departmentName . ')' : '');
+            })
             ->color('secondary')
             ->alignLeft()
             ->icon('heroicon-o-building-office-2');
@@ -301,19 +342,41 @@ class Admin
             ->searchable()
             ->sortable()
             ->toggleable()
-            ->icon(fn(string $state): string => match ($state) {
-                'agent' => 'heroicon-o-pencil',
-                'accountant' => 'heroicon-o-calculator',
-                'manager' => 'heroicon-o-briefcase',
-                'partner' => 'heroicon-o-book-open',
-                'admin' => 'heroicon-o-shield-check',
+            ->icon(function (string $state): string {
+                $iconMap = [
+                    'agent' => 'heroicon-o-pencil',
+                    'accountant' => 'heroicon-o-calculator',
+                    'manager' => 'heroicon-o-briefcase',
+                    'partner' => 'heroicon-o-book-open',
+                    'admin' => 'heroicon-o-shield-check',
+                ];
+                foreach ($iconMap as $key => $icon) {
+                    if (str_contains($state, $key)) {
+                        return $icon;
+                    }
+                }
+                return 'heroicon-o-circle';
             })
-            ->color(fn(string $state): string => match ($state) {
-                'agent' => 'primary',
-                'accountant' => 'warning',
-                'manager' => 'success',
-                'partner' => 'gray',
-                'admin' => 'danger',
+            ->color(function (string $state): string {
+                $colorMap = [
+                    'agent' => 'primary',
+                    'accountant' => 'warning',
+                    'manager' => 'success',
+                    'partner' => 'gray',
+                    'admin' => 'danger',
+                ];
+                foreach ($colorMap as $key => $color) {
+                    if (str_contains($state, $key)) {
+                        return $color;
+                    }
+                }
+                return 'secondary';
+            })
+            ->state(function (?Model $record) {
+                $role = $record->role;
+                $position = $record->info['position'] ?? null;
+
+                return ($role && $position) ? "$role ($position)" : $role ?? 'N/A';
             })
             ->alignLeft();
     }

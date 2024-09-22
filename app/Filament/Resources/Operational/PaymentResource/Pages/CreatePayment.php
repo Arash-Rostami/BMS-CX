@@ -21,64 +21,63 @@ class CreatePayment extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        $paymentRequest = PaymentRequest::find($data['payment_request_id']);
 
-        $previousPayments = $paymentRequest->payments()->sum('amount');
+        $paymentRequests = PaymentRequest::findMany(data_get($data, 'paymentRequests.id'));
 
-        $processedData = $this->processPayments($data, $paymentRequest, $previousPayments);
+        list($totalAmountPaid, $totalRequestedAmount, $notes, $previousPayments) = $this->processPaymentRequest($paymentRequests, $data);
 
-        return static::getModel()::create($processedData);
+        $finalData = [
+            'payment_request_id' => implode(',', data_get($data, 'paymentRequests.id')),
+            'amount' => $totalAmountPaid,
+            'notes' => $notes,
+            'extra' => [
+                'remainderSum' => $remainder = $totalRequestedAmount - ($totalAmountPaid + $previousPayments),
+                'balanceStatus' => $remainder > 0 ? 'debit' : ($remainder < 0 ? 'credit' : 'settled'),
+            ]
+        ];
+
+        return static::getModel()::create(array_merge($data, $finalData));
     }
 
-    protected function afterCreate(): void
+
+    protected function processPaymentRequest($paymentRequests, array $data): array
     {
-        foreach (User::getUsersByRole('admin') as $recipient) {
-            $recipient->notify(new FilamentNotification([
-                'record' => $this->record->paymentRequests->order_invoice_number ??  $this->record->paymentRequests->reason->reason,
-                'type' => 'new',
-                'module' => 'payment',
-                'url' => route('filament.admin.resources.payments.index'),
-            ]));
+        $previousPayments = 0;
+        $totalAmountPaid = 0;
+        $totalRequestedAmount = 0;
+        $notes = '';
+
+        foreach ($paymentRequests as $paymentRequest) {
+            $previousPayments = $paymentRequest->payments->sum('amount');
+            $totalRequestedAmount += $paymentRequest->requested_amount;
+
+            $processedData = $this->processPayments($data, $paymentRequest, $previousPayments);
+            $totalAmountPaid += $processedData['amount'];
+            $notes = $processedData['notes'];
         }
+        return array($totalAmountPaid, $totalRequestedAmount, $notes, $previousPayments);
     }
 
 
     protected function processPayments(array $data, $paymentRequest, $previousPayments): array
     {
         $payableAmount = $data['amount'];
-
         $totalPaid = $previousPayments + $payableAmount;
         $remainder = $paymentRequest->requested_amount - $totalPaid;
 
-        // Determine the amount to be paid for the current request
-//        $amountToPay = min($paymentRequest->requested_amount - $previousPayments, $payableAmount);
-
-        // Update the status if the full amount is covered
         $paymentRequest->update([
             'status' => $totalPaid >= $paymentRequest->requested_amount ? 'completed' : 'processing',
         ]);
 
-        //Create record of payment in Balance Model (balances table)
         $this->createBalance($paymentRequest, $data);
 
-        // Prepare the data for the new record
         return [
-                'payment_request_id' => $paymentRequest->id,
-                'amount' => $payableAmount,
-                'extra' => [
-                    'balanceStatus' => $remainder > 0 ? 'debit' : ($remainder < 0 ? 'credit' : 'settled'),
-                    'remainderSum' => $remainder,
-                    'note' => $data['extra']['note']
-                ]
-            ] + $data;
+            'amount' => $payableAmount,
+            'notes' => $data['notes'],
+            'remainder' => $remainder,
+        ];
     }
 
-
-    /**
-     * @param $paymentRequest
-     * @param $data
-     * @return void
-     */
     private function createBalance($paymentRequest, $data): void
     {
 
@@ -86,7 +85,6 @@ class CreatePayment extends CreateRecord
             'payees' => $paymentRequest->payee_id,
             'suppliers' => $paymentRequest->supplier_id,
             'contractors' => $paymentRequest->contractor_id,
-            'departments' => $paymentRequest->department_id,
         ];
 
 
@@ -96,19 +94,49 @@ class CreatePayment extends CreateRecord
             }
 
             $hasSupplierOrContractor = $paymentRequest->supplier_id || $paymentRequest->contractor_id;
-            $isDepartmentWithoutSupplierOrContractor = $category === 'departments' && !$hasSupplierOrContractor;
             $isPayeeWithoutSupplierOrContractor = $category === 'payees' && !$hasSupplierOrContractor;
 
-            $shouldCreateBalance = $hasSupplierOrContractor || $isDepartmentWithoutSupplierOrContractor || $isPayeeWithoutSupplierOrContractor;
+            $shouldCreateBalance = $hasSupplierOrContractor || $isPayeeWithoutSupplierOrContractor;
 
             if ($shouldCreateBalance) {
                 Balance::create([
-                    'amount' => $data['amount'],
+                    'payment' => $data['amount'],
                     'category' => $category,
                     'category_id' => $categoryId,
+                    'department_id' => $paymentRequest->department_id,
                     'extra' => ['currency' => $data['currency']]
                 ]);
             }
         }
+    }
+
+    protected function afterCreate(): void
+    {
+
+        $records = $this->record->paymentRequests->map(fn($each) => $each->proforma_invoice_number ?? $each->reason->reason)->join(', ');
+
+        $this->persistReferenceNumber();
+
+        foreach (User::getUsersByRole('admin') as $recipient) {
+            $recipient->notify(new FilamentNotification([
+                'record' => $records,
+                'type' => 'new',
+                'module' => 'payment',
+                'url' => route('filament.admin.resources.payments.index'),
+            ]));
+        }
+    }
+
+    protected function persistReferenceNumber(): void
+    {
+        $yearSuffix = date('y');
+
+        $orderIndex = $this->record->id;
+
+        $referenceNumber = sprintf('P-%s%04d', $yearSuffix, $orderIndex);
+
+        $this->record->reference_number = $referenceNumber;
+
+        $this->record->save();
     }
 }

@@ -29,6 +29,10 @@ class QuoteRequestResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
 
+    protected static ?int $navigationSort = 7;
+
+
+
 
     public static function form(Form $form): Form
     {
@@ -73,8 +77,9 @@ class QuoteRequestResource extends Resource
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
+            ->emptyStateIcon('heroicon-o-bookmark')
+            ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
-            ->poll(60)
             ->defaultSort('created_at', 'desc')
             ->actions([
                 Tables\Actions\ViewAction::make(),

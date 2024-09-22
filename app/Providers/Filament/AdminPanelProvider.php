@@ -51,6 +51,8 @@ class AdminPanelProvider extends PanelProvider
                 'info' => Color::Blue,
                 'success' => Color::Emerald,
                 'warning' => Color::Orange,
+                'amber' => Color::Amber,
+                'indigo' => Color::Indigo,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -102,12 +104,15 @@ class AdminPanelProvider extends PanelProvider
 
             ])
             ->sidebarCollapsibleOnDesktop()
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
+            ->globalSearchDebounce('750ms')
             ->breadcrumbs()
             ->userMenuItems([
                 MenuItem::make()
                     ->label('Table Design')
                     ->url('/table-design-toggle')
                     ->icon('heroicon-s-table-cells'),
+
 //                MenuItem::make()
 //                    ->label('Chat')
 //                    ->url(route('test'))

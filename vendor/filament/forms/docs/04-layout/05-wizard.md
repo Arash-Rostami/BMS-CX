@@ -84,6 +84,22 @@ Wizard\Step::make('Order')
 
 <AutoScreenshot name="forms/layout/wizard/icons" alt="Wizard with step icons" version="3.x" />
 
+## Customizing the icon for completed steps
+
+You may customize the [icon](#setting-up-step-icons) of a completed step using the `completedIcon()` method:
+
+```php
+use Filament\Forms\Components\Wizard;
+
+Wizard\Step::make('Order')
+    ->completedIcon('heroicon-m-hand-thumb-up')
+    ->schema([
+        // ...
+    ]),
+```
+
+<AutoScreenshot name="forms/layout/wizard/completed-icons" alt="Wizard with completed step icons" version="3.x" />
+
 ## Adding descriptions to steps
 
 You may add a short description after the title of each step using the `description()` method:
@@ -159,6 +175,27 @@ Wizard\Step::make('Order')
     })
     ->beforeValidation(function () {
         // ...
+    })
+    ->schema([
+        // ...
+    ]),
+```
+
+### Preventing the next step from being loaded
+
+Inside `afterValidation()` or `beforeValidation()`, you may throw `Filament\Support\Exceptions\Halt`, which will prevent the wizard from loading the next step:
+
+```php
+use Filament\Forms\Components\Wizard;
+use Filament\Support\Exceptions\Halt;
+
+Wizard\Step::make('Order')
+    ->afterValidation(function () {
+        // ...
+
+        if (true) {
+            throw new Halt();
+        }
     })
     ->schema([
         // ...

@@ -9,10 +9,9 @@ use App\Models\Supplier;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
-use Filament\Tables\Columns\Summarizers\Average;
 use Filament\Tables\Columns\Summarizers\Count;
-use Filament\Tables\Columns\Summarizers\Range;
 use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,10 +20,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Admin
 {
-
-    /**
-     * @return Select
-     */
     public static function getRecipient(): Select
     {
         return Select::make('category_id')
@@ -36,7 +31,6 @@ class Admin
                     'suppliers' => Supplier::all()->pluck('name', 'id'),
                     'contractors' => Contractor::all()->pluck('name', 'id'),
                     'payees' => Payee::all()->pluck('name', 'id'),
-                    'departments' => Department::all()->pluck('name', 'id'),
                 ];
 
                 return $category ? $list[$category] : [];
@@ -55,26 +49,44 @@ class Admin
                 'suppliers' => 'Suppliers',
                 'contractors' => 'Contractors',
                 'payees' => 'Payees',
-                'departments' => 'Departments',
             ]);
     }
 
     /**
-     * @return TextInput
+     * @return Select
      */
-    public static function getAmount(): TextInput
+    public static function getDepartment(): Select
     {
-        return TextInput::make('amount')
+        return Select::make('department_id')
+            ->label('Department')
             ->required()
-            ->numeric();
+            ->options(function () {
+                $departments = Department::getAllDepartmentNames();
+                unset($departments[0]);
+                return $departments;
+            })
+            ->live();
     }
 
     /**
      * @return TextInput
      */
-    public static function getInitial(): TextInput
+    public static function getPayment(): TextInput
     {
-        return TextInput::make('initial')
+        return TextInput::make('payment')
+            ->required()
+            ->default(0)
+            ->numeric();
+    }
+
+
+    /**
+     * @return TextInput
+     */
+    public static function getBase(): TextInput
+    {
+        return TextInput::make('base')
+            ->default(0)
             ->numeric();
     }
 
@@ -82,19 +94,9 @@ class Admin
     /**
      * @return Select|string|null
      */
-    public static function getInitialCurrency(): Select
+    public static function getCurrency(): Select
     {
-        return Select::make('extra.initialCurrency')
-            ->options(showCurrencies())
-            ->label('Initial Currency');
-    }
-
-    /**
-     * @return Select|string|null
-     */
-    public static function getSumCurrency(): Select
-    {
-        return Select::make('extra.currency')
+        return Select::make('currency')
             ->options(showCurrencies())
             ->required()
             ->label('Currency');
@@ -103,69 +105,92 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showInitialCurrency(): TextColumn
+    public static function showCurrency(): TextColumn
     {
-        return TextColumn::make('extra.initialCurrency')
-            ->label('Initial Currency')
+        return TextColumn::make('currency')
             ->grow(false)
             ->color('secondary')
-            ->searchable(['extra->initialCurrency'])
-            ->formatStateUsing(fn($state) => !is_null($state) ? (showCurrencyWithoutHTMLTags($state)) : 'N/A');
+            ->searchable()
+            ->summarize(Count::make()->label('Count'));
     }
 
     /**
      * @return TextColumn
      */
-    public static function showInitial(): TextColumn
+    public static function showBase(): TextColumn
     {
-        return TextColumn::make('initial')
+        return TextColumn::make('base')
             ->default("N/A")
             ->badge()
-            ->tooltip('Initial')
+            ->formatStateUsing(fn($state) => $state ? number_format($state) : 'N/A')
+            ->grow(false)
+            ->tooltip('Base Balance')
             ->color('warning')
             ->numeric()
-            ->sortable();
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showSumCurrency(): TextColumn
-    {
-        return TextColumn::make('extra.currency')
-            ->label('Sum Currency')
-            ->grow(false)
-            ->searchable(['extra->currency'])
-            ->color('secondary')
-            ->formatStateUsing(fn($state) => !is_null($state) ? (showCurrencyWithoutHTMLTags($state)) : '');
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showAmount(): TextColumn
-    {
-        return TextColumn::make('amount')
-            ->numeric()
             ->sortable()
-            ->badge()
-            ->tooltip('Amount')
-            ->summarize(self::totalAndCount());
+            ->summarize(Sum::make()->label('Base Sum'));
     }
 
+    /**
+     * @return TextColumn
+     */
+    public static function showPayment(): TextColumn
+    {
+        return TextColumn::make('payment')
+            ->label('Payment')
+            ->formatStateUsing(fn($state) => $state ? number_format($state) : 'N/A')
+            ->grow(false)
+            ->tooltip('Payment Sum')
+            ->searchable()
+            ->sortable()
+            ->color('secondary')
+            ->summarize(Sum::make()->label('Payment Sum'));
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showDepartment(): TextColumn
+    {
+        return TextColumn::make('department.name')
+            ->label('Department')
+            ->grow(false)
+            ->searchable()
+            ->color('secondary');
+    }
 
     /**
      * @return TextColumn
      */
     public static function showTotal(): TextColumn
     {
-        return TextColumn::make('id')
+        return TextColumn::make('total')
+            ->numeric()
+            ->sortable()
+            ->badge()
+            ->grow()
+            ->tooltip('Total')
+            ->color(fn(Model $record) => self::determineColorBasedOnCurrency($record))
+            ->state(fn(Model $record) => self::computeTotalBasedOnCurrency($record))
+            ->summarize(
+                Summarizer::make()
+                    ->label('Total')
+                    ->using(fn(DbBuilder $query) => $query->selectRaw('COALESCE(SUM(COALESCE(base, 0) + COALESCE(payment, 0)), 0) as total')
+                        ->value('total'))
+            );
+    }
+
+
+    /**
+     * @return TextColumn
+     */
+    public static function showDate(): TextColumn
+    {
+        return TextColumn::make('created_at')
             ->label('Total')
             ->tooltip('Total')
             ->numeric()
             ->sortable()
-            ->color(fn(Model $record) => self::determineColorBasedOnCurrency($record))
-            ->formatStateUsing(fn(Model $record) => self::computeTotalBasedOnCurrency($record))
             ->badge();
     }
 
@@ -192,7 +217,7 @@ class Admin
             ->label('Made by')
             ->badge()
             ->color('secondary')
-            ->sortable();
+            ->searchable(['first_name', 'last_name']);
     }
 
     /**
@@ -234,11 +259,10 @@ class Admin
      */
     public static function groupBySumCurrency(): Grouping
     {
-        return Grouping::make('extra')
+        return Grouping::make('currency')
             ->collapsible()
             ->label('Sum Currency')
-            ->getKeyFromRecordUsing(fn(Model $record) => $record->extra['currency'])
-            ->getTitleFromRecordUsing(fn(Model $record) => $record->extra['currency'] ?? 'No currency');
+            ->getTitleFromRecordUsing(fn(Model $record) => $record->currency ?? 'No currency');
     }
 
     /**
@@ -270,7 +294,7 @@ class Admin
     public static function groupByDepartment(): Grouping
     {
         return Grouping::make('department.name')
-            ->orderQueryUsing(fn(Builder $query, string $direction) => $query->where('category', 'departments')->orderBy('category_id', $direction))
+//            ->orderQueryUsing(fn(Builder $query, string $direction) => $query->where('category', 'departments')->orderBy('category_id', $direction))
             ->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => $record->department->name ?? 'No department');
     }
@@ -311,7 +335,6 @@ class Admin
             'suppliers' => Supplier::find($state)->name ?? '',
             'contractors' => Contractor::find($state)->name ?? '',
             'payees' => Payee::find($state)->name ?? '',
-            'departments' => Department::getByCode($state) ?? '',
         };
 
         return $category ? ucwords($category) . ': ' . $data : '';
@@ -353,36 +376,12 @@ class Admin
 
     private static function determineCurrencyComparisonResult($record)
     {
-        $initialCurrency = $record->extra['initialCurrency'] ?? null;
-        $currency = $record->extra['currency'] ?? null;
+        $currency = $record->currency ?? null;
 
-        if (!$initialCurrency || !$currency) {
-            return ['total' => 'No initial', 'color' => 'secondary'];
+        if (!$currency) {
+            return ['total' => 'No currency!', 'color' => 'danger'];
         }
 
-        if ($initialCurrency === $currency) {
-            return ['total' => $record->initial + $record->amount, 'color' => 'success'];
-        }
-
-        return ['total' => 'Conflicting currencies', 'color' => 'danger'];
-    }
-
-    private static function totalAndCount()
-    {
-        $categories = ['contractors', 'departments', 'payees', 'suppliers'];
-
-        // individual sum
-        $summarizations = array_map(function ($category) {
-            return Sum::make()
-                ->label(ucfirst($category) . ' Total')
-                ->query(fn(DbBuilder $query) => $query->where('category', $category));
-        }, $categories);
-
-        // total count
-        $summarizations[] = Count::make()
-            //exclude departments for count as it is similar to payees
-            ->query(fn(DbBuilder $query) => $query->whereIn('category', array_diff($categories, ['departments'])));
-
-        return $summarizations;
+        return ['total' => $record->total, 'color' => 'success'];
     }
 }

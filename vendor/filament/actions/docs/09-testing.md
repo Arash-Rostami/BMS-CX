@@ -4,7 +4,7 @@ title: Testing
 
 ## Overview
 
-All examples in this guide will be written using [Pest](https://pestphp.com). However, you can easily adapt this to a PHPUnit.
+All examples in this guide will be written using [Pest](https://pestphp.com). To use Pest's Livewire plugin for testing, you can follow the installation instructions in the Pest documentation on plugins: [Livewire plugin for Pest](https://pestphp.com/docs/plugins#livewire). However, you can easily adapt this to PHPUnit.
 
 Since all actions are mounted to a Livewire component, we're just using Livewire testing helpers everywhere. If you've never tested Livewire components before, please read [this guide](https://livewire.laravel.com/docs/testing) from the Livewire docs.
 
@@ -86,6 +86,25 @@ it('stops sending if invoice has no email address', function () {
 });
 ```
 
+## Modal content
+
+To assert the content of a modal, you should first mount the action (rather than call it which closes the modal). You can then use [Livewire assertions](https://livewire.laravel.com/docs/testing#assertions) such as `assertSee()` to assert the modal contains the content that you expect it to:
+
+```php
+use function Pest\Livewire\livewire;
+
+it('confirms the target address before sending', function () {
+    $invoice = Invoice::factory()->create();
+    $recipientEmail = $invoice->company->primaryContact->email;
+
+    livewire(EditInvoice::class, [
+        'invoice' => $invoice,
+    ])
+        ->mountAction('send')
+        ->assertSee($recipientEmail);
+});
+```
+
 ## Errors
 
 `assertHasNoActionErrors()` is used to assert that no validation errors occurred when submitting the action form.
@@ -126,7 +145,7 @@ it('can send invoices to the primary contact by default', function () {
         ])
         ->callMountedAction()
         ->assertHasNoActionErrors();
-        
+
     expect($invoice->refresh())
         ->isSent()->toBeTrue()
         ->recipient_email->toBe($recipientEmail);
@@ -135,7 +154,7 @@ it('can send invoices to the primary contact by default', function () {
 
 ## Action state
 
-To ensure that an action exists or doesn't in a table, you can use the `assertActionExists()` or  `assertActionDoesNotExist()` method:
+To ensure that an action exists or doesn't, you can use the `assertActionExists()` or  `assertActionDoesNotExist()` method:
 
 ```php
 use function Pest\Livewire\livewire;

@@ -12,6 +12,7 @@ use Illuminate\View\ComponentAttributeBag;
 
 class DateTimePicker extends Field implements Contracts\HasAffixActions
 {
+    use Concerns\CanBeNative;
     use Concerns\CanBeReadOnly;
     use Concerns\HasAffixes;
     use Concerns\HasDatalistOptions;
@@ -36,8 +37,6 @@ class DateTimePicker extends Field implements Contracts\HasAffixActions
 
     protected string | Closure | null $format = null;
 
-    protected bool | Closure $isNative = true;
-
     protected bool | Closure $hasDate = true;
 
     protected bool | Closure $hasSeconds = true;
@@ -51,6 +50,8 @@ class DateTimePicker extends Field implements Contracts\HasAffixActions
     protected CarbonInterface | string | Closure | null $minDate = null;
 
     protected string | Closure | null $timezone = null;
+
+    protected string | Closure | null $locale = null;
 
     /**
      * @var array<DateTime | string> | Closure
@@ -84,10 +85,10 @@ class DateTimePicker extends Field implements Contracts\HasAffixActions
 
             if (! $state instanceof CarbonInterface) {
                 try {
-                    $state = Carbon::createFromFormat($component->getFormat(), $state, $component->getTimezone());
+                    $state = Carbon::createFromFormat($component->getFormat(), (string) $state, config('app.timezone'));
                 } catch (InvalidFormatException $exception) {
                     try {
-                        $state = Carbon::parse($state, $component->getTimezone());
+                        $state = Carbon::parse($state, config('app.timezone'));
                     } catch (InvalidFormatException $exception) {
                         $component->state(null);
 
@@ -96,7 +97,7 @@ class DateTimePicker extends Field implements Contracts\HasAffixActions
                 }
             }
 
-            $state->setTimezone($component->getTimezone());
+            $state = $state->setTimezone($component->getTimezone());
 
             if (! $component->isNative()) {
                 $component->state((string) $state);
@@ -260,6 +261,13 @@ class DateTimePicker extends Field implements Contracts\HasAffixActions
         return $this;
     }
 
+    public function locale(string | Closure | null $locale): static
+    {
+        $this->locale = $locale;
+
+        return $this;
+    }
+
     public function weekStartsOnMonday(): static
     {
         $this->firstDayOfWeek(1);
@@ -270,13 +278,6 @@ class DateTimePicker extends Field implements Contracts\HasAffixActions
     public function weekStartsOnSunday(): static
     {
         $this->firstDayOfWeek(7);
-
-        return $this;
-    }
-
-    public function native(bool | Closure $condition = true): static
-    {
-        $this->isNative = $condition;
 
         return $this;
     }
@@ -367,7 +368,7 @@ class DateTimePicker extends Field implements Contracts\HasAffixActions
      */
     public function getExtraTriggerAttributes(): array
     {
-        $temporaryAttributeBag = new ComponentAttributeBag();
+        $temporaryAttributeBag = new ComponentAttributeBag;
 
         foreach ($this->extraTriggerAttributes as $extraTriggerAttributes) {
             $temporaryAttributeBag = $temporaryAttributeBag->merge($this->evaluate($extraTriggerAttributes));
@@ -432,6 +433,11 @@ class DateTimePicker extends Field implements Contracts\HasAffixActions
         return $this->evaluate($this->timezone) ?? config('app.timezone');
     }
 
+    public function getLocale(): string
+    {
+        return $this->evaluate($this->locale) ?? config('app.locale');
+    }
+
     public function hasDate(): bool
     {
         return (bool) $this->evaluate($this->hasDate);
@@ -465,11 +471,6 @@ class DateTimePicker extends Field implements Contracts\HasAffixActions
     public function shouldCloseOnDateSelection(): bool
     {
         return (bool) $this->evaluate($this->shouldCloseOnDateSelection);
-    }
-
-    public function isNative(): bool
-    {
-        return (bool) $this->evaluate($this->isNative);
     }
 
     public function getStep(): int | float | string | null

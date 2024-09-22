@@ -31,17 +31,18 @@
         @endif
     </div>
 
-    {{ \Filament\Support\Facades\FilamentView::renderHook('panels::page.header.actions.before', scopes: $this->getRenderHookScopes()) }}
+    <div
+        @class([
+            'flex shrink-0 items-center gap-3',
+            'sm:mt-7' => $breadcrumbs,
+        ])
+    >
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::PAGE_HEADER_ACTIONS_BEFORE, scopes: $this->getRenderHookScopes()) }}
 
-    @if ($actions)
-        <x-filament-actions::actions
-            :actions="$actions"
-            @class([
-                'shrink-0',
-                'sm:mt-7' => $breadcrumbs,
-            ])
-        />
-    @endif
+        @if ($actions)
+            <x-filament::actions :actions="$actions" />
+        @endif
 
-    {{ \Filament\Support\Facades\FilamentView::renderHook('panels::page.header.actions.after', scopes: $this->getRenderHookScopes()) }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::PAGE_HEADER_ACTIONS_AFTER, scopes: $this->getRenderHookScopes()) }}
+    </div>
 </header>

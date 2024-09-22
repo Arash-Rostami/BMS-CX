@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('quote_tokens', function (Blueprint $table) {
             $table->increments('id')->unsigned()->index();
             $table->string('token')->unique();
-            $table->integer('quote_id')->nullable();
+            $table->integer('quote_id')->unsigned()->nullable()->index();
             $table->date('validity')->nullable();
             // Foreign keys
             $table->integer('quote_request_id')->unsigned()->index();

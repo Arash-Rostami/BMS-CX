@@ -22,6 +22,10 @@ class OrderPolicy
      */
     public function view(User $user, Order $order): bool
     {
+        if ($order->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('view', 'Order');
     }
 
@@ -38,6 +42,10 @@ class OrderPolicy
      */
     public function update(User $user, Order $order): bool
     {
+        if ($order->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('edit', 'Order');
     }
 
@@ -46,6 +54,10 @@ class OrderPolicy
      */
     public function delete(User $user, Order $order): bool
     {
+        if ($order->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('delete', 'Order');
     }
 

@@ -18,6 +18,9 @@ class PaymentRequestsRelationManager extends RelationManager
 {
     protected static string $relationship = 'paymentRequests';
 
+    protected static ?string $title = 'Payment Requests ( Orders 🛒)';
+
+
     public function form(Form $form): Form
     {
         return $form->schema([]);
@@ -31,27 +34,17 @@ class PaymentRequestsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        $ownRecord = $this->ownerRecord;
 
-
-        $table = self::configureCommonTableSettings($table, $ownRecord);
+        $table = self::configureCommonTableSettings($table);
 
         return (getTableDesign() != 'classic')
             ? PaymentRequestResource::getModernLayout($table)
             : PaymentRequestResource::getClassicLayout($table);
     }
 
-    public static function configureCommonTableSettings(Table $table, $ownRecord): Table
+    public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
-            ->query(function () use ($ownRecord) {
-                $invoice_number = isset($ownRecord->status) ? $ownRecord->order_invoice_number : $ownRecord->invoice_number;
-                return
-                    PaymentRequest::query()
-                        ->whereNull('part')
-                        ->where('order_invoice_number', $invoice_number)
-                        ->orWhere('part', $ownRecord->id ?? $ownRecord->part);
-            })
             ->filters([
                 AdminOrder::filterCreatedAt(),
                 AdminOrder::filterSoftDeletes()

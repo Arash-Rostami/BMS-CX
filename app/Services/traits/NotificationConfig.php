@@ -28,11 +28,11 @@ trait NotificationConfig
 
 
     public static array $body = [
-        'orderRequest' => [
-            'new' => 'One pro forma invoice for %s made.',
-            'edit' => 'Pro forma invoice for %s updated.',
-            'delete' => 'Pro forma invoice for %s deleted.',
-            'reminder' => 'Pro forma invoice for %s requires your attention.'
+        'proformaInvoice' => [
+            'new' => 'One pro forma invoice %s made.',
+            'edit' => 'Pro forma invoice %s updated.',
+            'delete' => 'Pro forma invoice %s deleted.',
+            'reminder' => 'Pro forma invoice %s requires your attention.'
         ],
         'order' => [
             'new' => 'The order - %s - created.',
@@ -41,10 +41,10 @@ trait NotificationConfig
             'reminder' => 'Order - %s - requires your attention.'
         ],
         'paymentRequest' => [
-            'new' => 'One payment request for %s created.',
-            'edit' => 'The payment request for %s edited.',
-            'delete' => 'The payment request for %s deleted.',
-            'reminder' => 'The payment request for %s requires your attention.'
+            'new' => 'One payment request %s created.',
+            'edit' => 'The payment request %s edited.',
+            'delete' => 'The payment request %s deleted.',
+            'reminder' => 'The payment request %s requires your attention.'
         ],
         'payment' => [
             'new' => 'Payment made for %s.',
@@ -76,11 +76,11 @@ trait NotificationConfig
 
     public static array $bodyStatus = [
         'order' => [
-            'pending' => 'Your permission for order request of %s is requested.',
-            'processing' => 'Order request for %s is under review.',
-            'approved' => 'Order request for %s has been approved.',
-            'rejected' => 'Order request for %s has been rejected.',
-            'completed' => 'Order request for %s has been fulfilled.',
+            'pending' => 'Your permission for pro forma invoice of %s is requested.',
+            'processing' => 'Pro forma invoice for %s is under review.',
+            'approved' => 'Pro forma invoice for %s has been approved.',
+            'rejected' => 'Pro forma invoice for %s has been rejected.',
+            'completed' => 'Pro forma invoice for %s has been fulfilled.',
         ],
         'payment' => [
             'pending' => 'Your decision on payment request for %s is pending.',

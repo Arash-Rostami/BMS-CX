@@ -9,7 +9,7 @@ class Balance extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['initial', 'amount', 'category', 'category_id', 'extra', 'user_id'];
+    protected $fillable = ['base', 'payment', 'total', 'category', 'category_id', 'department_id', 'currency', 'extra', 'user_id'];
 
     protected $casts = [
         'extra' => 'json',
@@ -17,20 +17,11 @@ class Balance extends Model
 
     protected static function booted()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
+        static::creating(function ($balance) {
+            $balance->user_id = auth()->id();
         });
     }
 
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-
-    public function supplier()
-    {
-        return $this->belongsTo(Supplier::class, 'category_id');
-    }
 
     public function contractor()
     {
@@ -39,7 +30,7 @@ class Balance extends Model
 
     public function department()
     {
-        return $this->belongsTo(Department::class, 'category_id');
+        return $this->belongsTo(Department::class, 'department_id');
     }
 
     public function payee()
@@ -47,8 +38,21 @@ class Balance extends Model
         return $this->belongsTo(Payee::class, 'category_id');
     }
 
-    public function getCurrencyAttribute()
+    public function supplier()
     {
-        return $this->extra['currency'] ?? null;
+        return $this->belongsTo(Supplier::class, 'category_id');
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    // Computational Method
+    public function getTotalAttribute()
+    {
+        return $this->base + $this->payment;
+    }
+
+
 }

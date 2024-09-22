@@ -4,19 +4,32 @@ namespace Filament\Panel\Concerns;
 
 use Closure;
 use Filament\Facades\Filament;
+use Filament\Navigation\NavigationManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Laravel\SerializableClosure\Serializers\Native;
 
 trait HasRoutes
 {
-    protected Closure | Native | null $routes = null;
+    /**
+     * @var array<Closure | Native>
+     */
+    protected array $routes = [];
 
-    protected Closure | Native | null $authenticatedRoutes = null;
+    /**
+     * @var array<Closure | Native>
+     */
+    protected array $authenticatedRoutes = [];
 
-    protected Closure | Native | null $tenantRoutes = null;
+    /**
+     * @var array<Closure | Native>
+     */
+    protected array $tenantRoutes = [];
 
-    protected Closure | Native | null $authenticatedTenantRoutes = null;
+    /**
+     * @var array<Closure | Native>
+     */
+    protected array $authenticatedTenantRoutes = [];
 
     protected string | Closure | null $homeUrl = null;
 
@@ -60,48 +73,76 @@ trait HasRoutes
 
     public function routes(?Closure $routes): static
     {
-        $this->routes = $routes;
+        $this->routes[] = $routes;
 
         return $this;
     }
 
     public function authenticatedRoutes(?Closure $routes): static
     {
-        $this->authenticatedRoutes = $routes;
+        $this->authenticatedRoutes[] = $routes;
 
         return $this;
     }
 
     public function tenantRoutes(?Closure $routes): static
     {
-        $this->tenantRoutes = $routes;
+        $this->tenantRoutes[] = $routes;
 
         return $this;
     }
 
     public function authenticatedTenantRoutes(?Closure $routes): static
     {
-        $this->authenticatedTenantRoutes = $routes;
+        $this->authenticatedTenantRoutes[] = $routes;
 
         return $this;
     }
 
-    public function getRoutes(): ?Closure
+    public function route(string $name, mixed $parameters = [], bool $absolute = true): string
+    {
+        return route($this->generateRouteName($name), $parameters, $absolute);
+    }
+
+    public function generateRouteName(string $name): string
+    {
+        $domain = '';
+
+        if (count($this->domains) > 1) {
+            $domain = Filament::getCurrentDomain(testingDomain: Arr::first($this->domains)) . '.';
+        }
+
+        return "filament.{$this->getId()}.{$domain}{$name}";
+    }
+
+    /**
+     * @return array<Closure | Native>
+     */
+    public function getRoutes(): array
     {
         return $this->routes;
     }
 
-    public function getAuthenticatedRoutes(): ?Closure
+    /**
+     * @return array<Closure | Native>
+     */
+    public function getAuthenticatedRoutes(): array
     {
         return $this->authenticatedRoutes;
     }
 
-    public function getTenantRoutes(): ?Closure
+    /**
+     * @return array<Closure | Native>
+     */
+    public function getTenantRoutes(): array
     {
         return $this->tenantRoutes;
     }
 
-    public function getAuthenticatedTenantRoutes(): ?Closure
+    /**
+     * @return array<Closure | Native>
+     */
+    public function getAuthenticatedTenantRoutes(): array
     {
         return $this->authenticatedTenantRoutes;
     }
@@ -126,13 +167,13 @@ trait HasRoutes
 
     public function getUrl(?Model $tenant = null): ?string
     {
-        if (! $this->auth()->check()) {
-            return $this->hasLogin() ? $this->getLoginUrl() : url($this->getPath());
+        if ((! $this->auth()->check()) && $this->hasLogin()) {
+            return $this->getLoginUrl();
         }
 
         $hasTenancy = $this->hasTenancy();
 
-        if ((! $tenant) && $hasTenancy) {
+        if ((! $tenant) && $hasTenancy && $this->auth()->hasUser()) {
             $tenant = Filament::getUserDefaultTenant($this->auth()->user());
         }
 
@@ -144,39 +185,33 @@ trait HasRoutes
 
         if ($tenant) {
             $originalTenant = Filament::getTenant();
-            Filament::setTenant($tenant);
-
-            $isNavigationMountedOriginally = $this->isNavigationMounted;
-            $originalNavigationItems = $this->navigationItems;
-            $originalNavigationGroups = $this->navigationGroups;
-
-            $this->isNavigationMounted = false;
-            $this->navigationItems = [];
-            $this->navigationGroups = [];
-
-            $navigation = $this->getNavigation();
-
-            Filament::setTenant($originalTenant);
-
-            $this->isNavigationMounted = $isNavigationMountedOriginally;
-            $this->navigationItems = $originalNavigationItems;
-            $this->navigationGroups = $originalNavigationGroups;
-        } else {
-            $navigation = $this->getNavigation();
+            Filament::setTenant($tenant, isQuiet: true);
         }
 
-        $firstGroup = Arr::first($navigation);
+        $this->navigationManager = new NavigationManager;
 
-        if (! $firstGroup) {
-            return null;
+        $navigation = $this->navigationManager->get();
+
+        try {
+            $firstGroup = Arr::first($navigation);
+
+            if (! $firstGroup) {
+                return url($this->getPath());
+            }
+
+            $firstItem = Arr::first($firstGroup->getItems());
+
+            if (! $firstItem) {
+                return url($this->getPath());
+            }
+
+            return $firstItem->getUrl();
+        } finally {
+            if ($tenant) {
+                Filament::setTenant($originalTenant, isQuiet: true);
+            }
+
+            $this->navigationManager = null;
         }
-
-        $firstItem = Arr::first($firstGroup->getItems());
-
-        if (! $firstItem) {
-            return null;
-        }
-
-        return $firstItem->getUrl();
     }
 }

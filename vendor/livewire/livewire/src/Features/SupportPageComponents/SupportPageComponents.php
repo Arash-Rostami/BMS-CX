@@ -2,11 +2,10 @@
 
 namespace Livewire\Features\SupportPageComponents;
 
-use function Livewire\{invade, on, off, once};
+use function Livewire\{on, off, once};
 use Livewire\Drawer\ImplicitRouteBinding;
 use Livewire\ComponentHook;
 use Illuminate\View\View;
-use Illuminate\View\AnonymousComponent;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -113,10 +112,12 @@ class SupportPageComponents extends ComponentHook
         });
 
         on('render', $handler);
+        on('render.placeholder', $handler);
 
         $callback();
 
         off('render', $handler);
+        off('render.placeholder', $handler);
 
         return $layoutConfig;
     }

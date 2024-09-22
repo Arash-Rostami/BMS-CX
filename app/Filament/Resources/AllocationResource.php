@@ -45,7 +45,6 @@ class AllocationResource extends Resource
                 ])->space(3),
                 Admin::showTimeStamp()
             ])
-            ->poll(60)
             ->paginated([12, 24, 36, 48, 'all'])
         ->filters([])
             ->contentGrid([

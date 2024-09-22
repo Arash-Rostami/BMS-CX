@@ -5,7 +5,11 @@ namespace Filament\Tables\Filters\Concerns;
 use Closure;
 use Filament\Support\Services\RelationshipJoiner;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Znck\Eloquent\Relations\BelongsToThrough;
 
 trait HasRelationship
 {
@@ -13,10 +17,14 @@ trait HasRelationship
 
     protected bool | Closure $isPreloaded = false;
 
-    public function relationship(string $name, string $titleAttribute, ?Closure $modifyQueryUsing = null): static
-    {
-        $this->attribute("{$name}.{$titleAttribute}");
+    protected string | Closure | null $relationship = null;
 
+    protected string | Closure | null $relationshipTitleAttribute = null;
+
+    public function relationship(string | Closure | null $name, string | Closure | null $titleAttribute, ?Closure $modifyQueryUsing = null): static
+    {
+        $this->relationship = $name;
+        $this->relationshipTitleAttribute = $titleAttribute;
         $this->modifyRelationshipQueryUsing = $modifyQueryUsing;
 
         return $this;
@@ -36,7 +44,7 @@ trait HasRelationship
 
     public function queriesRelationships(): bool
     {
-        return str($this->getAttribute())->contains('.');
+        return filled($this->getRelationshipName());
     }
 
     public function getRelationship(): Relation | Builder
@@ -59,14 +67,14 @@ trait HasRelationship
         return $relationship;
     }
 
-    public function getRelationshipName(): string
+    public function getRelationshipName(): ?string
     {
-        return (string) str($this->getAttribute())->beforeLast('.');
+        return $this->evaluate($this->relationship);
     }
 
-    public function getRelationshipTitleAttribute(): string
+    public function getRelationshipTitleAttribute(): ?string
     {
-        return (string) str($this->getAttribute())->afterLast('.');
+        return $this->evaluate($this->relationshipTitleAttribute);
     }
 
     public function getModifyRelationshipQueryUsing(): ?Closure
@@ -91,5 +99,31 @@ trait HasRelationship
         }
 
         return $relationshipQuery;
+    }
+
+    public function getRelationshipKey(?Builder $query = null): ?string
+    {
+        $relationship = $this->getRelationship();
+
+        if ($relationship instanceof BelongsToMany) {
+            return $query?->getModel()->qualifyColumn($relationship->getRelatedKeyName()) ??
+                $relationship->getQualifiedRelatedKeyName();
+        }
+
+        if ($relationship instanceof HasManyThrough) {
+            return $query?->getModel()->qualifyColumn($relationship->getForeignKeyName()) ??
+                $relationship->getQualifiedForeignKeyName();
+        }
+
+        if ($relationship instanceof BelongsToThrough) {
+            return $relationship->getRelated()->getQualifiedKeyName();
+        }
+
+        if ($relationship instanceof BelongsTo) {
+            return $query?->getModel()->qualifyColumn($relationship->getOwnerKeyName()) ??
+                $relationship->getQualifiedOwnerKeyName();
+        }
+
+        return null;
     }
 }

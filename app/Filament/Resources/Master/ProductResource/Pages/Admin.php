@@ -55,7 +55,7 @@ class Admin
     /**
      * @return Textarea
      */
-    public static function getDesription(): Textarea
+    public static function getDescription(): Textarea
     {
         return Textarea::make('description')
             ->maxLength(65535)

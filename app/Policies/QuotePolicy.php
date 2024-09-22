@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Quote;
 use App\Models\User;
 use App\Services\AccessLevel;
 
@@ -18,8 +19,12 @@ class QuotePolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user): bool
+    public function view(User $user, Quote $quote): bool
     {
+        if ($quote->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('view', 'Quote');
     }
 
@@ -34,16 +39,24 @@ class QuotePolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user): bool
+    public function update(User $user, Quote $quote): bool
     {
+        if ($quote->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('edit', 'Quote');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user): bool
+    public function delete(User $user, Quote $quote): bool
     {
+        if ($quote->trashed()) {
+            return false;
+        }
+
         return AccessLevel::hasPermissionForModel('delete', 'Quote');
     }
 

@@ -30,9 +30,9 @@ return new class extends Migration {
         Schema::create('payment_requests', function (Blueprint $table) {
             $table->increments('id')->unsigned()->index();
             // Request Details
-            $table->text('order_invoice_number')->nullable();
-//            $table->integer('order_id')->nullable();
-            $table->integer('part')->nullable();
+            $table->string('reference_number')->nullable()->index();
+            $table->text('proforma_invoice_number')->nullable();
+            $table->text('part')->nullable();
             $table->text('reason_for_payment')->nullable();
             $table->enum('type_of_payment', self::$typesOfPayment)->nullable()->default('advance');
             $table->text('departments')->nullable();
@@ -59,6 +59,8 @@ return new class extends Migration {
             // Foreign Keys
             $table->integer('user_id')->unsigned()->index();
             $table->foreign('user_id')->references('id')->on('users');
+            $table->integer('order_id')->unsigned()->index();
+            $table->foreign('order_id')->references('id')->on('orders');
             $table->integer('supplier_id')->unsigned()->index()->nullable();
             $table->foreign('supplier_id')->references('id')->on('suppliers');
             $table->integer('contractor_id')->unsigned()->index()->nullable();
@@ -67,8 +69,6 @@ return new class extends Migration {
             $table->foreign('payee_id')->references('id')->on('payees');
             $table->integer('department_id')->unsigned()->index()->nullable();
             $table->foreign('department_id')->references('id')->on('departments');
-            $table->integer('attachment_id')->unsigned()->index()->nullable();
-            $table->foreign('attachment_id')->references('id')->on('attachments');
             // Additional Data
             $table->json('extra')->nullable();
             $table->timestamps();

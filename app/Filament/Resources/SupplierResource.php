@@ -46,7 +46,6 @@ class SupplierResource extends Resource
                 Admin::showTimeStamp()
             ])
             ->filters([ ])
-            ->poll(60)
             ->contentGrid([
                 'md' => 2,
                 'xl' => 3,

@@ -80,6 +80,10 @@ div[wire\:key$=".table.column-toggle.panel"] {
     @apply bg-gray-200 dark:bg-white/5 border-l-8 border-l-warning-700;
 }
 
+.major-row-second {
+    @apply bg-blue-200 dark:bg-white/5 border-l-8 border-l-warning-700;
+}
+
 .fi-ta-group-header {
     @apply shadow-2xl bg-primary-100 rounded dark:rounded-none dark:border-t dark:border-primary-300;
 }
@@ -111,7 +115,7 @@ div[wire\:key$=".table.column-toggle.panel"] {
 }
 
 .fi-body {
-    background-color: #f4f1f2;
+    background-color: #E6E6E6;
     /*border: none;*/
     /*background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4gPHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNmNGYxZjIiLz4gPHBhdGggZD0iTSAwIDQwIEwgNDAgMCBNIC0yMCAtMjAgTCAyMCAyMCAgTSA4MCA4MCBMIDEyMCAxMjAgTSAxMjAgLTQwIEwgODAgLTgwIiBzdHJva2U9IiNlMGUwZTAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLW9wYWNpdHk9IjAuNDAiLz48L3N2Zz4=');*/
     /*background-size: 100px 100px;*/
@@ -135,19 +139,33 @@ div[wire\:key$=".table.column-toggle.panel"] {
     @apply hover:bg-gray-300 dark:hover:bg-white/5;
 }
 
-.btn{
+.btn {
     @apply shadow-2xl;
 }
 
-/*.fi-sidebar-nav {*/
-/*    !*background-color: #F5F1F2;*!*/
-/*    background-color: rgb(252, 252, 232, 0.5);*/
-/*}*/
+.fi-modal-content button[title="deleteMe"] {
+    display: none;
+}
 
-/*.dark .fi-sidebar-nav {*/
-/*    background-color: transparent;*/
-/*}*/
+.fi-topbar, .fi-sidebar-header {
+    @apply dark:bg-black;
+    background-color: #e0e7eb;
+}
 
+.fi-topbar > nav {
+    background-color: #DFCFD4;
+    /*@apply dark:bg-[#B0B3B8]*/
+}
+
+
+.fi-sidebar-nav {
+    background-color: #e0e7eb;
+    /*background-color: #cfdadf;*/
+}
+
+.dark .fi-sidebar-nav {
+    background-color: transparent;
+}
 
 
 .fi-wi-stats-overview-stat {
@@ -155,10 +173,29 @@ div[wire\:key$=".table.column-toggle.panel"] {
     animation: fade-in 2s cubic-bezier(0.390, 0.575, 0.565, 1.000) both;
 }
 
-.fi-btn-icon{
+.fi-btn-icon {
     -webkit-animation: slide-in-right 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
     animation: slide-in-right 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
 }
+
+/*span sup {*/
+/*    display: none;*/
+/*}*/
+/*label.fi-fo-field-wrp-label {*/
+/*    display: none;*/
+/*}*/
+
+.fi-section {
+    @apply shadow-lg
+}
+
+.fi-section-header {
+    font-weight: bold; /* Makes the font bold to stand out */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); /* Subtle text shadow for depth */
+    border-radius: 5px; /* Rounds the corners for a modern look */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Soft box shadow for a lifted effect */
+}
+
 
 
 @-webkit-keyframes fade-in {
@@ -169,6 +206,7 @@ div[wire\:key$=".table.column-toggle.panel"] {
         opacity: 1;
     }
 }
+
 @keyframes fade-in {
     0% {
         opacity: 0;

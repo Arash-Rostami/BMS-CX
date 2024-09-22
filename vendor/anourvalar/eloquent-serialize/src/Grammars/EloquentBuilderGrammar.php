@@ -58,10 +58,14 @@ trait EloquentBuilderGrammar
             $referenceRelation = clone $relation;
 
             $value($relation); // apply closure
-            $result[$name] = $this->packQueryBuilder($relation->getQuery()->getQuery());
+            $result[$name] = [
+                'query' => $this->packQueryBuilder($relation->getQuery()->getQuery()),
+                'eloquent' => $this->packEloquentBuilder($relation->getQuery()),
+                'extra' => $relation->exportExtraParametersForSerialize(),
+            ];
 
             $relation->getQuery()->getModel()->newInstance()->with($name)->getEagerLoads()[$name]($referenceRelation);
-            $this->cleanStaticConstraints($result[$name], $this->packQueryBuilder($referenceRelation->getQuery()->getQuery()));
+            $this->cleanStaticConstraints($result[$name]['query'], $this->packQueryBuilder($referenceRelation->getQuery()->getQuery()));
         }
 
         return $result;
@@ -76,12 +80,24 @@ trait EloquentBuilderGrammar
     {
         foreach ($eagers as &$value) {
             $value = function ($query) use ($value) {
+                if (isset($value['extra'])) {
+                    $query->importExtraParametersForSerialize($value['extra']);
+                }
+
+                // Input argument may be different depends on context
+                while (! ($query instanceof \Illuminate\Database\Eloquent\Builder)) {
+                    $query = $query->getQuery();
+                }
+                if (isset($value['eloquent'])) {
+                    $this->unpackEloquentBuilder($value['eloquent'], $query);
+                }
+
                 // Input argument may be different depends on context
                 while (! ($query instanceof \Illuminate\Database\Query\Builder)) {
                     $query = $query->getQuery();
                 }
 
-                $this->unpackQueryBuilder($value, $query);
+                $this->unpackQueryBuilder(isset($value['query']) ? $value['query'] : $value, $query);
             };
         }
         unset($value);
@@ -98,16 +114,16 @@ trait EloquentBuilderGrammar
     {
         $properties = [
             'aggregate', 'columns', 'distinct', 'wheres', 'groups', 'havings', 'orders', 'limit', 'offset', 'unions',
-            'unionLimit', 'unionOffset', 'unionOrders', 'joins',
+            'unionLimit', 'unionOffset', 'unionOrders', 'joins', 'groupLimit',
         ];
 
         foreach ($properties as $property) {
-            if (! is_array($packedQueryBuilder[$property])) {
+            if (! is_array($packedQueryBuilder[$property] ?? null)) {
                 continue;
             }
 
             foreach ($packedQueryBuilder[$property] as $key => $item) {
-                if (in_array($item, (array) $packedReferenceQueryBuilder[$property], true)) {
+                if (in_array($item, (array) ($packedReferenceQueryBuilder[$property] ?? null), true)) {
                     unset($packedQueryBuilder[$property][$key]);
                 }
             }

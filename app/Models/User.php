@@ -118,6 +118,11 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
         return $this->hasMany(DeliveryTerm::class, 'user_id');
     }
 
+    public function department()
+    {
+        return $this->belongsTo(Department::class, 'info->department');
+    }
+
     public function grades()
     {
         return $this->hasMany(Grade::class, 'user_id');
