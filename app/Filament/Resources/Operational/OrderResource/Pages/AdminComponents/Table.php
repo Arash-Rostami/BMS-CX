@@ -15,6 +15,7 @@ use Filament\Tables\Columns\ToggleColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as SummaryBuilder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 
 
@@ -34,6 +35,24 @@ trait Table
             ->tooltip(fn(string $state): string => "Pro forma Invoice Number")
             ->sortable()
             ->toggleable()
+//            ->summarize(
+//                Summarizer::make()
+//                    ->label('Balance')
+//                    ->using(function (SummaryBuilder $query): string {
+//                        $results = $query
+//                            ->selectRaw('
+//                        COALESCE((SELECT SUM(payment_requests.requested_amount)
+//                                  FROM payment_requests
+//                                  WHERE payment_requests.order_id = orders.id), 0) AS total_payments,
+//                        COALESCE((SELECT SUM(proforma_invoices.price * proforma_invoices.quantity)
+//                                  FROM proforma_invoices
+//                                  WHERE proforma_invoices.id = orders.proforma_invoice_id), 0) AS total_expected
+//                    ')->first();
+//
+//                        return $results->total_payments > $results->total_expected ? 'Overpayment' :
+//                            ($results->total_payments < $results->total_expected ? 'Underpayment' : 'Settled');
+//                    })
+//            )
             ->searchable(isIndividual: true,);
     }
 
@@ -305,7 +324,7 @@ trait Table
                     numberify($record->orderDetail->final_quantity ?? 0)
                 );
             })
-            ->summarize(Summarizer::make()->label('Pro | Fin')->using(fn(SummaryBuilder $query) => self::calculateSummaries('quantity', $query)))
+            ->summarize(Summarizer::make()->label('⚖️ Prov. | Final')->using(fn(SummaryBuilder $query) => self::calculateSummaries('quantity', $query)))
             ->toggleable()
             ->color('info')
             ->badge();
@@ -326,7 +345,8 @@ trait Table
                     numberify($record->orderDetail?->extra['finalTotal'] ?? $record->orderDetail->final_price ?? 0)
                 );
             })
-            ->summarize(Summarizer::make()->label('Ini | Pro | Fin')->using(fn(SummaryBuilder $query) => self::calculateSummaries('payment', $query)))
+
+            ->summarize(Summarizer::make()->label('💰 Initial | Provisional | Final')->using(fn(SummaryBuilder $query) => self::calculateSummaries('payment', $query)))
             ->badge();
     }
 

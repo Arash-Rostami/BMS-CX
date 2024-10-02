@@ -123,7 +123,7 @@ trait Form
             ->getUploadedFileNameForStorageUsing(self::nameUploadedFile())
             ->previewable(true)
             ->disk('filament')
-            ->directory('/attachments/payment-attachments')
+            ->directory('/attachments/payment')
             ->maxSize(2500)
             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
             ->imageEditor()
@@ -142,6 +142,9 @@ trait Form
             ->label(fn()=>new HtmlString('<span class="grayscale">ℹ️️️ </span><span class="text-primary-500 font-normal">Title|Name</span>'))
             ->placeholder('Type in English ONLY')
             ->requiredWith('file_path')
+            ->validationMessages([
+                'required_with' => '🚫 The name is required when an attachment is uploaded.',
+            ])
             ->createOptionForm([
                 TextInput::make('title')
                     ->required()

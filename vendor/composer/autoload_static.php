@@ -18,8 +18,8 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
         'f598d06aa772fa33d905e87be6398fb1' => __DIR__ . '/..' . '/symfony/polyfill-intl-idn/bootstrap.php',
         'a4a119a56e50fbb293281d9a48007e0e' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
         '47e1160838b5e5a10346ac4084b58c23' => __DIR__ . '/..' . '/laravel/prompts/src/helpers.php',
-        '40275907c8566c390185147049ef6e5d' => __DIR__ . '/..' . '/livewire/livewire/src/helpers.php',
         '29ffe97919493792170d47eb03a68da9' => __DIR__ . '/..' . '/blade-ui-kit/blade-icons/src/helpers.php',
+        '40275907c8566c390185147049ef6e5d' => __DIR__ . '/..' . '/livewire/livewire/src/helpers.php',
         '2c620c99f96a2b964346b45a4d1d1e64' => __DIR__ . '/..' . '/spatie/invade/src/functions.php',
         'e125f489d647ae664b0af7b573079de7' => __DIR__ . '/..' . '/filament/support/src/helpers.php',
         'a1105708a18b76903365ca1c4aa61b02' => __DIR__ . '/..' . '/symfony/translation/Resources/functions.php',
@@ -45,6 +45,7 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
         '6124b4c8570aa390c21fafd04a26c69f' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
         '017b24472353920ed42bb364f7653c43' => __DIR__ . '/..' . '/propaganistas/laravel-phone/src/helpers.php',
         '801c31d8ed748cfa537fa45402288c95' => __DIR__ . '/..' . '/psy/psysh/src/functions.php',
+        '7dd996d98a91d095f100c75e0b9e2391' => __DIR__ . '/..' . '/spatie/async/src/helpers.php',
         'c72349b1fe8d0deeedd3a52e8aa814d8' => __DIR__ . '/..' . '/mockery/mockery/library/helpers.php',
         'ce9671a430e4846b44e1c68c7611f9f5' => __DIR__ . '/..' . '/mockery/mockery/library/Mockery.php',
         'a1cfe24d14977df6878b9bf804af2d1c' => __DIR__ . '/..' . '/nunomaduro/collision/src/Adapters/Phpunit/Autoload.php',
@@ -80,6 +81,10 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
             'Whoops\\' => 7,
             'Webmozart\\Assert\\' => 17,
             'Wallo\\FilamentSelectify\\' => 24,
+        ),
+        'V' => 
+        array (
+            'VXM\\Async\\' => 10,
         ),
         'T' => 
         array (
@@ -127,12 +132,14 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
             'Spatie\\FlareClient\\' => 19,
             'Spatie\\Color\\' => 13,
             'Spatie\\Backtrace\\' => 17,
+            'Spatie\\Async\\' => 13,
             'SolutionForest\\FilamentSimpleLightBox\\Database\\Factories\\' => 57,
             'SolutionForest\\FilamentSimpleLightBox\\' => 38,
             'Sabberworm\\CSS\\' => 15,
         ),
         'R' => 
         array (
+            'RyanChandler\\TablerIcons\\' => 25,
             'RyanChandler\\BladeCaptureDirective\\Database\\Factories\\' => 54,
             'RyanChandler\\BladeCaptureDirective\\' => 35,
             'Rawilk\\FilamentPasswordInput\\Database\\Factories\\' => 48,
@@ -190,6 +197,8 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
             'Laravel\\Sail\\' => 13,
             'Laravel\\Prompts\\' => 16,
             'LaraZeus\\Popover\\' => 17,
+            'LaraZeus\\FilamentPluginTools\\' => 29,
+            'LaraZeus\\Delia\\' => 15,
         ),
         'K' => 
         array (
@@ -316,6 +325,10 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
         'Wallo\\FilamentSelectify\\' => 
         array (
             0 => __DIR__ . '/..' . '/andrewdwallo/filament-selectify/src',
+        ),
+        'VXM\\Async\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/vxm/laravel-async/src',
         ),
         'TijsVerkoyen\\CssToInlineStyles\\' => 
         array (
@@ -481,6 +494,10 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
         array (
             0 => __DIR__ . '/..' . '/spatie/backtrace/src',
         ),
+        'Spatie\\Async\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/spatie/async/src',
+        ),
         'SolutionForest\\FilamentSimpleLightBox\\Database\\Factories\\' => 
         array (
             0 => __DIR__ . '/..' . '/solution-forest/filament-simplelightbox/database/factories',
@@ -492,6 +509,10 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
         'Sabberworm\\CSS\\' => 
         array (
             0 => __DIR__ . '/..' . '/sabberworm/php-css-parser/src',
+        ),
+        'RyanChandler\\TablerIcons\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/ryangjchandler/blade-tabler-icons/src',
         ),
         'RyanChandler\\BladeCaptureDirective\\Database\\Factories\\' => 
         array (
@@ -662,6 +683,14 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
         'LaraZeus\\Popover\\' => 
         array (
             0 => __DIR__ . '/..' . '/lara-zeus/popover/src',
+        ),
+        'LaraZeus\\FilamentPluginTools\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src',
+        ),
+        'LaraZeus\\Delia\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/lara-zeus/delia/src',
         ),
         'Kirschbaum\\PowerJoins\\' => 
         array (
@@ -5084,6 +5113,28 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
         'Kirschbaum\\PowerJoins\\PowerJoins' => __DIR__ . '/..' . '/kirschbaum-development/eloquent-power-joins/src/PowerJoins.php',
         'Kirschbaum\\PowerJoins\\PowerJoinsServiceProvider' => __DIR__ . '/..' . '/kirschbaum-development/eloquent-power-joins/src/PowerJoinsServiceProvider.php',
         'Kirschbaum\\PowerJoins\\StaticCache' => __DIR__ . '/..' . '/kirschbaum-development/eloquent-power-joins/src/StaticCache.php',
+        'LaraZeus\\Delia\\Console\\InstallCommand' => __DIR__ . '/..' . '/lara-zeus/delia/src/Console/InstallCommand.php',
+        'LaraZeus\\Delia\\Delia' => __DIR__ . '/..' . '/lara-zeus/delia/src/Delia.php',
+        'LaraZeus\\Delia\\DeliaPlugin' => __DIR__ . '/..' . '/lara-zeus/delia/src/DeliaPlugin.php',
+        'LaraZeus\\Delia\\DeliaServiceProvider' => __DIR__ . '/..' . '/lara-zeus/delia/src/DeliaServiceProvider.php',
+        'LaraZeus\\Delia\\Events\\BookmarkAdded' => __DIR__ . '/..' . '/lara-zeus/delia/src/Events/BookmarkAdded.php',
+        'LaraZeus\\Delia\\Events\\BookmarkRemoved' => __DIR__ . '/..' . '/lara-zeus/delia/src/Events/BookmarkRemoved.php',
+        'LaraZeus\\Delia\\Filament\\Actions\\BookmarkHeaderAction' => __DIR__ . '/..' . '/lara-zeus/delia/src/Filament/Actions/BookmarkHeaderAction.php',
+        'LaraZeus\\Delia\\Filament\\Actions\\HasDefaultAttributes' => __DIR__ . '/..' . '/lara-zeus/delia/src/Filament/Actions/HasDefaultAttributes.php',
+        'LaraZeus\\Delia\\Filament\\Resources\\BookmarkResource' => __DIR__ . '/..' . '/lara-zeus/delia/src/Filament/Resources/BookmarkResource.php',
+        'LaraZeus\\Delia\\Filament\\Resources\\BookmarkResource\\Pages\\ListBookmarks' => __DIR__ . '/..' . '/lara-zeus/delia/src/Filament/Resources/BookmarkResource/Pages/ListBookmarks.php',
+        'LaraZeus\\Delia\\Livewire\\BookmarkComponent' => __DIR__ . '/..' . '/lara-zeus/delia/src/Livewire/BookmarkComponent.php',
+        'LaraZeus\\Delia\\Models\\Bookmark' => __DIR__ . '/..' . '/lara-zeus/delia/src/Models/Bookmark.php',
+        'LaraZeus\\FilamentPluginTools\\Concerns\\CanDisableResources' => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src/Concerns/CanDisableResources.php',
+        'LaraZeus\\FilamentPluginTools\\Concerns\\CanGloballySearch' => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src/Concerns/CanGloballySearch.php',
+        'LaraZeus\\FilamentPluginTools\\Concerns\\CanHideResources' => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src/Concerns/CanHideResources.php',
+        'LaraZeus\\FilamentPluginTools\\Concerns\\CanStickyActions' => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src/Concerns/CanStickyActions.php',
+        'LaraZeus\\FilamentPluginTools\\Concerns\\HasModels' => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src/Concerns/HasModels.php',
+        'LaraZeus\\FilamentPluginTools\\Concerns\\HasNavigationBadges' => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src/Concerns/HasNavigationBadges.php',
+        'LaraZeus\\FilamentPluginTools\\Concerns\\HasNavigationGroupLabel' => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src/Concerns/HasNavigationGroupLabel.php',
+        'LaraZeus\\FilamentPluginTools\\Concerns\\HasUploads' => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src/Concerns/HasUploads.php',
+        'LaraZeus\\FilamentPluginTools\\FilamentPluginTools' => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src/FilamentPluginTools.php',
+        'LaraZeus\\FilamentPluginTools\\FilamentPluginToolsServiceProvider' => __DIR__ . '/..' . '/lara-zeus/filament-plugin-tools/src/FilamentPluginToolsServiceProvider.php',
         'LaraZeus\\Popover\\Concerns\\HasPopover' => __DIR__ . '/..' . '/lara-zeus/popover/src/Concerns/HasPopover.php',
         'LaraZeus\\Popover\\Infolists\\PopoverEntry' => __DIR__ . '/..' . '/lara-zeus/popover/src/Infolists/PopoverEntry.php',
         'LaraZeus\\Popover\\PopoverServiceProvider' => __DIR__ . '/..' . '/lara-zeus/popover/src/PopoverServiceProvider.php',
@@ -8632,6 +8683,7 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
         'Rawilk\\FilamentPasswordInput\\Password' => __DIR__ . '/..' . '/rawilk/filament-password-input/src/Password.php',
         'RyanChandler\\BladeCaptureDirective\\BladeCaptureDirective' => __DIR__ . '/..' . '/ryangjchandler/blade-capture-directive/src/BladeCaptureDirective.php',
         'RyanChandler\\BladeCaptureDirective\\BladeCaptureDirectiveServiceProvider' => __DIR__ . '/..' . '/ryangjchandler/blade-capture-directive/src/BladeCaptureDirectiveServiceProvider.php',
+        'RyanChandler\\TablerIcons\\BladeTablerIconsServiceProvider' => __DIR__ . '/..' . '/ryangjchandler/blade-tabler-icons/src/BladeTablerIconsServiceProvider.php',
         'SQLite3Exception' => __DIR__ . '/..' . '/symfony/polyfill-php83/Resources/stubs/SQLite3Exception.php',
         'Sabberworm\\CSS\\CSSList\\AtRuleBlockList' => __DIR__ . '/..' . '/sabberworm/php-css-parser/src/CSSList/AtRuleBlockList.php',
         'Sabberworm\\CSS\\CSSList\\CSSBlockList' => __DIR__ . '/..' . '/sabberworm/php-css-parser/src/CSSList/CSSBlockList.php',
@@ -8881,6 +8933,18 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
         'SolutionForest\\FilamentSimpleLightBox\\FilamentSimpleLightBoxServiceProvider' => __DIR__ . '/..' . '/solution-forest/filament-simplelightbox/src/FilamentSimpleLightBoxServiceProvider.php',
         'SolutionForest\\FilamentSimpleLightBox\\SimpleLightBoxPlugin' => __DIR__ . '/..' . '/solution-forest/filament-simplelightbox/src/SimpleLightBoxPlugin.php',
         'SolutionForest\\FilamentSimpleLightBox\\Testing\\TestsFilamentSimpleLightBox' => __DIR__ . '/..' . '/solution-forest/filament-simplelightbox/src/Testing/TestsFilamentSimpleLightBox.php',
+        'Spatie\\Async\\FileTask' => __DIR__ . '/..' . '/spatie/async/src/FileTask.php',
+        'Spatie\\Async\\Output\\ParallelError' => __DIR__ . '/..' . '/spatie/async/src/Output/ParallelError.php',
+        'Spatie\\Async\\Output\\ParallelException' => __DIR__ . '/..' . '/spatie/async/src/Output/ParallelException.php',
+        'Spatie\\Async\\Output\\SerializableException' => __DIR__ . '/..' . '/spatie/async/src/Output/SerializableException.php',
+        'Spatie\\Async\\Pool' => __DIR__ . '/..' . '/spatie/async/src/Pool.php',
+        'Spatie\\Async\\PoolStatus' => __DIR__ . '/..' . '/spatie/async/src/PoolStatus.php',
+        'Spatie\\Async\\Process\\ParallelProcess' => __DIR__ . '/..' . '/spatie/async/src/Process/ParallelProcess.php',
+        'Spatie\\Async\\Process\\ProcessCallbacks' => __DIR__ . '/..' . '/spatie/async/src/Process/ProcessCallbacks.php',
+        'Spatie\\Async\\Process\\Runnable' => __DIR__ . '/..' . '/spatie/async/src/Process/Runnable.php',
+        'Spatie\\Async\\Process\\SynchronousProcess' => __DIR__ . '/..' . '/spatie/async/src/Process/SynchronousProcess.php',
+        'Spatie\\Async\\Runtime\\ParentRuntime' => __DIR__ . '/..' . '/spatie/async/src/Runtime/ParentRuntime.php',
+        'Spatie\\Async\\Task' => __DIR__ . '/..' . '/spatie/async/src/Task.php',
         'Spatie\\Backtrace\\Arguments\\ArgumentReducers' => __DIR__ . '/..' . '/spatie/backtrace/src/Arguments/ArgumentReducers.php',
         'Spatie\\Backtrace\\Arguments\\ProvidedArgument' => __DIR__ . '/..' . '/spatie/backtrace/src/Arguments/ProvidedArgument.php',
         'Spatie\\Backtrace\\Arguments\\ReduceArgumentPayloadAction' => __DIR__ . '/..' . '/spatie/backtrace/src/Arguments/ReduceArgumentPayloadAction.php',
@@ -10141,6 +10205,13 @@ class ComposerStaticInit5156dee70d5c05156f26ecfa5a85147b
         'TijsVerkoyen\\CssToInlineStyles\\Css\\Rule\\Processor' => __DIR__ . '/..' . '/tijsverkoyen/css-to-inline-styles/src/Css/Rule/Processor.php',
         'TijsVerkoyen\\CssToInlineStyles\\Css\\Rule\\Rule' => __DIR__ . '/..' . '/tijsverkoyen/css-to-inline-styles/src/Css/Rule/Rule.php',
         'UnhandledMatchError' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/UnhandledMatchError.php',
+        'VXM\\Async\\Async' => __DIR__ . '/..' . '/vxm/laravel-async/src/Async.php',
+        'VXM\\Async\\AsyncFacade' => __DIR__ . '/..' . '/vxm/laravel-async/src/AsyncFacade.php',
+        'VXM\\Async\\AsyncServiceProvider' => __DIR__ . '/..' . '/vxm/laravel-async/src/AsyncServiceProvider.php',
+        'VXM\\Async\\Commands\\JobMakeCommand' => __DIR__ . '/..' . '/vxm/laravel-async/src/Commands/JobMakeCommand.php',
+        'VXM\\Async\\Invocation' => __DIR__ . '/..' . '/vxm/laravel-async/src/Invocation.php',
+        'VXM\\Async\\Pool' => __DIR__ . '/..' . '/vxm/laravel-async/src/Pool.php',
+        'VXM\\Async\\Runtime\\ParentRuntime' => __DIR__ . '/..' . '/vxm/laravel-async/src/Runtime/ParentRuntime.php',
         'ValueError' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/ValueError.php',
         'Wallo\\FilamentSelectify\\Components\\ButtonGroup' => __DIR__ . '/..' . '/andrewdwallo/filament-selectify/src/Components/ButtonGroup.php',
         'Wallo\\FilamentSelectify\\Components\\Concerns\\HasToggleLabels' => __DIR__ . '/..' . '/andrewdwallo/filament-selectify/src/Components/Concerns/HasToggleLabels.php',

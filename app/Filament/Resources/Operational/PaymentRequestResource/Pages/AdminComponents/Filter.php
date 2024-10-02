@@ -28,13 +28,23 @@ trait Filter
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->status));
     }
 
+
+    /**
+     * @return Grouping
+     */
+    public static function filterByCase(): Grouping
+    {
+        return Grouping::make('extra->caseNumber')->label('Case/Contract')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record) => $record->extra['caseNumber'] ?? 'No Case/Contract No.');
+    }
+
     /**
      * @return Grouping
      */
     public static function filterByProformaInvoice(): Grouping
     {
         return Grouping::make('proformaInvoices.proforma_number')->label('Pro forma Invoice')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => $record->proforma_invoice_number ?? 'No Pro forma Invoice Number');
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->proforma_invoice_number ?? 'No Pro forma Invoice No');
     }
 
     /**
@@ -42,8 +52,19 @@ trait Filter
      */
     public static function filterByOrder(): Grouping
     {
-        return Grouping::make('order.invoice_number')->label('Order')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => $record->order->invoice_number ?? 'No Project Number');
+        return Grouping::make('order.invoice_number')->label('Project')->collapsible()
+            ->getTitleFromRecordUsing(function (Model $record): string {
+                $order = optional($record->order)->invoice_number ?? null;
+                $proformaInvoice = optional($record->associatedProformaInvoices)
+                    ? $record->associatedProformaInvoices
+                        ->map(fn($invoice) => $invoice->contract_number)
+                        ->unique()
+                        ->join(', ')
+                    : 'No Project No. Given';
+                $errorFreeProformaInvoice = empty($proformaInvoice) ? 'No Project No. Given' : $proformaInvoice;
+                return $order ?? $errorFreeProformaInvoice;
+            });
+
     }
 
     /**

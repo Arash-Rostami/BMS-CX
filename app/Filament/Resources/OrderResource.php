@@ -2,18 +2,12 @@
 
 namespace App\Filament\Resources;
 
-use AnourValar\EloquentSerialize\Tests\Models\Post;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin;
-use App\Filament\Resources\Operational\OrderResource\Pages\ViewOrder;
 use App\Filament\Resources\Operational\OrderResource\Widgets\StatsOverview;
-use App\Filament\Resources\OrderResource\Pages;
-use App\Filament\Resources\OrderResource\RelationManagers;
-use App\Models\Attachment;
 use App\Models\Order;
 use App\Services\AttachmentDeletionService;
 use App\Services\OrderPaymentCalculationService;
 use App\Services\TableObserver;
-use Archilex\ToggleIconColumn\Columns\ToggleIconColumn;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms;
@@ -34,23 +28,21 @@ use Filament\Resources\Pages\Page;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\ForceDeleteBulkAction;
 use Filament\Tables\Actions\ReplicateAction;
 use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
-use Filament\Tables\Columns\Layout\View;
 use Filament\Forms\Components\View as ComponentView;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\HtmlString;
-use Livewire\Livewire;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use Illuminate\Database\Eloquent\Collection;
+use Filament\Notifications\Notification;
 
 
 class OrderResource extends Resource
@@ -65,7 +57,6 @@ class OrderResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'reference_number';
 
-
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
 
@@ -75,7 +66,7 @@ class OrderResource extends Resource
             ->schema([
                 Forms\Components\Group::make()
                     ->schema([
-                        Forms\Components\Section::make()
+                        Forms\Components\Section::make('Pro forma Invoice:')
                             ->schema([
                                 Fieldset::make()
                                     ->schema([
@@ -99,6 +90,7 @@ class OrderResource extends Resource
                         Forms\Components\Section::make('Status:')
                             ->schema([
                                 Admin::getPurchaseStatus(),
+                                Admin::getOrderStatus(),
                                 Admin::getOrderStatus(),
                             ])->columns(2),
                         /*Parties Involved*/
@@ -355,9 +347,7 @@ class OrderResource extends Resource
         return self::refreshComponent();
     }
 
-    /**
-     * @throws \Exception
-     */
+
     public static function table(Table $table): Table
     {
         $table = self::configureCommonTableSettings($table);
@@ -371,6 +361,7 @@ class OrderResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with(['party', 'orderDetail', 'logistic', 'doc', 'attachments', 'tags'])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
@@ -441,7 +432,7 @@ class OrderResource extends Resource
                     ->modalWidth(MaxWidth::Medium)
                     ->modalIcon('heroicon-o-clipboard-document-list')
                     ->record(fn(Model $record) => $record)
-                    ->visible(fn ($record) => Admin::isPaymentCalculated($record))
+                    ->visible(fn($record) => Admin::isPaymentCalculated($record))
                     ->beforeReplicaSaved(function (Model $replica) {
                         Admin::increasePart($replica);
                         Admin::replicateRelatedModels($replica);
@@ -449,7 +440,8 @@ class OrderResource extends Resource
                     ->after(fn(Model $replica) => Admin::syncOrder($replica))
                     ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.orders.edit', ['record' => $replica->id,])),
                 Tables\Actions\DeleteAction::make()
-                    ->successNotification(fn(Model $record) => Admin::send($record)),
+                    ->successNotification(fn(Model $record) => Admin::send($record))
+                    ->hidden(fn(?Model $record) => $record ? $record->paymentRequests->isNotEmpty() : false),
                 Tables\Actions\RestoreAction::make(),
                 Tables\Actions\Action::make('pdf')
                     ->label('PDF')
@@ -472,10 +464,8 @@ class OrderResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->action(function (Collection $selectedRecords) {
-                            $selectedRecords->each->delete();
-                            $selectedRecords->each(fn(Model $selectedRecord) => Admin::send($selectedRecord));
-                        }),
+                        ->action(fn(Collection $records) => Admin::separateRecordsIntoDeletableAndNonDeletable($records))
+                        ->deselectRecordsAfterCompletion(),
                     RestoreBulkAction::make(),
                     ExportBulkAction::make(),
                     PrintBulkAction::make(),
@@ -602,18 +592,15 @@ class OrderResource extends Resource
             ]);
     }
 
-    /**
-     * @return null
-     */
     public static function getAllDocs()
     {
         return Admin::showAllDocs();
     }
 
-    public static function getTableQuery()
-    {
-        return parent::getTableQuery()->orderBy('part', 'asc')->orderBy('created_at', 'desc');
-    }
+//    public static function getTableQuery()
+//    {
+//        return parent::getTableQuery()->orderBy('part', 'asc')->orderBy('created_at', 'desc');
+//    }
 
     public static function getGlobalSearchResultUrl(Model $record): string
     {

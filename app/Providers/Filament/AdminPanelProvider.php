@@ -28,6 +28,7 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use LaraZeus\Delia\DeliaPlugin;
 use SolutionForest\FilamentSimpleLightBox\SimpleLightBoxPlugin;
 use \Hasnayeen\Themes\Http\Middleware\SetTheme;
 
@@ -53,6 +54,7 @@ class AdminPanelProvider extends PanelProvider
                 'warning' => Color::Orange,
                 'amber' => Color::Amber,
                 'indigo' => Color::Indigo,
+
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -91,9 +93,9 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth(MaxWidth::Full)
             ->spa()
             ->brandName('BMS')
-            ->brandLogo(Vite::asset('resources/images/bms-main-logo-dark.png'))
-            ->brandLogoHeight('3rem')
-            ->favicon(Vite::asset('resources/images/bms-fav-icon.png'))
+            ->brandLogo(Vite::asset('resources/images/logos/bms-logo-v5.png'))
+            ->brandLogoHeight('6rem')
+            ->favicon(Vite::asset('resources/images/logos/bms-fav-icon.png'))
             ->font(
                 'Roboto',
                 url: Vite::asset('resources/css/main-fonts.css'),
@@ -101,7 +103,7 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 SimpleLightBoxPlugin::make(),
                 ThemesPlugin::make(),
-
+//                DeliaPlugin::make()
             ])
             ->sidebarCollapsibleOnDesktop()
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])

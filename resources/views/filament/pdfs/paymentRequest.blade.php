@@ -126,11 +126,11 @@
             color: #555;
         }
 
-        .total .value {
+        div.total + div {
             font-size: 16px;
             font-family: "Courier New", Courier, monospace;
             color: #2c3e50;
-            text-align: right;
+            text-align: center;
         }
 
 
@@ -170,12 +170,12 @@
                 <td class="value">{{ $record->reason->reason }}</td>
             </tr>
             <tr>
-                <th class="label">Purpose</th>
-                <td class="value">{{ $record->purpose }}</td>
+                <th class="label">Payment Type</th>
+                <td class="value">{{ ucfirst($record->type_of_payment) }}</td>
             </tr>
             <tr>
-                <th class="label">Payment Type</th>
-                <td class="value">{{ $record->type_of_payment }}</td>
+                <th class="label">Purpose</th>
+                <td class="value">{{ $record->purpose ?? 'Unspecified' }}</td>
             </tr>
         </table>
     </div>
@@ -185,21 +185,21 @@
         <div class="beneficiary-details">
             <div class="details-section">
                 <div><span class="label">Beneficiary Name:</span> <span
-                        class="value">{{ $record->recipient_name }}</span></div>
+                            class="value">{{ $record->recipient_name }}</span></div>
 
                 @if($record->beneficiary_name == 'supplier')
                     <div><span class="label">Supplier:</span> <span
-                            class="value">{{ optional($record->supplier)->name }}</span></div>
+                                class="value">{{ optional($record->supplier)->name }}</span></div>
                 @elseif($record->beneficiary_name == 'contractor')
                     <div><span class="label">Contractor:</span> <span
-                            class="value">{{ optional($record->contractor)->name }}</span></div>
+                                class="value">{{ optional($record->contractor)->name }}</span></div>
                 @elseif($record->beneficiary_name == 'payee')
                     <div><span class="label">Payee:</span> <span
-                            class="value">{{ optional($record->payee)->name }}</span></div>
+                                class="value">{{ optional($record->payee)->name }}</span></div>
                 @endif
 
                 <div><span class="label">Beneficiary Address:</span> <span
-                        class="value">{{ $record->beneficiary_address }}</span></div>
+                            class="value">{{ $record->beneficiary_address }}</span></div>
             </div>
         </div>
 
@@ -243,11 +243,13 @@
     </table>
 
     <div class="total">
-        <div>
-            <div class="label">Total Payable:</div>
-            <div class="value">{{ number_format($record->total_amount, 2) }}</div>
-        </div>
+        <div class="label">Total Payable:</div>
     </div>
+    <div class="value">
+        {{ number_format($record->requested_amount, 2) }} from total
+        of {{ number_format($record->total_amount, 2) }}
+    </div>
+
 
     <div class="footer">
         Created on {{ optional($record->created_at)->format('M d, Y') }} by {{ $record->extra['made_by'] }}

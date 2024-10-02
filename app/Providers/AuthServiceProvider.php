@@ -7,6 +7,7 @@ use App\Models\Buyer;
 use App\Models\Category;
 use App\Models\Contractor;
 use App\Models\DeliveryTerm;
+use App\Models\Grade;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\OrderRequest;
@@ -24,6 +25,7 @@ use App\Policies\BuyerPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\ContractorPolicy;
 use App\Policies\DeliveryTermPolicy;
+use App\Policies\GradePolicy;
 use App\Policies\NotificationPolicy;
 use App\Policies\OrderPolicy;
 use App\Policies\OrderRequestPolicy;
@@ -51,6 +53,7 @@ class AuthServiceProvider extends ServiceProvider
         Category::class => CategoryPolicy::class,
         Contractor::class => ContractorPolicy::class,
         DeliveryTerm::class => DeliveryTermPolicy::class,
+        Grade::class => GradePolicy::class,
         Notification::class => NotificationPolicy::class,
         Order::class => OrderPolicy::class,
         OrderRequest::class => OrderRequestPolicy::class,
@@ -61,9 +64,9 @@ class AuthServiceProvider extends ServiceProvider
         PortOfDelivery::class => PortOfDeliveryPolicy::class,
         Product::class => ProductPolicy::class,
         PurchaseStatus::class => PurchaseStatusPolicy::class,
-        Tag::class => TagPolicy::class,
         ShippingLine::class => ShippingLinePolicy::class,
-        Supplier::class => SupplierPolicy::class
+        Supplier::class => SupplierPolicy::class,
+        Tag::class => TagPolicy::class
     ];
 
     /**

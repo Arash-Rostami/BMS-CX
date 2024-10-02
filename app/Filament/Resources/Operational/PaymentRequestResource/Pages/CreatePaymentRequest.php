@@ -12,6 +12,7 @@ use App\Services\PaymentRequestService;
 use App\Services\RetryableEmailService;
 use App\Services\SmartPaymentRequest;
 use Filament\Resources\Pages\CreateRecord;
+use VXM\Async\AsyncFacade as Async;
 
 
 class CreatePaymentRequest extends CreateRecord
@@ -57,16 +58,18 @@ class CreatePaymentRequest extends CreateRecord
 
     protected function afterCreate(): void
     {
+        $record = $this->record;
+        $form = $this->form->getState();
+
         $service = new PaymentRequestService();
         $accountants = $service->fetchAccountants();
-        $service->persistReferenceNumber($this->record);
-        $service->notifyAccountants($this->record, $accountants);
+        $service->persistReferenceNumber($record);
 
-        AttachmentCreationService::createFromExisting($this->form->getState(), $this->record->id, 'payment_request_id');
+        Async::run(function () use ($record, $form, $service, $accountants) {
+            AttachmentCreationService::createFromExisting($form, $record->id, 'payment_request_id');
 
-        $this->notifyViaEmail($accountants, $this->record);
-
-//        $this->notifyManagement();
+            $service->notifyAccountants($record, $accountants);
+        });
     }
 
 

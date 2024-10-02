@@ -68,8 +68,8 @@ class SmartPaymentRequest
 
         if ($order) {
             $orderDetails = optional($order->orderDetail) ?? null;
-            $requested = ($orderDetails?->finalTotal != null && $orderDetails?->finalTotal != 0.0)
-                ? $orderDetails?->finalTotal
+            $requested = ($orderDetails?->extra['finalTotal'] != null && $orderDetails?->extra['finalTotal'] != 0.0)
+                ? $orderDetails?->extra['finalTotal']
                 : $orderDetails?->extra['provisionalTotal'] ?? null;
             $total = ($orderDetails?->buying_price ?? 0) * ($orderDetails->buying_quantity ?? 0);
 

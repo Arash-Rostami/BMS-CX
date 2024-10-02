@@ -140,7 +140,7 @@ trait Table
             ->badge()
             ->grow(false)
             ->color('secondary')
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '📏 Gr: ' : '') . $record->grade->name ?? null)
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '📏 Gr: ' : '') . optional($record->grade)->name ?? null)
             ->searchable()
             ->toggleable()
             ->sortable();

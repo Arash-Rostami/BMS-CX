@@ -16,6 +16,8 @@ use Carbon\Carbon;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Get;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -140,8 +142,10 @@ class Admin
 
             // Unique identifier
             $timestamp = Carbon::now()->format('YmdHis');
+            $randomString = Str::random(5);
+
             // New filename with extension
-            $newFileName = "Payment-Request-{$timestamp}-{$name}";
+            $newFileName = "PR-{$timestamp}-{$randomString}-{$name}";
 
             // Sanitizing the file name
             return Str::slug($newFileName, '-') . ".{$extension}";
@@ -265,5 +269,30 @@ class Admin
         $accountants = $service->fetchAccountants();
         $service->persistReferenceNumber($replica);
         $service->notifyAccountants($replica, $accountants);
+    }
+
+    public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
+    {
+        $recordsToDelete = $records->filter(fn($record) => $record->payments->isEmpty());
+        $recordsNotDeleted = $records->filter(fn($record) => $record->payments->isNotEmpty());
+
+        // Delete the records that have no paymentRequests
+        $recordsToDelete->each->delete();
+        $recordsToDelete->each(fn(Model $selectedRecord) => Admin::send($selectedRecord));
+
+        if ($recordsNotDeleted->isNotEmpty()) {
+            $recordNames = $recordsNotDeleted->pluck('reference_number')->join(', ');
+            Notification::make()
+                ->title('Some records were not deleted')
+                ->body("The following records could not be deleted because they have payments: $recordNames.")
+                ->warning()
+                ->persistent()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('Records deleted successfully')
+                ->success()
+                ->send();
+        }
     }
 }

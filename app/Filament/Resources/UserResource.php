@@ -35,12 +35,14 @@ class UserResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
     protected static ?string $navigationGroup = 'Core Data';
-
     protected static ?string $recordTitleAttribute = 'first_name';
+
+    public ?string $tableSortColumn = 'email';
+
 
     public static function getGlobalSearchResultTitle(Model $record): string
     {
-        return $record->fullName;
+        return "👨🏻‍💻 " . $record->fullName;
     }
 
     public static function getGloballySearchableAttributes(): array
@@ -129,12 +131,13 @@ class UserResource extends Resource
                     ExportBulkAction::make(),
                 ])
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('first_name', 'asc')
             ->groups([
                 Tables\Grouping\Group::make('company')
                     ->label('Company')
                     ->collapsible(),
-            ]);
+            ])
+            ->striped();
     }
 
 

@@ -1,0 +1,77 @@
+.fi-logo {
+    -webkit-animation: jello-horizontal 0.9s 2s both;
+    animation: jello-horizontal 0.9s 2s both;
+}
+
+.fi-body {
+    background-color: #E6E6E6;
+}
+
+.dark .fi-body, .dark .fi-topbar > nav, .dark .fi-sidebar-header {
+    background-image: none;
+}
+
+.fi-sidebar-item > a:hover {
+    @apply hover:bg-gray-300 dark:hover:bg-white/5;
+}
+
+.fi-topbar > nav {
+    background-color: #DFCFD4;
+}
+
+.fi-sidebar-nav {
+    background-color: #e0e7eb;
+}
+
+.dark .fi-sidebar-nav {
+    background-color: transparent;
+}
+
+.fi-topbar, .fi-sidebar-header {
+    @apply dark:bg-black;
+    background-color: #e0e7eb;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.fi-sidebar-nav::-webkit-scrollbar { /* Target the scrollbar within the fi-sidebar-nav class */
+    width: 10px;
+    height: 10px;
+}
+
+
+::-webkit-scrollbar-track, .fi-sidebar-nav::-webkit-scrollbar-track { /* SCROLL RAIL */
+    box-shadow: inset 0 0 0 grey;
+    border-radius: 10px;
+    @apply bg-[#E6E6E6];
+}
+
+.dark ::-webkit-scrollbar-track { /* DARK */
+    background: #09090B;
+}
+
+
+::-webkit-scrollbar-thumb, .fi-sidebar-nav::-webkit-scrollbar-thumb { /* SCROLLER */
+    background: #B0BCC5;
+    border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb { /* DARK MODE */
+    background: #6E6E6E;
+    /*@apply bg-primary-500;*/
+}
+
+::-webkit-scrollbar-thumb:hover, .fi-sidebar-nav::-webkit-scrollbar-thumb:hover { /* Handle on hover */
+    background: #808080;
+    @apply dark:bg-gray-700;
+}
+
+.ring-1 {
+    border-radius: 5px;
+    @apply shadow-lg border-none;
+}
+
+

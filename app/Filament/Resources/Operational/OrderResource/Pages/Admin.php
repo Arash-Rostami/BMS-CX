@@ -19,7 +19,9 @@ use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Support\Enums\Alignment;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -73,8 +75,10 @@ class Admin
 
             // Unique identifier
             $timestamp = Carbon::now()->format('YmdHis');
+            $randomString = Str::random(5);
+
             // New filename with extension
-            $newFileName = "Order-{$number}-{$timestamp}-{$name}";
+            $newFileName = "O-{$number}-{$timestamp}-{$randomString}-{$name}";
 
             // Sanitizing the file name
             return Str::slug($newFileName, '-') . ".{$extension}";
@@ -145,6 +149,7 @@ class Admin
 
             $columns[] = ToggleIconColumn::make("extra.docs_received.$key")
                 ->disabled(true)
+                ->default(fn($record) => self::getDefaultValue($record, $labelTrimmed))
                 ->onColor('main')
                 ->offColor('main')
                 ->alignment(Alignment::Center)
@@ -177,27 +182,39 @@ class Admin
         );
     }
 
+    public static function hasRelevantAttachment($title, $order)
+    {
+//        $cacheKey = 'attachment_title_containing_part_' . $title . '_' . $order->id;
+
+//        return Cache::remember($cacheKey, 120, function () use ($title, $order) {
+            return $order->attachments->contains(function ($attachment) use ($title) {
+                return Str::contains($attachment->file_path, $title);
+            });
+//        });
+    }
 
     private static function getExtraAttributes($record, $labelTrimmed)
     {
-        return Attachment::hasTitleContainingPart($labelTrimmed, $record->id)
-            ? ['style' => 'background-color: #41a441; border-radius: 50%; transform: scale(.65); cursor:help ']
-            : ['style' => 'background-color: #b34747; border-radius: 50%; transform: scale(.65); cursor:help '];
+        return self::hasRelevantAttachment($labelTrimmed, $record)
+            ? ['style' => 'background-color: #41a441; border-radius: 50%; transform: scale(.75); cursor:help ']
+            : ['style' => 'background-color: #b34747; border-radius: 50%; transform: scale(.75); cursor:help '];
+    }
+
+    private static function getDefaultValue($record, $labelTrimmed)
+    {
+        return self::hasRelevantAttachment($labelTrimmed, $record);
     }
 
     private static function getTooltip($record, $labelTrimmed)
     {
-        return Attachment::hasTitleContainingPart($labelTrimmed, $record->id) ? 'Attached' : 'Not Given';
+        return self::hasRelevantAttachment($labelTrimmed, $record) ? 'Attached' : 'Not Given';
     }
 
 
     protected static function calculateSummaries($type, $query)
     {
-        $cacheKey = 'order_summaries_' . $type;
-
-        if (Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
-        }
+        $groupValue = $query->clone()->value('invoice_number');
+        $cacheKey = 'order_summaries_' . $type . '_' . $groupValue;
 
         $query = $query->join('order_details', 'orders.order_detail_id', '=', 'order_details.id');
 
@@ -205,15 +222,15 @@ class Admin
             $totalPayments = $query
                 ->selectRaw("
                 CONCAT(
-                    CAST(COALESCE(SUM(JSON_EXTRACT(order_details.extra, '$.initialPayment')), 0) AS DECIMAL(10,2)),
-                   ' | ',
-                    CAST(COALESCE(SUM(JSON_EXTRACT(order_details.extra, '$.provisionalTotal')), 0) AS DECIMAL(10,2)),
-                    ' | ',
-                    CAST(COALESCE(SUM(JSON_EXTRACT(order_details.extra, '$.finalTotal')), 0) AS DECIMAL(10,2))
+                    FORMAT(COALESCE(SUM(JSON_EXTRACT(order_details.extra, '$.initialPayment')), 0), 2),
+                   ' ┆ ',
+                    FORMAT(COALESCE(SUM(JSON_EXTRACT(order_details.extra, '$.provisionalTotal')), 0), 2),
+                    ' ┆ ',
+                    FORMAT(COALESCE(SUM(JSON_EXTRACT(order_details.extra, '$.finalTotal')), 0), 2)
                 ) as totals
             ")->value('totals');
 
-            Cache::put($cacheKey, $totalPayments, 1);
+            Cache::put($cacheKey, $totalPayments, now()->addMinutes(3));
 
             return $totalPayments;
         }
@@ -222,13 +239,13 @@ class Admin
             $totalQuantities = $query
                 ->selectRaw("
                 CONCAT(
-                    CAST(COALESCE(SUM(order_details.provisional_quantity), 0) AS DECIMAL(10,2)),
-                    ' | ',
-                    CAST(COALESCE(SUM(order_details.final_quantity), 0) AS DECIMAL(10,2))
+                    FORMAT(COALESCE(SUM(order_details.provisional_quantity), 0), 2),
+                    ' ┆ ',
+                    FORMAT(COALESCE(SUM(order_details.final_quantity - order_details.provisional_quantity), 0), 2)
                 ) as quantities
             ")->value('quantities');
 
-            Cache::put($cacheKey, $totalQuantities, 1);
+            Cache::put($cacheKey, $totalQuantities, now()->addMinutes(3));
 
             return $totalQuantities;
         }
@@ -282,5 +299,30 @@ class Admin
         $agents = $service->fetchAgents();
         $service->persistReferenceNumber($replica);
         $service->notifyAgents($replica, $agents);
+    }
+
+    public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
+    {
+        $recordsToDelete = $records->filter(fn($record) => $record->paymentRequests->isEmpty());
+        $recordsNotDeleted = $records->filter(fn($record) => $record->paymentRequests->isNotEmpty());
+
+        // Delete the records that have no paymentRequests
+        $recordsToDelete->each->delete();
+        $recordsToDelete->each(fn(Model $selectedRecord) => Admin::send($selectedRecord));
+
+        if ($recordsNotDeleted->isNotEmpty()) {
+            $recordNames = $recordsNotDeleted->pluck('reference_number')->join(', ');
+            Notification::make()
+                ->title('Some records were not deleted')
+                ->body("The following records could not be deleted because they have payment requests: $recordNames.")
+                ->warning()
+                ->persistent()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('Records deleted successfully')
+                ->success()
+                ->send();
+        }
     }
 }

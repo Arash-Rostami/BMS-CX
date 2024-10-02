@@ -18,6 +18,7 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\MaxWidth;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
+use LaraZeus\Delia\Filament\Actions\BookmarkHeaderAction;
 
 class EditProformaInvoice extends EditRecord
 {
@@ -31,6 +32,7 @@ class EditProformaInvoice extends EditRecord
                 ->url(fn(Model $record) => route('filament.admin.resources.payment-requests.create', ['id' => $record->id, 'module' => 'proforma-invoice']))
                 ->icon('heroicon-o-credit-card')
                 ->color('warning')
+                ->hidden(fn(?Model $record) => $record ? $record->activeApprovedPaymentRequests->isNotEmpty() : false)
                 ->openUrlInNewTab(),
             PrintAction::make()
                 ->color('amber'),
@@ -56,6 +58,7 @@ class EditProformaInvoice extends EditRecord
                 ->after(fn(Model $replica) => Admin::syncProformaInvoice($replica))
                 ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.proforma-invoices.edit', ['record' => $replica->id,])),
             Actions\DeleteAction::make()
+                ->hidden(fn(?Model $record) => $record && ($record->activeApprovedPaymentRequests->isNotEmpty() || $record->activeOrders->isNotEmpty()))
                 ->icon('heroicon-o-trash')
                 ->successNotification(fn(Model $record) => Admin::send($record)),
         ];

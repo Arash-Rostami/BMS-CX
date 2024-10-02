@@ -5,11 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\Admin;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Widgets\StatsOverview;
-use App\Filament\Resources\ProformaInvoiceResource\Pages;
-use App\Filament\Resources\ProformaInvoiceResource\RelationManagers;
 use App\Models\ProformaInvoice;
 use App\Services\AttachmentDeletionService;
-use App\Services\ProformaInvoiceService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms\Components\Actions\Action;
@@ -240,7 +237,8 @@ class ProformaInvoiceResource extends Resource
                     ->after(fn(Model $replica) => Admin::syncProformaInvoice($replica))
                     ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.proforma-invoices.edit', ['record' => $replica->id,])),
                 Tables\Actions\DeleteAction::make()
-                    ->successNotification(fn(Model $record) => Admin::send($record)),
+                    ->successNotification(fn(Model $record) => Admin::send($record))
+                    ->hidden(fn(?Model $record) => $record && ($record->activeApprovedPaymentRequests->isNotEmpty() || $record->activeOrders->isNotEmpty())),
                 Tables\Actions\RestoreAction::make(),
                 Tables\Actions\Action::make('pdf')
                     ->label('PDF')
@@ -253,6 +251,7 @@ class ProformaInvoiceResource extends Resource
                                 ->stream();
                         }, 'BMS-' . $record->reference_number . '.pdf');
                     }),
+
                 Tables\Actions\Action::make('createPaymentRequest')
                     ->label('Smart Payment')
                     ->url(fn($record) => route('filament.admin.resources.payment-requests.create', ['id' => $record->id, 'module' => 'proforma-invoice']))
@@ -263,12 +262,8 @@ class ProformaInvoiceResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->action(function (Collection $selectedRecords) {
-                            $selectedRecords->each->delete();
-                            $selectedRecords->each(
-                                fn(Model $selectedRecord) => Admin::send($selectedRecord)
-                            );
-                        }),
+                        ->action(fn(Collection $records) => Admin::separateRecordsIntoDeletableAndNonDeletable($records))
+                        ->deselectRecordsAfterCompletion(),
                     RestoreBulkAction::make(),
                     ExportBulkAction::make(),
                     PrintBulkAction::make(),

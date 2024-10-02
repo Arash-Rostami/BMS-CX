@@ -216,7 +216,7 @@ class Admin
     {
         return TextColumn::make('fullName')
             ->searchable(['first_name', 'middle_name', 'last_name'])
-            ->sortable()
+            ->sortable(['first_name'])
             ->grow(false)
             ->toggleable()
             ->weight('medium')

@@ -50,18 +50,12 @@ trait Filter
             ->query(function (Builder $query, array $data): Builder {
                 return $query
                     ->when(
-                        $data['proforma_from'] ?? null,
-                        function (Builder $query, $date): Builder {
-                            $formattedDate = Carbon::parse($date)->format('Y-m-d');
-                            return $query->whereRaw("TRIM(BOTH '\"' FROM json_extract(details, '$.proforma_date')) >= ?", [$formattedDate]);
-                        }
+                        $data['proforma_from'],
+                        fn(Builder $query, $date): Builder => $query->whereDate('proforma_date', '>=', $date),
                     )
                     ->when(
-                        $data['proforma_until'] ?? null,
-                        function (Builder $query, $date): Builder {
-                            $formattedDate = Carbon::parse($date)->format('Y-m-d');
-                            return $query->whereRaw("TRIM(BOTH '\"' FROM json_extract(details, '$.proforma_date')) <= ?", [$formattedDate]);
-                        }
+                        $data['proforma_until'],
+                        fn(Builder $query, $date): Builder => $query->whereDate('proforma_date', '<=', $date),
                     );
             })
             ->indicateUsing(function (array $data): array {
@@ -216,15 +210,20 @@ trait Filter
             ->getTitleFromRecordUsing(fn(Model $record) => $record->invoice_number ?? 'N/A')
             ->getKeyFromRecordUsing(fn(Model $record) => $record->invoice_number != null ? $record->invoice_number : $record->proforma_number)
             ->getDescriptionFromRecordUsing(function (Model $record) {
-                $orders = Order::aggrgateOrderGroupTotals($record);
+                $orders['paymentRequestCount'] = count($record->paymentRequests) ?? 0;
+                $orders = Order::aggregateOrderGroupTotals($record);
                 return sprintf(
-                    " 🔶 Tot Quant: %s/%s 🔶 Tot Pay: %s (💵 %s) 🔶 Ship Prt: %s 🔶 Dys Elpsd: %s",
+                    " 🔶 Tot Quant: %s%s 🔶 Tot Pay Rqsts: %s%s 🔶  Misc Pay Rqsts: %s 🔶 Pay Rqst Cnt: %s 🔶 Pays Cnt: %s 🔶 Ship Prt: %s 🔶 Dys Elpsd: %s",
                     $orders['quantity'],
-                    $orders['totalQuantity'],
+                    $orders['quantityBalance'],
                     $orders['payment'],
-                    $orders['totalPayment'],
+                    $orders['paymentRequestBalance'],
+                    $orders['totalOfOtherPaymentRequests'],
+//                    $orders['totalPayment'],
+                    $orders['totalPaymentRequests'],
+                    $orders['totalPayments'],
                     $orders['shipmentPart'],
-                    $orders['daysPassed']
+                    $orders['daysPassed'],
                 );
             });
     }

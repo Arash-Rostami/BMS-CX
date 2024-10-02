@@ -163,6 +163,7 @@ trait Form
                     }
                 }
             )
+            ->live()
             ->default(0)
             ->createOptionForm([
                 Select::make('product_id')
@@ -302,6 +303,9 @@ trait Form
         return Toggle::make('use_existing_attachments')
             ->label('Use existing attachments')
             ->default(false)
+            ->onIcon('heroicon-m-bolt')
+            ->offIcon('heroicon-o-no-symbol')
+            ->offColor('gray')
             ->columnSpan(2)
             ->live();
     }
@@ -387,7 +391,7 @@ trait Form
             ->getUploadedFileNameForStorageUsing(self::nameUploadedFile())
             ->previewable(true)
             ->disk('filament')
-            ->directory('/attachments/proforma-attachments')
+            ->directory('/attachments/proforma-invoice')
             ->maxSize(2500)
             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
             ->imageEditor()
@@ -406,6 +410,9 @@ trait Form
             ->options(Name::getSortedNamesForModule('ProformaInvoice'))
             ->placeholder('select or make')
             ->requiredWith('file_path')
+            ->validationMessages([
+                'required_with' => '🚫 The name is required when an attachment is uploaded.',
+            ])
             ->createOptionForm([
                 TextInput::make('title')
                     ->required()

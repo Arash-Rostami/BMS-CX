@@ -55,6 +55,7 @@ class Admin
     {
         return TextColumn::make('user.fullName')
             ->badge()
+            ->searchable(['first_name', 'middle_name', 'last_name'])
             ->color('primary');
     }
 
@@ -126,8 +127,8 @@ class Admin
     {
         return Group::make('user.first_name')
             ->label('Recipient')
-            ->getTitleFromRecordUsing(fn(Model $record): string => $record->user->fullName)
-            ->getDescriptionFromRecordUsing(fn(Model $record): string => "Acting as {$record->user->role}")
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->user)->fullName ?? 'N/A')
+            ->getDescriptionFromRecordUsing(fn(Model $record): string => "Acting as " . (optional($record->user)->role ?? 'N/A'))
             ->collapsible();
     }
 
@@ -154,6 +155,11 @@ class Admin
     {
         return SelectFilter::make('notifiable_id')
             ->label('User')
-            ->relationship('user', 'first_name');
+            ->getOptionLabelFromRecordUsing(fn(Model $record) => "{$record->first_name} {$record->last_name}")
+            ->relationship(
+                'user',
+                'first_name',
+                modifyQueryUsing: fn(Builder $query) => $query->orderBy('first_name')->orderBy('last_name'),
+            );
     }
 }

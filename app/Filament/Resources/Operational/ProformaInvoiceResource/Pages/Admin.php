@@ -14,6 +14,8 @@ use Carbon\Carbon;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Get;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Livewire\Component as Livewire;
@@ -82,8 +84,10 @@ class Admin
 
             // Unique identifier
             $timestamp = Carbon::now()->format('YmdHis');
+            $randomString = Str::random(5);
+
             // New filename with extension
-            $newFileName = "Proforma-{$number}-{$timestamp}-{$name}";
+            $newFileName = "PI-{$number}-{$timestamp}-{$randomString}-{$name}";
 
             // Sanitizing the file name
             return Str::slug($newFileName, '-') . ".{$extension}";
@@ -107,5 +111,31 @@ class Admin
         $agents = $service->fetchAgents();
         $service->persistReferenceNumber($replica);
         $service->notifyAgents($replica, $agents);
+    }
+
+    public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
+    {
+        $recordsToDelete = $records->filter(function ($record) {
+            return $record->activeApprovedPaymentRequests->isEmpty() && $record->activeOrders->isEmpty();
+        });
+        $recordsNotDeleted = $records->diff($recordsToDelete);
+
+        // Delete the records that have no paymentRequests
+        $recordsToDelete->each->delete();
+        $recordsToDelete->each(fn(Model $selectedRecord) => Admin::send($selectedRecord));
+
+        if ($recordsNotDeleted->isNotEmpty()) {
+            $recordReferences = $recordsNotDeleted->pluck('reference_number')->join(', ');
+            Notification::make()
+                ->title('Some records were not deleted')
+                ->body("The following records could not be deleted because they have active orders or payment requests: $recordReferences.")
+                ->warning()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('Records deleted successfully')
+                ->success()
+                ->send();
+        }
     }
 }

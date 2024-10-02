@@ -28,6 +28,7 @@ class EditOrder extends EditRecord
                 ->icon('heroicon-o-credit-card')
                 ->visible(fn($record) => Admin::isPaymentCalculated($record))
                 ->color('warning')
+                ->hidden(fn(?Model $record) => $record ? $record->paymentRequests->isNotEmpty() : false)
                 ->openUrlInNewTab(),
             PrintAction::make()
                 ->color('amber'),
@@ -55,6 +56,7 @@ class EditOrder extends EditRecord
                 ->after(fn(Model $replica) => Admin::syncOrder($replica))
                 ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.orders.edit', ['record' => $replica->id,])),
             Actions\DeleteAction::make()
+                ->hidden(fn(?Model $record) => $record ? $record->paymentRequests->isNotEmpty() : false)
                 ->icon('heroicon-o-trash')
                 ->successNotification(fn(Model $record) => Admin::send($record)),
         ];

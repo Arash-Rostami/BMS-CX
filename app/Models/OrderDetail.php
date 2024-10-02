@@ -58,6 +58,42 @@ class OrderDetail extends Model
     }
 
 
+    // Computational Methods
+    public function isLastOrderTaken()
+    {
+        if (!$this->relationLoaded('order')) {
+            $this->load('order.proformaInvoice.orders');
+        }
+
+        $relatedOrders = $this->order->proformaInvoice->orders ?? [];
+
+        $otherOrders = collect($relatedOrders)->filter(function ($order) {
+            return $order->id !== $this->order->id;
+        });
+
+        return $otherOrders->contains(function ($order) {
+            return data_get($order, 'orderDetail.extra.lastOrder', false) === true;
+        });
+    }
+
+
+    public function areALlOrdersTaken()
+    {
+        if (!$this->relationLoaded('order')) {
+            $this->load('order.proformaInvoice.orders');
+        }
+
+        $relatedOrders = $this->order->proformaInvoice->orders ?? [];
+
+        $otherOrders = collect($relatedOrders)->filter(function ($order) {
+            return $order->id !== $this->order->id;
+        });
+
+        return $otherOrders->contains(function ($order) {
+            return data_get($order, 'orderDetail.extra.allOrders', false) === true;
+        });
+    }
+
 
     protected static function baseQuery($year, array $with = [])
     {
@@ -92,11 +128,11 @@ class OrderDetail extends Model
 //        $cacheKey = 'orders_data_by_category_' . $year;
 
 //        return Cache::remember($cacheKey, 5, function () use ($year) {
-            $items = self::baseQuery($year, ['order.category'])
-                ->get()
-                ->groupBy('order.category_id');
+        $items = self::baseQuery($year, ['order.category'])
+            ->get()
+            ->groupBy('order.category_id');
 
-            return self::mapQueryResultsWithSum($items, 'category');
+        return self::mapQueryResultsWithSum($items, 'category');
 //        });
     }
 
@@ -157,5 +193,16 @@ class OrderDetail extends Model
     private static function isQuantityAndPriceSet(string $quantityField, $item, string $priceField): bool
     {
         return isset($item->{$quantityField}) && $item->{$quantityField} > 0 && isset($item->{$priceField}) && $item->{$priceField} > 0;
+    }
+
+
+    public function hasApprovedRelatedRequests()
+    {
+        if ($this->order && $this->order->paymentRequests && !$this->order->paymentRequests->isEmpty()) {
+            return $this->order->paymentRequests->contains(function ($paymentRequest) {
+                return in_array($paymentRequest->status, ['approved', 'allowed', 'processing', 'completed']);
+            });
+        }
+        return false;
     }
 }

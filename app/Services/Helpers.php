@@ -74,6 +74,17 @@ function isUserAccountant()
     return auth()->user()->role === 'accountant';
 }
 
+function getCurrencySymbols($currency)
+{
+    return [
+        'USD'   => '$',
+        'EURO'  => '€',
+        'Yuan'  => '¥',
+        'Dirham' => 'D',
+        'Ruble' => '₽',
+        'Rial'  => 'R'
+    ][$currency];
+}
 function showCurrencies()
 {
     return [

@@ -1,0 +1,100 @@
+.fi-btn-icon {
+    -webkit-animation: slide-in-right 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
+    animation: slide-in-right 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
+}
+
+.fi-section {
+    @apply shadow-lg
+}
+
+.fi-ta {
+    border-radius: 10px;
+    padding: 5px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.fi-ta-content, .fi-ta-record {
+    border-radius: 5px;
+    border: 0px;
+}
+
+.fi-ta:hover {
+    background: #DFCFD4;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    @apply dark:bg-gray-900
+}
+
+.fi-wi-stats-overview-stat, .fi-tabs-item {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+    -webkit-animation: fade-in 2s cubic-bezier(0.390, 0.575, 0.565, 1.000) both;
+    animation: fade-in 2s cubic-bezier(0.390, 0.575, 0.565, 1.000) both;
+}
+
+.fi-wi-stats-overview-stat:hover, .fi-tabs-item:hover {
+    background: #DFCFD4;
+    @apply dark:bg-gray-900
+}
+
+.fi-ta-header-ctn {
+    background: linear-gradient(135deg, #DFE7EA, #DFE7EA, #DFCFD4, #DFE7EA, #DFE7EA); /* Light mode gradient */
+    color: #333;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dark .fi-ta-header-ctn {
+    background: transparent;
+}
+
+.percentage-display {
+    align-items: center;
+    font-size: 14px;
+}
+
+.percentage-display .payment {
+    color: green;
+}
+
+.percentage-display .remaining {
+    color: red;
+    margin-right: 5px;
+}
+
+div[wire\:key$=".table.column-toggle.panel"], .fi-dropdown-panel {
+    max-height: 400px;
+    overflow-y: auto;
+    background: #DFE7EA;
+}
+
+nav div.fi-dropdown-panel[x-ref="panel"] {
+    position: absolute !important;
+    top: 100% !important;
+}
+
+.fi-ta-group-header { /*initial summary*/
+    background-color: rgb(223, 207, 212, 0.85);
+    @apply shadow-2xl rounded dark:rounded-none dark:border-t dark:border-primary-300;
+}
+
+.fi-ta-summary-row { /*final summary*/
+    background-color: rgb(223, 231, 234, 0.8);
+    border: none;
+    @apply dark:bg-transparent;
+}
+
+
+.fi-ta-group-header p {
+    font-family: "Source Code Pro", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.fi-ta-text-summary span{
+    font-size: smaller ;
+    color: grey;
+}
+/*.fi-section-header {*/
+/*    font-weight: bold;*/
+/*    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);*/
+/*    border-radius: 5px;*/
+/*    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);*/
+/*}*/

@@ -42,8 +42,10 @@ class Admin
 
             // Unique identifier
             $timestamp = Carbon::now()->format('YmdHis');
+            $randomString = Str::random(5);
+
             // New filename with extension
-            $newFileName = "Payment-{$paymentRequest}-{$timestamp}-{$name}";
+            $newFileName = "P-{$paymentRequest}-{$timestamp}-{$randomString}-{$name}";
 
             // Sanitizing the file name
             return Str::slug($newFileName, '-') . ".{$extension}";

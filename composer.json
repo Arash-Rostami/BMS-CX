@@ -20,6 +20,7 @@
         "guzzlehttp/guzzle": "^7.2",
         "hasnayeen/themes": "^3.0",
         "icetalker/filament-stepper": "^1.1",
+        "lara-zeus/delia": "^1.0",
         "lara-zeus/popover": "^1.0",
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
@@ -29,7 +30,9 @@
         "pxlrbt/filament-excel": "^2.3",
         "pxlrbt/filament-spotlight": "^1.2",
         "rawilk/filament-password-input": "^1.1",
+        "ryangjchandler/blade-tabler-icons": "^2.3",
         "solution-forest/filament-simplelightbox": "^0.0.5",
+        "vxm/laravel-async": "^5.0",
         "ysfkaya/filament-phone-input": "^2.2"
     },
     "require-dev": {

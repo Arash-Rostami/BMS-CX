@@ -53,7 +53,7 @@ class CreateQuote extends Component
     private function storeAttachment()
     {
         $fileName = uniqid() . '.' . $this->attachment->getClientOriginalExtension();
-        return $this->attachment->storeAs('attachments/quote-attachments', $fileName, 'quote');
+        return $this->attachment->storeAs('attachments/quote', $fileName, 'quote');
     }
 
     private function createQuote($attachmentId)

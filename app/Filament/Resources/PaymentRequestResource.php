@@ -5,20 +5,13 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
 use App\Filament\Resources\Operational\PaymentRequestResource\Widgets\StatsOverview;
-use App\Filament\Resources\PaymentRequestResource\Pages;
-use App\Filament\Resources\PaymentRequestResource\RelationManagers;
-use App\Models\Attachment;
 use App\Models\PaymentRequest;
 use App\Models\ProformaInvoice;
-use App\Models\User;
-use App\Rules\EnglishAlphabet;
 use App\Services\AttachmentDeletionService;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
 use Filament\Forms\Components\Actions\Action;
-use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Hidden;
@@ -29,14 +22,11 @@ use Filament\Forms\Get;
 use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\Tabs\Tab;
 use Filament\Infolists\Infolist;
-use Filament\Notifications\Notification;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Resources\Resource;
-use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ReplicateAction;
 use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\Layout\Panel;
@@ -47,7 +37,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
-
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Component as Livewire;
@@ -80,6 +69,7 @@ class PaymentRequestResource extends Resource
             'requested_amount' => $proformaInvoice->price,
         ]);
     }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -117,8 +107,9 @@ class PaymentRequestResource extends Resource
                                 Admin::getCPSReasons(),
                                 Admin::getCostCenter(),
                                 Admin::getTypeOfPayment(),
+                                Admin::getCaseNumber(),
                             ])
-                            ->columns(4)
+                            ->columns(5)
                             ->collapsible(),
                         Group::make()
                             ->schema([
@@ -355,7 +346,7 @@ class PaymentRequestResource extends Resource
             ->emptyStateIcon('heroicon-o-bookmark')
             ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->filters([AdminOrder::filterCreatedAt(), AdminOrder::filterSoftDeletes()])
-            ->recordClasses(fn(Model $record) => (!isset($record->order_id) || $record->department_id != 6) ? 'major-row' : '')
+            ->recordClasses(fn(Model $record) => !isset($record->order_id) ? ($record->department_id != 6 ? 'major-row' : 'bg-light-blue') : '')
             ->searchDebounce('1000ms')
             ->groupingSettingsInDropdownOnDesktop()
             ->paginated([10, 15, 20])
@@ -394,12 +385,9 @@ class PaymentRequestResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->action(function (Collection $selectedRecords) {
-                            $selectedRecords->each->delete();
-                            $selectedRecords->each(
-                                fn(Model $selectedRecord) => Admin::send($selectedRecord)
-                            );
-                        }), RestoreBulkAction::make(),
+                        ->action(fn(Collection $records) => Admin::separateRecordsIntoDeletableAndNonDeletable($records))
+                        ->deselectRecordsAfterCompletion(),
+                    RestoreBulkAction::make(),
                     ExportBulkAction::make(),
                     PrintBulkAction::make(),
                 ])
@@ -416,6 +404,7 @@ class PaymentRequestResource extends Resource
                 Admin::filterBySupplier(),
                 Admin::filterByPayee(),
                 Admin::filterByStatus(),
+                Admin::filterByCase(),
             ]);
     }
 
@@ -462,10 +451,11 @@ class PaymentRequestResource extends Resource
                 Admin::showInvoiceNumber(),
                 Admin::showReferenceNumber(),
                 Admin::showPart(),
-                Admin::showReasonForPayment(),
                 Admin::showType(),
+                Admin::showReasonForPayment(),
                 Admin::showPayableAmount(),
                 Admin::showCostCenter(),
+                Admin::showCaseNumber(),
                 Admin::showBeneficiaryName(),
                 Admin::showBeneficiaryAddress(),
                 Admin::showBankName(),
@@ -483,4 +473,10 @@ class PaymentRequestResource extends Resource
                 TableObserver::showMissingData(-5),
             ])->striped();
     }
+//    protected function getHeaderActions(): array
+//    {
+//        return [
+//            BookmarkHeaderAction::make()
+//        ];
+//    }
 }

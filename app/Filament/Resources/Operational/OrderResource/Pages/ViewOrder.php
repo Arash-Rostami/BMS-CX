@@ -311,7 +311,7 @@ class ViewOrder extends ViewRecord
     public function viewPercentage(): TextEntry
     {
         return TextEntry::make('orderDetail.extra')
-            ->label('Payslip')
+            ->label('Payments')
             ->state(fn(Model $record) => $this->formatPayslip($record))
             ->tooltip(fn(Model $record) => $this->formatPayslip($record))
             ->grow()
@@ -663,12 +663,11 @@ class ViewOrder extends ViewRecord
         }
 
         $extra = $record->orderDetail->extra;
+        $paid = ($extra['initialPayment'] ?? 0) + ($extra['provisionalTotal'] ?? 0) + ($extra['finalTotal'] ?? 0);
         return sprintf(
-            '%s: %s / %s ( %s )',
+            '%s %s',
             $extra['currency'] ?? '',
-            numberify($extra['payment'] ?? 0),
-            numberify($extra['total'] ?? 0),
-            numberify($extra['remaining'] ?? 0)
+            numberify(($paid) ?? 0),
         );
     }
 }

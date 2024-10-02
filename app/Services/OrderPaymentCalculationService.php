@@ -21,6 +21,11 @@ class OrderPaymentCalculationService
             return;
         }
 
+        if (!isset($record)) {
+            self::addError('First create or save the record; then attempt calculations.');
+            return;
+        }
+
 
         if($get('orderDetail.extra.manualComputation')){
             self::addError("Manual computation enabled. Automatic calculations are off.");

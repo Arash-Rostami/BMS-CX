@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -114,13 +115,6 @@ class Attachment extends Model
             ->exists();
     }
 
-    public static function hasTitleContainingPart($title, $orderId)
-    {
-        return self::where('order_id', $orderId)
-            ->where('file_path', 'LIKE', "%{$title}%")
-            ->exists();
-    }
-
     public static function getRelatedRecords(Attachment $attachment, $relations)
     {
         if (empty($attachment->file_path) && empty($attachment->name)) {
@@ -130,9 +124,6 @@ class Attachment extends Model
         $query = self::query()
             ->when(!empty($attachment->file_path), function ($query) use ($attachment) {
                 $query->where('file_path', $attachment->file_path);
-            })
-            ->when(!empty($attachment->name), function ($query) use ($attachment) {
-                $query->where('name', $attachment->name);
             });
 
         if (!empty($relations)) {

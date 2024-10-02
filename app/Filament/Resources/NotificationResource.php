@@ -34,6 +34,8 @@ class NotificationResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-bell-alert';
 
     protected static ?string $navigationGroup = 'Core Data';
+    public ?string $tableSortColumn = 'notifiable_id';
+
 
     public static function form(Form $form): Form
     {
@@ -79,7 +81,6 @@ class NotificationResource extends Resource
                 SoftDeletingScope::class,
             ]);
     }
-
 
 
     public static function getModernLayout(Table $table): Table

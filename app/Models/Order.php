@@ -162,10 +162,45 @@ class Order extends Model
 
 
     // Computational Methods //
-    public static function aggrgateOrderGroupTotals($record)
+    public static function aggregateOrderGroupTotals($record)
     {
         $orders = $record->getRelatedOrdersByInvoiceNumber();
 
+        list($payment, $quantity) = self::getTotalPaymentRequestedAmountAndQuantity($orders);
+
+        list($paymentRequestBalance, $quantityBalance) = self::getPaymentRequestBalance($record, $orders);
+
+
+        $totalPaymentRequests = $orders->sum(fn($order) => $order->paymentRequests->count());
+
+        $totalPayments = $orders->sum(function ($order) {
+            return $order->paymentRequests->sum(fn($paymentRequest) => $paymentRequest->payments->count());
+        });
+
+        $totalOfOtherPaymentRequests = $orders->flatMap(fn($order) => $order->paymentRequests->filter(fn($paymentRequest) => !in_array($paymentRequest->type_of_payment, ['balance', 'full', 'advance'])))
+            ->groupBy(fn($paymentRequest) => $paymentRequest->currency)->map(fn($paymentsByCurrency) => $paymentsByCurrency->sum('requested_amount'));
+
+        $formattedTotalOfOtherPaymentRequests = $totalOfOtherPaymentRequests->map(
+            fn($amount, $currency) => getCurrencySymbols($currency) . number_format($amount, 2)
+        )->join(', ');
+
+        return [
+            'payment' => number_format($payment, 2),
+            'quantity' => number_format($quantity, 2),
+            'totalQuantity' => number_format(optional($record->proformaInvoice)->quantity ?? 0, 2) ?? 'Undefined',
+            'totalPayment' => numberify(optional($record->proformaInvoice)->price ?? 1 * optional($record->proformaInvoice)->quantity) ?? 'Undefined',
+            'shipmentPart' => optional($record->proformaInvoice)->part ?? 'Undefined',
+            'daysPassed' => optional($record->proformaInvoice)->daysPassed ?? 'Undefined',
+            'totalPaymentRequests' => $totalPaymentRequests,
+            'totalPayments' => $totalPayments,
+            'quantityBalance' => $quantityBalance,
+            'paymentRequestBalance' => $paymentRequestBalance,
+            'totalOfOtherPaymentRequests' => $formattedTotalOfOtherPaymentRequests
+        ];
+    }
+
+    protected static function getTotalPaymentRequestedAmountAndQuantity($orders): array
+    {
         $payment = $orders->sum(function ($order) {
             return
                 data_get($order, 'orderDetail.extra.initialPayment', 0) +
@@ -177,15 +212,27 @@ class Order extends Model
             return data_get($order, 'orderDetail.final_quantity', 0)
                 ?: data_get($order, 'orderDetail.provisional_quantity', 0);
         });
+        return array($payment, $quantity);
+    }
 
-        return [
-            'payment' => numberify($payment),
-            'quantity' => $quantity,
-            'totalQuantity' => optional($record->proformaInvoice)->quantity ?? 'Undefined',
-            'totalPayment' => numberify(optional($record->proformaInvoice)->price ?? 1 * optional($record->proformaInvoice)->quantity) ?? 'Undefined',
-            'shipmentPart' => optional($record->proformaInvoice)->part ?? 'Undefined',
-            'daysPassed' => optional($record->proformaInvoice)->daysPassed ?? 'Undefined'
-        ];
+
+    protected static function getPaymentRequestBalance($record, $orders): array
+    {
+        list($payment, $quantity) = self::getTotalPaymentRequestedAmountAndQuantity($orders);
+
+        $expectedPayment = optional($record->proformaInvoice)->price * optional($record->proformaInvoice)->quantity ?? 0;
+        $expectedQuantity = optional($record->proformaInvoice)->quantity ?? 0;
+
+
+        $paymentBalance = ($payment > $expectedPayment)
+            ? '🔺'
+            : ($payment < $expectedPayment ? '🔻' : '✅');
+
+        $quantityBalance = ($quantity > $expectedQuantity)
+            ? '🔺'
+            : ($quantity < $expectedQuantity ? '🔻' : '✅');
+
+        return [$paymentBalance, $quantityBalance];
     }
 
 
@@ -372,12 +419,13 @@ class Order extends Model
 
     public function getRelatedOrdersByInvoiceNumber()
     {
-        $cacheKey = 'related_orders_' . $this->invoice_number;
+        $cacheKey = 'related_orders_' . $this->invoice_number ?? $this->proforma_invoice_id;
 
-        return Cache::remember($cacheKey, 60, function () {
+        return Cache::remember($cacheKey, 120, function () {
             return $this->query()
                 ->with('orderDetail:id,extra,provisional_quantity,final_quantity')
                 ->where('invoice_number', $this->invoice_number)
+                ->where('proforma_invoice_id', $this->proforma_invoice_id)
                 ->whereNull('deleted_at')
                 ->get();
         });

@@ -5,7 +5,7 @@
     "src": "resources/css/app.css"
   },
   "resources/css/filament/admin/theme.css": {
-    "file": "assets/theme-NGDmFa9_.css",
+    "file": "assets/theme-T4OfDKVi.css",
     "isEntry": true,
     "src": "resources/css/filament/admin/theme.css"
   },
@@ -62,29 +62,57 @@
     "file": "assets/viewer-dBUqkQ1t.svg",
     "src": "resources/images/avatars/viewer.svg"
   },
-  "resources/images/bms-fav-icon.png": {
-    "file": "assets/bms-fav-icon-c2fp8kL3.png",
-    "src": "resources/images/bms-fav-icon.png"
-  },
-  "resources/images/bms-login-backdrop.jpg": {
-    "file": "assets/bms-login-backdrop-Hd4KdXq3.jpg",
-    "src": "resources/images/bms-login-backdrop.jpg"
-  },
-  "resources/images/bms-logo.png": {
-    "file": "assets/bms-logo-kk5kTPKB.png",
-    "src": "resources/images/bms-logo.png"
-  },
-  "resources/images/bms-main-logo-dark.png": {
-    "file": "assets/bms-main-logo-dark-xhk2ddCr.png",
-    "src": "resources/images/bms-main-logo-dark.png"
-  },
   "resources/images/bms-main-logo.png": {
     "file": "assets/bms-main-logo-kANpU4aa.png",
-    "src": "resources/images/bms-main-logo.png"
+    "src": "resources/images/logos/bms-main-logo.png"
   },
   "resources/images/cloud.svg": {
     "file": "assets/cloud-KMB3wBWF.svg",
     "src": "resources/images/cloud.svg"
+  },
+  "resources/images/logos/bms-fav-icon.png": {
+    "file": "assets/bms-fav-icon-c2fp8kL3.png",
+    "src": "resources/images/logos/bms-fav-icon.png"
+  },
+  "resources/images/logos/bms-login-backdrop.jpg": {
+    "file": "assets/bms-login-backdrop-Hd4KdXq3.jpg",
+    "src": "resources/images/logos/bms-login-backdrop.jpg"
+  },
+  "resources/images/logos/bms-logo-updated.png": {
+    "file": "assets/bms-logo-updated-s66ZTrY9.png",
+    "src": "resources/images/logos/bms-logo-updated.png"
+  },
+  "resources/images/logos/bms-logo-v2.png": {
+    "file": "assets/bms-logo-v2-m6mLPnEk.png",
+    "src": "resources/images/logos/bms-logo-v2.png"
+  },
+  "resources/images/logos/bms-logo-v3.png": {
+    "file": "assets/bms-logo-v3-q-UcLQVf.png",
+    "src": "resources/images/logos/bms-logo-v3.png"
+  },
+  "resources/images/logos/bms-logo-v4.png": {
+    "file": "assets/bms-logo-v4-Sfu6pJ0K.png",
+    "src": "resources/images/logos/bms-logo-v4.png"
+  },
+  "resources/images/logos/bms-logo-v5.png": {
+    "file": "assets/bms-logo-v5-wsvws8gW.png",
+    "src": "resources/images/logos/bms-logo-v5.png"
+  },
+  "resources/images/logos/bms-logo-v6.png": {
+    "file": "assets/bms-logo-v6-0RGB_ORV.png",
+    "src": "resources/images/logos/bms-logo-v6.png"
+  },
+  "resources/images/logos/bms-logo.png": {
+    "file": "assets/bms-logo-kk5kTPKB.png",
+    "src": "resources/images/logos/bms-logo.png"
+  },
+  "resources/images/logos/bms-main-logo-dark.png": {
+    "file": "assets/bms-main-logo-dark-xhk2ddCr.png",
+    "src": "resources/images/logos/bms-main-logo-dark.png"
+  },
+  "resources/images/logos/bms-main-logo.png": {
+    "file": "assets/bms-main-logo-kANpU4aa.png",
+    "src": "resources/images/logos/bms-main-logo.png"
   },
   "resources/images/main-bg.png": {
     "file": "assets/main-bg-rCHIBv3t.png",

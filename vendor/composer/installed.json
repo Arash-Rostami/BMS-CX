@@ -3581,6 +3581,176 @@
             "install-path": "../kirschbaum-development/eloquent-power-joins"
         },
         {
+            "name": "lara-zeus/delia",
+            "version": "v1.0.5",
+            "version_normalized": "1.0.5.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/lara-zeus/delia.git",
+                "reference": "dba7b339a2eb4cfd7a9dd5e019573b710c7dcdc6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/lara-zeus/delia/zipball/dba7b339a2eb4cfd7a9dd5e019573b710c7dcdc6",
+                "reference": "dba7b339a2eb4cfd7a9dd5e019573b710c7dcdc6",
+                "shasum": ""
+            },
+            "require": {
+                "lara-zeus/filament-plugin-tools": "^1.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "larastan/larastan": "^2.2",
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^7.0",
+                "orchestra/testbench": "^8.0",
+                "pestphp/pest": "^2.0",
+                "pestphp/pest-plugin-laravel": "^2.0",
+                "pestphp/pest-plugin-livewire": "2.x-dev",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan": "^1.10",
+                "phpstan/phpstan-deprecation-rules": "^1.0",
+                "phpstan/phpstan-phpunit": "^1.0",
+                "phpunit/phpunit": "^10.1"
+            },
+            "time": "2024-09-08T01:02:52+00:00",
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "LaraZeus\\Delia\\DeliaServiceProvider"
+                    ],
+                    "aliases": {
+                        "Delia": "LaraZeus\\Delia\\Facades\\Delia"
+                    }
+                }
+            },
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "LaraZeus\\Delia\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Lara Zeus (Ash)",
+                    "email": "info@larazeus.com"
+                }
+            ],
+            "description": "delia is a bookmark manager for your filament resources",
+            "homepage": "https://larazeus.com/delia",
+            "keywords": [
+                "Favorites",
+                "bookmark",
+                "delia",
+                "filamentphp",
+                "lara-zeus",
+                "laravel",
+                "manager"
+            ],
+            "support": {
+                "issues": "https://github.com/lara-zeus/delia/issues",
+                "source": "https://github.com/lara-zeus/delia"
+            },
+            "funding": [
+                {
+                    "url": "https://www.buymeacoffee.com/larazeus",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/atmonshi",
+                    "type": "github"
+                }
+            ],
+            "install-path": "../lara-zeus/delia"
+        },
+        {
+            "name": "lara-zeus/filament-plugin-tools",
+            "version": "v1.0.0",
+            "version_normalized": "1.0.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/lara-zeus/filament-plugin-tools.git",
+                "reference": "57a1130eca04f09dad3778b8068b982980b001c4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/lara-zeus/filament-plugin-tools/zipball/57a1130eca04f09dad3778b8068b982980b001c4",
+                "reference": "57a1130eca04f09dad3778b8068b982980b001c4",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^3.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "larastan/larastan": "^2.2",
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^7.0",
+                "orchestra/testbench": "^8.0",
+                "pestphp/pest": "^2.0",
+                "pestphp/pest-plugin-laravel": "^2.0",
+                "pestphp/pest-plugin-livewire": "2.x-dev",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan": "^1.10",
+                "phpstan/phpstan-deprecation-rules": "^1.0",
+                "phpstan/phpstan-phpunit": "^1.0",
+                "phpunit/phpunit": "^10.1"
+            },
+            "time": "2024-09-07T20:05:46+00:00",
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "LaraZeus\\FilamentPluginTools\\FilamentPluginToolsServiceProvider"
+                    ]
+                }
+            },
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "LaraZeus\\FilamentPluginTools\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Lara Zeus (Ash)",
+                    "email": "info@larazeus.com"
+                }
+            ],
+            "description": "a set of tools to configure your plugin",
+            "homepage": "https://larazeus.com/filament-plugin-tools",
+            "keywords": [
+                "filament-plugin-tools",
+                "filamentphp",
+                "lara-zeus",
+                "laravel"
+            ],
+            "support": {
+                "issues": "https://github.com/lara-zeus/filament-plugin-tools/issues",
+                "source": "https://github.com/lara-zeus/filament-plugin-tools"
+            },
+            "funding": [
+                {
+                    "url": "https://www.buymeacoffee.com/larazeus",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/atmonshi",
+                    "type": "github"
+                }
+            ],
+            "install-path": "../lara-zeus/filament-plugin-tools"
+        },
+        {
             "name": "lara-zeus/popover",
             "version": "1.0.3",
             "version_normalized": "1.0.3.0",
@@ -8154,6 +8324,71 @@
             "install-path": "../ryangjchandler/blade-capture-directive"
         },
         {
+            "name": "ryangjchandler/blade-tabler-icons",
+            "version": "v2.3.0",
+            "version_normalized": "2.3.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ryangjchandler/blade-tabler-icons.git",
+                "reference": "cd359f5d3b406a982dae1aaaf121d84067576a2e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ryangjchandler/blade-tabler-icons/zipball/cd359f5d3b406a982dae1aaaf121d84067576a2e",
+                "reference": "cd359f5d3b406a982dae1aaaf121d84067576a2e",
+                "shasum": ""
+            },
+            "require": {
+                "blade-ui-kit/blade-icons": "^1.5",
+                "illuminate/support": "^10.0 || ^11.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.14",
+                "orchestra/testbench": "^8.0 || ^9.0",
+                "phpunit/phpunit": "^9.5.10 || ^10.5"
+            },
+            "time": "2024-03-12T23:54:24+00:00",
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "RyanChandler\\TablerIcons\\BladeTablerIconsServiceProvider"
+                    ]
+                }
+            },
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "RyanChandler\\TablerIcons\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ryan Chandler",
+                    "email": "support@ryangjchandler.co.uk",
+                    "homepage": "https://ryangjchandler.co.uk",
+                    "role": "Developer"
+                }
+            ],
+            "description": "A package to easily make use of Tabler icons in your Laravel Blade views.",
+            "homepage": "https://github.com/ryangjchandler/blade-tabler-icons",
+            "keywords": [
+                "blade",
+                "laravel",
+                "tabler"
+            ],
+            "support": {
+                "issues": "https://github.com/ryangjchandler/blade-tabler-icons/issues",
+                "source": "https://github.com/ryangjchandler/blade-tabler-icons/tree/v2.3.0"
+            },
+            "install-path": "../ryangjchandler/blade-tabler-icons"
+        },
+        {
             "name": "sabberworm/php-css-parser",
             "version": "v8.6.0",
             "version_normalized": "8.6.0.0",
@@ -9265,6 +9500,76 @@
                 }
             ],
             "install-path": "../solution-forest/filament-simplelightbox"
+        },
+        {
+            "name": "spatie/async",
+            "version": "1.6.1",
+            "version_normalized": "1.6.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/async.git",
+                "reference": "c270e692f6eabafb4312e1ecd44e062032785635"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/async/zipball/c270e692f6eabafb4312e1ecd44e062032785635",
+                "reference": "c270e692f6eabafb4312e1ecd44e062032785635",
+                "shasum": ""
+            },
+            "require": {
+                "laravel/serializable-closure": "^1.0",
+                "php": "^7.4|^8.0",
+                "symfony/process": "^3.3 || ^4.0 || ^5.0 || ^6.0 || ^7.0"
+            },
+            "require-dev": {
+                "larapack/dd": "^1.1",
+                "phpunit/phpunit": "^7.5 || ^8.5.21 || ^9.0 || ^10.0",
+                "symfony/stopwatch": "^4.0 || ^5.0 || ^6.0 || ^7.0"
+            },
+            "suggest": {
+                "ext-pcntl": "Required to use async processes",
+                "ext-posix": "Required to use async processes"
+            },
+            "time": "2023-12-14T13:21:46+00:00",
+            "type": "library",
+            "installation-source": "dist",
+            "autoload": {
+                "files": [
+                    "src/helpers.php"
+                ],
+                "psr-4": {
+                    "Spatie\\Async\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Brent Roose",
+                    "email": "brent@spatie.be",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Asynchronous and parallel PHP with the PCNTL extension",
+            "homepage": "https://github.com/spatie/async",
+            "keywords": [
+                "async",
+                "spatie"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/async/issues",
+                "source": "https://github.com/spatie/async/tree/1.6.1"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "install-path": "../spatie/async"
         },
         {
             "name": "spatie/backtrace",
@@ -12515,6 +12820,70 @@
                 }
             ],
             "install-path": "../voku/portable-ascii"
+        },
+        {
+            "name": "vxm/laravel-async",
+            "version": "v5.0.0",
+            "version_normalized": "5.0.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/vuongxuongminh/laravel-async.git",
+                "reference": "cdb0762f21fd7c322632f57a016012f1a3abae91"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/vuongxuongminh/laravel-async/zipball/cdb0762f21fd7c322632f57a016012f1a3abae91",
+                "reference": "cdb0762f21fd7c322632f57a016012f1a3abae91",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": "^10.0|^11.0",
+                "php": "^8.1",
+                "spatie/async": "^1.6"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^8.0|^9.0",
+                "symplify/easy-coding-standard": "^11.2|^12.1"
+            },
+            "time": "2024-06-27T14:48:58+00:00",
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Async": "VXM\\Async\\AsyncFacade"
+                    },
+                    "providers": [
+                        "VXM\\Async\\AsyncServiceProvider"
+                    ]
+                }
+            },
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "VXM\\Async\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Vuong Xuong Minh",
+                    "email": "vuongxuongminh@gmail.com"
+                }
+            ],
+            "description": "Provide an easy way to run code asynchronously for Laravel",
+            "homepage": "https://github.com/vuongxuongminh/laravel-async",
+            "keywords": [
+                "laravel-async",
+                "vxm"
+            ],
+            "support": {
+                "issues": "https://github.com/vuongxuongminh/laravel-async/issues",
+                "source": "https://github.com/vuongxuongminh/laravel-async/tree/v5.0.0"
+            },
+            "install-path": "../vxm/laravel-async"
         },
         {
             "name": "webmozart/assert",

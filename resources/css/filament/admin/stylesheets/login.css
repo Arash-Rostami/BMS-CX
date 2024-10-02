@@ -1,0 +1,9 @@
+.fi-simple-layout {
+    background-image: url('/resources/images/logos/bms-login-backdrop.jpg');
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.fi-pw-reveal-button {
+    @apply ps-3;
+}

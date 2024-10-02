@@ -1,0 +1,42 @@
+.red {
+    color: red;
+}
+
+.text-red-700 {
+    color: rgb(185, 28, 28);
+}
+
+.gray {
+    color: gray;
+}
+
+.text-emerald-800 {
+    color: rgb(6, 95, 70)
+}
+
+.bg-white {
+    background-color: white;
+}
+
+.light-blue {
+    color: #DFE7EA;
+}
+
+.major-row {
+    @apply bg-gray-200 dark:bg-gray-950/50 border-l-8 border-l-warning-700;
+}
+
+.major-row-second {
+    @apply bg-blue-200 dark:bg-white/5 border-l-8 border-l-warning-700;
+}
+
+.bg-light-blue {
+    background-color: #DFE7EA;
+    @apply dark:bg-gray-950
+}
+
+.bg-wheat{
+    background-color: rgb(249, 235, 210, 0.7);
+    @apply dark:bg-gray-950
+}
+

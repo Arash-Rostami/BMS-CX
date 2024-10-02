@@ -232,7 +232,7 @@ class PaymentRequest extends Model
     {
         $escapedProformaInvoiceNumber = addslashes($proformaInvoiceNumber);
 
-        return self::whereRaw("proforma_invoice_number REGEXP ?", ["(^|,\\s)${escapedProformaInvoiceNumber}(\\s,|$)"])
+        return self::whereRaw("proforma_invoice_number REGEXP ?", ["(^|,\\s){$escapedProformaInvoiceNumber}(\\s,|$)"])
 //            ->orWhere('proforma_invoice_number', 'LIKE', "%{$proformaInvoiceNumber}%")
             ->whereNull('order_id')
             ->where('status', '<>', 'pending')

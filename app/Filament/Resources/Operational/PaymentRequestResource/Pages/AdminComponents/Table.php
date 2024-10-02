@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
+use function PHPUnit\Framework\isEmpty;
 
 trait Table
 {
@@ -24,11 +25,11 @@ trait Table
     public static function showReferenceNumber(): TextColumn
     {
         return TextColumn::make('order.reference_number')
-            ->label('Order Ref. No.')
+            ->label('PI-/O- Ref. No.')
             ->grow(false)
             ->searchable()
-            ->state(fn(Model $record) => $record->order?->reference_number ? $record->order->reference_number : ($record->department->code != 'CX' ? '🌐' : '⭐'))
-            ->tooltip(fn(Model $record) => ($record->department->code != 'CX' ? 'Not related to this department' : 'Initial Payment Request'))
+            ->state(fn(Model $record) => $record->order?->reference_number ? $record->order->reference_number : ($record->department->code != 'CX' ? '🌐' : $record->associatedProformaInvoices->pluck('reference_number')))
+            ->tooltip(fn(Model $record) => ($record->department->code != 'CX' ? 'Not related to this department' : 'Ref. No. of PI'))
             ->sortable()
             ->toggleable()
             ->color('info')
@@ -57,9 +58,9 @@ trait Table
         return TextColumn::make('order.invoice_number')
             ->label('Project No.')
             ->sortable()
-            ->state(fn(Model $record) => $record->order?->invoice_number ? $record->order->invoice_number : ($record->department->code != 'CX' ? '🌐' : '⭐'))
+            ->state(fn(Model $record) => $record->order?->invoice_number ? $record->order->invoice_number : ($record->department->code != 'CX' ? '🌐' : $record->associatedProformaInvoices->pluck('contract_number')))
             ->color('secondary')
-            ->tooltip(fn(Model $record) => ($record->department->code != 'CX' ? 'Not related to this department' : 'Initial Payment Request'))
+            ->tooltip(fn(Model $record) => ($record->department->code != 'CX' ? 'Not related to this department' : 'Contract No. of PI'))
             ->grow(false)
             ->searchable()
             ->badge();
@@ -79,7 +80,8 @@ trait Table
                 ? ($record->order->logistic->booking_number ?? 'Booking Number Unavailable')
                 : ($record->order->proformaInvoice->proforma_number ?? 'No Booking Number')
             )
-            ->badge();
+            ->badge()
+            ->color(fn(Model $record) => !($record->order_id) ? 'secondary' : 'secondary');
     }
 
     /**
@@ -143,6 +145,19 @@ trait Table
             ->grow(false)
             ->tooltip(fn(Model $record, $state) => $state ? Department::getByName($record->departments) : 'N/A')
             ->formatStateUsing(fn($state, Model $record) => $state ? Department::getByCode($state) : 'N/A')
+            ->color('secondary')
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showCaseNumber(): TextColumn
+    {
+        return TextColumn::make('extra.caseNumber')
+            ->label('Case/Contract No.')
+            ->grow(false)
+            ->searchable()
             ->color('secondary')
             ->badge();
     }

@@ -1,0 +1,31 @@
+.fi-section-content {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+    /*background: #E6ECEE;*/
+    /*@apply dark:bg-gray-900;*/
+}
+
+.fi-section-content:hover {
+    /*background: rgb(223, 207, 212, 0.40);*/
+    background:  #E6ECEE;
+    @apply dark:bg-gray-950/50
+}
+
+.fi-fieldset {
+    border: dashed 2px #DFCFD4;
+}
+
+.grayscale {
+    -webkit-filter: grayscale(100%);
+    filter: grayscale(100%);
+}
+
+.fi-modal-content button[title="deleteMe"] {
+    display: none;
+}
+
+.choices__list:hover{
+    background-color: #E6ECEE;
+    @apply dark:bg-gray-900;
+}
+

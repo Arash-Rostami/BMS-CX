@@ -132,7 +132,7 @@ class EditPaymentRequest extends EditRecord
                 ], true));
             }
 
-//            $this->notifyViaEmail($newStatus, $allRecipients);
+            $this->notifyViaEmail($newStatus, $allRecipients);
         }
     }
 
@@ -157,11 +157,9 @@ class EditPaymentRequest extends EditRecord
             'changed_at' => now()->toDateTimeString(),
         ];
 
-        $extra = $this->record->extra ?? [];
-        $extra['statusChangeInfo'] = $statusChangeInfo;
-
-        $this->record->extra = $extra;
-        $this->record->save();
+        $this->record->update([
+            'extra->statusChangeInfo' => $statusChangeInfo
+        ]);
     }
 
 

@@ -27,6 +27,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
@@ -94,7 +95,7 @@ trait Form
     public static function getCPSReasons(): Select
     {
         return Select::make('reason_for_payment')
-            ->options(fn(Get $get) => $get('department_id') ? Allocation::getUniqueReasonsForCPS($get('department_id')) : [])
+            ->options(fn(Get $get) => $get('department_id') ? Allocation::getUniqueReasonsForCPS($get('department_id')) : Allocation::all()->pluck('reason', 'id')->toArray())
             ->live()
             ->disabled(fn(Get $get) => $get('department_id') == 6)
             ->hidden(fn(Get $get) => $get('department_id') == 6)
@@ -197,8 +198,12 @@ trait Form
             })
             ->live()
             ->requiredUnless('department_id', '6')
+            ->validationMessages([
+                'required_unless' => '🚫 The date is required.',
+                'after_or_equal' => '🚫 The deadline cannot be in the past. Please select today or a future date.',
+            ])
             ->closeOnDateSelection()
-            ->minDate(now()->subDays(1))
+            ->minDate(fn($operation, Get $get) => $operation == 'create' ? now()->subDays(1) : null)
             ->native(false);
     }
 
@@ -228,6 +233,17 @@ trait Form
             ->live()
             ->afterStateUpdated(fn($state, Set $set) => ($state != 'advance') ? $set('extra.collectivePayment', 0) : $set('extra.collectivePayment', 1))
             ->required();
+    }
+
+    /**
+     * @return TextInput
+     */
+    public static function getCaseNumber(): TextInput
+    {
+        return TextInput::make('extra.caseNumber')
+            ->label(fn() => new HtmlString('<span class="grayscale">📑️ </span><span class="text-primary-500 font-normal">Case/Contract No.</span>'))
+            ->placeholder('Optional for tracking')
+            ->columnSpan(1);
     }
 
 
@@ -498,7 +514,7 @@ trait Form
             ->hidden(fn(Get $get) => $get('department_id') != 6)
             ->live()
             ->columnSpan(1)
-            ->required(fn($get)=> $get('type_of_payment') != 'advance');
+            ->required(fn($get) => $get('type_of_payment') != 'advance');
     }
 
 
@@ -525,7 +541,7 @@ trait Form
     public static function getOrder(): Select
     {
         return Select::make('order_id')
-            ->options(fn(Get $get, Set $set) => static::getOrderOptions($get,$set))
+            ->options(fn(Get $get, Set $set) => static::getOrderOptions($get, $set))
             ->requiredIf('extra.collectivePayment', 0)
             ->visible(fn(Get $get) => $get('extra.collectivePayment') == 0 && !empty($get('part')))
             ->disabled(fn($operation) => $operation == 'edit')
@@ -552,6 +568,9 @@ trait Form
         return Toggle::make('use_existing_attachments')
             ->label('Use existing attachments')
             ->default(false)
+            ->onIcon('heroicon-m-bolt')
+            ->offIcon('heroicon-o-no-symbol')
+            ->offColor('gray')
             ->columnSpan(2)
             ->live();
     }
@@ -640,7 +659,7 @@ trait Form
                     ->getUploadedFileNameForStorageUsing(self::nameUploadedFile())
                     ->previewable(true)
                     ->disk('filament')
-                    ->directory('/attachments/payment-attachments')
+                    ->directory('/attachments/payment-request')
                     ->maxSize(2500)
                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
                     ->imageEditor()
@@ -664,6 +683,9 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">ℹ️️️  </span><span class="text-primary-500 font-normal">Title|Name</span>'))
             ->placeholder('Type in English ONLY')
             ->requiredWith('file_path')
+            ->validationMessages([
+                'required_with' => '🚫 The name is required when an attachment is uploaded.',
+            ])
             ->createOptionForm([
                 TextInput::make('title')
                     ->required()
@@ -704,7 +726,7 @@ trait Form
             ])
             ->disabled(fn(?Model $record) => ($record && $record->message))
             ->fileAttachmentsDisk('filament')
-            ->fileAttachmentsDirectory('/attachments/payment-attachments/chats')
+            ->fileAttachmentsDirectory('/attachments/payment-request/chats')
             ->fileAttachmentsVisibility('public')
             ->label('')
             ->hint(fn(?Model $record, $operation) => ($record && $record->message) ? $record->getChatWriter() : new HtmlString('Content<span class="red"> *</span>'))

@@ -4,21 +4,15 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\Operational\PaymentResource\Pages\Admin;
 use App\Filament\Resources\Operational\PaymentResource\Widgets\StatsOverview;
-use App\Filament\Resources\PaymentResource\Pages;
-use App\Filament\Resources\PaymentResource\RelationManagers;
-use App\Models\Attachment;
 use App\Models\Payment;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
-use App\Models\PaymentRequest;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
-use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -27,17 +21,11 @@ use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
-use Illuminate\Support\Str;
-use Livewire\Component as Livewire;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -171,7 +159,6 @@ class PaymentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-
         return static::getModel()::count();
     }
 

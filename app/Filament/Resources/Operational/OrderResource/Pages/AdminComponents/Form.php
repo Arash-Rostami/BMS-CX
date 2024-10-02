@@ -75,7 +75,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">📦 </span><span class="text-primary-500 font-normal">Product</span>'))
             ->required()
             ->live()
-            ->relationship('product', 'name', fn (Builder $query) => $query->orderBy('name'))
+            ->relationship('product', 'name', fn(Builder $query) => $query->orderBy('name'))
             ->createOptionForm([
                 Select::make('category_id')
                     ->relationship('category', 'name')
@@ -113,7 +113,7 @@ trait Form
             ->columnSpan(2)
             ->disabled(fn($operation) => $operation == 'edit')
             ->searchable()
-            ->label(fn() => new HtmlString('<span class="grayscale">🛍️ </span><span class="text-primary-500 font-normal">Pro forma Invoice</span>'));
+            ->label(fn() => new HtmlString('<span class="grayscale">🛍️ </span><span class="text-primary-500 font-normal">Invoice No.</span>'));
     }
 
     /**
@@ -192,7 +192,7 @@ trait Form
     {
         return Select::make('grade_id')
             ->label(fn() => new HtmlString('<span class="grayscale">♠️ </span><span class="text-primary-500 font-normal">Grade</span>'))
-            ->relationship('grade', 'name', fn (Builder $query) => $query->orderBy('name'))
+            ->relationship('grade', 'name', fn(Builder $query) => $query->orderBy('name'))
             ->live()
             ->default(0)
             ->createOptionForm([
@@ -355,30 +355,40 @@ trait Form
     public static function getLastOrder(): Toggle
     {
         return Toggle::make('extra.lastOrder')
-            ->label(fn() => new HtmlString('<span title="Allocate this project\'s remaining pre-payments" class="text-primary-500 font-normal">Last Order</span>'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Last Order</span>'))
             ->live()
-            ->extraAttributes([
-                'class' => 'cursor-pointer mx-auto',
-            ]);
+            ->disabled(fn(?Model $record) => $record ? $record->isLastOrderTaken() : false)
+            ->tooltip('If disabled, check whether another order record has already been marked as the last order.')
+            ->extraAttributes(function (?Model $record) {
+                return $record && $record->isLastOrderTaken()
+                    ? ['style' => 'cursor:not-allowed; opacity:0']
+                    : ['class' => 'cursor-pointer mx-auto'];
+            });
     }
 
     /**
      * @return Toggle
      */
-    public static function getAllOrders(): Toggle
+    public
+    static function getAllOrders(): Toggle
     {
         return Toggle::make('extra.allOrders')
             ->label(fn() => new HtmlString('<span title="Ignore shares, allocate all remaining pre-payments" class="text-primary-500 font-normal">All</span>'))
             ->live()
-            ->extraAttributes([
-                'class' => 'cursor-pointer mx-auto',
-            ]);
+            ->disabled(fn(?Model $record) => $record ? $record->areALlOrdersTaken() : false)
+            ->tooltip('If disabled, check whether another order record has already been marked for all orders.')
+            ->extraAttributes(function (?Model $record) {
+                return $record && $record->areALlOrdersTaken()
+                    ? ['style' => 'cursor:not-allowed; opacity:0']
+                    : ['class' => 'cursor-pointer mx-auto'];
+            });
     }
 
     /**
      * @return Hidden
      */
-    public static function getPayment(): Hidden
+    public
+    static function getPayment(): Hidden
     {
         return Hidden::make('extra.payment');
     }
@@ -386,7 +396,8 @@ trait Form
     /**
      * @return Hidden
      */
-    public static function getRemaining(): Hidden
+    public
+    static function getRemaining(): Hidden
     {
         return Hidden::make('extra.remaining');
     }
@@ -394,7 +405,8 @@ trait Form
     /**
      * @return Hidden
      */
-    public static function getInitialPayment(): Hidden
+    public
+    static function getInitialPayment(): Hidden
     {
         return Hidden::make('extra.initialPayment');
     }
@@ -402,7 +414,8 @@ trait Form
     /**
      * @return Hidden
      */
-    public static function getProvisionalPayment(): Hidden
+    public
+    static function getProvisionalPayment(): Hidden
     {
         return Hidden::make('extra.provisionalPayment');
     }
@@ -411,7 +424,8 @@ trait Form
     /**
      * @return Hidden
      */
-    public static function getTotal(): Hidden
+    public
+    static function getTotal(): Hidden
     {
         return Hidden::make('extra.total');
     }
@@ -420,7 +434,8 @@ trait Form
     /**
      * @return Hidden
      */
-    public static function getInitialTotal(): Hidden
+    public
+    static function getInitialTotal(): Hidden
     {
         return Hidden::make('extra.initialTotal');
     }
@@ -429,7 +444,8 @@ trait Form
     /**
      * @return Hidden
      */
-    public static function getProvisionalTotal(): Hidden
+    public
+    static function getProvisionalTotal(): Hidden
     {
         return Hidden::make('extra.provisionalTotal');
     }
@@ -438,7 +454,8 @@ trait Form
     /**
      * @return Hidden
      */
-    public static function getFinalTotal(): Hidden
+    public
+    static function getFinalTotal(): Hidden
     {
         return Hidden::make('extra.finalTotal');
     }
@@ -446,7 +463,8 @@ trait Form
     /**
      * @return Hidden
      */
-    public static function getHiddenBuyingPrice(): Hidden
+    public
+    static function getHiddenBuyingPrice(): Hidden
     {
         return Hidden::make('buying_price');
     }
@@ -454,7 +472,8 @@ trait Form
     /**
      * @return Hidden
      */
-    public static function getHiddenBuyingQuantity(): Hidden
+    public
+    static function getHiddenBuyingQuantity(): Hidden
     {
         return Hidden::make('buying_quantity');
     }
@@ -462,7 +481,8 @@ trait Form
     /**
      * @return Hidden
      */
-    public static function getHiddenPayableQuantity(): Hidden
+    public
+    static function getHiddenPayableQuantity(): Hidden
     {
         return Hidden::make('extra.payableQuantity');
     }
@@ -470,7 +490,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getManualInitialPayment(): TextInput
+    public
+    static function getManualInitialPayment(): TextInput
     {
         return TextInput::make('extra.initialPayment')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Init. Advance</span>'))
@@ -481,7 +502,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getManualProvisionalPayment(): TextInput
+    public
+    static function getManualProvisionalPayment(): TextInput
     {
         return TextInput::make('extra.provisionalTotal')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Prov. Payment</span>'))
@@ -492,7 +514,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getManualFinalPayment(): TextInput
+    public
+    static function getManualFinalPayment(): TextInput
     {
         return TextInput::make('extra.finalTotal')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Fin. Payment</span>'))
@@ -504,7 +527,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getQuantity(): TextInput
+    public
+    static function getQuantity(): TextInput
     {
         return TextInput::make('buying_quantity')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Initial</span>'))
@@ -518,10 +542,12 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getProvisionalQuantity(): TextInput
+    public
+    static function getProvisionalQuantity(): TextInput
     {
         return TextInput::make('provisional_quantity')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Provisional</span>'))
+            ->disabled(fn(?Model $record) => $record ? $record->hasApprovedRelatedRequests() : false)
             ->placeholder('Metric ton')
             ->numeric();
     }
@@ -529,7 +555,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getFinalQuantity(): TextInput
+    public
+    static function getFinalQuantity(): TextInput
     {
         return TextInput::make('final_quantity')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Final</span>'))
@@ -540,7 +567,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getPrice(): TextInput
+    public
+    static function getPrice(): TextInput
     {
         return TextInput::make('buying_price')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Initial</span>'))
@@ -554,18 +582,21 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getProvisionalPrice(): TextInput
+    public
+    static function getProvisionalPrice(): TextInput
     {
         return TextInput::make('provisional_price')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Provisional</span>'))
             ->placeholder(fn(Get $get) => $get('extra.currency'))
+            ->disabled(fn(?Model $record) => $record ? $record->hasApprovedRelatedRequests() : false)
             ->numeric();
     }
 
     /**
      * @return TextInput
      */
-    public static function getFinalPrice(): TextInput
+    public
+    static function getFinalPrice(): TextInput
     {
         return TextInput::make('final_price')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Final</span>'))
@@ -576,7 +607,8 @@ trait Form
     /**
      * @return Select
      */
-    public static function getPackaging(): Select
+    public
+    static function getPackaging(): Select
     {
         return Select::make('packaging_id')
             ->options(Packaging::pluck('name', 'id'))
@@ -605,7 +637,8 @@ trait Form
     /**
      * @return Select
      */
-    public static function getDeliveryTerm(): Select
+    public
+    static function getDeliveryTerm(): Select
     {
         return Select::make('delivery_term_id')
             ->options(DeliveryTerm::all()->pluck('name', 'id'))
@@ -634,7 +667,8 @@ trait Form
     /**
      * @return Select
      */
-    public static function getShippingLine(): Select
+    public
+    static function getShippingLine(): Select
     {
         return Select::make('shipping_line_id')
             ->options(ShippingLine::all()->pluck('name', 'id'))
@@ -663,7 +697,8 @@ trait Form
     /**
      * @return Select
      */
-    public static function getPortOfDelivery(): Select
+    public
+    static function getPortOfDelivery(): Select
     {
         return Select::make('port_of_delivery_id')
             ->options(fn() => PortOfDelivery::all()->pluck('name', 'id'))
@@ -692,7 +727,8 @@ trait Form
     /**
      * @return DatePicker
      */
-    public static function getLoadingStartLine(): DatePicker
+    public
+    static function getLoadingStartLine(): DatePicker
     {
         return DatePicker::make('extra.loading_startline')
             ->label(fn() => new HtmlString('<span class="grayscale">⌛ </span><span class="text-primary-500 font-normal">Delivery Time Start Date</span>'))
@@ -702,7 +738,8 @@ trait Form
     /**
      * @return DatePicker
      */
-    public static function getLoadingDeadline(): DatePicker
+    public
+    static function getLoadingDeadline(): DatePicker
     {
         return DatePicker::make('loading_deadline')
             ->label(fn() => new HtmlString('<span class="grayscale">⌛ </span><span class="text-primary-500 font-normal">Delivery Time End Date</span>'))
@@ -712,7 +749,8 @@ trait Form
     /**
      * @return DatePicker
      */
-    public static function getETD(): DatePicker
+    public
+    static function getETD(): DatePicker
     {
         return DatePicker::make('extra.etd')
             ->label(fn() => new HtmlString('<span class="grayscale">⌛ </span><span class="text-primary-500 font-normal">ETD</span>'))
@@ -722,7 +760,8 @@ trait Form
     /**
      * @return DatePicker
      */
-    public static function getETA(): DatePicker
+    public
+    static function getETA(): DatePicker
     {
         return DatePicker::make('extra.eta')
             ->label(fn() => new HtmlString('<span class="grayscale">⌛ </span><span class="text-primary-500 font-normal">ETA</span>'))
@@ -732,7 +771,8 @@ trait Form
     /**
      * @return Toggle|string|null
      */
-    public static function getChangeOfStatus(): Toggle
+    public
+    static function getChangeOfStatus(): Toggle
     {
         return Toggle::make('change_of_destination')
             ->label('');
@@ -740,7 +780,8 @@ trait Form
 
     /**
      */
-    public static function getContainerShipping()
+    public
+    static function getContainerShipping()
     {
         return ToggleButton::make('container_shipping')
             ->inlineLabel()
@@ -754,7 +795,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getFCL(): TextInput
+    public
+    static function getFCL(): TextInput
     {
         return TextInput::make('FCL')
             ->label(fn() => new HtmlString('<span class="grayscale">⚖️ </span><span class="text-primary-500 font-normal">FCL/Weight</span>'))
@@ -764,7 +806,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getFCLType(): TextInput
+    public
+    static function getFCLType(): TextInput
     {
         return TextInput::make('full_container_load_type')
             ->label(fn() => new HtmlString('<span class="grayscale">🔤 </span><span class="text-primary-500 font-normal">FCL Type</span>'))
@@ -774,7 +817,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getNumberOfContainer(): TextInput
+    public
+    static function getNumberOfContainer(): TextInput
     {
         return TextInput::make('number_of_containers')
             ->label(fn() => new HtmlString('<span class="grayscale">🗑️ </span><span class="text-primary-500 font-normal">No. of Containers</span>'))
@@ -785,7 +829,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getOceanFreight(): TextInput
+    public
+    static function getOceanFreight(): TextInput
     {
         return TextInput::make('ocean_freight')
             ->label(fn() => new HtmlString('<span class="grayscale">🌊 </span><span class="text-primary-500 font-normal">Ocean Freight</span>'))
@@ -796,7 +841,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getTHC(): TextInput
+    public
+    static function getTHC(): TextInput
     {
         return TextInput::make('terminal_handling_charges')
             ->label(fn() => new HtmlString('<span class="grayscale">🔚 </span><span class="text-primary-500 font-normal">THX</span>'))
@@ -806,7 +852,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getBookingNumber(): TextInput
+    public
+    static function getBookingNumber(): TextInput
     {
         return TextInput::make('booking_number')
             ->label(fn() => new HtmlString('<span class="grayscale">🎫</span><span class="text-primary-500 font-normal">Booking No.</span>'))
@@ -816,7 +863,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getFreeTime(): TextInput
+    public
+    static function getFreeTime(): TextInput
     {
         return TextInput::make('free_time_POD')
             ->label(fn() => new HtmlString('<span class="grayscale">🕘 </span><span class="text-primary-500 font-normal">Free Time (POD)</span>'))
@@ -826,7 +874,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getGrossWeight(): TextInput
+    public
+    static function getGrossWeight(): TextInput
     {
         return TextInput::make('gross_weight')
             ->label(fn() => new HtmlString('<span class="grayscale">⚖</span><span class="text-primary-500 font-normal">Gross Weight</span>'))
@@ -836,7 +885,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getNetWeight(): TextInput
+    public
+    static function getNetWeight(): TextInput
     {
         return TextInput::make('net_weight')
             ->label(fn() => new HtmlString('<span class="grayscale">⚖ </span><span class="text-primary-500 font-normal">Net Weight</span>'))
@@ -846,7 +896,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getVoyageNumber(): TextInput
+    public
+    static function getVoyageNumber(): TextInput
     {
         return TextInput::make('voyage_number')
             ->label(fn() => new HtmlString('<span class="grayscale">🛳️ </span><span class="text-primary-500 font-normal">Voyage No.</span>'))
@@ -856,7 +907,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getVoyageNumberSecondLeg(): TextInput
+    public
+    static function getVoyageNumberSecondLeg(): TextInput
     {
         return TextInput::make('extra.voyage_number_second_leg')
             ->label(fn() => new HtmlString('<span class="grayscale"> 🛳️</span><span class="text-primary-500 font-normal">Voyage No. (ii)</span>'))
@@ -866,7 +918,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getDeclarationNumber(): TextInput
+    public
+    static function getDeclarationNumber(): TextInput
     {
         return TextInput::make('declaration_number')
             ->label(fn() => new HtmlString('<span class="grayscale">#️⃣ ️  </span><span class="text-primary-500 font-normal">Declaration No.</span>'))
@@ -876,7 +929,8 @@ trait Form
     /**
      * @return DatePicker
      */
-    public static function getDeclarationDate(): DatePicker
+    public
+    static function getDeclarationDate(): DatePicker
     {
         return DatePicker::make('declaration_date')
             ->label(fn() => new HtmlString('<span class="grayscale">📅 </span><span class="text-primary-500 font-normal">Declaration Date</span>'))
@@ -886,7 +940,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getBLNumber(): TextInput
+    public
+    static function getBLNumber(): TextInput
     {
         return TextInput::make('BL_number')
             ->label(fn() => new HtmlString('<span class="grayscale"> #️⃣</span><span class="text-primary-500 font-normal">BL No.</span>'))
@@ -896,7 +951,8 @@ trait Form
     /**
      * @return DatePicker
      */
-    public static function getBLDate(): DatePicker
+    public
+    static function getBLDate(): DatePicker
     {
         return DatePicker::make('BL_date')
             ->label(fn() => new HtmlString('<span class="grayscale">️📅 </span><span class="text-primary-500 font-normal">BL Date</span>'))
@@ -907,7 +963,8 @@ trait Form
     /**
      * @return TextInput
      */
-    public static function getBLNumberSecondLeg(): TextInput
+    public
+    static function getBLNumberSecondLeg(): TextInput
     {
         return TextInput::make('extra.BL_number_second_leg')
             ->label(fn() => new HtmlString('<span class="grayscale">#️ </span><span class="text-primary-500 font-normal">BL No. (ii)</span>'))
@@ -917,7 +974,8 @@ trait Form
     /**
      * @return DatePicker
      */
-    public static function getBLDateSecondLeg(): DatePicker
+    public
+    static function getBLDateSecondLeg(): DatePicker
     {
         return DatePicker::make('extra.BL_date_second_leg')
             ->label(fn() => new HtmlString('<span class="grayscale">📅  </span><span class="text-primary-500 font-normal">BL Date (ii)</span>'))
@@ -927,7 +985,8 @@ trait Form
     /**
      * @return FileUpload
      */
-    public static function getFileUpload(): FileUpload
+    public
+    static function getFileUpload(): FileUpload
     {
         return FileUpload::make('file_path')
             ->label('')
@@ -936,7 +995,7 @@ trait Form
             ->getUploadedFileNameForStorageUsing(self::nameUploadedFile())
             ->previewable(true)
             ->disk('filament')
-            ->directory('/attachments/order-attachments')
+            ->directory('/attachments/order')
             ->maxSize(2500)
             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
             ->imageEditor()
@@ -948,11 +1007,15 @@ trait Form
     /**
      * @return Toggle
      */
-    public static function getAttachmentToggle(): Toggle
+    public
+    static function getAttachmentToggle(): Toggle
     {
         return Toggle::make('use_existing_attachments')
             ->label('Use existing attachments')
             ->default(false)
+            ->onIcon('heroicon-m-bolt')
+            ->offIcon('heroicon-o-no-symbol')
+            ->extraAttributes(fn($state) => $state == 0 ? ['class' => 'bg-white'] : [])
             ->columnSpan(2)
             ->live();
     }
@@ -960,7 +1023,8 @@ trait Form
     /**
      * @return Select
      */
-    public static function getAllProformaInvoices(): Select
+    public
+    static function getAllProformaInvoices(): Select
     {
         return Select::make('source_proforma_invoice')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Select Proforma Invoice (Ref No)</span>'))
@@ -974,7 +1038,8 @@ trait Form
     /**
      * @return Select
      */
-    public static function getProformaInvoicesAttachments(): Select
+    public
+    static function getProformaInvoicesAttachments(): Select
     {
         return Select::make('available_attachments')
             ->label(fn() => new HtmlString('<span class="grayscale">📌 </span><span class="text-primary-500 font-normal">Select Attachment</span>'))
@@ -987,7 +1052,8 @@ trait Form
     /**
      * @return Select
      */
-    public static function getAttachmentTitle(): Select
+    public
+    static function getAttachmentTitle(): Select
     {
         return Select::make('name')
             ->options(Name::getSortedNamesForModule('Order'))
@@ -996,6 +1062,9 @@ trait Form
             ->columnSpan(1)
             ->columns(1)
             ->requiredWith('file_path')
+            ->validationMessages([
+                'required_with' => '🚫 The name is required when an attachment is uploaded.',
+            ])
             ->createOptionForm([
                 TextInput::make('title')
                     ->required()
@@ -1019,7 +1088,8 @@ trait Form
             });
     }
 
-    public static function getDocumentsReceived()
+    public
+    static function getDocumentsReceived()
     {
         return CheckboxList::make('extra.docs_received')
             ->options(self::$documents)
@@ -1030,14 +1100,16 @@ trait Form
             ->columnSpan(4);
     }
 
-    public static function getTagsInput(): TagsInput
+    public
+    static function getTagsInput(): TagsInput
     {
         return TagsInput::make('extra')
             ->label(fn() => new HtmlString('<span class="grayscale">🔖 </span><span class="text-primary-500 font-normal">Type Your words</span>'));
     }
 
 
-    public static function getModule(): Hidden
+    public
+    static function getModule(): Hidden
     {
         return Hidden::make('module')
             ->default('Order');

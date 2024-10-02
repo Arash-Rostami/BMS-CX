@@ -1,0 +1,67 @@
+/* Orientation Overlay Styles */
+#orientation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(20, 20, 20, 0.97);
+    color: #bbc3c3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    z-index: 9999;
+}
+
+.orientation-overlay-content {
+    max-width: 300px;
+}
+
+.orientation-overlay-icon-container {
+    margin-bottom: 20px;
+}
+
+.orientation-overlay-phone-icon {
+    width: 100px;
+    height: 150px;
+    border: 5px solid #bbc3c3;
+    border-radius: 15px;
+    position: relative;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.orientation-overlay-phone-screen {
+    width: 80px;
+    height: 130px;
+    background: #bbc3c3;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.orientation-overlay-rotate-icon {
+    font-size: 50px;
+    color: #888583;
+    animation: orientation-overlay-rotate 2s infinite linear;
+}
+
+@keyframes orientation-overlay-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media only screen and (orientation: landscape) {
+    #orientation-overlay {
+        display: none;
+    }
+}
