@@ -6,17 +6,18 @@ use Closure;
 use Filament\Forms\Components\Concerns\HasAffixes;
 use Filament\Forms\Components\Concerns\HasExtraInputAttributes;
 use Filament\Forms\Components\Concerns\HasPlaceholder;
+use Filament\Forms\Components\Contracts\HasAffixActions;
 use Filament\Forms\Components\Field;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Http;
 use Propaganistas\LaravelPhone\Rules\Phone as PhoneRule;
 use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
 
-class PhoneInput extends Field
+class PhoneInput extends Field implements HasAffixActions
 {
-    use HasAffixes,
-        HasExtraInputAttributes,
-        HasPlaceholder;
+    use HasAffixes;
+    use HasExtraInputAttributes;
+    use HasPlaceholder;
 
     protected string $view = 'filament-phone-input::phone-input';
 
@@ -24,11 +25,17 @@ class PhoneInput extends Field
 
     protected string $inputNumberFormat = 'E164';
 
-    protected string|false $focusNumberFormat = false;
+    protected string | false $focusNumberFormat = false;
+
+    protected bool $autoInsertDialCode = false;
 
     protected bool $allowDropdown = true;
 
     protected string $autoPlaceholder = 'aggressive';
+
+    protected bool $countrySearch = true;
+
+    protected bool $formatAsYouType = true;
 
     protected string $customContainer = '';
 
@@ -40,7 +47,7 @@ class PhoneInput extends Field
 
     protected string $initialCountry = 'auto';
 
-    protected array $localizedCountries = [];
+    protected array $i18n = [];
 
     protected bool $nationalMode = true;
 
@@ -50,19 +57,19 @@ class PhoneInput extends Field
 
     protected array $preferredCountries = ['us', 'gb'];
 
-    protected bool $separateDialCode = false;
-
     protected ?Closure $ipLookupCallback = null;
 
     public bool $canPerformIpLookup = true;
 
-    public ?string $validatedCountry = null;
+    public string | array $validatedCountry = [];
 
-    public string|Closure|null $countryStatePath = null;
+    public string | Closure | null $countryStatePath = null;
 
     public bool $countryStatePathIsAbsolute = false;
 
     public bool $showFlags = true;
+
+    public bool $showSelectedDialCode = false;
 
     public bool $useFullscreenPopup = false;
 
@@ -180,7 +187,7 @@ class PhoneInput extends Field
         return $this->countryStatePath !== null;
     }
 
-    public function countryStatePath(string|Closure $statePath, bool $isStatePathAbsolute = false): static
+    public function countryStatePath(string | Closure $statePath, bool $isStatePathAbsolute = false): static
     {
         $this->countryStatePath = $statePath;
         $this->countryStatePathIsAbsolute = $isStatePathAbsolute;
@@ -193,7 +200,7 @@ class PhoneInput extends Field
         return $this->generateRelativeStatePath($this->countryStatePath, $this->countryStatePathIsAbsolute);
     }
 
-    public function validateFor(string|array $country = 'AUTO', ?int $type = null, bool $lenient = false)
+    public function validateFor(string | array $country = 'AUTO', int | array | null $type = null, bool $lenient = false)
     {
         $this->validatedCountry = $country;
 
@@ -244,7 +251,7 @@ class PhoneInput extends Field
         return $this;
     }
 
-    public function focusNumberFormat(PhoneInputNumberType|false $format): static
+    public function focusNumberFormat(PhoneInputNumberType | false $format): static
     {
         if ($format !== false) {
             $format = $format->value;
@@ -265,6 +272,34 @@ class PhoneInput extends Field
     public function getInputNumberFormat(): string
     {
         return $this->inputNumberFormat;
+    }
+
+    public function autoInsertDialCode(bool $value = true): static
+    {
+        $this->autoInsertDialCode = $value;
+
+        return $this;
+    }
+
+    public function countrySearch(bool $value = true): static
+    {
+        $this->countrySearch = $value;
+
+        return $this;
+    }
+
+    public function formatAsYouType(bool $value = true): static
+    {
+        $this->formatAsYouType = $value;
+
+        return $this;
+    }
+
+    public function i18n(array $value): static
+    {
+        $this->i18n = $value;
+
+        return $this;
     }
 
     public function disallowDropdown(): static
@@ -311,16 +346,17 @@ class PhoneInput extends Field
 
     public function initialCountry(string $value): static
     {
-        $this->initialCountry = $value;
+        $this->initialCountry = strtolower($value);
 
         return $this;
     }
 
+    /**
+     * @deprecated Use `i18n` method instead
+     */
     public function localizedCountries(array $value): static
     {
-        $this->localizedCountries = $value;
-
-        return $this;
+        return $this->i18n($value);
     }
 
     public function nationalMode(bool $value): static
@@ -338,11 +374,18 @@ class PhoneInput extends Field
     }
 
     /**
-     * Must be used in combination with `separateDialCode` option, or with setting `disallowDropdown`
+     * Must be used in combination with `disallowDropdown`
      */
     public function showFlags(bool $value): static
     {
         $this->showFlags = $value;
+
+        return $this;
+    }
+
+    public function showSelectedDialCode(bool $value = true): static
+    {
+        $this->showSelectedDialCode = $value;
 
         return $this;
     }
@@ -365,14 +408,17 @@ class PhoneInput extends Field
     {
         $this->preferredCountries = $value;
 
+        $this->countrySearch(false);
+
         return $this;
     }
 
+    /**
+     * @deprecated Use `showSelectedDialCode` method instead
+     */
     public function separateDialCode(bool $value = true): static
     {
-        $this->separateDialCode = $value;
-
-        return $this;
+        return $this->showSelectedDialCode($value);
     }
 
     public function isRtl()
@@ -386,6 +432,12 @@ class PhoneInput extends Field
     {
         return json_encode([
             'allowDropdown' => $this->allowDropdown,
+
+            'autoInsertDialCode' => $this->autoInsertDialCode,
+
+            'countrySearch' => $this->countrySearch,
+
+            'formatAsYouType' => $this->formatAsYouType,
 
             'showFlags' => $this->showFlags,
 
@@ -405,7 +457,9 @@ class PhoneInput extends Field
 
             'initialCountry' => $this->initialCountry,
 
-            'localizedCountries' => $this->localizedCountries,
+            'i18n' => $this->i18n,
+
+            'showSelectedDialCode' => $this->showSelectedDialCode,
 
             'nationalMode' => $this->nationalMode,
 
@@ -415,11 +469,11 @@ class PhoneInput extends Field
 
             'preferredCountries' => $this->preferredCountries,
 
-            'separateDialCode' => $this->separateDialCode,
-
             'displayNumberFormat' => $this->displayNumberFormat,
 
             'focusNumberFormat' => $this->focusNumberFormat,
+
+            'inputNumberFormat' => $this->inputNumberFormat,
         ]);
     }
 }

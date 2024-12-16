@@ -30,11 +30,11 @@ class PhoneNumber implements Jsonable, JsonSerializable
 
     public function __construct(?string $number, $country = [])
     {
-        $this->number = $number;
+        $this->number = is_null($number) ? '': $number;
         $this->countries = Arr::wrap($country);
     }
 
-    public function getCountry(): string|null
+    public function getCountry(): ?string
     {
         // Try to detect the country first from the number itself.
         try {
@@ -62,7 +62,7 @@ class PhoneNumber implements Jsonable, JsonSerializable
                 continue;
             }
 
-            if (PhoneNumberUtil::getInstance()->isValidNumberForRegion($libPhoneObject, $country)) {
+            if (PhoneNumberUtil::getInstance()->isValidNumberForRegion($libPhoneObject, $country ?? 'ZZ')) {
                 return PhoneNumberUtil::getInstance()->getRegionCodeForNumber($libPhoneObject);
             }
         }
@@ -169,7 +169,7 @@ class PhoneNumber implements Jsonable, JsonSerializable
 
             return PhoneNumberUtil::getInstance()->isValidNumberForRegion(
                 $this->toLibPhoneObject(),
-                $this->getCountry(),
+                $this->getCountry() ?? 'ZZ',
             );
         } catch (NumberParseException $e) {
             return false;

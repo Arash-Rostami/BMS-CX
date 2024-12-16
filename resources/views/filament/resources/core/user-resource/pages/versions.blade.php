@@ -1,6 +1,30 @@
 <x-filament-panels::page>
     <div class="max-w-4xl mx-auto py-8 text-gray-900 dark:text-gray-200">
-        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 4.0
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.7
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(November 19, 2024)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>DB Improvements: Payment Request, Payment, Balance, Beneficiary, Payee.
+            </li>
+            <li>Payment Request Improvements: Auto Currency Detection, Auto Department Selection, Allocation Selection,
+                Cost Center Modification
+                Payment Methods, Card Transfer, Sheba Transfer, Account No Switcher, Auto Total Payment, Beneficiary
+                Addition
+                Payee Deletion, Deadline Modification, International Account Details Modifications, Table Status
+                Changer, Status Button, Departmental Data Listing.
+            </li>
+            <li>Payment Improvements: Stats Modifications, Balance Auto-Calculation Modification, Multiple PR View
+                Modification,
+                Payment Request Grouping Modification.
+            </li>
+            <li>Balance Improvements: Auto Calculation Modification, Grouping Modification.
+            </li>
+            <li>Other Updates: Notification Optimization, User Departments & Position, UI Enhancement (Color Combination
+                for Dark & Light Mode) & UX optimizations.
+            <li>Application Maintenance & DB Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.6-Beta
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(September 22, 2024)</span>
         </h1>
         <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
@@ -33,7 +57,7 @@
             <li>Application Maintenance & Backup.</li>
         </ul>
         <hr class="my-8 dark:border-gray-600">
-        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.6
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.5
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(August 17, 2024)</span>
         </h1>
         <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
@@ -53,7 +77,7 @@
             <li>Application Maintenance & Backup.</li>
         </ul>
         <hr class="my-8 dark:border-gray-600">
-        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.3
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.4
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(July 30, 2024)</span>
         </h1>
         <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
@@ -73,7 +97,7 @@
             <li>Application Maintenance & Backup.</li>
         </ul>
         <hr class="my-8 dark:border-gray-600">
-        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.2
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.3.1
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(July 4, 2024)</span>
         </h1>
         <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
@@ -86,7 +110,7 @@
             <li>Database Maintenance & Backup.</li>
         </ul>
         <hr class="my-8 dark:border-gray-600">
-        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.1
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.3
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(June 27, 2024)</span>
         </h1>
         <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
@@ -101,7 +125,7 @@
             <li>Database Maintenance & Backup.</li>
         </ul>
         <hr class="my-8 dark:border-gray-600">
-        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 3.0
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.2
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(May 27, 2024)</span>
         </h1>
         <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
@@ -123,7 +147,7 @@
             <li>Updated Quote Provider Directory.</li>
         </ul>
         <hr class="my-8 dark:border-gray-600">
-        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 2.0
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.1
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(April 16, 2024)</span>
         </h1>
         <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">

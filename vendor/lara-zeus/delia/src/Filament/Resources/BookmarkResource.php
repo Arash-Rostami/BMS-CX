@@ -16,20 +16,6 @@ class BookmarkResource extends Resource
 {
     protected static ?string $navigationIcon = 'heroicon-o-bookmark-square';
 
-    protected static ?string $navigationGroup = 'Core Data';
-
-    public static function getNavigationBadge(): ?string
-    {
-
-        return static::getModel()::count();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
-    }
-
-
     public static function getModelLabel(): string
     {
         return __('zeus-delia::bookmark.model_label');

@@ -24,7 +24,7 @@ class PaymentRequest extends Model
         'reference_number',
         'reason_for_payment',
         'type_of_payment',
-        'departments',
+        'cost_center',
         'purpose',
         'status',
         'currency',
@@ -56,13 +56,14 @@ class PaymentRequest extends Model
     public static array $typesOfPayment = [
         'advance' => 'Advance (First Installment)',
         'partial' => 'Partial (Next Installment)',
-        'balance' => 'Balance (Outstanding)',
+        'balance' => 'Balance (Final Installment)',
         'full' => 'Full (One-Time Only)',
-        'check' => 'Check',
-        'credit' => 'Credit',
-        'in_kind' => 'In Kind',
-        'lc' => 'LC (Letter of Credit)',
-        'cod' => 'COD (Cash on Delivery)',
+        'other' => 'Other'
+//        'check' => 'Check',
+//        'credit' => 'Credit',
+//        'in_kind' => 'In Kind',
+//        'lc' => 'LC (Letter of Credit)',
+//        'cod' => 'COD (Cash on Delivery)',
     ];
 
     public static array $status = [
@@ -91,6 +92,11 @@ class PaymentRequest extends Model
         return $this->morphMany(Chat::class, 'record');
     }
 
+    public function costCenter()
+    {
+        return $this->belongsTo(Department::class, 'cost_center');
+    }
+
     public function department()
     {
         return $this->belongsTo(Department::class);
@@ -110,6 +116,12 @@ class PaymentRequest extends Model
             });
         });
     }
+
+    public function notificationSubscriptions()
+    {
+        return $this->morphMany(NotificationSubscription::class, 'notifiable');
+    }
+
 
     public function order()
     {
@@ -148,9 +160,10 @@ class PaymentRequest extends Model
         return $this->hasOne(ProformaInvoice::class, 'proforma_number', 'proforma_invoice_number');
     }
 
-    public function payee()
+
+    public function beneficiary()
     {
-        return $this->belongsTo(Payee::class, 'payee_id');
+        return $this->belongsTo(Beneficiary::class, 'payee_id');
     }
 
     public function payments()
@@ -183,17 +196,22 @@ class PaymentRequest extends Model
     // Computational Methods
     public static function getStatusCounts()
     {
+        $user = auth()->user();
         $cacheKey = 'payment_request_status_counts';
 
-//        return Cache::remember($cacheKey, 60, function () {
-        $countsByStatus = static::select('status')
+
+//        return Cache::remember($cacheKey, 60, function ($user) use ($department) {
+        $query = static::query()->authorizedForUser($user);
+
+        $countsByStatus = $query
+            ->select('status')
             ->selectRaw('count(*) as count')
             ->groupBy('status')
             ->get()
             ->keyBy('status')
             ->map(fn($item) => $item->count);
 
-        $countsByStatus->put('total', static::count());
+        $countsByStatus->put('total', $query->count());
 
         return $countsByStatus;
 //        });
@@ -256,6 +274,25 @@ class PaymentRequest extends Model
                 ->map(function ($type) {
                     return self::$typesOfPayment[$type] ?? $type;
                 });
+        });
+    }
+
+    public function scopeAuthorizedForUser($query, User $user)
+    {
+        $department = $user->info['department'] ?? 0;
+        $position = $user->info['position'] ?? null;
+
+        if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
+            return $query;
+        }
+
+        if ($position == 'jnr') {
+            return $query->where('user_id', $user->id);
+        }
+
+        return $query->where(function ($subQuery) use ($department) {
+            $subQuery->whereIn('department_id', [$department, 0])
+                ->orWhereIn('cost_center', [$department, 0]);
         });
     }
 }

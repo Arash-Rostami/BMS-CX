@@ -18,22 +18,25 @@ class OrderService
         $record->save();
     }
 
-    public function notifyAgents($record, $agents): void
+    public function notifyAgents($record, $agents, $edit = null): void
     {
         foreach ($agents as $recipient) {
             $recipient->notify(new FilamentNotification([
                 'record' => $record->invoice_number . ' (' . $record->reference_number . ')',
-                'type' => 'new',
+                'type' => $edit ? 'edit' : 'new',
                 'module' => 'order',
                 'url' => route('filament.admin.resources.orders.edit', ['record' => $record->id]),
             ]));
         }
     }
 
-    public function fetchAgents(): mixed
+    public function fetchAgents($department = null, $position = null): mixed
     {
-        return Cache::remember('agents', 480, function () {
-            return User::getUsersByRole('agent');
+        return Cache::remember('agents', 480, function ($department, $position) {
+            return User::getUsersByRole('agent')
+                ->filter(function ($user) use ($department, $position) {
+                    return ($user->info['department'] ?? null) == $department && ($user->info['position'] ?? null) == $position;
+                });
         });
     }
 }

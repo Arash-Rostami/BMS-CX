@@ -21,16 +21,21 @@ class FilamentPhoneInputServiceProvider extends PackageServiceProvider
     public function packageBooted(): void
     {
         FilamentAsset::register([
-            Css::make('filament-phone-input', __DIR__.'/../dist/css/filament-phone-input.css')->loadedOnRequest(),
-            AlpineComponent::make('filament-phone-input', __DIR__.'/../dist/js/filament-phone-input.js'),
+            Css::make('filament-phone-input', __DIR__ . '/../dist/css/filament-phone-input.css')->loadedOnRequest(),
+            AlpineComponent::make('filament-phone-input', __DIR__ . '/../dist/js/filament-phone-input.js'),
         ], package: 'ysfkaya/filament-phone-input');
 
-        Route::get('/phone-input-flags.png', function () {
-            return response()->file(__DIR__.'/../images/vendor/intl-tel-input/build/flags.png');
+        $this->publishes([
+            $this->package->basePath('/../images/vendor/intl-tel-input/build') => public_path("vendor/{$this->package->shortName()}"),
+        ], "{$this->package->shortName()}-assets");
+
+        // These routes will be deprecated in the next major release.
+        Route::get('/vendor/filament-phone-input/flags.png', function () {
+            return response()->file(__DIR__ . '/../images/vendor/intl-tel-input/build/flags.png');
         });
 
-        Route::get('/phone-input-flags@2x.png', function () {
-            return response()->file(__DIR__.'/../images/vendor/intl-tel-input/build/flags@2x.png');
+        Route::get('/vendor/filament-phone-input/flags@2x.png', function () {
+            return response()->file(__DIR__ . '/../images/vendor/intl-tel-input/build/flags@2x.png');
         });
     }
 }

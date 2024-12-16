@@ -4,9 +4,8 @@ namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\CreateProformaInvoice;
 use App\Filament\Resources\OrderResource;
-use App\Notifications\FilamentNotification;
 use App\Services\AttachmentCreationService;
-use App\Services\OrderService;
+use App\Services\Notification\OrderService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
@@ -14,6 +13,7 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\MaxWidth;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class EditOrder extends EditRecord
 {
@@ -72,20 +72,19 @@ class EditOrder extends EditRecord
 
     protected function beforeSave()
     {
-        AttachmentCreationService::createFromExisting($this->form->getState(), $this->record->getOriginal('id'), 'order_id');
+        $hasExistingAttachment = data_get($this->form->getRawState(), 'use_existing_attachments') ?? false;
+
+        if ($hasExistingAttachment) {
+            Cache::put('available_attachments', data_get($this->form->getRawState(), 'available_attachments'), 10);
+        }
+
+        AttachmentCreationService::createFromExisting($this->record->getOriginal('id'), 'order_id');
     }
 
     protected function afterSave(): void
     {
-        $agents = (new OrderService())->fetchAgents();
+        $service = new OrderService();
 
-        foreach ($agents as $recipient) {
-            $recipient->notify(new FilamentNotification([
-                'record' => $this->record->invoice_number . ' (' . $this->record->reference_number . ')',
-                'type' => 'edit',
-                'module' => 'order',
-                'url' => route('filament.admin.resources.orders.view', ['record' => $this->record->id]),
-            ]));
-        }
+        $service->notifyAgents($this->record, 'edit');
     }
 }

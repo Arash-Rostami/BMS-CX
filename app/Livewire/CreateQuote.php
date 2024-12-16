@@ -59,22 +59,22 @@ class CreateQuote extends Component
     private function createQuote($attachmentId)
     {
         return Quote::create([
-            'transportation_means' => $this->transportationMeans,
-            'transportation_type' => $this->transportationType,
             'origin_port' => $this->originPort,
             'destination_port' => $this->destinationPort,
             'offered_rate' => $this->offeredRate,
+            'local_charges' => $this->localCharges,
             'switch_bl_fee' => $this->switchBL,
             'commodity_type' => $this->commodity,
             'packing_type' => $this->packing,
-            'payment_terms' => $this->paymentTerm,
             'free_time_pol' => $this->freeTime,
-            'free_time_pod' => $this->freeTime,
+            'free_time_pod' => $this->freeTimePOD,
             'validity' => $this->validity,
             'extra' => $this->extra,
             'quote_request_id' => $this->quoteRequest,
             'quote_provider_id' => $this->quoteProvider,
             'attachment_id' => $attachmentId ?? null,
+            'container_number' => $this->containerNumber,
+            'container_type' => $this->containerType,
         ]);
     }
 

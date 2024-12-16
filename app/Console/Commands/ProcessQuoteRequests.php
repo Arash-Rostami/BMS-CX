@@ -18,3 +18,5 @@ class ProcessQuoteRequests extends Command
         $this->info('Quote requests processed successfully.');
     }
 }
+
+

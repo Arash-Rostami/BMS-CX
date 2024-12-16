@@ -21,7 +21,8 @@ class Admin
     {
         return Select::make('notifiable_id')
             ->label('Recipient')
-            ->options(User::all()->pluck('fullName', 'id'))
+            ->getOptionLabelFromRecordUsing(fn(Model $record) => "{$record->fullName}")
+            ->relationship('user', 'id', fn(Builder $query) => $query->whereStatus('active')->orderBy('first_name', 'asc')->orderBy('last_name', 'asc'))
             ->required();
     }
 
@@ -31,8 +32,14 @@ class Admin
     public static function getPriority(): Select
     {
         return Select::make('priority')
-            ->label('Priority')
-            ->options(['high' => '⬆ Email & In-app', 'low' => '⬇ In-app'])
+            ->label('Channel')
+            ->options([
+                'highest' => 'SMS, Email, In-app 📲📧💻 ',
+                'high' => 'SMS, In-app 📲💻',
+                'mid' => 'Email, In-app 📧💻',
+                'low' => 'In-app 💻',
+            ])
+            ->placeholder('Select the desired channel(s)...')
             ->required();
     }
 

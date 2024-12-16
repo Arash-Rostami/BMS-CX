@@ -1,6 +1,7 @@
 @php
     use Filament\Support\Facades\FilamentView;
-    
+
+    $hasInlineLabel = $hasInlineLabel();
     $id = $getId();
     $isConcealed = $isConcealed();
     $isDisabled = $isDisabled();
@@ -14,6 +15,11 @@
     $suffixLabel = $getSuffixLabel();
     $statePath = $getStatePath();
 
+    $isLive = $isLive();
+    $isLiveOnBlur = $isLiveOnBlur();
+    $isLiveDebounced = $isLiveDebounced();
+    $liveDebounce = $getLiveDebounce();
+
     $cssUrl = \Filament\Support\Facades\FilamentAsset::getStyleHref('filament-phone-input', package: 'ysfkaya/filament-phone-input');
 
     $compiledCssUrl = Js::from($cssUrl);
@@ -22,7 +28,17 @@
 <x-dynamic-component
     :component="$getFieldWrapperView()"
     :field="$field"
+    :has-inline-label="$hasInlineLabel"
 >
+    <x-slot
+        name="label"
+        @class([
+            'sm:pt-1.5' => $hasInlineLabel,
+        ])
+    >
+        {{ $getLabel() }}
+    </x-slot>
+
     <x-filament::input.wrapper
         :disabled="$isDisabled"
         :inline-prefix="$isPrefixInline"
@@ -30,9 +46,11 @@
         :prefix="$prefixLabel"
         :prefix-actions="$prefixActions"
         :prefix-icon="$prefixIcon"
+        :prefix-icon-color="$getPrefixIconColor()"
         :suffix="$suffixLabel"
         :suffix-actions="$suffixActions"
         :suffix-icon="$suffixIcon"
+        :suffix-icon-color="$getSuffixIconColor()"
         :valid="! $errors->has($statePath)"
         :attributes="
             \Filament\Support\prepare_inherited_attributes($getExtraAttributeBag())
@@ -53,17 +71,21 @@
                 class="w-full"
                 x-ignore
                 @if (FilamentView::hasSpaMode())
-                    ax-load="visible"
+                    {{-- format-ignore-start --}}ax-load="visible || event (ax-modal-opened)" {{-- format-ignore-end --}}
                 @else
                     ax-load
                 @endif
                 ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('filament-phone-input', package: 'ysfkaya/filament-phone-input') }}"
                 x-data="phoneInputFormComponent({
                     getInputTelOptionsUsing: (intlTelInput) => ({{ $getJsonPhoneInputConfiguration() }}),
-                    state: $wire.{{ $applyStateBindingModifiers("entangle('{$statePath}')") }},
+                    state: $wire.$entangle('{{ $statePath }}'),
                     statePath: @js($statePath),
+                    isLive: @js($isLive),
+                    isLiveDebounced: @js($isLiveDebounced),
+                    isLiveOnBlur: @js($isLiveOnBlur),
+                    liveDebounce: @js($liveDebounce),
                     @if ($hasCountryStatePath() && $countryStatePath = $getCountryStatePath())
-                        country: $wire.{{ $applyStateBindingModifiers("entangle('{$countryStatePath}')") }},
+                        country: $wire.$entangle('{{ $countryStatePath }}'),
                     @endif
                 })"
             >
@@ -80,7 +102,7 @@
                                 'placeholder' => $getPlaceholder(),
                                 'required' => $isRequired() && (! $isConcealed),
                                 'type' => 'tel',
-                                'x-model' . ($isLiveDebounced() ? '.debounce.' . $getLiveDebounce() : null) => 'state',
+                                'x-model' . ($isLiveDebounced ? '.debounce.' . $liveDebounce : null) => 'state',
                             ], escape: false)
                     "
                 />

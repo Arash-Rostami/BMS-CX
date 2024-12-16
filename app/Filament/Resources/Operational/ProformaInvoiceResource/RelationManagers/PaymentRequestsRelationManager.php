@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers;
 
+use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
+use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
 use App\Filament\Resources\PaymentRequestResource;
 use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
@@ -39,6 +41,26 @@ class PaymentRequestsRelationManager extends RelationManager
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
+            ->searchable(false)
+            ->groupingSettingsInDropdownOnDesktop()
+            ->defaultGroup('reason_for_payment')
+            ->filters([
+                AdminOrder::filterCreatedAt(),
+                Admin::filterByCurrency(),
+                Admin::filterByTypeOfPayment(),
+                AdminOrder::filterSoftDeletes(),
+            ])
+            ->groups([
+                Admin::groupByOrder(),
+                Admin::groupByReason(),
+                Admin::groupByType(),
+                Admin::groupByCurrency(),
+                Admin::groupByContractor(),
+                Admin::groupBySupplier(),
+                Admin::groupByBeneficiary(),
+                Admin::groupByStatus(),
+                Admin::groupByCase(),
+            ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
@@ -56,6 +78,7 @@ class PaymentRequestsRelationManager extends RelationManager
                     ->icon('heroicon-m-arrow-top-right-on-square')
                     ->url(fn() => PaymentRequestResource::getUrl('create'), shouldOpenInNewTab: true),
             ])
+            ->searchDebounce(5000)
             ->poll(30);
     }
 }

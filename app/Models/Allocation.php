@@ -35,7 +35,8 @@ class Allocation extends Model
 
         return Cache::remember($cacheKey, 60, function () use ($department) {
             return self::whereIn('department', [$department, 'all'])
-                ->distinct()
+                ->selectRaw('MIN(id) as id, reason')
+                ->groupBy('reason')
                 ->pluck('reason', 'id')
                 ->toArray();
         });

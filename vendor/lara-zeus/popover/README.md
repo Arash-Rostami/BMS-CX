@@ -1,5 +1,5 @@
 <p align="center">
-<a href="https://larazeus.com"><img src="https://larazeus.com/images/popover-banner.png" /></a>
+<a href="https://larazeus.com"><img src="https://larazeus.com/images/lara-zeus-popover.webp" /></a>
 </p>
 
 <h4 align="center">Show a Popover (tippyjs) with custom content in tables and infolist.</h4>
@@ -13,7 +13,8 @@
 
 </p>
 
-## features
+## Features
+
 - 🔥 trigger (click)
 - 🔥 placement (right)
 - 🔥 offset from the content
@@ -26,7 +27,7 @@
 
 ## Demo
 
-> Visit our demo site: https://demo.larazeus.com/admin/users
+> Visit our demo site: https://demo.larazeus.com/admin/components-demo/popover
 
 ## Full Documentation
 

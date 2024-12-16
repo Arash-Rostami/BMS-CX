@@ -1,11 +1,7 @@
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/support-ukraine.svg?t=1" />](https://supportukrainenow.org)
-
 # Manage self-hosted Google Fonts in Laravel apps
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/spatie/laravel-google-fonts.svg?style=flat-square)](https://packagist.org/packages/spatie/laravel-google-fonts)
-[![GitHub Tests Action Status](https://img.shields.io/github/workflow/status/spatie/laravel-google-fonts/run-tests?label=tests)](https://github.com/spatie/laravel-google-fonts/actions?query=workflow%3Arun-tests+branch%3Amaster)
-[![GitHub Code Style Action Status](https://img.shields.io/github/workflow/status/spatie/laravel-google-fonts/Check%20&%20fix%20styling?label=code%20style)](https://github.com/spatie/laravel-google-fonts/actions?query=workflow%3A"Check+%26+fix+styling"+branch%3Amaster)
+[![run-tests](https://github.com/spatie/laravel-google-fonts/actions/workflows/run-tests.yml/badge.svg)](https://github.com/spatie/laravel-google-fonts/actions/workflows/run-tests.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/spatie/laravel-google-fonts.svg?style=flat-square)](https://packagist.org/packages/spatie/laravel-google-fonts)
 
 This package makes self-hosting Google Fonts as frictionless as possible for Laravel users.  To load fonts in your application, register a Google Fonts embed URL and load it with the `@googlefonts` Blade directive.
@@ -98,6 +94,13 @@ return [
      */
     'inline' => true,
 
+    /*
+     * When preload is set to true, preload meta tags will be generated
+     * in the HTML output to instruct the browser to start fetching the
+     * font files as early as possible, even before the CSS is fully parsed.
+     */
+    'preload' => false,
+    
     /*
      * When something goes wrong fonts are loaded directly from Google.
      * With fallback disabled, this package will throw an exception.

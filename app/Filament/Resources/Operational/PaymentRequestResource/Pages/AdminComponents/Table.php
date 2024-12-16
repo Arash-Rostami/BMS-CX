@@ -4,9 +4,15 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages\AdminC
 
 use App\Models\Department;
 use App\Models\PaymentRequest;
+use App\Policies\PaymentRequestPolicy;
+use App\Services\Notification\PaymentRequestService;
 use Carbon\Carbon;
+use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
+use Filament\Support\Enums\FontFamily;
 use Filament\Support\Enums\FontWeight;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
@@ -27,7 +33,7 @@ trait Table
         return TextColumn::make('order.reference_number')
             ->label('PI-/O- Ref. No.')
             ->grow(false)
-            ->searchable()
+//            ->searchable()
             ->state(fn(Model $record) => $record->order?->reference_number ? $record->order->reference_number : ($record->department->code != 'CX' ? '🌐' : $record->associatedProformaInvoices->pluck('reference_number')))
             ->tooltip(fn(Model $record) => ($record->department->code != 'CX' ? 'Not related to this department' : 'Ref. No. of PI'))
             ->sortable()
@@ -102,6 +108,10 @@ trait Table
     {
         return TextColumn::make('reference_number')
             ->label(new HtmlString('<span class="text-primary-500 cursor-pointer" title="Record Unique ID">Ref. No. ⋮ ID</span>'))
+            ->copyable()
+            ->copyMessage('🗐 Ref. No. Copied')
+            ->copyMessageDuration(1500)
+            ->extraAttributes(['class' => 'copyable-content'])
             ->weight(FontWeight::ExtraLight)
             ->sortable()
             ->grow(false)
@@ -140,11 +150,12 @@ trait Table
      */
     public static function showCostCenter(): TextColumn
     {
-        return TextColumn::make('departments')
+        return TextColumn::make('costCenter.name')
             ->label('Cost Center')
             ->grow(false)
-            ->tooltip(fn(Model $record, $state) => $state ? Department::getByName($record->departments) : 'N/A')
-            ->formatStateUsing(fn($state, Model $record) => $state ? Department::getByCode($state) : 'N/A')
+            ->searchable(['name', 'code'])
+            ->tooltip(fn($state) => $state ? Department::getByName($state) : 'N/A')
+            ->formatStateUsing(fn($state) => $state ?: 'N/A')
             ->color('secondary')
             ->badge();
     }
@@ -172,7 +183,9 @@ trait Table
             ->label('Reason')
             ->sortable()
             ->searchable()
-            ->badge();
+            ->badge()
+            ->limit(20)
+            ->tooltip(fn($record) => $record->reason->reason);
     }
 
 
@@ -189,7 +202,7 @@ trait Table
             ->state(function (Model $record) {
                 return $record->contractor?->name
                     ?? $record->supplier?->name
-                    ?? $record->payee?->name
+                    ?? $record->beneficiary?->name
                     ?? null;
             })->tooltip('Beneficiary Name')
             ->toggleable()
@@ -201,11 +214,12 @@ trait Table
                         ->orWhereHas('supplier', function ($subQuery) use ($search) {
                             $subQuery->where('name', 'like', '%' . $search . '%');
                         })
-                        ->orWhereHas('payee', function ($subQuery) use ($search) {
+                        ->orWhereHas('beneficiary', function ($subQuery) use ($search) {
                             $subQuery->where('name', 'like', '%' . $search . '%');
                         });
                 });
             })
+            ->limit(25)
             ->badge();
     }
 
@@ -216,9 +230,13 @@ trait Table
     {
         return TextColumn::make('bank_name')
             ->label('Bank Name')
+            ->lineClamp(1)
             ->color('gray')
             ->sortable()
+            ->grow(false)
             ->toggleable()
+            ->limit(20)
+            ->tooltip(fn($record) => $record ? $record->bank_name : 'Not given')
             ->searchable()
             ->badge();
     }
@@ -229,15 +247,44 @@ trait Table
     public static function showStatus(): TextColumn
     {
         return TextColumn::make('status')
+            ->label(fn() => new HtmlString('<span class="bg-primary-500 p-2 rounded-xl shadow-2xl text-white">⚙️ Status</span>'))
             ->alignRight()
             ->grow(false)
             ->alignRight()
-            ->tooltip('Status')
+            ->tooltip('⇄ Change status')
             ->formatStateUsing(fn($state): string => self::$statusTexts[$state] ?? 'Unknown')
             ->icon(fn($state): string => self::$statusIcons[$state] ?? null)
             ->color(fn($state): string => self::$statusColors[$state] ?? null)
-            ->sortable()
-            ->searchable()
+            ->action(
+                Action::make('select')
+                    ->label('Change Status')
+                    ->modalHeading('Change Status')
+                    ->modalWidth('md')
+                    ->modalIcon('heroicon-o-pencil-square')
+                    ->modalSubmitActionLabel('Save')
+                    ->form([
+                        Select::make('status')
+                            ->label('')
+                            ->options([
+                                'processing' => 'Pending ⌛',
+                                'allowed' => 'Allow ✔️ ',
+                                'approved' => 'Approve ✔️✔️',
+                                'rejected' => 'Deny ⛔',
+                            ])
+                            ->disableOptionWhen(fn(string $value, Model $record): bool => PaymentRequestPolicy::updateStatus($value, $record))
+                            ->required(),
+                    ])
+                    ->action(function (Model $record, array $data) {
+                        $record->update(['status' => $data['status']]);
+                        $service = new PaymentRequestService();
+                        $accountants = $record->user ? collect([$record->user]) : collect();
+                        $service->notifyAccountants($record, type: $data['status'], status: true, accountants: $accountants);
+                        Notification::make()
+                            ->title('Status updated: ' . ucfirst($data['status']))
+                            ->success()
+                            ->send();
+                    }),
+            )
             ->badge();
     }
 
@@ -339,6 +386,30 @@ trait Table
         return TextColumn::make('account_number')
             ->label('Account Number')
             ->color('info')
+            ->fontFamily(FontFamily::Mono)
+            ->copyable()
+            ->copyMessage('🗐 Account No. Copied')
+            ->copyMessageDuration(1500)
+            ->extraAttributes(['class' => 'copyable-content cell'])
+            ->formatStateUsing(function ($state, $record) {
+                if (!$record) {
+                    return $state;
+                }
+
+                $paymentMethod = data_get($record, 'extra.paymentMethod');
+                if ($paymentMethod === 'sheba') {
+                    return 'IR' . $state;
+                }
+
+                return $state;
+            })
+            ->tooltip(fn($record) => match (data_get($record, 'extra.paymentMethod')) {
+                'sheba' => 'Payment Method: SHEBA',
+                'card_transfer' => 'Payment Method: Card Transfer',
+                'bank_account' => 'Payment Method: Bank Account',
+                'cash' => 'Payment Method: Cash',
+                default => 'Payment Method: Unlisted',
+            })
             ->sortable()
             ->toggleable()
             ->searchable()
@@ -502,7 +573,7 @@ trait Table
             ->state(function (Model $record) {
                 return $record->contractor?->name
                     ?? $record->supplier?->name
-                    ?? $record->payee?->name
+                    ?? $record->beneficiary?->name
                     ?? null;
             })
             ->color('secondary')
@@ -586,6 +657,27 @@ trait Table
         return TextEntry::make('account_number')
             ->label('Account Number')
             ->color('secondary')
+            ->formatStateUsing(function ($state, $record) {
+                if (!$record) {
+                    return $state;
+                }
+
+                $paymentMethod = data_get($record, 'extra.paymentMethod');
+                if ($paymentMethod === 'unlisted') {
+                    return 'Unavailable';
+                }
+                if ($paymentMethod === 'sheba') {
+                    return 'IR' . $state;
+                }
+
+                return $state;
+            })
+            ->tooltip(fn($record) => match (data_get($record, 'extra.paymentMethod')) {
+                'sheba' => 'Payment Method: SHEBA',
+                'card_transfer' => 'Payment Method: Card Transfer',
+                'bank_account' => 'Payment Method: Bank Account',
+                default => 'Payment Method: Unlisted',
+            })
             ->badge();
     }
 

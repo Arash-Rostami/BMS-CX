@@ -2,15 +2,13 @@
 
 namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
-use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\CreateProformaInvoice;
-use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\EditProformaInvoice;
 use App\Filament\Resources\OrderResource;
 use App\Models\Attachment;
-use App\Notifications\FilamentNotification;
 use App\Services\AttachmentCreationService;
-use App\Services\OrderService;
+use App\Services\Notification\OrderService;
 use App\Services\ProjectNumberGenerator;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Cache;
 
 
 class CreateOrder extends CreateRecord
@@ -23,20 +21,21 @@ class CreateOrder extends CreateRecord
         if (empty($data['invoice_number'])) {
             $data['invoice_number'] = ProjectNumberGenerator::generate();
         }
+        if ($data['use_existing_attachments']) {
+            Cache::put('available_attachments', $data['available_attachments'], 10);
+        }
 
         return $data;
     }
 
     protected function afterCreate(): void
     {
+        persistReferenceNumber($this->record, 'O');
+
         $service = new OrderService();
 
-        $agents = $service->fetchAgents();
+        $service->notifyAgents($this->record);
 
-        $service->persistReferenceNumber($this->record);
-
-        $service->notifyAgents($this->record, $agents);
-
-        AttachmentCreationService::createFromExisting($this->form->getState(), $this->record->id, 'order_id');
+        AttachmentCreationService::createFromExisting($this->record->id, 'order_id');
     }
 }

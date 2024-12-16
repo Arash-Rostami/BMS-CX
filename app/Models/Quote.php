@@ -13,11 +13,12 @@ class Quote extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'transportation_means',
-        'transportation_type',
+        'container_number',
+        'container_type',
         'origin_port',
         'destination_port',
         'offered_rate',
+        'local_charges',
         'switch_bl_fee',
         'commodity_type',
         'packing_type',
@@ -58,5 +59,17 @@ class Quote extends Model
     public function hasAttachment()
     {
         return $this->attachment()->exists();
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'commodity_type');
+    }
+
+    public function scopeLowestCosts($query)
+    {
+        return $query->orderBy('offered_rate', 'asc')
+            ->orderBy('local_charges', 'asc')
+            ->orderBy('switch_bl_fee', 'asc');
     }
 }

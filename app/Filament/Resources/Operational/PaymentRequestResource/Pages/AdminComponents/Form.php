@@ -2,12 +2,11 @@
 
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages\AdminComponents;
 
-use App\Filament\Resources\Master\PayeeResource\Pages\Admin as PayeeAdmin;
 use App\Models\Allocation;
+use App\Models\Beneficiary;
 use App\Models\Department;
 use App\Models\Name;
 use App\Models\Order;
-use App\Models\Payee;
 use App\Models\PaymentRequest;
 use App\Models\ProformaInvoice;
 use App\Models\User;
@@ -23,17 +22,17 @@ use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-use Filament\Tables\Columns\TextColumn;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\HtmlString;
 use Livewire\Component as Livewire;
 use Wallo\FilamentSelectify\Components\ButtonGroup;
+use App\Filament\Resources\Master\BeneficiaryResource\Pages\Admin as BeneficiaryAdmin;
 
 trait Form
 {
@@ -70,7 +69,14 @@ trait Form
         return Select::make('department_id')
             ->options(Department::getAllDepartmentNames())
             ->live()
-            ->afterStateUpdated(fn($state, Set $set) => $set('extra.costCenter', $state))
+            ->afterStateUpdated(function ($state, Set $set) {
+                $set('cost_center', $state);
+                return in_array($state, [2, 5, 6, 8]) ? $set('currency', 'USD') : $set('currency', 'Rial');
+            })
+            ->default(auth()->user()->info['department'] ?? '')
+//            ->disabled(function () {
+//                return isset(auth()->user()->info['department']) && auth()->user()->info['department'] !== '';
+//            })
             ->required()
             ->label(fn() => new HtmlString('<span class="grayscale">🏟️ </span><span class="text-primary-500 font-normal">Department</span>'));
     }
@@ -80,13 +86,15 @@ trait Form
      */
     public static function getCostCenter(): Select
     {
-        return Select::make('extra.costCenter')
+        return Select::make('cost_center')
             ->options(Department::getAllDepartmentNames())
             ->required()
+            ->reactive()
             ->default('all')
             ->disabled(fn(Get $get) => $get('department_id') == 6)
+            ->default(auth()->user()->info['department'] ?? '')
             ->hidden(fn(Get $get) => $get('department_id') == 6)
-            ->label(fn() => new HtmlString('<span class="grayscale">↗️  </span><span class="text-primary-500 font-normal">Department of Allocation</span>'));
+            ->label(fn() => new HtmlString('<span class="grayscale">↗️  </span><span class="text-primary-500 font-normal">Cost Center</span>'));
     }
 
     /**
@@ -95,8 +103,16 @@ trait Form
     public static function getCPSReasons(): Select
     {
         return Select::make('reason_for_payment')
-            ->options(fn(Get $get) => $get('department_id') ? Allocation::getUniqueReasonsForCPS($get('department_id')) : Allocation::all()->pluck('reason', 'id')->toArray())
-            ->live()
+            ->options(function (Get $get) {
+                $departmentId = $get('department_id') ?? '';
+                $departmentCode = $departmentId ? Department::find($departmentId)?->code : '';
+
+                return $departmentCode
+                    ? Allocation::getUniqueReasonsForCPS($departmentCode)
+                    : Allocation::all()->pluck('reason', 'id')->toArray();
+            })
+            ->required()
+            ->reactive()
             ->disabled(fn(Get $get) => $get('department_id') == 6)
             ->hidden(fn(Get $get) => $get('department_id') == 6)
             ->required()
@@ -151,9 +167,34 @@ trait Form
         return TextInput::make('requested_amount')
             ->label(fn() => new HtmlString('<span class="grayscale">💳 </span><span class="text-primary-500 font-normal">Payable Amount</span>'))
             ->live()
+            ->numeric()
             ->required()
             ->placeholder('The amount to pay')
-            ->numeric();
+            ->afterStateUpdated(function ($state, Get $get, Set $set) {
+                $currency = $get('currency');
+                $paymentMethod = $get('extra.paymentMethod');
+
+                if ($currency === 'Rial' && $paymentMethod === 'card_transfer' && $state > 100000000) {
+                    $set('extra.paymentMethod', null);
+
+                    Notification::make()
+                        ->warning()
+                        ->title('Consider using Sheba or Account No')
+                        ->body('It is not possible to transfer more than 100M Rial with a card. Please choose another payment method.')
+                        ->persistent()
+                        ->send();
+                }
+
+                if ($currency === 'Rial' && $paymentMethod === 'bank_account' && $state > 500000000) {
+                    Notification::make()
+                        ->info()
+                        ->title('Consider using Sheba for large transfers')
+                        ->body('For amount more than 500M Rial, Sheba is recommended for better assurance. Please choose another payment method.')
+                        ->persistent()
+                        ->send();
+                }
+            })
+            ->hint(fn(Get $get) => is_numeric($get('requested_amount')) ? showDelimiter($get('requested_amount'), $get('currency')) : $get('requested_amount'));
     }
 
     /**
@@ -163,13 +204,17 @@ trait Form
     {
         return TextInput::make('total_amount')
             ->label(fn() => new HtmlString('<span class="grayscale">💰 </span><span class="text-primary-500 font-normal">Total amount</span>'))
+            ->numeric()
+            ->live()
             ->gte('requested_amount')
             ->validationMessages([
                 'gte' => 'Total amount cannot be less tan the payable/requested amount.',
+                'required' => '🚫 The field is required.',
             ])
-            ->required()
+            ->required(fn(Get $get) => $get('currency') != 'Rial' && $get('department_id') != 8)
+            ->visible(fn(Get $get) => $get('currency') != 'Rial' && $get('department_id') != 8)
             ->placeholder('Inclusive of the payable amount')
-            ->numeric();
+            ->hint(fn(Get $get) => is_numeric($get('total_amount')) ? showDelimiter($get('total_amount'), $get('currency')) : $get('total_amount'));
     }
 
     /**
@@ -178,7 +223,12 @@ trait Form
     public static function getCurrency(): Select
     {
         return Select::make('currency')
-            ->options(showCurrencies())
+            ->reactive()
+            ->options(function (callable $get) {
+                $departmentId = $get('department_id');
+                return in_array($departmentId, [2, 5, 6, 8, 10]) ? showCurrencies() : ['Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')];
+            })
+            ->afterStateUpdated(fn($state, Set $set) => ($state != 'Rial') ? $set('extra.paymentMethod', 'bank_account') : $set('extra.paymentMethod', ''))
             ->required()
             ->label(fn() => new HtmlString('<span class="grayscale">💱  </span><span class="text-primary-500 font-normal">Currency</span>'));
     }
@@ -189,17 +239,11 @@ trait Form
     public static function getDeadline(): DatePicker
     {
         return DatePicker::make('deadline')
-            ->label(function (Get $get) {
-                return new HtmlString(
-                    $get('department_id') == 6
-                        ? '<span class="grayscale"> </span><span class="text-primary-500 font-normal">Deadline (optional)</span>'
-                        : '<span class="grayscale">⏲ </span><span class="text-primary-500 font-normal">Deadline</span><span class="red"> *</span>'
-                );
-            })
+            ->label(fn(Get $get) => new HtmlString('<span class="grayscale">⏲ </span><span class="text-primary-500 font-normal">Deadline</span>'))
             ->live()
-            ->requiredUnless('department_id', '6')
+            ->required()
             ->validationMessages([
-                'required_unless' => '🚫 The date is required.',
+                'required' => '🚫 The date is required.',
                 'after_or_equal' => '🚫 The deadline cannot be in the past. Please select today or a future date.',
             ])
             ->closeOnDateSelection()
@@ -214,7 +258,7 @@ trait Form
     {
         return ButtonGroup::make('beneficiary_name')
             ->label(fn() => new HtmlString('<span class="grayscale">✒️  </span><span class="text-primary-500 font-normal">Beneficiary</span>'))
-            ->options(['supplier' => 'Supplier', 'contractor' => 'Contractor'])
+            ->options(fn(Get $get) => $get('type_of_payment') == 'advance' ? ['supplier' => 'Supplier'] : ['supplier' => 'Supplier', 'contractor' => 'Contractor'])
             ->live()
             ->columnSpan(1)
             ->default('supplier')
@@ -283,6 +327,7 @@ trait Form
     {
         return Select::make('contractor_id')
             ->relationship('contractor', 'name')
+            ->disabled(fn(Get $get) => $get('type_of_payment') == 'advance')
             ->visible(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'contractor')
             ->required(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'contractor')
             ->label(fn() => new HtmlString('<span class="grayscale">🤝 </span><span class="text-primary-500 font-normal">Contractor</span>'))
@@ -297,6 +342,7 @@ trait Form
                     ->maxLength(65535)
                     ->disableAllToolbarButtons()
             ])
+            ->live()
             ->createOptionAction(function (Action $action) {
                 return $action
                     ->modalHeading('Create new contractor')
@@ -312,20 +358,25 @@ trait Form
     public static function getPayee(): Select
     {
         return Select::make('payee_id')
-            ->relationship('payee', 'name')
+            ->relationship('beneficiary', 'name')
             ->hidden(fn(Get $get): bool => $get('department_id') == 6)
             ->required(fn(Get $get): bool => $get('department_id') != 6)
-            ->label(fn() => new HtmlString('<span class="grayscale"> 🤝</span><span class="text-primary-500 font-normal">Payee</span>'))
-            ->options(Payee::all()->pluck('name', 'id'))
+            ->label(fn() => new HtmlString('<span class="grayscale"> 🤝</span><span class="text-primary-500 font-normal">Beneficiary</span>'))
             ->searchable()
+            ->live()
+            ->afterStateUpdated(function ($state, Set $set) {
+                $value = $state ? Beneficiary::find($state)?->name : null;
+                $set('recipient_name', $value);
+            })
             ->createOptionForm([
-                PayeeAdmin::class::getType(),
-                PayeeAdmin::class::getName(),
-                PayeeAdmin::class::getPhoneNumber(),
+                BeneficiaryAdmin::getType(),
+                BeneficiaryAdmin::getName(),
+                BeneficiaryAdmin::getPhoneNumber(),
+                BeneficiaryAdmin::getExtra(),
             ])
             ->createOptionAction(function (Action $action) {
                 return $action
-                    ->modalHeading('Create new payee')
+                    ->modalHeading('Create new beneficiary')
                     ->modalButton('Create')
                     ->modalWidth('lg');
             });
@@ -350,7 +401,7 @@ trait Form
     public static function getBeneficiaryAddress(): MarkdownEditor
     {
         return MarkdownEditor::make('beneficiary_address')
-            ->label(fn() => new HtmlString('<span class="grayscale"> 📍</span><span class="text-primary-500 font-normal">Beneficiary Address</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale"> 📍</span><span class="text-primary-500 font-normal">Recipient Address</span>'))
             ->maxLength(65535)
             ->disableAllToolbarButtons()
             ->placeholder('optional');
@@ -365,7 +416,8 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"> 🏛️</span><span class="text-primary-500 font-normal">Bank Name</span>'))
             ->placeholder('')
             ->required()
-            ->maxLength(255);
+            ->maxLength(255)
+            ->reactive();
     }
 
     /**
@@ -380,15 +432,83 @@ trait Form
             ->placeholder('optional');
     }
 
+    public static function getPaymentMethod()
+    {
+        return Select::make('extra.paymentMethod')
+            ->label(fn() => new HtmlString('<span class="grayscale">📲</span><span class="text-primary-500 font-normal">Payment Method</span>'))
+            ->options([
+                'sheba' => 'SHEBA',
+                'bank_account' => 'Bank Account',
+                'card_transfer' => 'Card Transfer',
+                'cash' => 'Cash',
+            ])
+            ->disableOptionWhen(function (string $value, Get $get) {
+                $currency = $get('currency');
+                $requestedAmount = $get('requested_amount');
+
+                if ($currency === 'Rial') {
+                    return $value === 'card_transfer' && $requestedAmount > 10000000;
+                }
+                return !in_array($value, ['bank_account', 'cash']);
+            })
+            ->reactive()
+            ->required()
+            ->afterStateUpdated(fn($state, Set $set) => ($state == 'cash') ? $set('bank_name', 'None - Cash Transaction') : null);
+    }
+
+    public static function getShebaAccount()
+    {
+        return TextInput::make('sheba_number')
+            ->label(fn() => new HtmlString('<span class="grayscale"> #️⃣ ️1️⃣</span><span class="text-primary-500 font-normal"> SHEBA No.</span>'))
+            ->placeholder('XXXXXXXXXXXXXXXXXXXXXXXX (24 digits)')
+            ->formatStateUsing(fn($state, $operation, $record) => ($operation !== 'create' && $record) ? $record->account_number : null)
+            ->prefix('IR')
+            ->columnSpanFull()
+            ->rules(['regex:/^\d{24}$/'])
+            ->validationMessages([
+                'regex' => '🚫 The SHEBA number must be exactly 24 digits long and contain only digits.',
+            ])
+            ->visible(fn($get) => $get('extra.paymentMethod') === 'sheba');
+    }
+
+    public static function getCardTransfer()
+    {
+        return TextInput::make('card_transfer_number')
+            ->label(fn() => new HtmlString('<span class="grayscale"> #️⃣️3️⃣ </span><span class="text-primary-500 font-normal">Card No.</span>'))
+            ->placeholder('Enter card transfer number')
+            ->formatStateUsing(fn($state, $operation, $record) => ($operation !== 'create' && $record) ? $record->account_number : null)
+            ->columnSpanFull()
+            ->placeholder('XXXX-XXXX-XXXX-XXXX ')
+            ->maxLength(19)
+            ->minLength(19)
+            ->afterStateUpdated(function ($state, $set) {
+                $cleanState = preg_replace('/[^0-9-]/', '', $state);
+
+                $numericState = substr(preg_replace('/[^0-9]/', '', $cleanState), 0, 16);
+
+                $formattedState = implode('-', str_split($numericState, 4));
+
+                $set('card_transfer_number', $formattedState);
+            })
+            ->validationMessages([
+                'min' => '🚫 The card number must be exactly 16 digits long, exclusive of dashes.',
+                'max' => '🚫 The card number must be exactly 16 digits long, exclusive of dashes.',
+            ])
+            ->reactive()
+            ->visible(fn($get) => $get('extra.paymentMethod') === 'card_transfer');
+    }
+
     /**
      * @return TextInput
      */
     public static function getAccountNumber(): TextInput
     {
         return TextInput::make('account_number')
-            ->label(fn() => new HtmlString('<span class="grayscale"> #️⃣ ️ </span><span class="text-primary-500 font-normal">Account No.</span>'))
-            ->placeholder('optional')
-            ->maxLength(255);
+            ->label(fn() => new HtmlString('<span class="grayscale"> #️⃣2️⃣️ </span><span class="text-primary-500 font-normal">Account No.</span>'))
+            ->placeholder('Enter bank account number')
+            ->formatStateUsing(fn($state, $operation, $record) => ($operation !== 'create' && $record) ? $record->account_number : null)
+            ->columnSpanFull()
+            ->visible(fn($get) => $get('extra.paymentMethod') === 'bank_account');
     }
 
     /**
@@ -397,7 +517,7 @@ trait Form
     public static function getSwiftCode(): TextInput
     {
         return TextInput::make('swift_code')
-            ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">Swift Code</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">Swift</span>'))
             ->placeholder('optional')
             ->maxLength(255);
     }
@@ -408,7 +528,7 @@ trait Form
     public static function getIBANCode(): TextInput
     {
         return TextInput::make('IBAN')
-            ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">IBAN Code</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">IBAN</span>'))
             ->placeholder('optional')
             ->maxLength(255);
     }
@@ -419,7 +539,7 @@ trait Form
     public static function getIFSCCode(): TextInput
     {
         return TextInput::make('IFSC')
-            ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">IFSC Code</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">IFSC</span>'))
             ->placeholder('')
             ->placeholder('optional')
             ->maxLength(255);
@@ -431,7 +551,7 @@ trait Form
     public static function getMICRCode(): TextInput
     {
         return TextInput::make('MICR')
-            ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">MICR Code</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">MICR</span>'))
             ->placeholder('optional')
             ->numeric()
             ->placeholder('optional')
@@ -635,9 +755,9 @@ trait Form
                 $sourceProformaInvoice = $get('source_proforma_invoice');
                 if (!empty($sourceProformaInvoice)) {
                     if ($sourceType === 'proforma_invoice') {
-                        return ProformaInvoice::find($sourceProformaInvoice)->attachments->pluck('name', 'id')->toArray();
+                        return ProformaInvoice::find($sourceProformaInvoice)?->attachments->pluck('name', 'id')->toArray();
                     } elseif ($sourceType === 'order') {
-                        return Order::find($sourceProformaInvoice)->attachments->pluck('name', 'id')->toArray();
+                        return Order::find($sourceProformaInvoice)?->attachments->pluck('name', 'id')->toArray();
                     }
                 }
 

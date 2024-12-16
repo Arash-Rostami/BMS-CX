@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Filament\Resources\Operational\PaymentResource\Pages\CreatePayment;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class Payment extends Model
 {
@@ -60,6 +62,10 @@ class Payment extends Model
         return $this->hasMany(Name::class);
     }
 
+    public function notificationSubscriptions()
+    {
+        return $this->morphMany(NotificationSubscription::class, 'notifiable');
+    }
 
     public function order()
     {
@@ -75,6 +81,7 @@ class Payment extends Model
         );
     }
 
+
     public function approvedPaymentRequests()
     {
         return $this->belongsToMany(
@@ -82,6 +89,7 @@ class Payment extends Model
             'payment_payment_request'
         )->whereIn('status', ['processing', 'approved', 'allowed']);
     }
+
 
     public function reason()
     {
@@ -97,16 +105,42 @@ class Payment extends Model
     // Computational Method
     public static function sumAmountsForCurrencies(array $currencies)
     {
-        $cacheKey = 'sum_amounts_for_currencies_' . implode('_', $currencies);
+        $user = auth()->user();
+        $cacheKey = 'sum_amounts_for_currencies_' . implode('_', $currencies) . '_' . $user->id;
 
-        return Cache::remember($cacheKey, 60, function () use ($currencies) {
-            return self::whereIn('currency', $currencies)
-                ->get(['currency', 'amount'])
-                ->groupBy('currency')
-                ->map(function ($items, $currency) {
-                    return $items->sum('amount');
-                })
-                ->toArray();
+//        return Cache::remember($cacheKey, 60, function () use ($currencies, $user) {
+
+        $query = self::query()
+            ->whereIn('currency', $currencies)
+            ->filterByUserPaymentRequests($user);
+
+        return $query->get(['currency', 'amount'])
+            ->groupBy('currency')
+            ->map(function ($items, $currency) {
+                return $items->sum('amount');
+            })
+            ->toArray();
+//        });
+    }
+
+    public function scopeFilterByUserPaymentRequests(Builder $query, $user): Builder
+    {
+        $departmentId = $user->info['department'] ?? null;
+        $position = $user->info['position'] ?? null;
+
+        if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
+            return $query;
+        }
+
+        if ($position == 'jnr') {
+            return $query->whereHas('paymentRequests', fn($q) => $q->where('user_id', $user->id));
+        }
+
+        return $query->whereHas('paymentRequests', function ($subQuery) use ($departmentId) {
+            $subQuery->where(function ($innerQuery) use ($departmentId) {
+                $innerQuery->whereIn('department_id', [$departmentId, 0])
+                    ->orWhereIn('cost_center', [$departmentId, 0]);
+            });
         });
     }
 }

@@ -68,4 +68,9 @@ class PaymentPolicy
     {
         return AccessLevel::hasPermissionForModel('restore', 'Payment');
     }
+
+    public function canEditInput(User $user)
+    {
+        return in_array($user->role, ['accountant', 'admin']);
+    }
 }

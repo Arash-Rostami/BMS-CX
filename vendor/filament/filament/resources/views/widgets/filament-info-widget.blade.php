@@ -3,7 +3,7 @@
         <div class="flex items-center gap-x-3">
             <div class="flex-1 flex">
                 <span class="inline-block" style="cursor:help">
-                    <img class="inline-block" src="{{Vite::asset('resources/images/bms-main-logo.png')}}" width="35">
+                    <img class="inline-block" src="{{Vite::asset('resources/images/logos/bms-logo-v5.png')}}" width="60">
                    <span @click="window.open('https://time-gr.com/cv')"
                          title="Business Management Software, crafted with ❤ by Arash Rostami (Last Update: {{ config('app.update') }} )">{{ config('app.name') }}</span>
                 </span>

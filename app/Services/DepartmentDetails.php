@@ -66,7 +66,7 @@ class DepartmentDetails
             'description' => 'برنامه‌ریزی و بهبود سیستم‌ها',
         ],
         'SP' => [
-            'name' => 'Sales Platform',
+            'name' => 'BAZORG (Sales Platform)',
             'code' => 'SP',
             'description' => 'پلتفرم فروش',
         ],
@@ -79,6 +79,11 @@ class DepartmentDetails
             'name' => 'Wood Products',
             'code' => 'WP',
             'description' => 'فروش فراورده های چوب',
+        ],
+        'PERSOL' => [
+            'name' => 'PERSOL',
+            'code' => 'PERSOL',
+            'description' => 'شرکت پرسال',
         ],
     ];
 

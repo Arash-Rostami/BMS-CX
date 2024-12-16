@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages\AdminC
 
 use App\Models\Department;
 use App\Models\PaymentRequest;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Model;
 
@@ -12,7 +13,7 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterByType(): Grouping
+    public static function groupByType(): Grouping
     {
         return Grouping::make('type_of_payment')->collapsible()
             ->label('Type')
@@ -22,7 +23,7 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterByStatus(): Grouping
+    public static function groupByStatus(): Grouping
     {
         return Grouping::make('status')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->status));
@@ -32,7 +33,7 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterByCase(): Grouping
+    public static function groupByCase(): Grouping
     {
         return Grouping::make('extra->caseNumber')->label('Case/Contract')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record) => $record->extra['caseNumber'] ?? 'No Case/Contract No.');
@@ -41,7 +42,7 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterByProformaInvoice(): Grouping
+    public static function groupByProformaInvoice(): Grouping
     {
         return Grouping::make('proformaInvoices.proforma_number')->label('Pro forma Invoice')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => $record->proforma_invoice_number ?? 'No Pro forma Invoice No');
@@ -50,7 +51,7 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterByOrder(): Grouping
+    public static function groupByOrder(): Grouping
     {
         return Grouping::make('order.invoice_number')->label('Project')->collapsible()
             ->getTitleFromRecordUsing(function (Model $record): string {
@@ -70,7 +71,7 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterByCurrency(): Grouping
+    public static function groupByCurrency(): Grouping
     {
         return Grouping::make('currency')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->currency));
@@ -79,7 +80,7 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterByDepartment(): Grouping
+    public static function groupByDepartment(): Grouping
     {
         return Grouping::make('department_id')->collapsible()
             ->label('Dep.')
@@ -89,7 +90,7 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterByReason(): Grouping
+    public static function groupByReason(): Grouping
     {
         return Grouping::make('reason_for_payment')->collapsible()
             ->label('Reason')
@@ -99,7 +100,7 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterByContractor(): Grouping
+    public static function groupByContractor(): Grouping
     {
         return Grouping::make('contractor.name')->collapsible()
             ->label('Contractor')
@@ -109,7 +110,7 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterBySupplier(): Grouping
+    public static function groupBySupplier(): Grouping
     {
         return Grouping::make('supplier.name')->collapsible()
             ->label('Supplier')
@@ -119,10 +120,36 @@ trait Filter
     /**
      * @return Grouping
      */
-    public static function filterByPayee(): Grouping
+    public static function groupByBeneficiary(): Grouping
     {
-        return Grouping::make('payee.name')->collapsible()
-            ->label('Payee')
-            ->getTitleFromRecordUsing(fn(Model $record): string => $record->payee->name ?? 'No payee');
+        return Grouping::make('beneficiary.name')->collapsible()
+            ->label('Beneficiary')
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->beneficiary?->name ?? 'No beneficiary');
+    }
+
+
+    public static function filterByCurrency(): SelectFilter
+    {
+        return SelectFilter::make('currency')
+            ->label('Currency')
+            ->options(fn() => collect(showCurrencies())->mapWithKeys(fn($html, $key) => [$key => strip_tags($html->toHtml())]));
+    }
+
+
+    public static function filterByDepartment(): SelectFilter
+    {
+        return SelectFilter::make('department_id')
+            ->label('Department')
+            ->options(Department::getAllDepartmentNames())
+            ->placeholder('All Departments');
+    }
+
+
+    public static function filterByTypeOfPayment(): SelectFilter
+    {
+        return SelectFilter::make('type_of_payment')
+            ->label('Type of Payment')
+            ->options(PaymentRequest::$typesOfPayment)
+            ->placeholder('All Types');
     }
 }

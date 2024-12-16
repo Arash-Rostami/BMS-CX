@@ -91,7 +91,6 @@ class OrderResource extends Resource
                             ->schema([
                                 Admin::getPurchaseStatus(),
                                 Admin::getOrderStatus(),
-                                Admin::getOrderStatus(),
                             ])->columns(2),
                         /*Parties Involved*/
                         Section::make(new HtmlString("Parties: <span class='red'>*</span>"))

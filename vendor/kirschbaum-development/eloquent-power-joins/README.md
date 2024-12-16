@@ -1,6 +1,6 @@
 ![Eloquent Power Joins](screenshots/eloquent-power-joins.jpg "Eloquent Power Joins")
 
-![Laravel Supported Versions](https://img.shields.io/badge/laravel-8.x/9.x/10.x/11.x-green.svg)
+![Laravel Supported Versions](https://img.shields.io/badge/laravel-10.x/11.x-green.svg)
 [![run-tests](https://github.com/kirschbaum-development/eloquent-power-joins/actions/workflows/ci.yaml/badge.svg)](https://github.com/kirschbaum-development/eloquent-power-joins/actions/workflows/ci.yaml)
 [![MIT Licensed](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat-square)](LICENSE.md)
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/kirschbaum-development/eloquent-power-joins.svg?style=flat-square)](https://packagist.org/packages/kirschbaum-development/eloquent-power-joins)
@@ -27,10 +27,10 @@ You can install the package via composer:
 composer require kirschbaum-development/eloquent-power-joins
 ```
 
-For Laravel versions < 8, use the 2.* version:
+For Laravel versions < 10, use the 3.* version. For Laravel versions < 8, use the 2.* version:
 
 ```bash
-composer require kirschbaum-development/eloquent-power-joins:2.*
+composer require kirschbaum-development/eloquent-power-joins:3.*
 ```
 
 ## Usage
@@ -90,6 +90,12 @@ Now, let's say you want to apply a condition to the join you are making. You sim
 
 ```php
 User::joinRelationship('posts', fn ($join) => $join->where('posts.approved', true))->toSql();
+```
+
+You can also specify the type of join you want to make in the callback:
+
+```php
+User::joinRelationship('posts', fn ($join) => $join->left());
 ```
 
 For **nested calls**, you simply need to pass an array referencing the relationship names.
@@ -345,7 +351,3 @@ Development of this package is sponsored by Kirschbaum Development Group, a deve
 ## License
 
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
-
-## Laravel Package Boilerplate
-
-This package was generated using the [Laravel Package Boilerplate](https://laravelpackageboilerplate.com).

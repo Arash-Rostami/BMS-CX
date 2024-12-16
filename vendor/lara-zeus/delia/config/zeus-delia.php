@@ -8,13 +8,14 @@ return [
      * set the default domain.
      */
     'render-hooks' => [
-        'list' => PanelsRenderHook::SIDEBAR_NAV_END,
+        'list' => PanelsRenderHook::TOPBAR_END,
         'bookmark_toggle_icon' => TablesRenderHook::TOOLBAR_TOGGLE_COLUMN_TRIGGER_AFTER,
     ],
 
     'dropdown' => [
         'title' => 'Bookmarks',
         'icon' => 'heroicon-m-bookmark-square',
+        'empty_icon' => 'heroicon-m-bookmark-slash',
     ],
 
     /**

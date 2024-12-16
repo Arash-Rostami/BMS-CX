@@ -9,14 +9,15 @@ use App\Filament\Resources\Operational\PaymentRequestResource\Pages\AdminCompone
 use App\Models\Attachment;
 use App\Models\Order;
 use App\Models\PaymentRequest;
-use App\Notifications\FilamentNotification;
 use App\Services\AttachmentDeletionService;
-use App\Services\PaymentRequestService;
+use App\Services\Notification\PaymentRequestService;
 use Carbon\Carbon;
 use Filament\Forms\Components\Actions\Action;
+use Filament\Tables\Actions\Action as TableAction;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -66,7 +67,7 @@ class Admin
      */
     private static function concatenateSum(?Model $record): string
     {
-        return '💰 Sum: ' . $record->currency . ' ' . number_format($record->requested_amount) . '/' . number_format($record->total_amount);
+        return '💰 ' . $record->currency . ' ' . number_format($record->requested_amount) . '/' . number_format($record->total_amount);
     }
 
 
@@ -76,16 +77,8 @@ class Admin
      */
     public static function send(Model $record): void
     {
-        $accountants = (new PaymentRequestService())->fetchAccountants();
-
-        foreach ($accountants as $recipient) {
-            $recipient->notify(new FilamentNotification([
-                'record' => self::getOrderRelation($record),
-                'type' => 'delete',
-                'module' => 'paymentRequest',
-                'url' => route('filament.admin.resources.payment-requests.index'),
-            ]));
-        }
+        $service = new PaymentRequestService();
+        $service->notifyAccountants($record, type: 'delete');
     }
 
 
@@ -196,7 +189,7 @@ class Admin
     protected static function formatOrderDisplay(Order $order, string $part): string
     {
         return match ($part) {
-            'BL' => $order->docs?->BL_number ?? 'N/A',
+            'BL' => $order->doc?->BL_number ?? 'N/A',
             'BN' => $order->logistic?->booking_number ? $order->logistic->booking_number . ' (' . ($order->logistic->portOfDelivery?->name ?? 'Unknown Port') . ')' : 'N/A',
             'REF' => $order->reference_number ?? 'N/A',
             'PN' => $order->invoice_number ? $order->invoice_number . ' (Part ' . $order->part . ')' : 'N/A',
@@ -265,10 +258,9 @@ class Admin
 
     public static function syncPaymentRequest(Model $replica): void
     {
+        persistReferenceNumber($replica, 'PR');
         $service = new PaymentRequestService();
-        $accountants = $service->fetchAccountants();
-        $service->persistReferenceNumber($replica);
-        $service->notifyAccountants($replica, $accountants);
+        $service->notifyAccountants($replica);
     }
 
     public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
@@ -294,5 +286,85 @@ class Admin
                 ->success()
                 ->send();
         }
+    }
+
+    /**
+     * @return TableAction
+     */
+    public static function allowRecord(): TableAction
+    {
+        return TableAction::make('allow')
+            ->hidden(fn() => !(auth()->user()->role == 'accountant' || auth()->user()->role == 'admin'))
+            ->label('Allow')
+            ->color('success')
+            ->icon('heroicon-s-check-circle')
+            ->tooltip('Awaiting accounting review')
+            ->action(function (Model $record) {
+                $record->update(['status' => 'allowed']);
+                Notification::make()
+                    ->title('Status Updated: Approved')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    /**
+     * @return TableAction
+     */
+    public static function approveRecord(): TableAction
+    {
+        return TableAction::make('approve')
+            ->hidden(fn() => !(auth()->user()->role == 'manager' || auth()->user()->role == 'admin'))
+            ->label('Approve')
+            ->color('success')
+            ->icon('heroicon-s-check-circle')
+            ->tooltip('Managerial approval received')
+            ->action(function (Model $record) {
+                $record->update(['status' => 'approved']);
+                Notification::make()
+                    ->title('Status Updated: Approved')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    /**
+     * @return TableAction
+     */
+    public static function processRecord(): TableAction
+    {
+        return TableAction::make('process')
+            ->disabled(fn() => !(auth()->user()->role == 'manager' || auth()->user()->role == 'admin'))
+            ->label('Process')
+            ->color('warning')
+            ->icon('heroicon-s-clock')
+            ->tooltip('Payment in progress')
+            ->action(function (Model $record) {
+                $record->update(['status' => 'processing']);
+                Notification::make()
+                    ->title('Status Updated: In process')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    /**
+     * @return TableAction
+     */
+    public static function rejectRecord(): TableAction
+    {
+        return TableAction::make('reject')
+            ->disabled(fn() => (auth()->user()->role == 'partner' || auth()->user()->role == 'agent'))
+            ->label('Reject')
+            ->color('danger')
+            ->icon('heroicon-s-x-circle')
+            ->tooltip('Payment request denied')
+            ->action(function (Model $record) {
+                $record->update(['status' => 'rejected']);
+                Notification::make()
+                    ->title('Status Updated: Rejected')
+                    ->success()
+                    ->send();
+            });
     }
 }

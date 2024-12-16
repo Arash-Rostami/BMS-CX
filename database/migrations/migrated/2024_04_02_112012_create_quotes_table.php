@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('origin_port', 255);
             $table->string('destination_port', 255);
             $table->string('offered_rate', 255);
+            $table->string('local_charges', 255);
             $table->string('switch_bl_fee', 255)->nullable();
             $table->string('commodity_type', 255)->nullable();
             $table->string('packing_type', 255)->nullable();

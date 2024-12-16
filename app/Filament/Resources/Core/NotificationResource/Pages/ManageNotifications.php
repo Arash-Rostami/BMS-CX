@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Core\NotificationResource\Pages;
 use App\Filament\Resources\NotificationResource;
 use App\Models\User;
 use App\Notifications\PersonToPersonNotification;
+use App\Services\Notification\SMS\Operator;
 use App\Services\RetryableEmailService;
 use Filament\Actions;
 use Filament\Resources\Pages\ManageRecords;
@@ -22,17 +23,60 @@ class ManageNotifications extends ManageRecords
             Actions\CreateAction::make()
                 ->label('New')
                 ->createAnother(false)
-                ->icon('heroicon-o-sparkles')
                 ->mutateFormDataUsing(fn($data) => static::addNotificationData($data))
+                ->successNotificationTitle('Message successfully delivered.')
+                ->icon('heroicon-o-sparkles')
         ];
     }
+
 
     protected static function addNotificationData(array $data): array
     {
         $data = self::mutateTableContent($data);
 
-        if ($data['priority'] === 'IMPORTANT ALERT') {
-            self::sendPriorityEmail($data);
+        if (isset($data['priority'])) {
+            $data = self::processPriority($data);
+        }
+
+        return $data;
+    }
+
+    protected static function getChannelMap(): array
+    {
+        return [
+            'highest' => ['channels' => ['SMS', 'Email', 'In-app'], 'alert' => 'CRITICAL ALERT'],
+            'high' => ['channels' => ['SMS', 'In-app'], 'alert' => 'IMPORTANT ALERT'],
+            'mid' => ['channels' => ['Email', 'In-app'], 'alert' => 'STANDARD ALERT'],
+            'low' => ['channels' => ['In-app'], 'alert' => 'MINOR ALERT'],
+        ];
+    }
+
+
+    /**
+     * Process priority and update data accordingly.
+     *
+     * @param array $data
+     * @return array
+     */
+    protected static function processPriority(array $data): array
+    {
+        $channelMap = self::getChannelMap();
+
+
+        if (array_key_exists($data['priority'], $channelMap)) {
+            $priorityDetails = $channelMap[$data['priority']];
+
+            $data['priority_alert'] = $priorityDetails['alert'] . ' from ' . auth()->user()->fullName;
+
+            if (in_array('SMS', $priorityDetails['channels'])) {
+                self::sendSMSNotification($data);
+            }
+
+            if (in_array('Email', $priorityDetails['channels'])) {
+                self::sendPriorityEmail($data);
+            }
+        } else {
+            dd("Processing priority: {$data['priority']}");
         }
 
         return $data;
@@ -44,10 +88,14 @@ class ManageNotifications extends ManageRecords
      */
     public static function mutateTableContent(array $data): array
     {
+        $channelMap = self::getChannelMap();
+
+        $priorityDetails = $channelMap[$data['priority']] ?? $channelMap['low'];
+
         $data['id'] = (string)Str::uuid();
         $data['type'] = 'Filament\Notifications\DatabaseNotification';
         $data['notifiable_type'] = 'App\Models\User';
-        $data['priority'] = ($data['priority'] === 'high') ? 'IMPORTANT ALERT' : 'STANDARD ALERT';
+        $data['priority_alert'] = $priorityDetails['alert'] . ' from ' . auth()->user()->fullName;
         $data['data'] = static::createNotificationContent($data);
 
         return $data;
@@ -62,7 +110,7 @@ class ManageNotifications extends ManageRecords
             'icon' => 'heroicon-m-information-circle',
             'iconColor' => 'info',
             'status' => 'warning',
-            'title' => "<span style='color:#60A5FA'>{$data['priority']}</span>",
+            'title' => "<span style='color:#60A5FA'>{$data['priority_alert']}</span>",
             'view' => 'filament-notifications::notification',
             'viewData' => [],
             'format' => 'filament',
@@ -122,6 +170,34 @@ class ManageNotifications extends ManageRecords
         ];
     }
 
+    /**
+     * Send an SMS notification based on priority.
+     *
+     * @param array $data
+     * @return void
+     */
+    protected static function sendSMSNotification(array $data): void
+    {
+        $recipient = User::find($data['notifiable_id']);
+        $sender = auth()->user();
+
+        if ($recipient && !empty($recipient->phone)) {
+            $messageData = json_decode($data['data']);
+
+            $message = <<<SMS
+BMS Notification Service
+
+Priority: {$data['priority']}
+Message: {$messageData->body}
+
+Sent by: {$sender->fullName}
+SMS;
+
+            $operator = new Operator();
+            $operator->send($recipient->phone, $message);
+        }
+    }
+
 
     /**
      * @param array $data
@@ -133,5 +209,4 @@ class ManageNotifications extends ManageRecords
 
         RetryableEmailService::dispatchEmail('personal alert', ...$arguments);
     }
-
 }

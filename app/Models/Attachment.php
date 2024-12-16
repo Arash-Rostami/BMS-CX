@@ -54,7 +54,6 @@ class Attachment extends Model
         });
     }
 
-
     /**
      * Get the user that owns the attachment.
      */

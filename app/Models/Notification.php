@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -69,6 +70,15 @@ class Notification extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'notifiable_id');
+    }
+
+    public function scopeFilterByUserRole(Builder $query, $user): Builder
+    {
+        if ($user->role != 'admin') {
+            return $query->where('notifiable_id', $user->id);
+        }
+
+        return $query;
     }
 }
 

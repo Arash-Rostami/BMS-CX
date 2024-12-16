@@ -2,9 +2,16 @@
 
 namespace App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents;
 
+use App\Models\Allocation;
+use App\Models\Department;
+use App\Models\Payment;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group as Grouping;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 trait Filter
 {
@@ -28,13 +35,12 @@ trait Filter
             ->label('Transferring Date')
             ->collapsible()
             ->getKeyFromRecordUsing(function (Model $record): string {
-                return $record->date ? (string) $record->date : 'no-date';
+                return $record->date ? (string)$record->date : 'no-date';
             })
             ->getTitleFromRecordUsing(fn(Model $record): string => data_get($record, 'date')
                 ? Carbon::parse(data_get($record, 'date'))->format('F j, Y')
                 : 'Undefined');
     }
-
 
 
     /**
@@ -62,15 +68,79 @@ trait Filter
      */
     public static function filterByPaymentRequest(): Grouping
     {
-        return Grouping::make('paymentRequests.id')->collapsible()
-            ->label('Payment Request')
-            ->getKeyFromRecordUsing(function (Model $record): string {
-                $reasons = $record->paymentRequests->pluck('reason')->pluck('reason');
-                return $reasons->first();
+        return Grouping::make('payment_request')
+            ->collapsible()
+            ->getKeyFromRecordUsing(function (Model $record) {
+                if (empty($record->payment_request)) {
+                    return 'N/A';
+                }
+                $refNumbers = explode(',', $record->payment_request);
+                sort($refNumbers);
+                return implode(', ', $refNumbers);
             })
-            ->getTitleFromRecordUsing(function (Model $record): string {
-                $reasons = $record->paymentRequests->pluck('reason')->pluck('reason');
-                return ($reasons->unique()->count() === 1) ? $reasons->first() : "Multiple payment requests: " . $reasons->join(', ');
+            ->getTitleFromRecordUsing(function (Model $record) {
+                if (empty($record->payment_request)) {
+                    return 'N/A';
+                }
+                $refNumbers = explode(',', $record->payment_request);
+                sort($refNumbers);
+                return implode(' ⚝ ', $refNumbers);
+            })
+            ->label('Payment Request');
+    }
+
+
+    /**
+     * @return SelectFilter
+     * @throws \Exception
+     */
+    public static function filterReason(): SelectFilter
+    {
+        return SelectFilter::make('reason')
+            ->label('Reason for Payment')
+            ->options(Cache::remember('reason_options', 60, fn() => Allocation::orderBy('reason')->pluck('reason', 'id')->toArray()))
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
+                        $query->where('reason_for_payment', $data['value']);
+                    });
+                }
+            });
+    }
+
+    /**
+     * @return SelectFilter
+     * @throws \Exception
+     */
+    public static function filterDepartments(): SelectFilter
+    {
+        return SelectFilter::make('department')
+            ->label('Department')
+            ->options(Cache::remember('department_option_filter', 60, fn() => Department::getAllDepartmentNames()))
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
+                        $query->where('department_id', $data['value']);
+                    });
+                }
+            });
+    }
+
+    /**
+     * @return SelectFilter
+     * @throws \Exception
+     */
+    public static function filterCostCenter(): SelectFilter
+    {
+        return SelectFilter::make('costCenter')
+            ->label('Cost Center')
+            ->options(Cache::remember('department_option_filter', 60, fn() => Department::getAllDepartmentNames()))
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
+                        $query->where('cost_center', $data['value']);
+                    });
+                }
             });
     }
 }

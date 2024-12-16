@@ -15,7 +15,9 @@ class PortMaker
         "Assaluyeh",
         "Shahid Rajaee",
         "Bahonar",
-        "Lengeh"
+        "Lengeh",
+        "Tehran",
+        "Isfahan"
     ];
 
     protected static array $chinesePorts = [
@@ -38,7 +40,8 @@ class PortMaker
         "Fuzhou",
         "Yantai",
         "Jiangyin",
-        "Weihai"
+        "Weihai",
+        "Taicang"
     ];
 
     public static function getIranianPorts(): array

@@ -9,7 +9,7 @@ use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\AdminCompon
 use App\Models\Attachment;
 use App\Notifications\FilamentNotification;
 use App\Services\AttachmentDeletionService;
-use App\Services\ProformaInvoiceService;
+use App\Services\Notification\ProformaInvoiceService;
 use Carbon\Carbon;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Repeater;
@@ -61,16 +61,8 @@ class Admin
 
     public static function send(Model $record)
     {
-        $agents = (new ProformaInvoiceService())->fetchAgents();
-
-        foreach ($agents as $recipient) {
-            $recipient->notify(new FilamentNotification([
-                'record' => $record->proforma_number . ' (' . $record->reference_number . ')',
-                'type' => 'delete',
-                'module' => 'proformaInvoice',
-                'url' => route('filament.admin.resources.proforma-invoices.index'),
-            ]));
-        }
+        $service = new ProformaInvoiceService();
+        $service->notifyAgents($record, 'delete');
     }
 
 
@@ -107,10 +99,9 @@ class Admin
 
     public static function syncProformaInvoice(Model $replica): void
     {
+        persistReferenceNumber($replica, 'PI');
         $service = new ProformaInvoiceService();
-        $agents = $service->fetchAgents();
-        $service->persistReferenceNumber($replica);
-        $service->notifyAgents($replica, $agents);
+        $service->notifyAgents($replica);
     }
 
     public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void

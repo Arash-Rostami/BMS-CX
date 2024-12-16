@@ -33,5 +33,4 @@ class QuoteController extends Controller
     {
         return QuoteToken::where('token', $token)->first();
     }
-
 }

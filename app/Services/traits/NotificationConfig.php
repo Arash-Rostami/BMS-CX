@@ -29,26 +29,26 @@ trait NotificationConfig
 
     public static array $body = [
         'proformaInvoice' => [
-            'new' => 'One pro forma invoice %s made.',
+            'new' => 'One pro forma invoice %s created.',
             'edit' => 'Pro forma invoice %s updated.',
             'delete' => 'Pro forma invoice %s deleted.',
             'reminder' => 'Pro forma invoice %s requires your attention.'
         ],
         'order' => [
             'new' => 'The order - %s - created.',
-            'edit' => 'Order - %s - modified.',
-            'delete' => 'Order - %s - removed.',
+            'edit' => 'Order - %s - updated.',
+            'delete' => 'Order - %s - deleted.',
             'reminder' => 'Order - %s - requires your attention.'
         ],
         'paymentRequest' => [
             'new' => 'One payment request %s created.',
-            'edit' => 'The payment request %s edited.',
+            'edit' => 'The payment request %s updated.',
             'delete' => 'The payment request %s deleted.',
             'reminder' => 'The payment request %s requires your attention.'
         ],
         'payment' => [
-            'new' => 'Payment made for %s.',
-            'edit' => 'Payment details for %s changed.',
+            'new' => 'Payment created for %s.',
+            'edit' => 'Payment details for %s updated.',
             'delete' => 'Payment for %s deleted.',
             'reminder' => 'Payment for %s requires your attention.'
         ],
@@ -75,14 +75,14 @@ trait NotificationConfig
     ];
 
     public static array $bodyStatus = [
-        'order' => [
+        'proformaInvoice' => [
             'pending' => 'Your permission for pro forma invoice of %s is requested.',
             'processing' => 'Pro forma invoice for %s is under review.',
             'approved' => 'Pro forma invoice for %s has been approved.',
             'rejected' => 'Pro forma invoice for %s has been rejected.',
             'completed' => 'Pro forma invoice for %s has been fulfilled.',
         ],
-        'payment' => [
+        'paymentRequest' => [
             'pending' => 'Your decision on payment request for %s is pending.',
             'processing' => 'Payment for %s in progress.',
             'allowed' => 'Payment for %s authorized by the accounting department for processing.',

@@ -133,7 +133,6 @@ class ResetPassword extends SimplePage
     {
         return TextInput::make('email')
             ->label(__('📫'))
-            ->placeholder('Email')
             ->disabled()
             ->autofocus();
     }
@@ -142,7 +141,6 @@ class ResetPassword extends SimplePage
     {
         return TextInput::make('password')
             ->label(__('🔑'))
-            ->placeholder('Password')
             ->password()
             ->revealable(filament()->arePasswordsRevealable())
             ->required()
@@ -155,7 +153,6 @@ class ResetPassword extends SimplePage
     {
         return TextInput::make('passwordConfirmation')
             ->label(__('🔑'))
-            ->placeholder('Confirm Password')
             ->password()
             ->revealable(filament()->arePasswordsRevealable())
             ->required()

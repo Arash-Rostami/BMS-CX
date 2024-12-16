@@ -25,7 +25,7 @@ class QuoteProvider extends Model
         return $this->hasMany(QuoteToken::class);
     }
 
-    public function quotes() // Optional - depends on your data structure
+    public function quotes()
     {
         return $this->hasManyThrough(Quote::class, QuoteToken::class);
     }

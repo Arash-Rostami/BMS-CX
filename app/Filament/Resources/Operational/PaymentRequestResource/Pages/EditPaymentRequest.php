@@ -4,11 +4,10 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
 use App\Models\User;
-use App\Notifications\FilamentNotification;
 use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\AttachmentCreationService;
+use App\Services\Notification\PaymentRequestService;
 use App\Services\NotificationManager;
-use App\Services\PaymentRequestService;
 use App\Services\RetryableEmailService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -17,8 +16,8 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Actions\ReplicateAction;
-use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 
 class EditPaymentRequest extends EditRecord
@@ -30,7 +29,7 @@ class EditPaymentRequest extends EditRecord
         return [
             PrintAction::make()
                 ->color('amber'),
-           Actions\Action::make('pdf')
+            Actions\Action::make('pdf')
                 ->label('PDF')
                 ->color('success')
                 ->icon('heroicon-c-inbox-arrow-down')
@@ -68,6 +67,8 @@ class EditPaymentRequest extends EditRecord
 
         $data['extra'] = data_get($this->form->getRawState(), 'extra');
 
+        $data = (new CreatePaymentRequest())->persistAccountNo($data);
+
         return $data;
     }
 
@@ -78,36 +79,31 @@ class EditPaymentRequest extends EditRecord
         }
 
         session(['old_status_payment' => $this->record->getOriginal('status')]);
+        $hasExistingAttachment = data_get($this->form->getRawState(), 'use_existing_attachments') ?? false;
 
+        if ($hasExistingAttachment) {
+            Cache::put('available_attachments', data_get($this->form->getRawState(), 'available_attachments'), 10);
+        }
 
-        AttachmentCreationService::createFromExisting($this->form->getState(), $this->record->getOriginal('id'), 'payment_request_id');
+        AttachmentCreationService::createFromExisting($this->record->getOriginal('id'), 'payment_request_id');
     }
 
 
     protected function afterSave(): void
     {
-        $allRecipients = (new PaymentRequestService())->fetchAccountants();
+        $record = $this->record;
 
-        $this->sendEditNotification($allRecipients);
+        $service = new PaymentRequestService();
 
-        $this->sendStatusNotification($allRecipients);
+        $service->notifyAccountants($record, type: 'edit');
+
+        $this->sendStatusNotification($service);
 
         $this->clearSessionData();
     }
 
-    private function sendEditNotification($allRecipients)
-    {
-        foreach ($allRecipients as $recipient) {
-            $recipient->notify(new FilamentNotification([
-                'record' => Admin::getOrderRelation($this->record),
-                'type' => 'edit',
-                'module' => 'paymentRequest',
-                'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $this->record->id]),
-            ]));
-        }
-    }
 
-    private function sendStatusNotification($allRecipients)
+    private function sendStatusNotification($service)
     {
         $newStatus = $this->record['status'];
 
@@ -115,38 +111,23 @@ class EditPaymentRequest extends EditRecord
 
             $this->persistStatusChanger();
 
-            $madeBy = $this->record['extra']['made_by'] ?? null;
-            $specificRecipient = !empty($madeBy) ? $this->findUserByName($madeBy) : null;
+            $allRecipients = User::getUsersByRole('accountant');
+
+            $madeBy = $this->record['user_id'] ?? null;
+            $specificRecipient = !empty($madeBy) ? User::find($madeBy) : null;
 
 
             if ($specificRecipient && !$allRecipients->contains('id', $specificRecipient->id)) {
                 $allRecipients->push($specificRecipient);
             }
 
-            foreach ($allRecipients as $recipient) {
-                $recipient->notify(new FilamentNotification([
-                    'record' => Admin::getOrderRelation($this->record),
-                    'type' => $newStatus,
-                    'module' => 'payment',
-                    'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $this->record->id]),
-                ], true));
-            }
-
-            $this->notifyViaEmail($newStatus, $allRecipients);
+            $service->notifyAccountants($this->record, type: $newStatus, status: true, accountants: $allRecipients);
         }
     }
 
     private function clearSessionData()
     {
         session()->forget('old_status_payment');
-    }
-
-
-    private function notifyViaEmail($status, $allRecipients): void
-    {
-        $arguments = [$allRecipients, new PaymentRequestStatusNotification($this->record, $status)];
-
-        RetryableEmailService::dispatchEmail('payment request', ...$arguments);
     }
 
 
@@ -157,8 +138,11 @@ class EditPaymentRequest extends EditRecord
             'changed_at' => now()->toDateTimeString(),
         ];
 
+        $extra = $this->record->extra ?? [];
+        $extra['statusChangeInfo'] = $statusChangeInfo;
+
         $this->record->update([
-            'extra->statusChangeInfo' => $statusChangeInfo
+            'extra' => $extra
         ]);
     }
 
@@ -172,40 +156,5 @@ class EditPaymentRequest extends EditRecord
             ->send();
 
         $this->halt();
-    }
-
-    public function findUserByName($madeBy)
-    {
-        // Explode the name into parts, removing any empty strings
-        $nameParts = array_filter(explode(' ', trim($madeBy)), fn($value) => $value !== '');
-
-        // Initialize the array pointer to the first element
-        reset($nameParts);
-
-        // Determine how many parts and construct the query
-        switch (count($nameParts)) {
-            case 2:  // Assuming only first and last names are provided
-                $firstName = current($nameParts);
-                $lastName = next($nameParts);
-                $user = User::where('first_name', $firstName)
-                    ->where('last_name', $lastName)
-                    ->first();
-                break;
-
-            case 3:  // Assuming first, middle, and last names are provided
-                $firstName = current($nameParts);
-                $middleName = next($nameParts);
-                $lastName = next($nameParts);
-                $user = User::where('first_name', $firstName)
-                    ->where('middle_name', $middleName)
-                    ->where('last_name', $lastName)
-                    ->first();
-                break;
-
-            default:
-                $user = null;
-                break;
-        }
-        return $user;
     }
 }

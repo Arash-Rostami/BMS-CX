@@ -63,11 +63,19 @@ class Login extends SimplePage
 
         $data = $this->form->getState();
 
-        if (! Filament::auth()->attempt($this->getCredentialsFromFormData($data), $data['remember'] ?? false)) {
+        if (!Filament::auth()->attempt($this->getCredentialsFromFormData($data), $data['remember'] ?? false)) {
             $this->throwFailureValidationException();
         }
 
         $user = Filament::auth()->user();
+
+        // Check active or inactive users
+        if (strtolower($user->status) != 'active') {
+            Filament::auth()->logout();
+            return  throw ValidationException::withMessages([
+                'data.email' => 'Account Deactivated; Please contact the BMS administrator.',
+            ]);
+        }
 
         // update the user's last ip, as well as last seen timestamp
         Pipeline::send($user)
@@ -79,12 +87,12 @@ class Login extends SimplePage
                     return $next($user);
                 }
             ])
-            ->then(fn (User $user) => $user->update(['ip_address' => request()->ip()]));
+            ->then(fn(User $user) => $user->update(['ip_address' => request()->ip()]));
 
 
         if (
             ($user instanceof FilamentUser) &&
-            (! $user->canAccessPanel(Filament::getCurrentPanel()))
+            (!$user->canAccessPanel(Filament::getCurrentPanel()))
         ) {
             Filament::auth()->logout();
 
@@ -144,7 +152,6 @@ class Login extends SimplePage
     {
         return TextInput::make('email')
             ->label(__('📫'))
-            ->placeholder('Email')
             ->email()
             ->required()
             ->autocomplete()
@@ -156,7 +163,6 @@ class Login extends SimplePage
     {
         return TextInput::make('password')
             ->label(__('🔑'))
-            ->placeholder('Password')
             ->hint(filament()->hasPasswordReset() ? new HtmlString(Blade::render('<x-filament::link :href="filament()->getRequestPasswordResetUrl()" tabindex="3"> {{ __(\'filament-panels::pages/auth/login.actions.request_password_reset.label\') }}</x-filament::link>')) : null)
             ->password()
             ->revealable(filament()->arePasswordsRevealable())
@@ -179,12 +185,12 @@ class Login extends SimplePage
             ->url(filament()->getRegistrationUrl());
     }
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         return __('filament-panels::pages/auth/login.title');
     }
 
-    public function getHeading(): string | Htmlable
+    public function getHeading(): string|Htmlable
     {
         return __('filament-panels::pages/auth/login.heading');
     }
@@ -212,7 +218,7 @@ class Login extends SimplePage
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @param array<string, mixed> $data
      * @return array<string, mixed>
      */
     protected function getCredentialsFromFormData(array $data): array

@@ -5,6 +5,7 @@ namespace App\Services;
 
 use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
 use App\Filament\Resources\Operational\PaymentRequestResource\Pages\CreatePaymentRequest;
+use App\Filament\Resources\Operational\PaymentRequestResource\Pages\EditPaymentRequest;
 use App\Models\User;
 use App\Notifications\FilamentNotification;
 use Illuminate\Support\Facades\Cache;
@@ -20,18 +21,31 @@ class PaymentRequestService
         $record->save();
     }
 
-    public function notifyAccountants($record, $accountants): void
+    public function notifyAccountants($record, $accountants, $edit = null, $newStatus = null): void
     {
-        foreach ($accountants as $recipient) {
+        $recipients = $accountants;
+
+        if (in_array($newStatus, ['allowed', 'approved'])) {
+            $managers = User::getUsersByRole('manager');
+            $recipients = $accountants->merge($managers);
+        }
+
+        foreach ($recipients as $recipient) {
             $recipient->notify(new FilamentNotification([
                 'record' => Admin::getOrderRelation($record),
-                'type' => 'new',
+                'type' => $newStatus ?? ($edit ? 'edit' : 'new'),
                 'module' => 'paymentRequest',
                 'url' => route('filament.admin.resources.payment-requests.edit', ['record' => $record->id]),
             ]));
         }
 
-        (new CreatePaymentRequest())->notifyViaEmail($accountants, $record);
+        if ($newStatus == null) {
+            (new CreatePaymentRequest())->notifyViaEmail($accountants, $record);
+        }
+
+        if ($newStatus == 'rejected') {
+            (new EditPaymentRequest())->notifyViaEmail($accountants, $record, $newStatus);
+        }
     }
 
     public function fetchAccountants(): mixed

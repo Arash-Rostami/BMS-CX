@@ -14,6 +14,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
 use Illuminate\View\View;
+use Symfony\Component\Finder\SplFileInfo;
 
 class IconPicker extends Select
 {
@@ -162,65 +163,157 @@ class IconPicker extends Select
         return $results;
     }
 
-    public function relationship(string|Closure|null $name = null, string|Closure|null $titleAttribute = null, ?Closure $modifyQueryUsing = null): static
+    /**
+     * Enact the preload logic (if, and only if, the user wants to preload the icons)
+     */
+    protected function doPreload(): void
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        if (!$this->isPreloaded()) {
+            return;
+        }
+
+        // To actually preload the icons, we trigger a search on the empty string.
+        // `str_contains` will return true for any haystack if the needle is the empty string.
+        // This is exactly how we know we get all the icons AND respect the user-land
+        // configuration applied to this field instance.
+        $options = $this->getSearchResults('');
+
+        // To avoid recursively and needlessly loading the icons each time
+        // anything requests the options or uses the `doPreload` method,
+        // we set the `preload` option to false right before setting the
+        // resolved/computed icons.
+        $this->preload(false);
+
+        // We delegate back to the parent's `options` method as a setter
+        // to keep our own as a throwing-method in user-land.
+        // This sets the icons on the back-end and front-end.
+        // It also make it work as soon as the component is mounted,
+        // which means there's no need for user interaction to get the
+        // full list of options loaded directly.
+        parent::options($options);
     }
 
+    public function getOptions(): array
+    {
+        $this->doPreload();
+        return parent::getOptions();
+    }
+
+
+     /**
+     * Marks the calling method as not allowed (whether because it's not supported or because it's meaningless when using this field)
+     * @throws \BadMethodCallException Always
+     */
+    protected function markAsNotAllowed(string $reason = 'Method not allowed.'): void {
+        throw new \BadMethodCallException($reason);
+    }
+
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
+    public function relationship(string|Closure|null $name = null, string|Closure|null $titleAttribute = null, ?Closure $modifyQueryUsing = null, bool $ignoreRecord = false): static
+    {
+        $this->markAsNotAllowed();
+    }
+
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
     public function options(Arrayable|Closure|array|string|null $options): static
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        $this->markAsNotAllowed();
     }
 
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
     public function allowHtml(bool|Closure $condition = true): static
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        $this->markAsNotAllowed();
     }
 
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
     public function searchable(bool|array|Closure $condition = true): static
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        $this->markAsNotAllowed();
     }
 
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
     public function getSearchResultsUsing(?Closure $callback): static
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        $this->markAsNotAllowed();
     }
 
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
     public function getOptionLabelFromRecordUsing(?Closure $callback): static
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        $this->markAsNotAllowed();
     }
 
-    public function createOptionUsing(Closure $callback): static
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
+    public function createOptionUsing(?Closure $callback): static
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        $this->markAsNotAllowed();
     }
 
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
     public function createOptionAction(?Closure $callback): static
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        $this->markAsNotAllowed();
     }
 
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
     public function createOptionForm(array|Closure|null $schema): static
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        $this->markAsNotAllowed();
     }
 
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
     public function schema(array|Closure $components): static
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        $this->markAsNotAllowed();
     }
 
+    /**
+     * @deprecated Method inherited from `\Filament\Forms\Components\Select` but not supported (or meaningless) when using this field
+     * @throws \BadMethodCallException
+     */
     public function multiple(bool|Closure $condition = true): static
     {
-        throw new \BadMethodCallException('Method not allowed.');
+        $this->markAsNotAllowed();
     }
 
     private function loadIcons(): Collection
     {
+        $iconsHash = md5(serialize($this->getSets()));
+        $key = "icon-picker.fields.{$iconsHash}.{$this->getStatePath()}";
+
         [$sets, $allowedIcons, $disallowedIcons] = $this->tryCache(
-            "icon-picker.fields.{$this->getStatePath()}",
+            $key,
             function () {
                 $allowedIcons = $this->getAllowedIcons();
                 $disallowedIcons = $this->getDisallowedIcons();
@@ -236,26 +329,67 @@ class IconPicker extends Select
                 return [$sets, $allowedIcons, $disallowedIcons];
             });
 
-        $icons = [];
 
-        foreach ($sets as $set) {
-            $prefix = $set['prefix'];
-            foreach ($set['paths'] as $path) {
-                foreach (File::files($path) as $file) {
-                    $filename = $prefix . '-' . $file->getFilenameWithoutExtension();
+        $allowedSetsHash = md5(serialize($sets));
+        $allowedHash = md5(serialize($allowedIcons));
+        $disallowedHash = md5(serialize($disallowedIcons));
+        $iconsKey = "icon-picker.fields.icons.{$iconsHash}.{$allowedSetsHash}.{$allowedHash}.{$disallowedHash}.{$this->getStatePath()}";
+        
+        $icons = $this->tryCache($iconsKey, function() use($sets, $allowedIcons, $disallowedIcons) {
+            $icons = [];
 
-                    if ($allowedIcons && !in_array($filename, $allowedIcons)) {
-                        continue;
+            foreach ($sets as $set) {
+                $prefix = $set['prefix'];
+                foreach ($set['paths'] as $path) {
+                    // To include icons from sub-folders, we use File::allFiles instead of File::files
+                    // See https://github.com/blade-ui-kit/blade-icons/blob/ce60487deeb7bcbccd5e69188dc91b4c29622aff/src/IconsManifest.php#L40
+                    foreach (File::allFiles($path) as $file) {
+                        // Simply ignore files that aren't SVGs
+                        if ($file->getExtension() !== 'svg') {
+                            continue;
+                        }
+
+                        $iconName = $this->getIconName($file, parentPath: $path, prefix: $prefix);
+
+                        if ($allowedIcons && !in_array($iconName, $allowedIcons)) {
+                            continue;
+                        }
+                        if ($disallowedIcons && in_array($iconName, $disallowedIcons)) {
+                            continue;
+                        }
+
+                        $icons[] = $iconName;
                     }
-                    if ($disallowedIcons && in_array($filename, $disallowedIcons)) {
-                        continue;
-                    }
-
-                    $icons[] = $filename;
                 }
             }
-        }
+
+            return $icons;
+        });
 
         return collect($icons);
+    }
+
+    /**
+     * @see https://github.com/blade-ui-kit/blade-icons and its IconsManifest.php
+     * @see https://github.com/blade-ui-kit/blade-icons/blob/ce60487deeb7bcbccd5e69188dc91b4c29622aff/src/IconsManifest.php#L78
+     */
+    private function getIconName(SplFileInfo $file, string $parentPath, string $prefix): string {
+        // BladeIcons uses a simple (and view-compliant) naming convention for icon names
+        // `xtra-icon` is the `icon.svg` from the `xtra` icon set
+        // `xtra-dir.icon` is the `icon.svg` from the `dir/` folder from the `xtra` icon set
+        // `xtra-sub.dir.icon` is the `icon.svg` from the `sub/dir/` folder from the `xtra` icon set
+        //
+        // As such, we:
+        // - get the string after the parent directory's path
+        // - replace every directory separator by a dot
+        // - add the prefix at the beginning, followed by a dash
+
+        $iconName = str($file->getPathname())
+            ->after($parentPath . DIRECTORY_SEPARATOR)
+            ->replace(DIRECTORY_SEPARATOR, '.')
+            ->basename('.svg')
+            ->toString();
+
+        return "$prefix-$iconName";
     }
 }

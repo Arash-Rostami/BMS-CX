@@ -20,6 +20,8 @@
         "guzzlehttp/guzzle": "^7.2",
         "hasnayeen/themes": "^3.0",
         "icetalker/filament-stepper": "^1.1",
+        "kavenegar/php": "^1.2",
+        "kenepa/banner": "^0.0.9",
         "lara-zeus/delia": "^1.0",
         "lara-zeus/popover": "^1.0",
         "laravel/framework": "^10.10",

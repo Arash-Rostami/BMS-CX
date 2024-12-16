@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Operational\QuoteRequestResource\Pages;
 
+use App\Forms\Components\InsertTemplateField;
 use App\Models\Packaging;
 use App\Models\ProviderList;
 use App\Models\QuoteProvider;
@@ -10,10 +11,13 @@ use App\Services\PortMaker;
 use Carbon\Carbon;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Filament\Tables\Columns\ToggleColumn;
@@ -22,10 +26,22 @@ use Filament\Tables\Filters\TrashedFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
+use Wallo\FilamentSelectify\Components\ToggleButton;
 
 class Admin
 {
 
+    /**
+     * @return Toggle|string|null
+     */
+    public static function getMarkDown(): Toggle
+    {
+        return Toggle::make('extra.use_markdown')
+            ->columnSpanFull()
+            ->live()
+            ->afterStateUpdated(fn(Set $set) => $set('extra.details', ''))
+            ->label('Use simple/markdown format');
+    }
 
     /**
      * @return TextColumn
@@ -36,6 +52,18 @@ class Admin
             ->tooltip('Response rate')
             ->label('Response Rate')
             ->state(fn(Model $record) => QuoteRequest::showQuoteResponseRate($record->id))
+            ->badge()
+            ->grow(false);
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showTitle(): TextColumn
+    {
+        return TextColumn::make('extra.title')
+            ->label('Title')
+            ->searchable()
             ->badge()
             ->grow(false);
     }
@@ -58,7 +86,7 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showDestinatonPort(): TextColumn
+    public static function showDestinationPort(): TextColumn
     {
         return TextColumn::make('destination_port')
             ->label('Destination Port')
@@ -91,6 +119,7 @@ class Admin
     public static function showSwitchBL(): ToggleColumn
     {
         return ToggleColumn::make('requires_switch_bl')
+            ->disabled()
             ->label('Switch BL');
     }
 
@@ -99,7 +128,7 @@ class Admin
      */
     public static function showCommodity(): TextColumn
     {
-        return TextColumn::make('commodity')
+        return TextColumn::make('product.name')
             ->searchable()
             ->grow(false)
             ->alignRight()
@@ -243,14 +272,29 @@ class Admin
     }
 
     /**
+     * @return TextInput
+     */
+    public static function getTitle(): TextInput
+    {
+        return TextInput::make('extra.title')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Title</span>'))
+            ->columnSpan(1)
+            ->placeholder('Enter a name or ID for easy reference (e.g., project number, case number, ...)')
+            ->required()
+            ->maxLength(255);
+    }
+
+    /**
      * @return Select
      */
     public static function getQuoteProviders(): Select
     {
-        return Select::make('recipient')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Quote Providers List</span>'))
+        return Select::make('extra.recipient')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Quote Providers List</span>'))
             ->placeholder('Click providers list to select or deselect related recipients.')
+            ->columnSpan(2)
             ->multiple()
+            ->required()
             ->options(ProviderList::pluck('name', 'id'));
     }
 
@@ -260,8 +304,10 @@ class Admin
     public static function getOriginPort(): Select
     {
         return Select::make('origin_port')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">POL</span>'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">POL</span>'))
             ->required()
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
             ->options(fn() => array_combine(PortMaker::getIranianPorts(), PortMaker::getIranianPorts()));
     }
 
@@ -271,8 +317,10 @@ class Admin
     public static function getDestinationPort(): Select
     {
         return Select::make('destination_port')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">POD</span>'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">POD</span>'))
             ->required()
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
             ->options(fn() => array_combine(PortMaker::getChinesePorts(), PortMaker::getChinesePorts()));
     }
 
@@ -282,28 +330,40 @@ class Admin
     public static function getPackaging(): Select
     {
         return Select::make('packing')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Packaging</span>'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Packaging</span>'))
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
             ->options(Packaging::pluck('name', 'id'));
     }
 
-    /**
-     * @return TextInput
-     */
-    public static function getContainerType(): TextInput
+    public static function getContainerType(): Select
     {
-        return TextInput::make('container_type')
-            ->label( fn()=>new HtmlString('<span class="text-primary-500 font-normal">Container Type</span>'))
-            ->maxLength(255);
+        return Select::make('container_type')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Container Type</span>'))
+            ->options([
+                'Standard' => ['20-foot Standard' => '20-foot Standard', '40-foot Standard' => '40-foot Standard', '40-foot High Cube' => '40-foot High Cube', '45-foot High Cube' => '45-foot High Cube'],
+                'Specialized' => ['Refrigerated (Reefer)' => 'Refrigerated (Reefer)', 'Open Top' => 'Open Top', 'Flat Rack' => 'Flat Rack', 'ISO Tank' => 'ISO Tank', 'Ventilated' => 'Ventilated', 'Insulated/Thermal' => 'Insulated/Thermal']
+            ])
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
+            ->searchable()
+            ->placeholder('Select Container Type');
     }
 
     /**
-     * @return TextInput
+     * @return Select
      */
-    public static function getCommodity(): TextInput
+    public static function getCommodity(): Select
     {
-        return TextInput::make('commodity')
-            ->maxLength(255);
+        return Select::make('commodity')
+            ->relationship('product', 'name')
+            ->required()
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Commodity</span>'))
+            ->placeholder('Select Container Type');
     }
+
 
     /**
      * @return TextInput
@@ -311,7 +371,9 @@ class Admin
     public static function getGrossWeight(): TextInput
     {
         return TextInput::make('gross_weight')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Gross Weight</span>'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Gross Weight</span>'))
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
             ->maxLength(255);
     }
 
@@ -321,6 +383,10 @@ class Admin
     public static function getQuantity(): TextInput
     {
         return TextInput::make('quantity')
+            ->placeholder('Needed number of containers (optional)')
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">No of Container</span>'))
             ->maxLength(255);
     }
 
@@ -331,7 +397,9 @@ class Admin
     {
         return TextInput::make('target_of_rate')
             ->placeholder('preferably in USD')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Target Rate</span>'))
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Target Rate</span>'))
             ->maxLength(255);
     }
 
@@ -342,7 +410,9 @@ class Admin
     {
         return TextInput::make('target_thc')
             ->placeholder('preferably in USD')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Target THC</span>'))
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Target THC</span>'))
             ->maxLength(255);
     }
 
@@ -353,7 +423,9 @@ class Admin
     {
         return TextInput::make('target_local_charges')
             ->placeholder('preferably in USD')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Target Local Charges</span>'))
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Target Local Charges</span>'))
             ->maxLength(255);
     }
 
@@ -364,7 +436,9 @@ class Admin
     {
         return TextInput::make('target_switch_bl_fee')
             ->placeholder('preferably in USD')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Target Switch BL Fee</span>'))
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Target Fee for Switch BL</span>'))
             ->maxLength(255);
     }
 
@@ -375,17 +449,22 @@ class Admin
     {
         return DatePicker::make('validity')
             ->default(now())
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Validity (of request)</span>'));
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Validity (of request)</span>'));
     }
 
     /**
-     * @return Toggle
+     * @return ToggleButton
      */
-    public static function getSwitchBL(): Toggle
+
+    public static function getSwitchBL(): ToggleButton
     {
-        return Toggle::make('requires_switch_bl')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Switch BL</span>'))
-            ->required();
+        return ToggleButton::make('requires_switch_bl')
+            ->offColor('primary')
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Switch Bill of Lading </span>'));
     }
 
     /**
@@ -393,10 +472,35 @@ class Admin
      */
     public static function getExtraInfo(): Textarea
     {
-        return Textarea::make('extra')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Extra Details</span>'))
-            ->placeholder('This field is ONLY for additional quote-specific details. The email format is pre-structured, so do NOT include any email body here.')
+        return Textarea::make('extra.details')
+            ->live()
+            ->visible(fn(Get $get) => !$get('extra.use_markdown'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Extra Details</span>'))
+            ->placeholder(fn() => "Use this field to provide any extra information relevant to the quote, such as specific requirements or preferences. Please avoid adding email body text as the email format is automatically written.")
             ->maxLength(65535)
+            ->columnSpanFull();
+    }
+
+    public static function getTemplateField()
+    {
+        return InsertTemplateField::make('template_inserter')
+            ->live()
+            ->visible(fn(Get $get) => $get('extra.use_markdown'))
+            ->label('🪄 AI-Powered Templates');
+    }
+
+
+    /**
+     * @return RichEditor
+     */
+    public static function getEmailBody(): RichEditor
+    {
+        return RichEditor::make('extra.details')
+            ->live()
+            ->visible(fn(Get $get) => $get('extra.use_markdown'))
+            ->disableToolbarButtons(['blockquote', 'strike', 'italic', 'attachFiles', 'codeBlock'])
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Email Body</span>'))
+            ->placeholder(fn() => "⚠️ Please write no greeting or names!")
             ->columnSpanFull();
     }
 
@@ -437,7 +541,6 @@ class Admin
             });
     }
 
-
     /**
      * @return TrashedFilter
      * @throws \Exception
@@ -446,5 +549,4 @@ class Admin
     {
         return TrashedFilter::make();
     }
-
 }

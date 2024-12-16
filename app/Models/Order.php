@@ -98,6 +98,12 @@ class Order extends Model
         return $this->hasMany(Name::class);
     }
 
+    public function notificationSubscriptions()
+    {
+        return $this->morphMany(NotificationSubscription::class, 'notifiable');
+    }
+
+
     public function orderDetail()
     {
         return $this->belongsTo(OrderDetail::class, 'order_detail_id');

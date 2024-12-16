@@ -20,7 +20,9 @@ class EditUser extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $data['info'] = array_merge(data_get($this->form->getRawState(), 'info'), data_get($this->getRecord(), 'info'));
+        $existingInfo = data_get($this->getRecord(), 'info', []);
+
+        $data['info'] = array_merge($existingInfo, data_get($data, 'info', []));
 
         return $data;
     }

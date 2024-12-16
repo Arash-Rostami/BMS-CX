@@ -8,10 +8,12 @@ use App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents\Table
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\CreateProformaInvoice;
 use App\Models\Attachment;
 use App\Models\Order;
+use App\Models\PortOfDelivery;
 use App\Models\ProformaInvoice;
 use App\Notifications\FilamentNotification;
 use App\Services\AttachmentDeletionService;
-use App\Services\OrderService;
+use App\Services\InfoExtractor;
+use App\Services\Notification\OrderService;
 use App\Services\ProjectNumberGenerator;
 use Archilex\ToggleIconColumn\Columns\ToggleIconColumn;
 use Carbon\Carbon;
@@ -108,24 +110,39 @@ class Admin
 
     public static function send(Model $record): void
     {
-        $agents = (new OrderService())->fetchAgents();
-
-        foreach ($agents as $recipient) {
-            $recipient->notify(new FilamentNotification([
-                'record' => ($record->invoice_number ?? 'N/A') . ' (' . $record->reference_number . ')',
-                'type' => 'delete',
-                'module' => 'order',
-                'url' => route('filament.admin.resources.orders.index'),
-            ]));
-        }
+        $service = new OrderService();
+        $service->notifyAgents($record, 'delete');
     }
 
     public static function updateFormBasedOnPreviousRecords(Get $get, Set $set, ?string $state): ?int
     {
         $id = $get('proforma_invoice_id');
-        if (!$id || !$state || ($orders = Order::findByProformaInvoiceId($id))->isEmpty()) {
+
+        if (!$id || !$state) {
             return null;
         }
+
+        $proformaInvoice = ProformaInvoice::find($id);
+
+        if (!$proformaInvoice) {
+            return null;
+        }
+
+        $matchedPortData = InfoExtractor::getPortInfo($proformaInvoice, $state);
+
+        if ($matchedPortData) {
+            $portOfDeliveryId = PortOfDelivery::where('name', $matchedPortData['city'])->value('id');
+
+            $set('logistic.port_of_delivery_id', $portOfDeliveryId ?? null);
+            $set('orderDetail.provisional_quantity', $matchedPortData['quantity'] ?? '');
+        }
+
+        $set('orderDetail.provisional_price', $proformaInvoice->price ?? '');
+
+        if (($orders = Order::findByProformaInvoiceId($id))->isEmpty()) {
+            return null;
+        }
+
 
         $projectNumbers = $orders->map(function ($order) {
             return $order->invoice_number;
@@ -187,9 +204,9 @@ class Admin
 //        $cacheKey = 'attachment_title_containing_part_' . $title . '_' . $order->id;
 
 //        return Cache::remember($cacheKey, 120, function () use ($title, $order) {
-            return $order->attachments->contains(function ($attachment) use ($title) {
-                return Str::contains($attachment->file_path, $title);
-            });
+        return $order->attachments->contains(function ($attachment) use ($title) {
+            return Str::contains($attachment->file_path, $title);
+        });
 //        });
     }
 
@@ -295,10 +312,9 @@ class Admin
 
     public static function syncOrder(Model $replica): void
     {
+        persistReferenceNumber($replica, 'O');
         $service = new OrderService();
-        $agents = $service->fetchAgents();
-        $service->persistReferenceNumber($replica);
-        $service->notifyAgents($replica, $agents);
+        $service->notifyAgents($replica);
     }
 
     public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void

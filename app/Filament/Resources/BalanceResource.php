@@ -7,18 +7,16 @@ use App\Filament\Resources\BalanceResource\RelationManagers;
 use App\Filament\Resources\Operational\BalanceResource\Pages\Admin;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Models\Balance;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
-use Filament\Tables\Grouping\Group as Grouping;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\HtmlString;
+
 
 class BalanceResource extends Resource
 {
@@ -56,6 +54,7 @@ class BalanceResource extends Resource
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn(Builder $query) => $query->filterByUserDepartment(auth()->user()))
             ->emptyStateIcon('heroicon-o-bookmark')
             ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->defaultSort('created_at', 'desc')
@@ -69,7 +68,8 @@ class BalanceResource extends Resource
                 Admin::groupByDepartment(),
                 Admin::groupBySumCurrency(),
             ])
-            ->filters([AdminOrder::filterCreatedAt()])
+            ->paginated([10, 20, 30])
+            ->filters([Admin::filterByDepartment(), AdminOrder::filterCreatedAt()])
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])
@@ -128,7 +128,12 @@ class BalanceResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        $user = auth()->user();
+        $count = static::getModel()::query()
+            ->filterByUserDepartment($user)
+            ->count();
+
+        return (string) $count;
     }
 
     public static function getNavigationBadgeColor(): ?string

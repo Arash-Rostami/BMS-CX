@@ -7,7 +7,7 @@ use App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents\For
 use App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents\Table;
 use App\Models\PaymentRequest;
 use App\Models\User;
-use App\Notifications\FilamentNotification;
+use App\Services\Notification\PaymentService;
 use Carbon\Carbon;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -57,14 +57,11 @@ class Admin
     {
         $records = $record->paymentRequests?->map(fn($each) => $each->proforma_invoice_number ?? $each->reason->reason)->join(', ');
 
-        foreach (User::getUsersByRole('admin') as $recipient) {
-            $recipient->notify(new FilamentNotification([
-                'record' => $records,
-                'type' => 'delete',
-                'module' => 'payment',
-                'url' => route('filament.admin.resources.payments.index'),
-            ]));
-        }
+        $record['records'] = $records;
+
+        $service = new PaymentService();
+
+        $service->notifyAccountants($record, 'delete');
     }
 
 
@@ -73,7 +70,7 @@ class Admin
         if ($record->paymentRequests?->isNotEmpty()) {
             return $record->paymentRequests->map(function ($paymentRequest) {
                 return $paymentRequest->getCustomizedDisplayName();
-            })->join(', ');
+            })->join('<br><br>');
         }
 
         return 'N/A';
@@ -108,7 +105,7 @@ class Admin
             });
     }
 
-    public static function fetchAmounts(?Model $record): array
+    public static function fetchAmounts(?Model $record, $state = null): array
     {
         if (is_null($record)) {
             return ['currency' => ' ', 'requestedAmount' => 0, 'totalAmount' => 0, 'remainingAmount' => 0];
@@ -117,8 +114,15 @@ class Admin
         $uniqueCurrency = $record->paymentRequests?->pluck('currency')->unique();
         $currency = $uniqueCurrency->count() === 1 ? $uniqueCurrency->first() : ' ';
 
-        $requestedAmount = $record->paymentRequests?->sum('requested_amount') ?? 0;
-        $totalAmount = $record->paymentRequests?->sum('total_amount') ?? 0;
+
+        if ($record->paymentRequests->count() == 1) {
+            $requestedAmount = $record->paymentRequests?->sum('requested_amount') ?? 0;
+            $totalAmount = $record->paymentRequests?->sum('total_amount') ?? 0;
+        } else {
+            $requestedAmount = $state;
+            $totalAmount = $record->paymentRequests?->sum('total_amount') ?? 0;
+        }
+
 
         $delta = data_get($record->extra, 'remainderSum', 0);
 
@@ -138,23 +142,31 @@ class Admin
         static $cachedPaymentRequests = [];
         $stateKey = serialize($state);
 
-
         if (!array_key_exists($stateKey, $cachedPaymentRequests)) {
             $records = PaymentRequest::findMany($state)->keyBy('id');
             $requestedAmount = 0.0;
+            $currencies = [];
 
             foreach ($records as $each) {
                 $requestedAmount += (float)$each->requested_amount;
+                $currencies[] = $each->currency;
             }
-
-            $cachedPaymentRequests[$stateKey] = $requestedAmount;
+            $cachedPaymentRequests[$stateKey] = [
+                'requestedAmount' => $requestedAmount,
+                'currencies' => $currencies,
+            ];
         }
 
-        $paymentRequest = $cachedPaymentRequests[$stateKey];
+        $paymentRequestData = $cachedPaymentRequests[$stateKey];
 
-        if ($paymentRequest !== null) {
-            $set('currency', 'USD');
-            $set('amount', $paymentRequest);
+        if ($paymentRequestData !== null) {
+            $uniqueCurrencies = array_unique($paymentRequestData['currencies']);
+
+            $set('amount', $paymentRequestData['requestedAmount']);
+
+            if (count($uniqueCurrencies) === 1) {
+                $set('currency', $uniqueCurrencies[0]);
+            }
         }
     }
 }

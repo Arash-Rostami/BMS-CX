@@ -6,9 +6,8 @@ use Illuminate\Auth\Notifications\ResetPassword as BaseNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
-class ResetPassword extends BaseNotification implements ShouldQueue
+class ResetPassword extends BaseNotification
 {
-    use Queueable;
 
     public string $url;
 

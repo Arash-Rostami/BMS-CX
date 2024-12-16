@@ -2,6 +2,88 @@
 
 All notable changes to `filament-phone-input` will be documented in this file
 
+## v2.3.6 - 2024-05-24
+
+### What's Changed
+
+- Fixed affix actions #42
+
+**Full Changelog**: https://github.com/ysfkaya/filament-phone-input/compare/v2.3.5...v2.3.6
+
+## v2.3.5 - 2024-03-21
+
+### What's Changed
+
+- Fixed an issue triggering `unsavedChangeAlerts` event. #38
+
+## 2.3.4 - 2024-03-12
+
+### What's Changed
+
+* Update README.md by @nathanpelton in https://github.com/ysfkaya/filament-phone-input/pull/37
+* Uptade dependecy version of `spatie/laravel-package-tools`
+
+### New Contributors
+
+* @nathanpelton made their first contribution in https://github.com/ysfkaya/filament-phone-input/pull/37
+
+**Full Changelog**: https://github.com/ysfkaya/filament-phone-input/compare/v2.3.3...v2.3.4
+
+## 2.3.3 - 2024-02-24
+
+### What's Changed
+
+* allowing array as value for type parameter in PhoneInput@validateFor by @Carnicero90 in https://github.com/ysfkaya/filament-phone-input/pull/35
+
+### New Contributors
+
+* @Carnicero90 made their first contribution in https://github.com/ysfkaya/filament-phone-input/pull/35
+
+**Full Changelog**: https://github.com/ysfkaya/filament-phone-input/compare/v2.3.2...v2.3.3
+
+## 2.3.2 - 2024-02-03
+
+### What's Changed
+
+- Fixed infinite recursion issue while using country state path.
+
+**Full Changelog**: https://github.com/ysfkaya/filament-phone-input/compare/v2.3.1...v2.3.2
+
+## v2.3.1 - 2024-02-03
+
+### What's Changed
+
+- Fixed an issue with instant detection of state change
+
+**Full Changelog**: https://github.com/ysfkaya/filament-phone-input/compare/v2.3.0...v2.3.1
+
+## 2.3.0 - 2024-02-03
+
+### What's Changed
+
+- Updated to the latest version of the `intl-tel-input` library.
+- Renamed `separateDialCode` method to `showSelectedDialCode`. The `separateDialCode` method will be removed in a major version update.
+- Added `autoInsertDialCode` method. For details, see [here](https://github.com/jackocnr/intl-tel-input#autoInsertDialCode).
+- Introduced a search input for countries with the new version. To hide this, the `countrySearch` method has been added.
+- Added `formatAsYouType` method.
+- This extension now publishes and utilizes flag icons available in the `intl-tel-input` library. Reading files via routes will be removed in the next major version.
+- Renamed `PhoneInputColumn` to `PhoneColumn`. This class will be removed in a major version update.
+- Added `PhoneEntry` class for use in InfoList.
+
+**Full Changelog**: https://github.com/ysfkaya/filament-phone-input/compare/v2.2.2...v2.3.0
+
+## 2.2.2 - 2024-01-24
+
+### What's Changed
+
+- Accept an array to the `validatedCountry` property by @adesege #32
+
+## 2.2.1 - 2024-01-06
+
+### What's Changed
+
+- Fixed `validateFor` method by using `int` instead of `string` in `$type` parameter
+
 ## 2.2.0 - 2023-12-12
 
 ### What's Changed

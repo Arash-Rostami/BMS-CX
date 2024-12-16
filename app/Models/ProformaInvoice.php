@@ -89,6 +89,10 @@ class ProformaInvoice extends Model
         return $this->hasMany(Name::class);
     }
 
+    public function notificationSubscriptions()
+    {
+        return $this->morphMany(NotificationSubscription::class, 'notifiable');
+    }
 
     public function orders()
     {

@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Packaging;
+use App\Models\Product;
 use App\Services\QuoteRequestTemplates;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -73,20 +74,19 @@ class QuoteRequestNotification extends Notification
         $portDetails = $this->formatDetail("**Origin Port (POL):**", $quoteRequest['origin_port'] ?? null);
         $portDetails .= $this->formatDetail("**Destination Port (POD):**", $quoteRequest['destination_port'] ?? null);
 
-        $cargoDetails = $this->formatDetail("**Packaging:**", optional(Packaging::find($quoteRequest['packing'] ?? null))->name);
+        $cargoDetails = $this->formatDetail("**Commodity:**", optional(Product::find($quoteRequest['commodity'] ?? null))->name);
+        $cargoDetails .= $this->formatDetail("**Packaging:**", optional(Packaging::find($quoteRequest['packing'] ?? null))->name);
         $cargoDetails .= $this->formatDetail("**Container Type:**", $quoteRequest['container_type'] ?? null);
-        $cargoDetails .= $this->formatDetail("**Commodity:**", $quoteRequest['commodity'] ?? null);
         $cargoDetails .= $this->formatDetail("**Gross Weight:**", $quoteRequest['gross_weight'] ?? null);
-        $cargoDetails .= $this->formatDetail("**Quantity:**", $quoteRequest['quantity'] ?? null);
+        $cargoDetails .= $this->formatDetail("**No. of Container(Quan):**", $quoteRequest['quantity'] ?? null);
 
         $targetDetails = $this->formatDetail("**Target Rate:**", $quoteRequest['target_of_rate'] ?? null);
-        $targetDetails .= $this->formatDetail("**Target THC:**", $quoteRequest['target_thc'] ?? null);
         $targetDetails .= $this->formatDetail("**Target Local Charges:**", $quoteRequest['target_local_charges'] ?? null);
-        $targetDetails .= $this->formatDetail("**Target Switch BL Fee:**", $quoteRequest['target_switch_bl_fee'] ?? null);
+        $targetDetails .= $this->formatDetail("**Target Switch BL Fees:**", $quoteRequest['target_switch_bl_fee'] ?? null);
 
         $validity = $this->formatDetail("(up to", $quoteRequest['validity'] ?? null, ")");
         $switchBL = $this->formatDetailIfTrue("**Switch BL Required:** Yes\n", $quoteRequest['requires_switch_bl'] ?? false);
-        $extraInfo = $this->formatDetail("**Additional Details:**\n", $quoteRequest['extra'] ?? null);
+        $extraInfo = $this->formatDetail("**Additional Details:**\n", $quoteRequest['extra']['details'] ?? null);
 
         return [
             'portDetails' => $portDetails,

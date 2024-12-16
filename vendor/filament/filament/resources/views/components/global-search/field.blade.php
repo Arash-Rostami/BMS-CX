@@ -23,7 +23,7 @@
         <x-filament::input
             autocomplete="off"
             inline-prefix
-            placeholder="CTRL+K | ⌘+K"
+            :placeholder="__('filament-panels::global-search.field.placeholder')"
             type="search"
             wire:key="global-search.field.input"
             x-bind:id="$id('input')"

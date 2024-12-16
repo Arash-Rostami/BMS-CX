@@ -1,22 +1,21 @@
+@php
+    $id = $getId();
+    $statePath = $getStatePath();
+    $isDisabled = $isDisabled();
+    $options = $getOptions();
+    $offColor = $getOffColor() ?? 'gray';
+    $onColor = $getOnColor() ?? 'primary';
+    $gridDirection = $getGridDirection() ?? 'column';
+    $icons = $getIcons();
+    $iconPosition = $getIconPosition();
+    $iconSize = $getIconSize();
+@endphp
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
-    @php
-        $id = $getId();
-        $statePath = $getStatePath();
-        $isDisabled = $isDisabled();
-        $options = $getOptions();
-        $offColor = $getOffColor() ?? 'gray';
-        $onColor = $getOnColor() ?? 'primary';
-        $gridDirection = $getGridDirection() ?? 'column';
-        $icons = $getIcons();
-        $iconPosition = $getIconPosition();
-        $iconSize = $getIconSize();
-    @endphp
-
     <div
         @class([
-            'selectify-button-group-grid',
-            'grid grid-flow-row grid-cols-2 gap-3' => $gridDirection === 'row',
-            'grid grid-flow-col grid-rows-2 gap-3' => $gridDirection === 'column',
+            'selectify-button-group-grid grid gap-3',
+            'grid-cols-1 md:grid-cols-2' => $gridDirection === 'row',
+            'sm:grid-flow-col sm:grid-rows-2' => $gridDirection === 'column',
         ])
         x-data="{
             state: $wire.{{ $applyStateBindingModifiers("entangle('{$statePath}')") }},
@@ -29,11 +28,12 @@
     >
         @foreach ($options as $value => $label)
             @php
+                $inputId = "{$id}-{$value}";
                 $shouldOptionBeDisabled = $isDisabled || $isOptionDisabled($value, $label);
             @endphp
 
             <label
-                for="{{ $id }}-{{ $value }}"
+                for="{{ $inputId }}"
                 x-on:click="state = '{{ $value }}'"
                 x-bind:class="
                     state == '{{ $value }}'
@@ -50,7 +50,7 @@
                     ->merge($getExtraAttributes(), escape: false)
                     ->merge($getExtraAlpineAttributes(), escape: false)
                     ->class([
-                        'selectify-button-group items-center justify-center font-semibold outline-none transition duration-75 focus:ring-2 rounded-lg gap-1.5 px-3 py-2 text-sm flex shadow-sm',
+                        'selectify-button-group items-center justify-center font-semibold outline-none transition duration-75 focus:ring-2 rounded-lg gap-1.5 px-3 py-2 text-sm flex shadow-sm hover:cursor-pointer',
                         'opacity-70 pointer-events-none' => $shouldOptionBeDisabled,
                         'flex-row mr-1' => $iconPosition === \Filament\Support\Enums\IconPosition::Before || $iconPosition === 'before',
                         'flex-row-reverse ml-1' => $iconPosition === \Filament\Support\Enums\IconPosition::After || $iconPosition === 'after',
@@ -61,10 +61,10 @@
                 <input
                     type="radio"
                     name="{{ $id }}"
-                    id="{{ $id }}-{{ $value }}"
+                    id="{{ $inputId }}"
                     value="{{ $value }}"
                     class="sr-only"
-                    aria-labelledby="{{ $id }}-{{ $value }}"
+                    aria-labelledby="{{ $inputId }}"
                     @disabled($shouldOptionBeDisabled)
                     wire:loading.attr="disabled"
                 />

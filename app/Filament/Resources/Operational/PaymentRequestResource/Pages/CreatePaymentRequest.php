@@ -3,15 +3,14 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
-
 use App\Models\User;
-use App\Notifications\FilamentNotification;
 use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\AttachmentCreationService;
-use App\Services\PaymentRequestService;
+use App\Services\Notification\PaymentRequestService;
 use App\Services\RetryableEmailService;
 use App\Services\SmartPaymentRequest;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Cache;
 use VXM\Async\AsyncFacade as Async;
 
 
@@ -38,10 +37,11 @@ class CreatePaymentRequest extends CreateRecord
 
         if (!isset($data['extra']['collectivePayment'])) $data['extra']['collectivePayment'] = 1;
 
-        $data = $this->getProformaInvoiceNumber($data);
+        if (!isset($data['total_amount'])) $data['total_amount'] = $data['requested_amount'];
 
+        $data = $this->persistAccountNo($data);
 
-        return $data;
+        return $this->getProformaInvoiceNumber($data);
     }
 
     protected function getProformaInvoiceNumber(array $data): array
@@ -53,48 +53,47 @@ class CreatePaymentRequest extends CreateRecord
         if (isset($data['hidden_proforma_number'])) {
             unset($data['hidden_proforma_number']);
         }
+
+        if ($data['use_existing_attachments']) {
+            Cache::put('available_attachments', $data['available_attachments'], 10);
+        }
+
         return $data;
     }
 
     protected function afterCreate(): void
     {
         $record = $this->record;
-        $form = $this->form->getState();
+
+        persistReferenceNumber($record, 'PR');
 
         $service = new PaymentRequestService();
-        $accountants = $service->fetchAccountants();
-        $service->persistReferenceNumber($record);
 
-        Async::run(function () use ($record, $form, $service, $accountants) {
-            AttachmentCreationService::createFromExisting($form, $record->id, 'payment_request_id');
-
-            $service->notifyAccountants($record, $accountants);
+        Async::run(function () use ($record, $service) {
+            AttachmentCreationService::createFromExisting($record->id, 'payment_request_id');
+            $service->notifyAccountants($record);
         });
     }
 
-
     /**
-     * @return void
+     * @param array $data
+     * @return array
      */
-    public function notifyManagement(): void
+    public function persistAccountNo(array $data): array
     {
-        foreach (User::getUsersByRole('manager') as $recipient) {
-            $recipient->notify(new FilamentNotification([
-                'record' => Admin::getOrderRelation($this->record),
-                'type' => 'pending',
-                'module' => 'payment',
-                'url' => route('filament.admin.resources.payment-requests.index'),
-            ], true));
+        if (!data_get($data, 'extra.paymentMethod') || data_get($data, 'extra.paymentMethod') === 'cash') {
+            return $data;
         }
-    }
 
+        $methods = [
+            'sheba' => 'sheba_number',
+            'card_transfer' => 'card_transfer_number',
+            'bank_account' => 'account_number',
+        ];
 
-    public function notifyViaEmail($accountants, $record): void
-    {
-        $arguments = [$accountants, new PaymentRequestStatusNotification($record)];
-// FOR TEST PURPOSE
-//       $arguments = [User::getUsersByRole('admin'), new PaymentRequestStatusNotification($this->record)];
+        $paymentMethod = data_get($data, 'extra.paymentMethod');
+        $data['account_number'] = data_get($data, $methods[$paymentMethod] ?? null);
 
-        RetryableEmailService::dispatchEmail('payment request', ...$arguments);
+        return $data;
     }
 }

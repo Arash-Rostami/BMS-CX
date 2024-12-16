@@ -56,6 +56,7 @@ class QuoteResource extends Resource
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn(Builder $query) => $query->lowestCosts())
             ->emptyStateIcon('heroicon-o-bookmark')
             ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
@@ -83,17 +84,16 @@ class QuoteResource extends Resource
             ->columns([
                 Admin::showQuoteProvider(),
                 Admin::showCommodity(),
-                Admin::showCommodityType(),
+                Admin::showPackingType(),
                 Admin::showOriginPort(),
                 Admin::showDestinationPort(),
-                Admin::showTransportationMeans(),
-                Admin::showTransportationType(),
                 Admin::showOfferedRate(),
+                Admin::showLocalCharges(),
                 Admin::showSwitchBLFee(),
-                Admin::showValidity(),
-                Admin::showPackingType(),
-                Admin::showPaymentTerms(),
+                Admin::showContainerNumber(),
                 Admin::showFreeTime(),
+                Admin::showFreeTimePOD(),
+                Admin::showValidity(),
                 Admin::showAttachment(),
                 Admin::showTimeStamp(),
             ])
@@ -117,6 +117,7 @@ class QuoteResource extends Resource
                             ]),
                             Split::make([
                                 Admin::showOfferedRate(),
+                                Admin::showLocalCharges(),
                                 Admin::showSwitchBLFee(),
                                 Admin::showAttachment(),
                             ]),
@@ -134,9 +135,7 @@ class QuoteResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [ ];
     }
 
     public static function getPages(): array

@@ -7,12 +7,12 @@
 
 .fi-section-content:hover {
     /*background: rgb(223, 207, 212, 0.40);*/
-    background:  #E6ECEE;
+    background: #E6ECEE;
     @apply dark:bg-gray-950/50
 }
 
 .fi-fieldset {
-    border: dashed 2px #DFCFD4;
+    border: dashed 2px #e0e7eb;;
 }
 
 .grayscale {
@@ -24,8 +24,21 @@
     display: none;
 }
 
-.choices__list:hover{
+.choices__list:hover {
     background-color: #E6ECEE;
     @apply dark:bg-gray-900;
 }
 
+.fi-fo-wizard-header {
+    background-color: #DFE7EA;
+    @apply dark:bg-gray-950/50
+}
+
+.fi-fo-wizard-header svg{
+   @apply text-primary-400
+}
+
+.fi-modal-window:hover{
+    background-color: #E6ECEE;
+    @apply dark:bg-gray-900;
+}

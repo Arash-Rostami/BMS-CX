@@ -6,10 +6,9 @@ namespace App\Filament\Resources\Operational\ProformaInvoiceResource\Pages;
 use App\Filament\Resources\ProformaInvoiceResource;
 use App\Models\Attachment;
 use App\Models\User;
-use App\Notifications\FilamentNotification;
 use App\Notifications\ProformaInvoiceStatusNotification;
 use App\Services\AttachmentCreationService;
-use App\Services\ProformaInvoiceService;
+use App\Services\Notification\ProformaInvoiceService;
 use App\Services\RetryableEmailService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -18,6 +17,7 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\MaxWidth;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use LaraZeus\Delia\Filament\Actions\BookmarkHeaderAction;
 
 class EditProformaInvoice extends EditRecord
@@ -68,48 +68,39 @@ class EditProformaInvoice extends EditRecord
     protected function beforeSave()
     {
         session(['old_status' => $this->record->getOriginal('status')]);
+        $hasExistingAttachment = data_get($this->form->getRawState(), 'use_existing_attachments') ?? false;
 
-        AttachmentCreationService::createFromExisting($this->form->getState(), $this->record->getOriginal('id'));
+        if ($hasExistingAttachment) {
+            Cache::put('available_attachments', data_get($this->form->getRawState(), 'available_attachments'), 10);
+        }
+
+        AttachmentCreationService::createFromExisting($this->record->getOriginal('id'));
     }
 
 
     protected function afterSave()
     {
-        $agents = (new ProformaInvoiceService())->fetchAgents();
+        $service = new ProformaInvoiceService();
 
-        $this->sendEditNotification($agents);
+        $service->notifyAgents($this->record, 'edit');
 
-        $this->sendStatusNotification($agents);
+        $this->sendStatusNotification($service);
 
         $this->clearSessionData();
     }
 
-    protected function sendEditNotification($agents)
-    {
-        foreach ($agents as $recipient) {
-            $recipient->notify(new FilamentNotification([
-                'record' => $this->record->proforma_number . ' (' . $this->record->reference_number . ')',
-                'type' => 'edit',
-                'module' => 'proformaInvoice',
-                'url' => route('filament.admin.resources.proforma-invoices.edit', ['record' => $this->record->id]),
-            ]));
-        }
-    }
 
-    protected function sendStatusNotification($agents)
+    protected function sendStatusNotification($service)
     {
         $newStatus = $this->record['status'];
 
         if ($newStatus && $newStatus !== session('old_status')) {
 
-            foreach ($agents as $recipient) {
-                $recipient->notify(new FilamentNotification([
-                    'record' => $this->record->proforma_number . ' (' . $this->record->reference_number . ')',
-                    'type' => $newStatus === 'review' ? 'processing' : ($newStatus === 'fulfilled' ? 'completed' : $newStatus),
-                    'module' => 'proformaInvoice',
-                    'url' => route('filament.admin.resources.proforma-invoices.edit', ['record' => $this->record->id]),
-                ], true));
-            }
+            $status = $newStatus === 'review'
+                ? 'processing'
+                : ($newStatus === 'fulfilled' ? 'completed' : $newStatus);
+
+            $service->notifyAgents($this->record, type: $status, status: true);
         }
     }
 
@@ -117,18 +108,5 @@ class EditProformaInvoice extends EditRecord
     protected function clearSessionData()
     {
         session()->forget('old_status');
-    }
-
-    /**
-     * @return void
-     */
-    public function notifyViaEmail($status): void
-    {
-        $arguments = [
-            ($status == 'approved') ? User::getUsersByRole('agent') : User::getUsersByRole('partner'),
-            new ProformaInvoiceStatusNotification($this->record, $status)
-        ];
-
-        RetryableEmailService::dispatchEmail('order request', ...$arguments);
     }
 }

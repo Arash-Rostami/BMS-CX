@@ -48,6 +48,10 @@ class Libedit extends GNUReadline
      */
     public function listHistory(): array
     {
+        if ($this->historyFile === false) {
+            return [];
+        }
+
         $history = \file_get_contents($this->historyFile);
         if (!$history) {
             return [];
@@ -63,6 +67,7 @@ class Libedit extends GNUReadline
 
         // decode the line
         $history = \array_map([$this, 'parseHistoryLine'], $history);
+
         // filter empty lines & comments
         return \array_values(\array_filter($history));
     }

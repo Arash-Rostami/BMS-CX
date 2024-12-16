@@ -30,10 +30,13 @@ class ProformaInvoiceService
         }
     }
 
-    public function fetchAgents(): mixed
+    public function fetchAgents($department = null, $position = null): mixed
     {
-        return Cache::remember('agents', 480, function () {
-            return User::getUsersByRole('agent');
+        return Cache::remember('agents', 480, function ($department, $position) {
+            return User::getUsersByRole('agent')
+                ->filter(function ($user) use ($department, $position) {
+                    return ($user->info['department'] ?? null) == $department && ($user->info['position'] ?? null) == $position;
+                });
         });
     }
 }

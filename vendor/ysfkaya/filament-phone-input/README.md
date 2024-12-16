@@ -18,7 +18,7 @@
     <li><a href="#installation">Installation</a></li>
     <li><a href="#usage">Usage</a>
     <ul dir="auto">
-    <li><a href="#seperate-country-code">Seperate Country Code</a></li>
+    <li><a href="#separate-country-code">Separate Country Code</a></li>
     <li><a href="#default-country">Default Country</a></li>
     <li><a href="#validation">Validation</a></li>
     <li><a href="#display-number-format">Display Number Format</a></li>
@@ -34,8 +34,11 @@
     <li><a href="#format-on-display">Format On Display</a></li>
     <li><a href="#geo-ip-lookup">Geo Ip Lookup</a></li>
     <li><a href="#placeholder-number-type">Placeholder Number Type</a></li>
-    <li><a href="#separate-dial-code">Separate Dial Code</a></li>
-    <li><a href="#outside-filament">Outside Filament</a></li>
+    <li><a href="#show-selected-dial-code">Show Selected Dial Code</a></li>
+    <li><a href="#auto-insert-dial-code">Auto Insert Dial Code</a></li>
+    <li><a href="#country-search">Country Search</a></li>
+    <li><a href="#format-as-you-type">Format As You Type</a></li>
+    <li><a href="#using-the-phoneinput-outside-of-filament">Using the `PhoneInput` outside of Filament</a></li>
     <li><a href="#more">More</a></li>
     </ul>
     </li>
@@ -61,17 +64,34 @@ This package also includes with [Laravel Phone](https://github.com/propaganistas
 You can install the package via composer:
 
 ```bash
-composer require ysfkaya/filament-phone-input
+composer require ysfkaya/filament-phone-input:^2.0
 ```
 
 ## Usage
 
 ```php
 use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
-use Ysfkaya\FilamentPhoneInput\Tables\PhoneInputColumn;
+use Ysfkaya\FilamentPhoneInput\Tables\PhoneColumn;
+use Ysfkaya\FilamentPhoneInput\Infolists\PhoneEntry;
+use Ysfkaya\FilamentPhoneInput\PhoneInputNumberType;
 
-  //...
+  
+    public static function infolists(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->columns([
+                Infolists\Components\TextEntry::make('name'),
+                Tables\Columns\TextColumn::make('email'),
+                PhoneEntry::make('phone')->displayFormat(PhoneInputNumberType::NATIONAL),
+            ]);
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -99,12 +119,12 @@ use Ysfkaya\FilamentPhoneInput\Tables\PhoneInputColumn;
                     ->sortable()
                     ->searchable(),
 
-                PhoneInputColumn::make('phone')
+                PhoneColumn::make('phone')->displayFormat(PhoneInputNumberType::NATIONAL)
             ]);
     }
 ```
 
-#### Seperate Country Code
+#### Separate Country Code
 
 ---
 
@@ -118,7 +138,14 @@ PhoneInput::make('phone')
 Table column:
 
 ```php
-PhoneInputColumn::make('phone')
+PhoneColumn::make('phone')
+    ->countryColumn('phone_country')
+```
+
+Infolist entry:
+
+```php
+PhoneEntry::make('phone')
     ->countryColumn('phone_country')
 ```
 
@@ -349,18 +376,83 @@ PhoneInput::make('phone')
     ->preferredCountries(['tr','us', 'gb']),
 ```
 
-#### Separate Dial Code
+> [!CAUTION]
+> This method will also disable the country search option. `countrySearch(false)`
+
+
+#### Show Selected Dial Code
 
 ---
 
-You may set the separate dial code by using the `separateDialCode` method:
+You may want to show selected country dial code by using the `showSelectedDialCode` method:
 
 ```php
 PhoneInput::make('phone')
-    ->separateDialCode(true),
+    ->showSelectedDialCode(true),
 ```
 
-#### Outside Filament
+#### Auto Insert Dial Code
+
+---
+
+You may want to insert the dial code of selected country by using `autoInsertDialCode` method:
+
+```php
+PhoneInput::make('phone')
+    ->autoInsertDialCode(true),
+```
+
+> [!CAUTION]
+> You have to disable the `nationalMode` option to use this feature. See the [intl-tel-input](https://github.com/jackocnr/intl-tel-input#autoInsertDialCode) documentation for more information.
+
+#### Country Search
+
+---
+
+By default, the country search mode is set to active. You can disable it by using the `countrySearch` method:
+
+```php
+PhoneInput::make('phone')
+    ->countrySearch(false),
+```
+
+#### i18n
+
+---
+
+You can configure the localization of the component by using the `i18n` method. See the [intl-tel-input](https://github.com/jackocnr/intl-tel-input#i18n) for more information:
+
+```php
+PhoneInput::make('phone')
+    ->i18n([
+        // Country names
+        'fr' => "Frankreich",
+        'de' => "Deutschland",
+        'es' => "Spanien",
+        'it' => "Italien",
+        'ch' => "Schweiz",
+        'nl' => "Niederlande",
+        'at' => "Österreich",
+        'dk' => "Dänemark",
+        // Other plugin text
+        "selectedCountryAriaLabel" =>'Ausgewähltes Land',
+        "countryListAriaLabel" =>'Liste der Länder',
+        "searchPlaceholder" =>'Suchen',
+    ]),
+```
+
+#### Format as You Type
+
+---
+
+Automatically format the number as the user types. You can disable it by using the `formatAsYouType` method:
+
+```php
+PhoneInput::make('phone')
+    ->formatAsYouType(false),
+```
+
+#### Using the `PhoneInput` outside of Filament
 
 A livewire component:
 

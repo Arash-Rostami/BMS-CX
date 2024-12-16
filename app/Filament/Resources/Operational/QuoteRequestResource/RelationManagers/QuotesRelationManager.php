@@ -49,6 +49,6 @@ class QuotesRelationManager extends RelationManager
                 Tables\Actions\ViewAction::make(),
             ])
             ->headerActions([])
-            ->poll(30);
+            ->poll('30s');
     }
 }

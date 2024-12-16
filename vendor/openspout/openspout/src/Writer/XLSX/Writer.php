@@ -43,7 +43,7 @@ final class Writer extends AbstractWriterMultiSheets
             $this->options->getTempFolder(),
             new ZipHelper(),
             new XLSX(),
-            $this->creator
+            $this->options->getProperties()
         );
         $fileSystemHelper->createBaseFilesAndFolders();
 

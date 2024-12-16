@@ -1,5 +1,5 @@
 @php
-    $notifications = $this->getNotifications();
+    $notifications = $this->getNotifications()->filter(fn($notification) => is_null($notification->deleted_at));
     $unreadNotificationsCount = $this->getUnreadNotificationsCount();
 @endphp
 

@@ -4,52 +4,55 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
+use App\Filament\Resources\Operational\PaymentRequestResource\Pages\ListPaymentRequests;
 use App\Filament\Resources\Operational\PaymentRequestResource\Widgets\StatsOverview;
+use App\Models\Department;
 use App\Models\PaymentRequest;
 use App\Models\ProformaInvoice;
 use App\Services\AttachmentDeletionService;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Wizard;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\Tabs\Tab;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\MaxWidth;
-use Filament\Tables;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\ReplicateAction;
-use Filament\Tables\Actions\RestoreBulkAction;
-use Filament\Tables\Columns\Layout\Panel;
-use Filament\Tables\Columns\Layout\Split;
-use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
-use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use Illuminate\Database\Eloquent\Collection;
+use Filament\Tables\Actions\Action as TableAction;
 use Livewire\Component as Livewire;
 
 
 class PaymentRequestResource extends Resource
 
 {
+    use InteractsWithActions;
+
     protected static ?string $model = PaymentRequest::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
     protected static ?string $navigationGroup = 'Operational Data';
+
+    protected static ?array $badgeData = null;
 
 
     protected static ?int $navigationSort = 4;
@@ -60,6 +63,7 @@ class PaymentRequestResource extends Resource
 
 
     protected $listeners = ['fillFormData'];
+
 
     public function fillFormData(Form $form, $proformaInvoiceId)
     {
@@ -76,7 +80,7 @@ class PaymentRequestResource extends Resource
             ->schema([
                 Group::make()
                     ->schema([
-                        Section::make('Status')
+                        Section::make('💫 Status')
                             ->schema([Admin::getStatus()])
                             ->hidden(fn(string $operation) => $operation === 'create')
                             ->collapsible(),
@@ -99,142 +103,172 @@ class PaymentRequestResource extends Resource
                             ])
                             ->visible(fn(Get $get) => $get('status') == 'rejected')
                             ->collapsible(),
-                        Section::make('Linked to CPS (Centralized Payment Service)')
-                            ->icon('heroicon-o-information-circle')
-                            ->description('You need to select your department to follow the appropriate organizational procedure.')
-                            ->schema([
-                                Admin::getDepartment(),
-                                Admin::getCPSReasons(),
-                                Admin::getCostCenter(),
-                                Admin::getTypeOfPayment(),
-                                Admin::getCaseNumber(),
-                            ])
-                            ->columns(5)
-                            ->collapsible(),
-                        Group::make()
-                            ->schema([
-                                Section::make('Pro forma Invoice/Order Details')
-                                    ->schema([
-                                        Grid::make(3)->schema([
-                                            Admin::hiddenInvoiceNumber(),
-                                            Admin::getProformaInvoiceNumber(),
-                                            Admin::getProformaInvoiceNumbers(),
-                                            Admin::getTotalOrPart(),
-                                            Admin::getPart(),
-                                            Admin::getOrder(),
-                                        ]),
-                                        Grid::make(2)->schema([
-                                            Admin::getType(),
-                                            Admin::getBeneficiary(),
-                                            Admin::getPurpose(),
-                                        ]),
-                                        Grid::make(2)->schema([]),
-                                    ])
-                                    ->columns(3)
-                                    ->collapsible()
-                                    ->hidden(fn(Get $get) => $get('department_id') != 6),
-                                Section::make('Account Details')
-                                    ->schema([
-                                        Admin::getBankName(),
-                                        Admin::getAccountNumber(),
-                                        Grid::make(2)->schema([]),
-                                        Admin::getSupplier(),
-                                        Admin::getContractor(),
-                                        Admin::getPayee(),
-                                        Admin::getRecipientName(),
-                                        Admin::getBeneficiaryAddress(),
-                                        Admin::getBankAddress(),
-                                        Admin::getDescription(),
-                                        Group::make()
-                                            ->schema([
-                                                Admin::getAttachmentToggle(),
-                                                Section::make()
-                                                    ->schema([
-                                                        Admin::getSourceSelection(),
-                                                        Admin::getAllProformaInvoicesOrOrders(),
-                                                        Admin::getProformaInvoicesAttachments(),
-                                                    ])
-                                                    ->columns(3)
-                                                    ->visible(fn($get) => $get('use_existing_attachments')),
-                                            ])->columnSpanFull(),
-                                        Repeater::make('attachments')
-                                            ->relationship('attachments')
-                                            ->label('Attachments')
-                                            ->schema([
-                                                Group::make()
-                                                    ->schema([
-                                                        Hidden::make('id'),
-                                                        Admin::getAttachmentFile()
-                                                    ])->columnSpan(2),
-                                                Group::make()
-                                                    ->schema([
-                                                        Section::make()
-                                                            ->schema([
-                                                                Admin::getAttachmentFileName()
-                                                            ])
-                                                    ])->columnSpan(2)
-                                            ])->columns(4)
-                                            ->itemLabel('Attachments:')
-                                            ->addActionLabel('➕')
-                                            ->extraItemActions([
-                                                Action::make('deleteAttachment')
-                                                    ->label('deleteMe')
-                                                    ->visible(fn($operation, $record) => $operation == 'edit' || ($record === null) || ($record->payments->isEmpty()))
-                                                    ->icon('heroicon-o-trash')
-                                                    ->color('danger')
-                                                    ->modalHeading('Delete Attachment?')
-                                                    ->action(fn(array $arguments, Repeater $component) => AttachmentDeletionService::removeAttachment($component, $arguments['item']))
-                                                    ->modalContent(function (Action $action, array $arguments, Repeater $component, $operation, ?Model $record) {
-                                                        if (str_contains($arguments['item'], 'record')) {
-                                                            return AttachmentDeletionService::validateAttachmentExists($component, $arguments['item'], $operation, $action, $record);
-                                                        }
-                                                        return new HtmlString("<span>Of course, it is an empty attachment.</span>");
-                                                    })
-                                                    ->modalSubmitActionLabel('Confirm')
-                                                    ->modalWidth(MaxWidth::Medium)
-                                                    ->modalIcon('heroicon-s-exclamation-triangle')
-                                            ])
-                                            ->deletable(false)
-                                            ->columnSpanFull()
-                                            ->collapsible()
-                                            ->collapsed(),
-                                    ])
-                                    ->columns(2)
-                                    ->collapsible(),
 
-                            ])
-                            ->columnSpan(2),
-                        Group::make()
-                            ->schema([
-                                Section::make(new HtmlString('Payment Details  <span class="red"> *</span>'))
-                                    ->schema([
-                                        Admin::getCurrency(),
-                                        Admin::getPayableAmount(),
-                                        Admin::getTotalAmount(),
-                                        Admin::getDeadline()
-                                    ])->collapsible(),
-                                Section::make(new HtmlString('IDs'))
-                                    ->schema([
-                                        Admin::getSwiftCode(),
-                                        Admin::getIBANCode(),
-                                        Admin::getIFSCCode(),
-                                        Admin::getMICRCode()
-                                    ])
-                                    ->collapsible()
-                            ])->columns(1),
+                        Wizard::make([
+                            Wizard\Step::make('1')
+                                ->icon('heroicon-o-building-storefront')
+                                ->completedIcon('heroicon-m-check-circle')
+                                ->description('Organizational details')
+                                ->schema([
+                                    Section::make(new HtmlString('Linked to CPS (Centralized Payment Service)'))
+                                        ->icon('heroicon-o-information-circle')
+                                        ->description(' You need to select your department (then currency) to follow the appropriate organizational procedure.')
+                                        ->schema([
+                                            Section::make(new HtmlString('Organizational Details'))
+                                                ->schema([
+                                                    Admin::getDepartment(),
+                                                    Admin::getCurrency(),
+                                                    Admin::getCPSReasons(),
+                                                    Admin::getCostCenter(),
+                                                    Admin::getTypeOfPayment(),
+                                                ])
+                                                ->columns(5)
+                                                ->collapsible(),
+                                        ]),
+                                ]),
+                            Wizard\Step::make('2')
+                                ->icon('heroicon-s-globe-alt')
+                                ->completedIcon('heroicon-m-check-circle')
+                                ->description('Transfer details')
+                                ->schema([
+                                    Group::make()
+                                        ->schema([
+                                            Section::make('Pro forma Invoice/Order Details')
+                                                ->schema([
+                                                    Grid::make(3)->schema([
+                                                        Admin::hiddenInvoiceNumber(),
+                                                        Admin::getProformaInvoiceNumber(),
+                                                        Admin::getProformaInvoiceNumbers(),
+                                                        Admin::getTotalOrPart(),
+                                                        Admin::getPart(),
+                                                        Admin::getOrder(),
+                                                    ]),
+                                                    Grid::make(2)->schema([
+                                                        Admin::getType(),
+                                                        Admin::getBeneficiary(),
+                                                        Admin::getPurpose(),
+                                                    ]),
+                                                    Grid::make(2)->schema([]),
+                                                ])
+                                                ->columns(3)
+                                                ->collapsible()
+                                                ->hidden(fn(Get $get) => $get('department_id') != 6),
+                                            Section::make('Account Details')
+                                                ->schema([
+                                                    Admin::getSupplier(),
+                                                    Admin::getContractor(),
+                                                    Admin::getPayee(),
+                                                    Admin::getRecipientName(),
+                                                    Admin::getBankName(),
+                                                    Admin::getPaymentMethod(),
+                                                    Admin::getAccountNumber(),
+                                                    Admin::getCardTransfer(),
+                                                    Admin::getShebaAccount(),
+                                                    Grid::make(2)->schema([]),
+                                                    Admin::getBankAddress(),
+                                                    Admin::getBeneficiaryAddress(),
+                                                    Admin::getDescription(),
+                                                    Group::make()
+                                                        ->schema([
+                                                            Admin::getAttachmentToggle(),
+                                                            Section::make()
+                                                                ->schema([
+                                                                    Admin::getSourceSelection(),
+                                                                    Admin::getAllProformaInvoicesOrOrders(),
+                                                                    Admin::getProformaInvoicesAttachments(),
+                                                                ])
+                                                                ->columns(3)
+                                                                ->visible(fn($get) => $get('use_existing_attachments')),
+                                                        ])->columnSpanFull(),
+                                                    Repeater::make('attachments')
+                                                        ->relationship('attachments')
+                                                        ->label('Attachments')
+                                                        ->schema([
+                                                            Group::make()
+                                                                ->schema([
+                                                                    Hidden::make('id'),
+                                                                    Admin::getAttachmentFile()
+                                                                ])->columnSpan(2),
+                                                            Group::make()
+                                                                ->schema([
+                                                                    Section::make()
+                                                                        ->schema([
+                                                                            Admin::getAttachmentFileName()
+                                                                        ])
+                                                                ])->columnSpan(2)
+                                                        ])->columns(4)
+                                                        ->itemLabel('Attachments:')
+                                                        ->addActionLabel('➕')
+                                                        ->extraItemActions([
+                                                            Action::make('deleteAttachment')
+                                                                ->label('deleteMe')
+                                                                ->visible(fn($operation, $record) => $operation == 'edit' || ($record === null) || ($record->payments->isEmpty()))
+                                                                ->icon('heroicon-o-trash')
+                                                                ->color('danger')
+                                                                ->modalHeading('Delete Attachment?')
+                                                                ->action(fn(array $arguments, Repeater $component) => AttachmentDeletionService::removeAttachment($component, $arguments['item']))
+                                                                ->modalContent(function (Action $action, array $arguments, Repeater $component, $operation, ?Model $record) {
+                                                                    if (str_contains($arguments['item'], 'record')) {
+                                                                        return AttachmentDeletionService::validateAttachmentExists($component, $arguments['item'], $operation, $action, $record);
+                                                                    }
+                                                                    return new HtmlString("<span>Of course, it is an empty attachment.</span>");
+                                                                })
+                                                                ->modalSubmitActionLabel('Confirm')
+                                                                ->modalWidth(MaxWidth::Medium)
+                                                                ->modalIcon('heroicon-s-exclamation-triangle')
+                                                        ])
+                                                        ->deletable(false)
+                                                        ->columnSpanFull()
+                                                        ->collapsible()
+                                                        ->collapsed(),
+                                                ])
+                                                ->columns(2)
+                                                ->collapsible(),
+
+                                        ])
+                                        ->columnSpan(2),
+                                ]),
+                            Wizard\Step::make('3')
+                                ->icon('heroicon-o-credit-card')
+                                ->completedIcon('heroicon-m-check-circle')
+                                ->description('Payment details')
+                                ->schema([
+                                    Group::make()
+                                        ->schema([
+                                            Section::make(new HtmlString('Payment Details  <span class="red"> *</span>'))
+                                                ->schema([
+                                                    Admin::getPayableAmount(),
+                                                    Admin::getTotalAmount(),
+                                                    Admin::getDeadline(),
+                                                    Admin::getCaseNumber(),
+                                                ])
+                                                ->columnSpan(1)
+                                                ->collapsible(),
+                                            Section::make(new HtmlString('International Account Details'))
+                                                ->schema([
+                                                    Admin::getSwiftCode(),
+                                                    Admin::getIBANCode(),
+                                                    Admin::getIFSCCode(),
+                                                    Admin::getMICRCode()
+                                                ])
+                                                ->visible(fn(Get $get) => $get('currency') != 'Rial')
+                                                ->columnSpan(1)
+                                                ->collapsible()
+                                        ])
+                                        ->columns(2),
+                                ]),
+                        ])
+                            ->nextAction(fn(Action $action) => $action->label('⮞')->tooltip('⏩ Next step'))
+                            ->previousAction(fn(Action $action) => $action->label('⮜')->tooltip('⏪ Previous step'))
                     ])
                     ->columnSpanFull()
-                    ->columns(3)
+                    ->columns(1)
             ]);
     }
 
     public static function table(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? self::getModernLayout($table)
-            : self::getClassicLayout($table);
+        return $table;
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -306,28 +340,53 @@ class PaymentRequestResource extends Resource
         ];
     }
 
-    public static function getNavigationBadge(): ?string
+    protected static function fetchBadgeData(): array
     {
-        $new = self::getNewRequests();
+        if (static::$badgeData !== null) {
+            return static::$badgeData;
+        }
 
-        if ($new > 0) return "{$new} New";
+        $user = auth()->user();
+        $query = static::getModel()::query();
+        $query = $query->authorizedForUser($user);
 
-        return static::getModel()::count();
-    }
 
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return self::getNewRequests() > 0 ? 'danger' : 'primary';
+        $newCount = (clone $query)->where('status', 'pending')->count();
+        $totalCount = $query->count();
+
+        static::$badgeData = [
+            'new' => $newCount,
+            'total' => $totalCount,
+        ];
+
+        return static::$badgeData;
     }
 
     /**
-     * @return mixed
+     * Get the navigation badge text.
+     *
+     * @return string|null
      */
-    public static function getNewRequests()
+    public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::where('status', 'new')->count();
+        $data = static::fetchBadgeData();
+
+        return $data['new'] > 0
+            ? "{$data['new']} New"
+            : (string)$data['total'];
     }
 
+    /**
+     * Get the navigation badge color.
+     *
+     * @return string|null
+     */
+    public static function getNavigationBadgeColor(): ?string
+    {
+        $data = static::fetchBadgeData();
+
+        return $data['new'] > 0 ? 'danger' : 'primary';
+    }
 
     public static function getGlobalSearchResultUrl(Model $record): string
     {
@@ -341,142 +400,17 @@ class PaymentRequestResource extends Resource
 
     public static function configureCommonTableSettings(Table $table): Table
     {
-        return $table
-            ->defaultGroup('department_id')
-            ->emptyStateIcon('heroicon-o-bookmark')
-            ->emptyStateDescription('Once you create your first record, it will appear here.')
-            ->filters([AdminOrder::filterCreatedAt(), AdminOrder::filterSoftDeletes()])
-            ->recordClasses(fn(Model $record) => !isset($record->order_id) ? ($record->department_id != 6 ? 'major-row' : 'bg-light-blue') : '')
-            ->searchDebounce('1000ms')
-            ->groupingSettingsInDropdownOnDesktop()
-            ->paginated([10, 15, 20])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                ReplicateAction::make()
-                    ->visible(fn(Model $record) => $record->order_id != null || $record->proforma_invoice_number == null)
-                    ->color('info')
-                    ->modalWidth(MaxWidth::Medium)
-                    ->modalIcon('heroicon-o-clipboard-document-list')
-                    ->record(fn(Model $record) => $record)
-                    ->mutateRecordDataUsing(function (array $data): array {
-                        $data['user_id'] = auth()->id();
-                        return $data;
-                    })
-                    ->beforeReplicaSaved(fn(Model $replica) => $replica->status = 'pending')
-                    ->after(fn(Model $replica) => Admin::syncPaymentRequest($replica))
-                    ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.payment-requests.edit', ['record' => $replica->id,])),
-                Tables\Actions\DeleteAction::make()
-                    ->hidden(fn(?Model $record) => $record ? $record->payments->isNotEmpty() : false)
-                    ->successNotification(fn(Model $record) => Admin::send($record)),
-                Tables\Actions\RestoreAction::make(),
-                Tables\Actions\Action::make('pdf')
-                    ->label('PDF')
-                    ->color('success')
-                    ->icon('heroicon-c-inbox-arrow-down')
-                    ->action(function (Model $record) {
-                        return response()->streamDownload(function () use ($record) {
-                            echo Pdf::loadHtml(view('filament.pdfs.paymentRequest', ['record' => $record])
-                                ->render())
-                                ->stream();
-                        }, 'BMS-' . $record->reference_number . '.pdf');
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->action(fn(Collection $records) => Admin::separateRecordsIntoDeletableAndNonDeletable($records))
-                        ->deselectRecordsAfterCompletion(),
-                    RestoreBulkAction::make(),
-                    ExportBulkAction::make(),
-                    PrintBulkAction::make(),
-                ])
-            ])
-//            ->defaultSort('created_at', 'desc')
-            ->poll('120s')
-            ->groups([
-                Admin::filterByDepartment(),
-                Admin::filterByOrder(),
-                Admin::filterByReason(),
-                Admin::filterByType(),
-                Admin::filterByCurrency(),
-                Admin::filterByContractor(),
-                Admin::filterBySupplier(),
-                Admin::filterByPayee(),
-                Admin::filterByStatus(),
-                Admin::filterByCase(),
-            ]);
+        return (new ListPaymentRequests())->configureCommonTableSettings($table);
     }
 
     public static function getModernLayout(Table $table): Table
     {
-        return $table
-            ->columns([
-                Split::make([
-                    Panel::make([
-                        Stack::make([
-                            Split::make([
-                                Admin::showDepartment(),
-                                Admin::showReferenceNumber(),
-                                Admin::showInvoiceNumber(),
-                                Admin::showPart(),
-                                Admin::showReasonForPayment(),
-                                Admin::showType(),
-                            ]),
-                            Split::make([
-                                Admin::showBeneficiaryName(),
-                                Admin::showBankName(),
-                                Admin::showStatus(),
-                            ]),
-                            Split::make([
-                                Admin::showPayableAmount(),
-                                Admin::showDeadline(),
-                                TableObserver::showMissingData(-6)
-                            ]),
-                        ])->space(2),
-                    ])
-                ])->columnSpanFull(),
-                Admin::showTimeStamp()
-            ]);
+        return (new ListPaymentRequests())->getModernLayout($table);
     }
 
-    public static function getClassicLayout(Table $table): Table
+
+    public static function getClassicLayout(Table $table)
     {
-        return $table
-            ->columns([
-                Admin::showID(),
-                Admin::showDepartment(),
-                Admin::showStatus(),
-                Admin::showProformaInvoiceNumber(),
-                Admin::showInvoiceNumber(),
-                Admin::showReferenceNumber(),
-                Admin::showPart(),
-                Admin::showType(),
-                Admin::showReasonForPayment(),
-                Admin::showPayableAmount(),
-                Admin::showCostCenter(),
-                Admin::showCaseNumber(),
-                Admin::showBeneficiaryName(),
-                Admin::showBeneficiaryAddress(),
-                Admin::showBankName(),
-                Admin::showBankAddress(),
-                Admin::showDeadline(),
-                Admin::showExtraDescription(),
-                Admin::showBankName(),
-                Admin::showAccountNumber(),
-                Admin::showSwiftCode(),
-                Admin::showIBAN(),
-                Admin::showIFSC(),
-                Admin::showMICR(),
-                Admin::showRequestMaker(),
-                Admin::showStatusChanger(),
-                TableObserver::showMissingData(-5),
-            ])->striped();
+        return (new ListPaymentRequests())->getClassicLayout($table);
     }
-//    protected function getHeaderActions(): array
-//    {
-//        return [
-//            BookmarkHeaderAction::make()
-//        ];
-//    }
 }

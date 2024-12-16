@@ -152,7 +152,11 @@
         @endif
 
         <div
-            x-persist="topbar.end"
+            @if (filament()->hasTenancy())
+                x-persist="topbar.end.tenant-{{ filament()->getTenant()?->getKey() }}"
+            @else
+                x-persist="topbar.end"
+            @endif
             class="ms-auto flex items-center gap-x-4"
         >
             {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::GLOBAL_SEARCH_BEFORE) }}
@@ -165,7 +169,9 @@
 
             @if (filament()->auth()->check())
                 @if (filament()->hasDatabaseNotifications())
-                    @livewire(Filament\Livewire\DatabaseNotifications::class, ['lazy' => true])
+                    @livewire(Filament\Livewire\DatabaseNotifications::class, [
+                        'lazy' => filament()->hasLazyLoadedDatabaseNotifications(),
+                    ])
                 @endif
 
                 <x-filament-panels::user-menu />

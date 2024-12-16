@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Master\AllocationResource\Pages;
 
+use App\Models\Department;
 use App\Services\DepartmentDetails;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -16,7 +17,7 @@ class Admin
     public static function getDepartment(): Select
     {
         return Select::make('department')
-            ->options(['all' => 'All'] + DepartmentDetails::getAllDepartmentNames())
+            ->options(Department::getAllDepartmentCodes())
             ->required();
     }
 
@@ -42,6 +43,7 @@ class Admin
             ->color('gray')
             ->wrap()
             ->badge()
+            ->tooltip(fn($state) => ($state && $state != 'all') ? DepartmentDetails::getName($state) : null)
             ->formatStateUsing(fn($state) => ucwords($state))
             ->sortable()
             ->toggleable();

@@ -49,7 +49,7 @@ class ShippingLinePolicy
      */
     public function delete(User $user, ShippingLine $shippingLine): bool
     {
-        return AccessLevel::hasPermissionForModel('delete', 'ShippingLine');
+        return false;
 
     }
 

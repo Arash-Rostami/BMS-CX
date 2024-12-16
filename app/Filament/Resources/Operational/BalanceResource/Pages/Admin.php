@@ -2,10 +2,11 @@
 
 namespace App\Filament\Resources\Operational\BalanceResource\Pages;
 
+use App\Models\Beneficiary;
 use App\Models\Contractor;
 use App\Models\Department;
-use App\Models\Payee;
 use App\Models\Supplier;
+use App\Services\BalanceSummarizer;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
@@ -13,6 +14,7 @@ use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as DbBuilder;
@@ -30,7 +32,7 @@ class Admin
                 $list = [
                     'suppliers' => Supplier::all()->pluck('name', 'id'),
                     'contractors' => Contractor::all()->pluck('name', 'id'),
-                    'payees' => Payee::all()->pluck('name', 'id'),
+                    'payees' => Beneficiary::all()->pluck('name', 'id'),
                 ];
 
                 return $category ? $list[$category] : [];
@@ -48,7 +50,7 @@ class Admin
             ->options([
                 'suppliers' => 'Suppliers',
                 'contractors' => 'Contractors',
-                'payees' => 'Payees',
+                'payees' => 'Beneficiaries',
             ]);
     }
 
@@ -127,8 +129,8 @@ class Admin
             ->tooltip('Base Balance')
             ->color('warning')
             ->numeric()
-            ->sortable()
-            ->summarize(Sum::make()->label('Base Sum'));
+            ->sortable();
+//            ->summarize(Sum::make()->label('Base Sum'));
     }
 
     /**
@@ -143,8 +145,8 @@ class Admin
             ->tooltip('Payment Sum')
             ->searchable()
             ->sortable()
-            ->color('secondary')
-            ->summarize(Sum::make()->label('Payment Sum'));
+            ->color('secondary');
+//            ->summarize(Sum::make()->label('Payment Sum'));
     }
 
     /**
@@ -175,8 +177,9 @@ class Admin
             ->summarize(
                 Summarizer::make()
                     ->label('Total')
-                    ->using(fn(DbBuilder $query) => $query->selectRaw('COALESCE(SUM(COALESCE(base, 0) + COALESCE(payment, 0)), 0) as total')
-                        ->value('total'))
+                    ->using(fn(DbBuilder $query) => BalanceSummarizer::formatSummaryOutput(
+                        BalanceSummarizer::summarizeByCurrency($query)
+                    ))
             );
     }
 
@@ -247,11 +250,11 @@ class Admin
      */
     public static function groupByPayee(): Grouping
     {
-        return Grouping::make('payee.name')
+        return Grouping::make('beneficiary.name')
             ->collapsible()
-            ->label('Payee')
+            ->label('Beneficiary')
             ->orderQueryUsing(fn(Builder $query, string $direction) => $query->where('category', 'payees')->orderBy('category_id', $direction))
-            ->getTitleFromRecordUsing(fn(Model $record): string => $record->payee->name ?? 'No payee');
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->beneficiary?->name ?? 'No beneficiary');
     }
 
     /**
@@ -312,12 +315,12 @@ class Admin
                 'searchable_columns' => ['name'],
             ],
             'payee' => [
-                'model' => Payee::class,
+                'model' => Beneficiary::class,
                 'searchable_columns' => ['name'],
             ],
             'department' => [
                 'model' => Department::class,
-                'searchable_columns' => ['name'],
+                'searchable_columns' => ['name', 'code'],
             ],
         ];
     }
@@ -334,7 +337,7 @@ class Admin
         $data = match ($category) {
             'suppliers' => Supplier::find($state)->name ?? '',
             'contractors' => Contractor::find($state)->name ?? '',
-            'payees' => Payee::find($state)->name ?? '',
+            'payees' => Beneficiary::find($state)->name ?? '',
         };
 
         return $category ? ucwords($category) . ': ' . $data : '';
@@ -383,5 +386,17 @@ class Admin
         }
 
         return ['total' => $record->total, 'color' => 'success'];
+    }
+
+    public static function filterByDepartment(): SelectFilter
+    {
+        return SelectFilter::make('department')
+            ->label('Dep: ')
+            ->options(Department::getAllDepartmentNames())
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->where('department_id', $data['value']);
+                }
+            });
     }
 }

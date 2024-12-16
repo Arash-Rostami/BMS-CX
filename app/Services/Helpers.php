@@ -41,15 +41,23 @@ function formatHTML(string $text, array $classes = [])
     return new HtmlString("<span class='{$classString}'>{$text}</span>");
 }
 
-function numberify($number)
+function getCurrencySymbols($currency)
 {
-    return number_format((float)$number, 2, '.', ',');
+    return [
+        'USD' => '$',
+        'EURO' => '€',
+        'Yuan' => '¥',
+        'Dirham' => 'D',
+        'Ruble' => '₽',
+        'Rial' => 'R'
+    ][$currency];
 }
 
 function getTableDesign()
 {
     return data_get(optional(auth()->user()->info), 'tableDesign');
 }
+
 
 function isUserAdmin()
 {
@@ -74,32 +82,52 @@ function isUserAccountant()
     return auth()->user()->role === 'accountant';
 }
 
-function getCurrencySymbols($currency)
+
+function numberify($number)
 {
-    return [
-        'USD'   => '$',
-        'EURO'  => '€',
-        'Yuan'  => '¥',
-        'Dirham' => 'D',
-        'Ruble' => '₽',
-        'Rial'  => 'R'
-    ][$currency];
+    return number_format((float)$number, 2, '.', ',');
 }
+
+
+function persistReferenceNumber($record, $prefix): void
+{
+    $yearSuffix = date('y');
+    $recordIndex = $record->id;
+    $referenceNumber = sprintf('%s-%s%04d', $prefix, $yearSuffix, $recordIndex);
+    $record->reference_number = $referenceNumber;
+    $record->save();
+}
+
 function showCurrencies()
 {
     return [
+        'Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial'),
         'USD' => new HtmlString('<span class="mr-2">🇺🇸</span> Dollar'),
         'EURO' => new HtmlString('<span class="mr-2">🇪🇺</span> Euro'),
         'Yuan' => new HtmlString('<span class="mr-2">🇨🇳</span> Yuan'),
         'Dirham' => new HtmlString('<span class="mr-2">🇦🇪</span> Dirham'),
-        'Ruble' => new HtmlString('<span class="mr-2">🇷🇺</span> Ruble'),
-        'Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')
+        'Ruble' => new HtmlString('<span class="mr-2">🇷🇺</span> Ruble')
     ];
 }
 
 function showCurrencyWithoutHTMLTags($record)
 {
     return strip_tags(showCurrencies()[$record]);
+}
+
+
+function showDelimiter($number, $currency = null)
+{
+    $decimalPlaces = 0;
+    $numberString = strval($number);
+
+    $decimalPosition = strpos($numberString, '.');
+
+    if ($decimalPosition !== false) {
+        $decimalPlaces = strlen(substr($numberString, $decimalPosition + 1));
+    }
+
+    return $currency . ' ' . number_format($number, $decimalPlaces, '.', ',');
 }
 
 function slugify($string)

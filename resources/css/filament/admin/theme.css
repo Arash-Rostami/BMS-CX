@@ -7,6 +7,8 @@
 @import './stylesheets/form.css';
 @import './stylesheets/animations.css';
 @import './stylesheets/overlay.css';
+@import '../../../../vendor/kenepa/banner/resources/css/index.css';
+
 
 
 @config 'tailwind.config.js';

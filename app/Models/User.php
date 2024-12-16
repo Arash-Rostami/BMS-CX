@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Services\AvatarMaker;
 use Filament\Panel;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -17,7 +18,7 @@ use Filament\Models\Contracts\HasName;
 use Filament\Models\Contracts\HasAvatar;
 
 
-class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
+class User extends Authenticatable implements FilamentUser, HasName, HasAvatar, CanResetPassword
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
@@ -60,7 +61,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
      * @var array<string, string>
      */
     protected $casts = [
-        'email_verified_at' => 'datetime',
+//        'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'info' => 'array',
     ];
@@ -73,7 +74,7 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
 
     public function canAccessPanel(Panel $panel): bool
     {
-        $allowedDomains = ['persolco.com', 'gmail.com', 'time-gr.com', 'solsuntrading.com'];
+        $allowedDomains = ['persolco.com', 'time-gr.com', 'solsuntrading.com', 'persoreco.com'];
         return in_array(substr(strrchr($this->email, '@'), 1), $allowedDomains);
     }
 
@@ -126,6 +127,11 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
     public function grades()
     {
         return $this->hasMany(Grade::class, 'user_id');
+    }
+
+    public function notificationSubscriptions()
+    {
+        return $this->hasMany(NotificationSubscription::class);
     }
 
     public function orders()
@@ -230,6 +236,11 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar
                 ->orWhere('role', 'admin')
                 ->get();
         });
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return strtolower($this->role) == strtolower($role);
     }
 
     public function scopeByRole($query, $role)

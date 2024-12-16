@@ -21,7 +21,7 @@ final class DeliaPlugin extends FilamentPluginTools implements Plugin
 
     protected string $pluginId = 'zeus-delia';
 
-    protected string $navigationGroupLabel = 'Core Data';
+    protected string $navigationGroupLabel = 'Delia';
 
     // todo get rid of this!
     public static function make(): static

@@ -208,16 +208,19 @@ class ViewQuote extends ViewRecord
     }
 
     /**
-     * @return ImageEntry
      */
-    public function viewAttachment(): ImageEntry
+    public function viewAttachment()
     {
         return ImageEntry::make('attachment.file_path')
             ->label('')
             ->extraAttributes(fn($state) => $state ? [
                 'class' => 'cursor-pointer',
-                'title' => '👁️‍',
-                'onclick' => "showImage('" . url($state) . "')",
+                'title' => str_contains('jpg|jpeg|png|gif|bmp|webp', strtolower(pathinfo($state, PATHINFO_EXTENSION)))
+                    ? '👁️ View Image'
+                    : '📂 Open File',
+                'onclick' => str_contains('jpg|jpeg|png|gif|bmp|webp', strtolower(pathinfo($state, PATHINFO_EXTENSION)))
+                    ? "showImage('" . url($state) . "')"
+                    : "window.open('" . url($state) . "', '_blank')",
             ] : [])
             ->disk('quote')
             ->alignCenter()

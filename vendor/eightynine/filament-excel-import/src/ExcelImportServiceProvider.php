@@ -18,9 +18,9 @@ use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 class ExcelImportServiceProvider extends PackageServiceProvider
 {
-    public static string $name = 'filament-excel-import';
+    public static string $name = 'excel-import';
 
-    public static string $viewNamespace = 'filament-excel-import';
+    public static string $viewNamespace = 'excel-import';
 
     public function configurePackage(Package $package): void
     {

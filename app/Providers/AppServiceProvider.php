@@ -54,8 +54,8 @@ class AppServiceProvider extends ServiceProvider
             Js::make('lightBox', 'https://cdn.jsdelivr.net/npm/fslightbox@3.4.1/index.min.js'),
             Js::make('lightBoxInit', __DIR__ . '/../../resources/js/lightBoxInit.js'),
             Js::make('connectionStatus', __DIR__ . '/../../resources/js/connectionStatus.js'),
+            Js::make('sortable-js', 'https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js'),
             Js::make('tweaks', __DIR__ . '/../../resources/js/tweaks.js'),
-
         ]);
 
         //added tools
@@ -83,10 +83,10 @@ class AppServiceProvider extends ServiceProvider
             PanelsRenderHook::BODY_START,
             fn(): View => view('components.overlay'),
         );
-        FilamentView::registerRenderHook(
-            PanelsRenderHook::BODY_END,
-            fn(): View => view('components.clock'),
-        );
+//        FilamentView::registerRenderHook(
+//            PanelsRenderHook::BODY_END,
+//            fn(): View => view('components.clock'),
+//        );
 
         Attachment::observe(AttachmentObserver::class);
 

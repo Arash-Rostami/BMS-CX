@@ -60,7 +60,30 @@ class Department extends Model
         $cacheKey = 'all_department_names';
 
         return Cache::remember($cacheKey, 60, function () {
-            return self::pluck('name', 'id')->toArray();
+        return self::get()
+            ->sortBy('name')
+            ->partition(fn($item) => $item->id === 0)
+            ->flatMap(fn($items) => $items)
+            ->pluck('name', 'id')
+            ->toArray();
         });
+    }
+
+    public static function getAllDepartmentCodes()
+    {
+//        $cacheKey = 'all_department_names';
+//
+//        return Cache::remember($cacheKey, 60, function () {
+            return self::get()
+                ->sortBy('name')
+                ->map(function ($item) {
+                    $item->code = $item->id == 0 ? 'all' : $item->code;
+                    return $item;
+                })
+                ->partition(fn($item) => $item->id === 0)
+                ->flatMap(fn($items) => $items)
+                ->pluck('name', 'code')
+                ->toArray();
+//        });
     }
 }

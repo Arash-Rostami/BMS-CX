@@ -25,7 +25,7 @@ _💖 if you think this has potential, star ⭐️ the project to let me know :)
 
 ## Features
 - 🔥 Resource configuration
-  - let you provide your users with the abilities to configure your plugin resources, like the nav label,group,icon etc.
+  - Allows your users to configure various aspects of your plugin resources, such as the navigation label, group, icon, and more
 
 and more in the way.
 
@@ -40,7 +40,7 @@ Please see [CHANGELOG](CHANGELOG.md) for more information what has changed recen
 ## Support
 
 available support channels:
-* using our channel `#filament-plugin-tools` on [Discord](#)
+* using our channel `#filament-plugin-tools` on [Discord](https://discord.com/channels/883083792112300104/1282764457872719903)
 * email us using the [contact center](https://larazeus.com/contact-us)
 
 ## Contributing

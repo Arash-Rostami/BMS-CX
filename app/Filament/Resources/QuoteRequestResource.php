@@ -6,7 +6,6 @@ use App\Filament\Resources\Operational\QuoteRequestResource\Pages\Admin;
 use App\Filament\Resources\QuoteRequestResource\Pages;
 use App\Filament\Resources\QuoteRequestResource\RelationManagers;
 use App\Models\QuoteRequest;
-use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -31,36 +30,38 @@ class QuoteRequestResource extends Resource
 
     protected static ?int $navigationSort = 7;
 
-
-
-
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Section::make('Linked to SES (Smart Emailing Service)')
                     ->icon('heroicon-o-information-circle')
-                    ->description('Once you select and create this quote request, it will be automatically sent as a questionnaire via email to designated quote providers. This process cannot be undone.')
+                    ->description('⚠️ Once created, this quote request will automatically send (via email) a link to the questionnaire for all selected quote providers. This process cannot be UNDONE!')
                     ->schema([
                         Section::make()
                             ->schema([
+                                Admin::getMarkDown(),
+                                Admin::getTitle(),
                                 Admin::getQuoteProviders()
-                            ]),
+                            ])->columns(3),
                         Admin::getOriginPort(),
                         Admin::getDestinationPort(),
+                        Admin::getCommodity(),
                         Admin::getPackaging(),
                         Admin::getContainerType(),
-                        Admin::getCommodity(),
                         Admin::getGrossWeight(),
                         Admin::getQuantity(),
                         Admin::getTargetRate(),
-                        Admin::getTargetTHC(),
-                        Admin::getTargetLocalCharges(),
-                        Admin::getTargetSwitchBL(),
-                        Admin::getValidity(),
+//                        Admin::getTargetTHC(),
                         Admin::getSwitchBL(),
+                        Admin::getTargetSwitchBL(),
+                        Admin::getTargetLocalCharges(),
+                        Admin::getValidity(),
                         Admin::getExtraInfo(),
+                        Admin::getTemplateField(),
+                        Admin::getEmailBody(),
                     ])->columns(3),
+
             ]);
     }
 
@@ -83,8 +84,8 @@ class QuoteRequestResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+//                Tables\Actions\EditAction::make(),
+//                Tables\Actions\DeleteAction::make(),
                 Tables\Actions\RestoreAction::make(),
             ])
             ->bulkActions([
@@ -100,9 +101,10 @@ class QuoteRequestResource extends Resource
     {
         return $table
             ->columns([
+                Admin::showTitle(),
                 Admin::showResponseRate(),
                 Admin::showOriginPort(),
-                Admin::showDestinatonPort(),
+                Admin::showDestinationPort(),
                 Admin::showContainerType(),
                 Admin::showSwitchBL(),
                 Admin::showCommodity(),
@@ -110,7 +112,6 @@ class QuoteRequestResource extends Resource
                 Admin::showGrossWeight(),
                 Admin::showQuantity(),
                 Admin::showTargetRate(),
-                Admin::showTargetTHC(),
                 Admin::showTargetLocalCharges(),
                 Admin::showTargetSwitchBLFee(),
                 Admin::showValidity(),
@@ -128,13 +129,15 @@ class QuoteRequestResource extends Resource
                     Panel::make([
                         Stack::make([
                             Split::make([
+                                Admin::showTitle(),
                                 Admin::showResponseRate(),
                                 Admin::showOriginPort(),
-                                Admin::showDestinatonPort(),
+                                Admin::showDestinationPort(),
                             ]),
                             Split::make([
-                                Admin::showContainerType(),
                                 Admin::showCommodity(),
+                                Admin::showPackaging(),
+                                Admin::showContainerType(),
                                 Admin::showPackaging(),
                             ]),
 //                            Split::make([
@@ -172,7 +175,6 @@ class QuoteRequestResource extends Resource
             'edit' => Operational\QuoteRequestResource\Pages\EditQuoteRequest::route('/{record}/edit'),
         ];
     }
-
 
     public static function getNavigationBadge(): ?string
     {

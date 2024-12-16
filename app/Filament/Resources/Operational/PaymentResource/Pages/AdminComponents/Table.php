@@ -3,12 +3,14 @@
 namespace App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents;
 
 use App\Models\PaymentRequest;
+use App\Services\PaymentSummarizer;
 use Carbon\Carbon;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Model;
@@ -50,7 +52,7 @@ trait Table
             ->label('Deadline Delta')
             ->formatStateUsing(function (Model $record) {
 
-                if($record->paymentRequests){
+                if ($record->paymentRequests) {
                     $deadlines = $record->paymentRequests->pluck('deadline')->filter();
 
                     if ($deadlines->isNotEmpty()) {
@@ -77,10 +79,13 @@ trait Table
             ->grow(false)
             ->sortable()
             ->badge()
-            ->summarize([
-                Count::make()->label('Count')
-            ])
+            ->summarize(
+                Summarizer::make()
+                    ->label('Total Payments')
+                    ->using(fn(Builder $query): int => PaymentSummarizer::calculateTotalPaymentCount($query))
+            )
             ->searchable()
+            ->html()
             ->state(fn(Model $record) => self::getCustomizedDisplayName($record));
     }
 
@@ -154,11 +159,28 @@ trait Table
             ->searchable()
             ->sortable()
             ->badge()
-            ->summarize([
-                Sum::make()->label('Total'),
-            ]);
+            ->summarize(
+                Summarizer::make()
+                    ->label('Total')
+                    ->using(fn(Builder $query) => PaymentSummarizer::calculateTotalsByCurrency($query))
+            );
+//            ->summarize([
+//                Sum::make()->label('Total'),
+//            ]);
     }
 
+
+    /**
+     * @return TextColumn
+     */
+    public static function showCurrency(): TextColumn
+    {
+        return TextColumn::make('paymentRequests.currency')
+            ->label('💱')
+            ->color('secondary')
+            ->grow(false)
+            ->badge();
+    }
 
     /**
      * @return TextColumn
@@ -166,33 +188,42 @@ trait Table
     public static function showRequestedAmount(): TextColumn
     {
         return TextColumn::make('paymentRequests.requested_amount')
-            ->label('Requested Amount')
+            ->label('Requested')
             ->color('secondary')
+            ->formatStateUsing(fn($state) => $state ? number_format($state, 2) : 'N/A')
             ->grow(false)
-            ->formatStateUsing(function (?Model $record) {
-                list($currency, $requestedAmount, $totalAmount, $remainingAmount) = self::fetchAmounts($record);
-
-                return $currency . '  ' . $requestedAmount . ' / ' . $totalAmount;
-            })
             ->badge();
     }
+
 
     /**
      * @return TextColumn
      */
-    public static function showRemainingAmount(): TextColumn
+    public static function showTotalAmount(): TextColumn
     {
-        return TextColumn::make('paymentRequests.total_amount')
-            ->label('Remaining Amount')
+        return TextColumn::make('total_amount_display')
+            ->label('Total')
             ->color('secondary')
-            ->grow(false)
-            ->formatStateUsing(function (?Model $record) {
-                list($currency, $requestedAmount, $totalAmount, $remainingAmount) = self::fetchAmounts($record);
+            ->getStateUsing(function ($record) {
+                $paymentRequests = $record->paymentRequests;
 
-                return $currency . '  ' . $remainingAmount;
+                if ($paymentRequests->isEmpty()) {
+                    return 'N/A';
+                }
+
+                $total = $paymentRequests->sum('total_amount');
+                $requested = $paymentRequests->sum('requested_amount');
+                $remaining = $total - $requested;
+
+                $totalFormatted = number_format($total, 2);
+                $remainingFormatted = number_format($remaining, 2);
+
+                return "{$totalFormatted} ┆ Remaining: {$remainingFormatted}";
             })
+            ->grow(false)
             ->badge();
     }
+
 
     /**
      * @return TextColumn
@@ -217,7 +248,7 @@ trait Table
             ->label('Created by')
             ->badge()
             ->color('secondary')
-            ->searchable()
+            ->searchable(['first_name', 'last_name'])
             ->toggleable()
             ->sortable();
     }
@@ -275,7 +306,8 @@ trait Table
                         if ($paymentRequest->order_id) {
                             return $paymentRequest->order->invoice_number;
                         }
-                        return "Unrelated to orders, but related to PI No. {$paymentRequest->proforma_invoice_number}";                    }
+                        return "Unrelated to orders, but related to PI No. {$paymentRequest->proforma_invoice_number}";
+                    }
                 )->join(', ') ?? 'N/A';
             })
             ->badge();

@@ -2,27 +2,31 @@
 
 namespace App\Notifications;
 
+use App\Models\ProformaInvoice;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ProformaInvoiceStatusNotification extends Notification
+class ProformaInvoiceStatusNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
     public string $product;
     public string $company;
-    public string|null $status;
+    public string $reference_number;
+    public string $type;
+
 
     /**
      * Create a new notification instance.
      */
-    public function __construct($record, $status = null)
+    public function __construct($record, $type = 'new')
     {
         $this->product = $record->product->name;
         $this->company = $record->buyer->name;
-        $this->status = $status;
+        $this->reference_number = $record->reference_number;
+        $this->type = $type;
     }
 
     /**
@@ -40,7 +44,9 @@ class ProformaInvoiceStatusNotification extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        return ($this->status === null) ? $this->sendToManagement() : $this->sendToTeam();
+        return ($this->type == 'new')
+            ? $this->showCreatedMessage()
+            : ($this->type == 'edit' ? $this->showEditedMessage() : $this->showDeletedMessage());
     }
 
     /**
@@ -56,43 +62,39 @@ class ProformaInvoiceStatusNotification extends Notification
     /**
      * @return MailMessage
      */
-    public function sendToManagement(): MailMessage
+    public function showCreatedMessage(): MailMessage
     {
         return (new MailMessage)
             ->subject('✨ New Pro forma Invoice Made')
             ->greeting('Greetings,')
-            ->line("A new pro forma invoice has been created for **{$this->company}** for the product: **{$this->product}**.")
-            ->action('Review Request', url('/'))
-            ->line('Thank you for your attention to this matter.');
+            ->line("A new pro forma invoice ({$this->reference_number}) has been created for **{$this->company}** for the product: **{$this->product}**.")
+            ->line('Thank you for your attention to this matter.')
+            ->line('(Please note, this is an informational email only. No further action is required.)');
     }
 
     /**
      * @return MailMessage
      */
-    public function sendToTeam(): MailMessage
+    public function showEditedMessage(): MailMessage
     {
-        $message = $this->fetchTeamMessage();
-
         return (new MailMessage)
             ->subject('💫 Pro forma Invoice Update')
             ->greeting('Greetings,')
-            ->line($message)
+            ->line("The Pro forma Invoice ({$this->reference_number}) for **{$this->product}** has been edited.")
             ->line('Thank you for your attention.')
             ->line('(Please note, this is an informational email only. No further action is required.)');
     }
 
     /**
-     * @return string
+     * @return MailMessage
      */
-    public function fetchTeamMessage(): string
+    public function showDeletedMessage(): MailMessage
     {
-        $message = "The Pro forma Invoice for **{$this->product}** has been ";
-
-        $message .= match ($this->status) {
-            'approved' => "**approved**.",
-            'rejected' => "**rejected**.",
-            default => "updated with status: **{$this->status}**.",
-        };
-        return $message;
+        return (new MailMessage)
+            ->subject('❌ Pro forma Invoice Removal')
+            ->greeting('Greetings,')
+            ->line("The Pro forma Invoice ({$this->reference_number}) for **{$this->product}** has been deleted.")
+            ->line('Thank you for your attention.')
+            ->line('(Please note, this is an informational email only. No further action is required.)');
     }
 }

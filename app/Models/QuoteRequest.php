@@ -29,6 +29,10 @@ class QuoteRequest extends Model
         'user_id',
     ];
 
+    protected $casts = [
+        'extra' => 'json',
+    ];
+
     protected static function booted()
     {
         static::creating(function ($post) {
@@ -49,6 +53,11 @@ class QuoteRequest extends Model
         $percentage = number_format(($responseCount / $tokenCount) * 100, 2, '.', '');
 
         return "🖂 $responseCount/$tokenCount ({$percentage}%)";
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'commodity');
     }
 
 

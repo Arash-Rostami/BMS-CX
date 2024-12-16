@@ -34,7 +34,7 @@
                             return
                         }
 
-                        let newState = $refs.newState.value
+                        let newState = $refs.newState.value.replaceAll('\\'+String.fromCharCode(34), String.fromCharCode(34))
 
                         if (state === newState) {
                             return

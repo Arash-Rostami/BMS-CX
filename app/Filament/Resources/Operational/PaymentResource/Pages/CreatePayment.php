@@ -8,7 +8,7 @@ use App\Models\Balance;
 use App\Models\Payment;
 use App\Models\PaymentRequest;
 use App\Models\User;
-use App\Notifications\FilamentNotification;
+use App\Services\Notification\PaymentService;
 use App\Services\NotificationManager;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -21,64 +21,71 @@ class CreatePayment extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
+        $paymentRequests = PaymentRequest::with('payments.paymentRequests')
+            ->findMany(data_get($data, 'paymentRequests.id'));
 
-        $paymentRequests = PaymentRequest::findMany(data_get($data, 'paymentRequests.id'));
+        $data = $this->processPaymentRequest($paymentRequests, $data);
 
-        list($totalAmountPaid, $totalRequestedAmount, $notes, $previousPayments) = $this->processPaymentRequest($paymentRequests, $data);
-
-        $finalData = [
-            'payment_request_id' => implode(',', data_get($data, 'paymentRequests.id')),
-            'amount' => $totalAmountPaid,
-            'notes' => $notes,
-            'extra' => [
-                'remainderSum' => $remainder = $totalRequestedAmount - ($totalAmountPaid + $previousPayments),
-                'balanceStatus' => $remainder > 0 ? 'debit' : ($remainder < 0 ? 'credit' : 'settled'),
-            ]
-        ];
-
-        return static::getModel()::create(array_merge($data, $finalData));
+        return static::getModel()::create($data);
     }
 
 
-    protected function processPaymentRequest($paymentRequests, array $data): array
+    protected function processPaymentRequest($paymentRequests, array &$data): array
     {
-        $previousPayments = 0;
-        $totalAmountPaid = 0;
-        $totalRequestedAmount = 0;
-        $notes = '';
+        $data['remainder'] = 0;
+        $data['previousPayments'] = 0;
+        $data['totalRequestedAmount'] = 0;
+        $data['notes'] = '';
+        $data['loop'] = false;
+        $data['share'] = null;
+        $data['sumOfOtherPR'] = 0;
 
         foreach ($paymentRequests as $paymentRequest) {
-            $previousPayments = $paymentRequest->payments->sum('amount');
-            $totalRequestedAmount += $paymentRequest->requested_amount;
+            $data['amount'] = (float)$data['amount'];
+            $data['previousPayments'] = $paymentRequest->payments->sum('amount');
+            $data['totalRequestedAmount'] += $paymentRequest->requested_amount;
 
-            $processedData = $this->processPayments($data, $paymentRequest, $previousPayments);
-            $totalAmountPaid += $processedData['amount'];
-            $notes = $processedData['notes'];
+            $processedData = $this->processPayments($data, $paymentRequest);
+            $data['remainder'] = $processedData['remainder'];
+            $data['notes'] = $processedData['notes'];
+            $data['share'] = $data['amount'] - $paymentRequest->requested_amount;
         }
-        return array($totalAmountPaid, $totalRequestedAmount, $notes, $previousPayments);
+
+        $data['payment_request'] = implode(',', $paymentRequests->pluck('reference_number')->toArray());
+        $data['extra'] = [
+            'remainderSum' => $remainder = $data['totalRequestedAmount'] - ($data['amount'] + ($data['previousPayments'] - ($data['sumOfOtherPR']))),
+            'balanceStatus' => $remainder > 0 ? 'debit' : ($remainder < 0 ? 'credit' : 'settled'),
+        ];
+
+        return $data;
     }
 
 
-    protected function processPayments(array $data, $paymentRequest, $previousPayments): array
+    protected function processPayments(array &$data, $paymentRequest): array
     {
-        $payableAmount = $data['amount'];
-        $totalPaid = $previousPayments + $payableAmount;
+        $previousPaymentRecords = $paymentRequest->payments;
+        $data['sumOfOtherPR'] = $previousPaymentRecords->flatMap(function ($payment) use ($paymentRequest) {
+            return $payment->paymentRequests->where('id', '!=', $paymentRequest->id);
+        })->sum('requested_amount');
+
+
+        $totalPaid = ($data['previousPayments'] - ($data['sumOfOtherPR'])) + $data['amount'];
         $remainder = $paymentRequest->requested_amount - $totalPaid;
 
+
         $paymentRequest->update([
-            'status' => $totalPaid >= $paymentRequest->requested_amount ? 'completed' : 'processing',
+            'status' => ($data['share'] ?? $totalPaid) >= ($paymentRequest->requested_amount)
+                ? 'completed' : 'processing',
         ]);
 
-        $this->createBalance($paymentRequest, $data);
+        if (!$data['loop']) {
+            $this->createBalance($paymentRequest, $data);
+        }
 
-        return [
-            'amount' => $payableAmount,
-            'notes' => $data['notes'],
-            'remainder' => $remainder,
-        ];
+        return ['notes' => $data['notes'], 'remainder' => $remainder,];
     }
 
-    private function createBalance($paymentRequest, $data): void
+    private function createBalance($paymentRequest, &$data): void
     {
 
         $categories = [
@@ -99,44 +106,31 @@ class CreatePayment extends CreateRecord
             $shouldCreateBalance = $hasSupplierOrContractor || $isPayeeWithoutSupplierOrContractor;
 
             if ($shouldCreateBalance) {
+
                 Balance::create([
                     'payment' => $data['amount'],
                     'category' => $category,
                     'category_id' => $categoryId,
                     'department_id' => $paymentRequest->department_id,
+                    'currency' => $data['currency'],
                     'extra' => ['currency' => $data['currency']]
                 ]);
+
+                $data['loop'] = true;
             }
         }
     }
 
     protected function afterCreate(): void
     {
-
         $records = $this->record->paymentRequests->map(fn($each) => $each->proforma_invoice_number ?? $each->reason->reason)->join(', ');
 
-        $this->persistReferenceNumber();
+        persistReferenceNumber($this->record, 'P');
 
-        foreach (User::getUsersByRole('admin') as $recipient) {
-            $recipient->notify(new FilamentNotification([
-                'record' => $records,
-                'type' => 'new',
-                'module' => 'payment',
-                'url' => route('filament.admin.resources.payments.index'),
-            ]));
-        }
-    }
+        $this->record['records'] = $records;
 
-    protected function persistReferenceNumber(): void
-    {
-        $yearSuffix = date('y');
+        $service = new PaymentService();
 
-        $orderIndex = $this->record->id;
-
-        $referenceNumber = sprintf('P-%s%04d', $yearSuffix, $orderIndex);
-
-        $this->record->reference_number = $referenceNumber;
-
-        $this->record->save();
+        $service->notifyAccountants($this->record);
     }
 }

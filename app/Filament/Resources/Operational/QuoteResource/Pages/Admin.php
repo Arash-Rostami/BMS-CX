@@ -35,30 +35,18 @@ class Admin
      */
     public static function showCommodity(): TextColumn
     {
-        return TextColumn::make('quoteRequest.commodity')
-            ->label('Request for')
+        return TextColumn::make('product.name')
+            ->label('Product')
             ->words(2)
             ->grow(false)
             ->badge()
             ->color('secondary')
-            ->searchable(['commodity'])
+            ->searchable(['name'])
             ->toggleable()
             ->sortable();
     }
 
-    /**
-     * @return TextColumn
-     */
-    public static function showCommodityType(): TextColumn
-    {
-        return TextColumn::make('commodity_type')
-            ->label('Commodity')
-            ->badge()
-            ->color('secondary')
-            ->searchable()
-            ->toggleable()
-            ->sortable();
-    }
+
 
     /**
      * @return TextColumn
@@ -93,10 +81,10 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showTransportationMeans(): TextColumn
+    public static function showContainerNumber(): TextColumn
     {
-        return TextColumn::make('transportation_means')
-            ->label('Transportation Means')
+        return TextColumn::make('container_number')
+            ->label('Container No')
             ->badge()
             ->color('secondary')
             ->searchable()
@@ -107,12 +95,11 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showTransportationType(): TextColumn
+    public static function showLocalCharges(): TextColumn
     {
-        return TextColumn::make('transportation_type')
-            ->label('Transportation Type')
+        return TextColumn::make('local_charges')
+            ->label('Local Charges')
             ->badge()
-            ->formatStateUsing(fn(string $state) => DeliveryTerm::find($state)->name)
             ->color('secondary')
             ->searchable()
             ->toggleable()
@@ -201,7 +188,21 @@ class Admin
     public static function showFreeTime(): TextColumn
     {
         return TextColumn::make('free_time_pol')
-            ->label('Free Time')
+            ->label('Free Time POL')
+            ->badge()
+            ->color('secondary')
+            ->searchable()
+            ->toggleable()
+            ->sortable();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showFreeTimePOD(): TextColumn
+    {
+        return TextColumn::make('free_time_pod')
+            ->label('Free Time POD')
             ->badge()
             ->color('secondary')
             ->searchable()

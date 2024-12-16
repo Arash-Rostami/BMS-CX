@@ -131,7 +131,6 @@ class RequestPasswordReset extends SimplePage
     {
         return TextInput::make('email')
             ->label(__('📫'))
-            ->placeholder('Type your email to receive the password reset link')
             ->email()
             ->required()
             ->autocomplete()
@@ -142,7 +141,7 @@ class RequestPasswordReset extends SimplePage
     {
         return Action::make('login')
             ->link()
-            ->label(__('Log in'))
+            ->label(__('filament-panels::pages/auth/password-reset/request-password-reset.actions.login.label'))
             ->icon(match (__('filament-panels::layout.direction')) {
                 'rtl' => FilamentIcon::resolve('panels::pages.password-reset.request-password-reset.actions.login.rtl') ?? 'heroicon-m-arrow-right',
                 default => FilamentIcon::resolve('panels::pages.password-reset.request-password-reset.actions.login') ?? 'heroicon-m-arrow-left',

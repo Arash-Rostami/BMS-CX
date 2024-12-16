@@ -11,6 +11,7 @@ use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\MenuItem;
 use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -28,6 +29,7 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Kenepa\Banner\BannerPlugin;
 use LaraZeus\Delia\DeliaPlugin;
 use SolutionForest\FilamentSimpleLightBox\SimpleLightBoxPlugin;
 use \Hasnayeen\Themes\Http\Middleware\SetTheme;
@@ -48,13 +50,12 @@ class AdminPanelProvider extends PanelProvider
 //                'gray' => Color::Gray, // bg color
                 'primary' => ColorTheme::getRandomFontTheme(), //initial text color
                 'secondary' => Color::Slate, //secondary text color
-                'danger' => Color::Rose,
-                'info' => Color::Blue,
-                'success' => Color::Emerald,
-                'warning' => Color::Orange,
-                'amber' => Color::Amber,
-                'indigo' => Color::Indigo,
-
+//                'danger' => Color::Rose,
+//                'info' => Color::Blue,
+//                'success' => Color::Emerald,
+//                'warning' => Color::Orange,
+//                'amber' => Color::Amber,
+//                'indigo' => Color::Indigo,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -86,10 +87,17 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('Core Data')
             ])
+//            ->navigationItems([
+//                NavigationItem::make('payment')
+//                    ->visible(fn(): bool => auth()->user()->can('canEditInput'))
+//
+//                ]
+//            )
             ->authMiddleware([
                 Authenticate::class,
             ])
             ->databaseNotifications()
+            ->databaseNotificationsPolling('5s')
             ->maxContentWidth(MaxWidth::Full)
             ->spa()
             ->brandName('BMS')
@@ -103,6 +111,11 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 SimpleLightBoxPlugin::make(),
                 ThemesPlugin::make(),
+                BannerPlugin::make()
+                    ->navigationGroup('Core Data')
+                    ->navigationLabel('Banners')
+
+
 //                DeliaPlugin::make()
             ])
             ->sidebarCollapsibleOnDesktop()

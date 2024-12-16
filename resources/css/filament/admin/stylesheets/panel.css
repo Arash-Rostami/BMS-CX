@@ -7,6 +7,10 @@
     background-color: #E6E6E6;
 }
 
+.fi-sidebar-header {
+    border-radius: 0 !important;
+}
+
 .dark .fi-body, .dark .fi-topbar > nav, .dark .fi-sidebar-header {
     background-image: none;
 }
@@ -16,7 +20,7 @@
 }
 
 .fi-topbar > nav {
-    background-color: #DFCFD4;
+    background-color: #eae4df;
 }
 
 .fi-sidebar-nav {
@@ -28,7 +32,7 @@
 }
 
 .fi-topbar, .fi-sidebar-header {
-    @apply dark:bg-black;
+    @apply dark:bg-gray-950 border-none;
     background-color: #e0e7eb;
 }
 

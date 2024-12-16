@@ -72,11 +72,14 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">📦 </span><span class="text-primary-500 font-normal">Product</span>'))
             ->relationship('product', 'name',
                 function (Builder $query, Get $get) {
-                    if ($get('category_id')) {
+                    if (!is_null($get('category_id'))) {
                         $query->where('category_id', $get('category_id'));
                     }
                 }
             )
+            ->afterStateUpdated(function ($state, Set $set) {
+                $set('grade_id', null);
+            })
             ->live()
             ->required()
             ->createOptionForm([
@@ -158,12 +161,13 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">♠️ </span><span class="text-primary-500 font-normal">Grade</span>'))
             ->relationship('grade', 'name',
                 function (Builder $query, Get $get) {
-                    if ($get('product_id')) {
+                    if (!is_null($get('product_id'))) {
                         $query->where('product_id', $get('product_id'));
                     }
                 }
             )
             ->live()
+            ->reactive()
             ->default(0)
             ->createOptionForm([
                 Select::make('product_id')

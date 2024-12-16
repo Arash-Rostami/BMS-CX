@@ -15,6 +15,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
+use Filament\Support\Enums\MaxWidth;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\RestoreBulkAction;
@@ -95,11 +96,12 @@ class PaymentResource extends Resource
                             ])->columnSpan(2)
                     ])->columns(4)
                     ->itemLabel('Attachments:')
+                    ->addable(fn($operation) => ($operation === 'edit') ? auth()->user()->can('canEditInput', Payment::class) : true)
+                    ->deletable(fn($operation) => ($operation === 'edit') ? auth()->user()->can('canEditInput', Payment::class) : true)
                     ->addActionLabel('➕')
                     ->columnSpanFull()
                     ->collapsible()
                     ->collapsed(),
-
             ]);
     }
 
@@ -159,8 +161,15 @@ class PaymentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        $user = auth()->user();
+
+        $count = static::getModel()::query()
+            ->filterByUserPaymentRequests($user)
+            ->count();
+
+        return (string)$count;
     }
+
 
     public static function getNavigationBadgeColor(): ?string
     {
@@ -181,11 +190,19 @@ class PaymentResource extends Resource
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table
-            ->filters([AdminOrder::filterCreatedAt(), AdminOrder::filterSoftDeletes()])
+            ->modifyQueryUsing(fn(Builder $query) => $query->filterByUserPaymentRequests(auth()->user()))
+            ->filters([
+                AdminOrder::filterCreatedAt(),
+                Admin::filterDepartments(),
+                Admin::filterCostCenter(),
+                Admin::filterReason(),
+                AdminOrder::filterSoftDeletes(),
+            ])
+            ->filtersFormWidth(MaxWidth::FourExtraLarge)
+            ->filtersFormColumns(5)
             ->emptyStateIcon('heroicon-o-bookmark')
             ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->searchDebounce('1000ms')
-            ->defaultGroup('date')
             ->groupingSettingsInDropdownOnDesktop()
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -219,6 +236,7 @@ class PaymentResource extends Resource
                     PrintBulkAction::make(),
                 ])
             ])
+            ->paginated([10, 20, 30])
             ->defaultSort('created_at', 'desc')
             ->poll('120s')
             ->groups([
@@ -264,8 +282,9 @@ class PaymentResource extends Resource
                 Admin::showPaymentRequestID(),
                 Admin::showAmount(),
                 Admin::showBalance(),
+                Admin::showCurrency(),
                 Admin::showRequestedAmount(),
-                Admin::showRemainingAmount(),
+                Admin::showTotalAmount(),
                 Admin::showDate(),
                 Admin::showTimeGap(),
                 Admin::showPayer(),

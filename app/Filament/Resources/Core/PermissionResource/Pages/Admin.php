@@ -25,7 +25,7 @@ class Admin
             ->required()
             ->autofocus()
 //            ->relationship('user', 'id', fn(Builder $query) => $query->whereNot('role', 'admin'))
-            ->relationship('user', 'id')
+            ->relationship('user', 'id', fn(Builder $query) => $query->orderBy('first_name', 'asc')->orderBy('last_name', 'asc'))
             ->getOptionLabelFromRecordUsing(fn(Model $record) => "{$record->fullName}");
     }
 
@@ -103,16 +103,13 @@ class Admin
             ->visible(fn(Get $get) => $get('authority') == 'unlimited');
     }
 
-    /**
-     * @return TextColumn
-     */
     public static function showUser(): TextColumn
     {
         return TextColumn::make('user.fullName')
             ->badge()
             ->color('secondary')
             ->toggleable()
-            ->sortable(['first_name'])
+            ->sortable(['first_name', 'last_name'])
             ->searchable(['first_name', 'middle_name', 'last_name']);
     }
 
