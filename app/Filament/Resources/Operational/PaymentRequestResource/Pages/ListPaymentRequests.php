@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\PaymentRequestResource;
+use App\Models\PaymentRequest;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
@@ -32,6 +33,7 @@ use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Enums\ActionsPosition;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -47,42 +49,29 @@ class ListPaymentRequests extends ListRecords
 
     protected static string $resource = PaymentRequestResource::class;
 
-
-    public $showExtendedColumns = false;
-    public $showActionsAhead = false;
-
+    public bool $showTabs;
     public $statusFilter;
 
-    protected $listeners = ['setStatusFilter'];
+
+    protected $listeners = ['setStatusFilter', 'refreshPage' => '$refresh'];
+    public bool $showExtendedColumns = false;
+
+    public bool $showActionsAhead = true;
 
     public function mount(): void
     {
-        $this->showActionsAhead = $this->showActionsAhead ?? false;
+        $this->showActionsAhead = $this->showActionsAhead ?? true;
+        $this->showTabs = (auth()->user()->info['filterDesign'] ?? 'hide') == 'show';
+        $this->dispatch('refreshSortJs');
     }
 
-    protected function getTableWrapper(): string
+
+    public function toggleTabs()
     {
-        return '<div class="scrollable-wrapper" style="overflow-x: auto; white-space: nowrap;">%s</div>';
+        $this->showTabs = !$this->showTabs;
+        $this->dispatch('refreshPage');
     }
 
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('New')
-                ->url(fn() => static::getResource()::getUrl('create'))
-                ->icon('heroicon-o-sparkles'),
-            ExcelImportAction::make()
-                ->color("success"),
-            PrintAction::make(),
-        ];
-    }
-
-    protected function getHeaderWidgets(): array
-    {
-        return PaymentRequestResource::getWidgets();
-    }
 
     public function setStatusFilter($filter)
     {
@@ -129,29 +118,97 @@ class ListPaymentRequests extends ListRecords
         $this->dispatch('toggleFullScreen');
     }
 
+    public function clearTableSort()
+    {
+        $this->dispatch('clearTableSort');
+    }
+
 
     public function getTabs(): array
     {
+        if (!$this->showTabs) {
+            return [];
+        }
+
+        $counts = PaymentRequest::getTabCounts();
+
         return [
-            null => Tab::make('All')->query(fn($query) => $query),
-            'New' => Tab::make()->query(fn($query) => $query->where('status', 'pending')),
-            'Processing' => Tab::make()->query(fn($query) => $query->where('status', 'processing')),
-            'Allowed' => Tab::make()->query(fn($query) => $query->where('status', 'allowed')),
-            'Approved' => Tab::make()->query(fn($query) => $query->where('status', 'approved')),
-            'Rejected' => Tab::make()->query(fn($query) => $query->where('status', 'rejected')),
-            'Fulfilled' => Tab::make()->query(fn($query) => $query->where('status', 'completed')),
-            'Cancelled' => Tab::make()->query(fn($query) => $query->where('status', 'cancelled')),
-            '💴﷼' => Tab::make()->query(fn($query) => $query->where('currency', 'Rial')),
-            '💵$' => Tab::make()->query(fn($query) => $query->where('currency', 'USD')),
+            null => Tab::make('All')
+                ->query(fn($query) => $query)
+                ->badge($counts['total'] ?? 0)
+                ->icon('heroicon-o-inbox'),
+
+            'New' => Tab::make('New')
+                ->query(fn($query) => $query->where('status', 'pending'))
+                ->badge($counts['pending_count'] ?? 0)
+                ->icon('heroicon-o-document-plus'),
+
+            'Processing' => Tab::make('Processing')
+                ->query(fn($query) => $query->where('status', 'processing'))
+                ->badge($counts['processing_count'] ?? 0)
+                ->icon('heroicon-o-clock'),
+
+            'Allowed' => Tab::make('Allowed')
+                ->query(fn($query) => $query->where('status', 'allowed'))
+                ->badge($counts['allowed_count'] ?? 0)
+                ->icon('heroicon-o-check-circle'),
+
+            'Approved' => Tab::make('Approved')
+                ->query(fn($query) => $query->where('status', 'approved'))
+                ->badge($counts['approved_count'] ?? 0)
+                ->icon('heroicon-o-check-badge'),
+
+            'Rejected' => Tab::make('Rejected')
+                ->query(fn($query) => $query->where('status', 'rejected'))
+                ->badge($counts['rejected_count'] ?? 0)
+                ->icon('heroicon-o-x-circle'),
+
+            'Completed' => Tab::make('Completed')
+                ->query(fn($query) => $query->where('status', 'completed'))
+                ->badge($counts['completed_count'] ?? 0)
+                ->icon('heroicon-s-check-circle'),
+
+            'Rial' => Tab::make('Rial')
+                ->query(fn($query) => $query->where('currency', 'Rial'))
+                ->badge($counts['rial_count'] ?? 0)
+                ->icon('heroicon-o-currency-rupee'),
+
+            'USD' => Tab::make('USD')
+                ->query(fn($query) => $query->where('currency', 'USD'))
+                ->badge($counts['usd_count'] ?? 0)
+                ->icon('heroicon-o-currency-dollar'),
+
+            'Advance' => Tab::make('Advance')
+                ->query(fn($query) => $query->where('type_of_payment', 'advance'))
+                ->badge($counts['advance_count'] ?? 0)
+                ->icon('heroicon-s-arrow-left-circle'),
+
+            'Balance' => Tab::make('Balance')
+                ->query(fn($query) => $query->where('type_of_payment', 'balance'))
+                ->badge($counts['balance_count'] ?? 0)
+                ->icon('heroicon-s-arrow-right-circle'),
+
+            'Other' => Tab::make('Other')
+                ->query(fn($query) => $query->where('type_of_payment', 'other'))
+                ->badge($counts['other_count'] ?? 0)
+                ->icon('heroicon-o-ellipsis-horizontal-circle'),
         ];
     }
 
+
     public function getTableHeaderActions(): array
     {
-        $cxDep = (auth()->user()->info['department'] == 6) || getTableDesign() == 'modern';
+        $cxDep = (auth()->user()->info['department'] == 6) || isModernDesign();
         $design = getTableDesign() == 'modern';
 
-        return [
+        $actions = [
+            Action::make('Refresh Sorting')
+                ->label('Reset')
+                ->tooltip('Reset Column Orders')
+                ->color('primary')
+                ->icon('heroicon-m-receipt-refund')
+                ->action('clearTableSort'),
+
             Action::make('Toggle Extended Info')
                 ->action('toggleExtendedColumns')
                 ->color(fn() => $this->showExtendedColumns ? 'secondary' : 'primary')
@@ -188,7 +245,7 @@ class ListPaymentRequests extends ListRecords
 
             Action::make('Scroll Right')
                 ->label('Scroll')
-                ->tooltip('Scroll right')
+                ->tooltip('Scroll Right')
                 ->color('primary')
                 ->icon('heroicon-o-arrow-right-end-on-rectangle')
                 ->iconPosition(IconPosition::After)
@@ -196,23 +253,48 @@ class ListPaymentRequests extends ListRecords
 
             Action::make('Full Screen')
                 ->label('Go')
-                ->tooltip('Go fullscreen')
+                ->tooltip('Go Fullscreen')
                 ->color('primary')
                 ->icon('heroicon-s-arrows-pointing-out')
                 ->action('toggleFullScreen'),
+        ];
+
+        if ($design) {
+            return [ActionGroup::make($actions)];
+        }
+
+        return $actions;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('New')
+                ->url(fn() => static::getResource()::getUrl('create'))
+                ->icon('heroicon-o-sparkles'),
+            ActionGroup::make([
+                Actions\Action::make('Toggle Tabs')
+                    ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
+                    ->tooltip('Toggle Filter Shortcuts')
+                    ->color($this->showTabs ? 'secondary' : 'primary')
+                    ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
+                    ->action('toggleTabs'),
+                PrintAction::make(),
+                ExcelImportAction::make()
+                    ->color("success"),
+            ])
         ];
     }
 
 
     protected function getTableQuery(): Builder
     {
-        $query = self::getOriginalTable();
+        //        if ($this->statusFilter) {
+//            $query->where('status', $this->statusFilter);
+//        }
 
-        if ($this->statusFilter) {
-            $query->where('status', $this->statusFilter);
-        }
-
-        return $query;
+        return self::getOriginalTable();
     }
 
 
@@ -229,59 +311,69 @@ class ListPaymentRequests extends ListRecords
     {
         return $table
             ->modifyQueryUsing(fn(Builder $query) => $query->authorizedForUser(auth()->user()))
-            ->defaultGroup('department_id')
             ->emptyStateIcon('heroicon-o-bookmark')
             ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->filters([
-                AdminOrder::filterCreatedAt(),
-                Admin::filterByCurrency(),
                 Admin::filterByDepartment(),
+                Admin::filterByCostCenter(),
                 Admin::filterByTypeOfPayment(),
+                Admin::filterByReason(),
+                Admin::filterByCurrency(),
+                Admin::filterBySupplier(),
+                Admin::filterByContractor(),
+                Admin::filterByBeneficiary(),
+                Admin::filterByUpcomingDeadline(),
+                Admin::filterByStatus(),
+                AdminOrder::filterCreatedAt(),
+                Admin::filterByCaseNumber(),
+                Admin::filterByPaymentMethod(),
+                Admin::filterByBankName(),
                 AdminOrder::filterSoftDeletes(),
-            ])
+
+            ], layout: FiltersLayout::AboveContentCollapsible)
             ->headerActions($this->getTableHeaderActions())
             ->filtersFormColumns(5)
             ->filtersFormWidth(MaxWidth::FourExtraLarge)
-            ->recordClasses(fn(Model $record) => !isset($record->order_id) ? ($record->department_id != 6 ? 'major-row' : 'bg-light-blue') : '')
+            ->recordClasses(fn(Model $record) => Admin::changeBgColor($record))
             ->searchDebounce('1000ms')
             ->groupingSettingsInDropdownOnDesktop()
-            ->paginated([10, 15, 20])
+            ->paginated([20, 30, 40])
             ->actions([
-                ViewAction::make(),
-                EditAction::make(),
-                ReplicateAction::make()
-                    ->visible(fn(Model $record) => ($record->order_id !== null) || ($record->proforma_invoice_number === null))
-                    ->color('info')
-                    ->modalWidth(MaxWidth::Medium)
-                    ->modalIcon('heroicon-o-clipboard-document-list')
-                    ->record(fn(Model $record) => $record)
-                    ->requiresConfirmation()
-                    ->modalHeading('Notice')
-                    ->modalDescription(fn(Model $record) => optional($record->department)->code === 'CX' ?
-                        'Replicating this payment request will create a new record for the same order. To attach it to a different order, use either Smart Payment from \'Order Module\' or create a new payment request.' :
-                        'Are you sure you want to replicate payment request ' . $record->reference_number . '?'
-                    )
-                    ->modalSubmitActionLabel('Replicate')
-                    ->mutateRecordDataUsing(function (array $data): array {
-                        $data['user_id'] = auth()->id();
-                        return $data;
-                    })
-                    ->beforeReplicaSaved(fn(Model $replica) => $replica->status = 'pending')
-                    ->after(fn(Model $replica) => Admin::syncPaymentRequest($replica))
-                    ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.payment-requests.edit', ['record' => $replica->id,])),
-                DeleteAction::make()
-                    ->hidden(fn(?Model $record) => $record ? $record->payments->isNotEmpty() : false)
-                    ->successNotification(fn(Model $record) => Admin::send($record)),
-                RestoreAction::make(),
                 ActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    ReplicateAction::make()
+                        ->visible(fn(Model $record) => ($record->order_id !== null) || ($record->proforma_invoice_number === null))
+                        ->color('info')
+                        ->modalWidth(MaxWidth::Medium)
+                        ->modalIcon('heroicon-o-clipboard-document-list')
+//                    ->record(fn(Model $record) => $record)
+                        ->requiresConfirmation()
+                        ->modalHeading('Notice')
+                        ->modalDescription(fn(Model $record) => optional($record->department)->code === 'CX' ?
+                            'Replicating this payment request will create a new record for the same order. To attach it to a different order, use either Smart Payment from \'Order Module\' or create a new payment request.' :
+                            'Are you sure you want to replicate payment request ' . $record->reference_number . '?'
+                        )
+                        ->modalSubmitActionLabel('Replicate')
+                        ->mutateRecordDataUsing(function (array $data): array {
+                            $data['user_id'] = auth()->id();
+                            return $data;
+                        })
+                        ->beforeReplicaSaved(fn(Model $replica) => $replica->status = 'pending')
+                        ->after(fn(Model $replica) => Admin::syncPaymentRequest($replica))
+                        ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.payment-requests.edit', ['record' => $replica->id,])),
+                    DeleteAction::make()
+                        ->hidden(fn(?Model $record) => $record ? $record->payments->isNotEmpty() : false)
+                        ->successNotification(fn(Model $record) => Admin::send($record)),
+                    RestoreAction::make(),
                     Admin::allowRecord(),
                     Admin::approveRecord(),
                     Admin::processRecord(),
                     Admin::rejectRecord()
+//                    ->color('secondary')
+//                    ->tooltip('⇄ Change Status')
+//                    ->visible(fn($record) => $record->status === 'pending')
                 ])
-                    ->color('secondary')
-                    ->tooltip('⇄ Change Status')
-                    ->visible(fn($record) => $record->status === 'pending')
             ], position: $this->showActionsAhead ? ActionsPosition::BeforeCells : ActionsPosition::AfterCells)
             ->bulkActions([
                 BulkActionGroup::make([
@@ -313,33 +405,29 @@ class ListPaymentRequests extends ListRecords
     {
         return $table
             ->columns([
+                Stack::make([
+                    Split::make([
+                        Admin::showID(),
+                        Admin::showDepartment(),
+                        Admin::showBeneficiaryName(),
+                        Admin::showDeadline(),
+                        Admin::showStatus(),
+                    ]),
+                ])->space(3),
                 Split::make([
-                    Panel::make([
+                    Split::make([
                         Stack::make([
-                            Split::make([
-                                Admin::showID(),
-                                Admin::showDepartment(),
-                                Admin::showReferenceNumber(),
-                                Admin::showInvoiceNumber(),
-                                Admin::showPart(),
-                                Admin::showReasonForPayment(),
-                                Admin::showType(),
-                            ]),
-                            Split::make([
-                                Admin::showBeneficiaryName(),
-                                Admin::showBankName(),
-                                Admin::showAccountNumber(),
-                                Admin::showStatus(),
-                            ]),
-                            Split::make([
-                                Admin::showPayableAmount(),
-                                Admin::showDeadline(),
-                                TableObserver::showMissingData(-6)
-                            ]),
-                        ])->space(2),
-                    ])
-                ])->columnSpanFull(),
-                Admin::showTimeStamp()
+                            Admin::showType(),
+                            Admin::showReasonForPayment(),
+                        ])->grow(false),
+                        Stack::make([
+                            Admin::showPayableAmount(),
+                            Admin::showAccountNumber(),
+                        ])->grow(false),
+                        Admin::showPart(),
+                        Admin::showCaseNumber(),
+                    ])->columnSpan(3),
+                ])->collapsible(),
             ]);
     }
 
@@ -350,9 +438,9 @@ class ListPaymentRequests extends ListRecords
 
         $columns = [
             Admin::showID(),
+            Admin::showStatus(),
             Admin::showDepartment(),
             Admin::showCostCenter(),
-            Admin::showStatus(),
             Admin::showType(),
             Admin::showReasonForPayment(),
             Admin::showPayableAmount(),

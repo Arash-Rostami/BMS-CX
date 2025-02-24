@@ -139,11 +139,6 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar, 
         return $this->hasMany(Order::class, 'user_id');
     }
 
-    public function orderRequests()
-    {
-        return $this->hasMany(OrderRequest::class);
-    }
-
     public function packagings()
     {
         return $this->hasMany(Packaging::class, 'user_id');
@@ -183,7 +178,13 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar, 
     public static function isAdmin()
     {
         $user = auth()->user();
-        return $user && $user->role === 'Admin';
+        return $user && $user->role === 'admin';
+    }
+
+    public static function isManager()
+    {
+        $user = auth()->user();
+        return $user && $user->role === 'manager';
     }
 
     public static function isUserAuthorizedForOrderStatus()
@@ -261,6 +262,13 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar, 
     public function scopeExcludeRoles($query, $roles)
     {
         return $query->whereNotIn('role', $roles);
+    }
+
+    public static function getByDepAndPos($department, $position)
+    {
+        return self::where('info->position', $position)
+            ->where('info->department', $department)
+            ->get();
     }
 
     public static function getUsersByRole($role)

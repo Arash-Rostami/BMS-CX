@@ -3,11 +3,16 @@
 <head>
     {{--All meta tags--}}
     <x-meta> @yield('title')</x-meta>
-    {{--Css config--}}
-    @vite('resources/css/app.css')
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
     @yield('css')
+    @yield('headJS')
 </head>
 <body class="antialiased">
-    @yield('main')
+
+    @yield('content')
+
+    @livewireScripts
+    @stack('scripts')
 </body>
 </html>

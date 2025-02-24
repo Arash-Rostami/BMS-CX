@@ -18,6 +18,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Tables\Columns\CheckboxColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Filament\Tables\Columns\ToggleColumn;
@@ -27,6 +28,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Wallo\FilamentSelectify\Components\ToggleButton;
+use function PHPUnit\Framework\isEmpty;
+use function PHPUnit\Framework\isNull;
 
 class Admin
 {
@@ -57,6 +60,20 @@ class Admin
     }
 
     /**
+     * @return CheckboxColumn
+     */
+    public static function showMarkdown(): CheckboxColumn
+    {
+        return CheckboxColumn::make('extra.use_markdown')
+            ->label('Markdown')
+            ->tooltip(fn(Model $record, $state) => $state
+                ? 'This request was created and managed by ' . $record->user->full_name . '.'
+                : 'This request was processed automatically by the BMS system.')
+            ->disabled()
+            ->grow(false);
+    }
+
+    /**
      * @return TextColumn
      */
     public static function showTitle(): TextColumn
@@ -76,6 +93,7 @@ class Admin
         return TextColumn::make('origin_port')
             ->label('Origin Port')
             ->badge()
+            ->default('N/A')
             ->grow(false)
             ->color('warning')
             ->searchable()
@@ -91,6 +109,7 @@ class Admin
         return TextColumn::make('destination_port')
             ->label('Destination Port')
             ->badge()
+            ->default('N/A')
             ->color('success')
             ->searchable()
             ->toggleable()
@@ -105,7 +124,8 @@ class Admin
         return TextColumn::make('container_type')
             ->label('Container Type')
             ->color('gray')
-            ->grow()
+            ->default('N/A')
+            ->grow(false)
             ->size(TextColumnSize::ExtraSmall)
             ->words(7)
             ->searchable()
@@ -114,11 +134,11 @@ class Admin
     }
 
     /**
-     * @return ToggleColumn|string|null
+     * @return CheckboxColumn
      */
-    public static function showSwitchBL(): ToggleColumn
+    public static function showSwitchBL(): CheckboxColumn
     {
-        return ToggleColumn::make('requires_switch_bl')
+        return CheckboxColumn::make('requires_switch_bl')
             ->disabled()
             ->label('Switch BL');
     }
@@ -132,6 +152,7 @@ class Admin
             ->searchable()
             ->grow(false)
             ->alignRight()
+            ->default('N/A')
             ->badge()
             ->color('secondary')
             ->toggleable()
@@ -149,7 +170,7 @@ class Admin
             ->grow(false)
             ->alignRight()
             ->color('secondary')
-            ->formatStateUsing(fn(string $state) => Packaging::find($state)->name)
+            ->formatStateUsing(fn(string $state) => Packaging::find($state)->name ?? 'N/A')
             ->sortable()
             ->toggleable();
     }
@@ -162,6 +183,7 @@ class Admin
         return TextColumn::make('gross_weight')
             ->label('Gross Weight')
             ->badge()
+            ->default('N/A')
             ->color('secondary')
             ->searchable()
             ->toggleable()
@@ -177,6 +199,7 @@ class Admin
             ->badge()
             ->color('secondary')
             ->searchable()
+            ->default('N/A')
             ->toggleable()
             ->sortable();
     }
@@ -189,6 +212,7 @@ class Admin
         return TextColumn::make('target_of_rate')
             ->label('Target Rate')
             ->badge()
+            ->default('N/A')
             ->toggleable()
             ->sortable();
     }
@@ -201,6 +225,7 @@ class Admin
         return TextColumn::make('target_thc')
             ->label('Target THC')
             ->badge()
+            ->default('N/A')
             ->toggleable()
             ->sortable();
     }
@@ -213,6 +238,7 @@ class Admin
         return TextColumn::make('target_local_charges')
             ->label('Target Local Charges')
             ->badge()
+            ->default('N/A')
             ->toggleable()
             ->sortable();
     }
@@ -225,6 +251,7 @@ class Admin
         return TextColumn::make('target_switch_bl_fee')
             ->label('Target Switch BL Fee')
             ->badge()
+            ->default('N/A')
             ->toggleable()
             ->sortable();
     }
@@ -238,8 +265,8 @@ class Admin
             ->date()
             ->color('danger')
             ->tooltip('Valid until ')
+            ->grow(false)
             ->formatStateUsing(fn($state) => getTableDesign() == 'modern' ? "Valid until: $state" : $state)
-            ->alignRight()
             ->size(TextColumnSize::Small)
             ->toggleable()
             ->sortable();
@@ -250,7 +277,7 @@ class Admin
      */
     public static function showRequester(): TextColumn
     {
-        return TextColumn::make('user.fullName')
+        return TextColumn::make('user.full_name')
             ->label('Requester')
             ->color('gray')
             ->grow()

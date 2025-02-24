@@ -25,7 +25,7 @@ class TableObserver
             })
             ->icon(fn($state): string => 'heroicon-s-puzzle-piece')
             ->color(fn($state) => $state == 'None' ? 'success' : 'danger')
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 
@@ -57,7 +57,7 @@ class TableObserver
             })
             ->icon(fn($state): string => 'heroicon-s-puzzle-piece')
             ->color(fn($state) => $state == 'None' ? 'success' : 'danger')
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 

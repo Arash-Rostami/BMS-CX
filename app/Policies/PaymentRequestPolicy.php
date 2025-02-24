@@ -92,9 +92,19 @@ class PaymentRequestPolicy
             if ($record->getOriginal('status') === 'approved') {
                 return true;  // Accountant CANNOT update any status
             }
+
+            if ($record->getOriginal('department_id') == 6) {
+                return !in_array($status, ['approved', 'rejected']);
+            }
             return !in_array($status, ['allowed', 'rejected']);
         }
 
+        if (isUserCXHead()) {
+            if ($record->getOriginal('department_id') == 6) {
+                return !in_array($status, ['allowed', 'rejected', 'cancelled']);
+            }
+            return true;
+        }
 
         if (isUserAgent()) {
             return $status !== 'cancelled';  // Agents CANNOT update any status except 'cancelled'

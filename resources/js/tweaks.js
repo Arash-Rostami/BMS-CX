@@ -1,41 +1,3 @@
-//
-// function loadSortable(callback) {
-//     console.log('hi from load sortable');
-//
-//     if (typeof Sortable !== 'undefined') {
-//         console.log('Sortable.js is already loaded');
-//         callback();
-//         return;
-//     }
-//     var script = document.createElement('script');
-//     script.src = 'https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js';
-//     script.onload = function () {
-//         console.log('Sortable.js has been loaded');
-//         callback();
-//     };
-//     script.onerror = function () {
-//         console.error('Failed to load Sortable.js');
-//     };
-//     document.head.appendChild(script);
-// }
-//
-// function initializeSortable() {
-//     var el = document.querySelector('tr');
-//     if (el) {
-//         var sortable = new Sortable(el, {
-//             animation: 150,
-//             ghostClass: 'sortable-ghost',
-//             handle: '.draggable-column',
-//             onEnd: function (evt) {
-//                 var item = evt.item;
-//                 console.log('Column moved', item);
-//             },
-//         });
-//     } else {
-//         console.error('Table header row not found');
-//     }
-// }
-
 // show table minus of summary in red color
 window.addEventListener('DOMContentLoaded', function () {
     if (!window.location.href.includes('orders')) return;
@@ -47,7 +9,6 @@ window.addEventListener('DOMContentLoaded', function () {
     }, 2000);
 
 });
-
 
 // overlay logic
 window.addEventListener('DOMContentLoaded', function () {
@@ -88,7 +49,6 @@ window.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('afterprint', checkOrientation);
 });
 
-
 // scrolling tables
 
 window.addEventListener('livewire:initialized', function () {
@@ -115,7 +75,6 @@ window.addEventListener('livewire:initialized', function () {
     window.addEventListener('toggleFullScreen', toggleFullScreen);
 })
 
-
 // Banner r-to-l
 document.addEventListener('DOMContentLoaded', () => {
     const richEditor = document.getElementById('rich-editor');
@@ -137,3 +96,39 @@ document.addEventListener('DOMContentLoaded', () => {
         return farsiRegex.test(text);
     }
 });
+
+// PR auto processing wizard
+document.addEventListener('DOMContentLoaded', () => {
+    let nextWizard = () => {
+        let nextButton = document.querySelector('#next-step-button');
+        if (nextButton) {
+            nextButton.click();
+        }
+    }
+    window.addEventListener('triggerNext', () => nextWizard());
+});
+
+// Allow download of Payment Attachments
+document.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('open-new-tab', event => {
+        const urls = Array.isArray(event.detail) ? event.detail.flat() : [];
+        let index = 0;
+
+        function openNextUrl() {
+            if (index >= urls.length) return;
+            window.open(urls[index], '_blank');
+            index++;
+            setTimeout(openNextUrl, 1000);
+        }
+
+        openNextUrl();
+    });
+});
+
+
+// Listen for the "refreshPage" event and reload the page
+window.addEventListener('refreshPage', function () {
+    window.location.reload(true);
+});
+
+

@@ -25,7 +25,6 @@ class NotificationSubscriptionResource extends Resource
     protected static ?int $navigationSort = 11;
 
 
-
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form
@@ -89,5 +88,10 @@ class NotificationSubscriptionResource extends Resource
         return [
             'index' => Operational\NotificationSubscriptionResource\Pages\ManageNotificationSubscriptions::route('/'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\RelationMana
 
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\Admin;
+use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\ListProformaInvoices;
 use App\Filament\Resources\ProformaInvoiceResource;
 use App\Models\Order;
 use App\Models\ProformaInvoice;
@@ -11,12 +12,33 @@ use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
+use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
 class ProformaInvoiceRelationManager extends RelationManager
 {
     protected static string $relationship = 'proformaInvoices';
+
+    public function scrollLeft()
+    {
+        $this->dispatch('scrollLeft');
+    }
+
+    public function scrollRight()
+    {
+        $this->dispatch('scrollRight');
+    }
+
+    public function toggleFullScreen()
+    {
+        $this->dispatch('toggleFullScreen');
+    }
+
+    public function clearTableSort()
+    {
+        $this->dispatch('clearTableSort');
+    }
 
     public function form(Form $form): Form
     {
@@ -47,6 +69,7 @@ class ProformaInvoiceRelationManager extends RelationManager
                     ? $ownRecord->associatedProformaInvoices()
                     : $ownRecord->order->proformaInvoice();
             })
+            ->recordClasses(fn(Model $record) => isShadeSelected('proforma-table'))
             ->filters([
                 Admin::filterProforma(),
                 AdminOrder::filterSoftDeletes()
@@ -61,12 +84,7 @@ class ProformaInvoiceRelationManager extends RelationManager
                         return ProformaInvoiceResource::getUrl('edit', ['record' => $record->id]);
                     }, shouldOpenInNewTab: true),
             ])
-            ->headerActions([
-                Tables\Actions\CreateAction::make()
-                    ->label('New')
-                    ->icon('heroicon-m-arrow-top-right-on-square')
-                    ->url(fn() => ProformaInvoiceResource::getUrl('create'), shouldOpenInNewTab: true),
-            ])
-            ->poll(30);
+            ->headerActions((new ListProformaInvoices())->getTableHeaderActions())
+            ->poll('30s');
     }
 }

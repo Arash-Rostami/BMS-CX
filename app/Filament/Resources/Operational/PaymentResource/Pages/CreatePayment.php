@@ -10,6 +10,7 @@ use App\Models\PaymentRequest;
 use App\Models\User;
 use App\Services\Notification\PaymentService;
 use App\Services\NotificationManager;
+use App\Services\SmartPayment;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,11 +19,22 @@ class CreatePayment extends CreateRecord
 {
     protected static string $resource = PaymentResource::class;
 
+    public ?array $id = null;
+    public ?string $module = null;
+
+    protected array $queryString = ['id', 'module'];
+
+
+    protected function afterFill(): void
+    {
+        SmartPayment::fillForm($this->id, $this->module, $this->form);
+    }
+
 
     protected function handleRecordCreation(array $data): Model
     {
         $paymentRequests = PaymentRequest::with('payments.paymentRequests')
-            ->findMany(data_get($data, 'paymentRequests.id'));
+            ->findMany(data_get($data, 'paymentRequests'));
 
         $data = $this->processPaymentRequest($paymentRequests, $data);
 

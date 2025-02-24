@@ -2,8 +2,12 @@
 
 namespace App\Providers;
 
+use App\Events\BalanceApprovedEvent;
+use App\Events\BalanceRejectedEvent;
 use App\Events\ChatMessageCreated;
 use App\Events\ChatMessageUpdated;
+use App\Listeners\BalanceApprovedListener;
+use App\Listeners\BalanceRejectedListener;
 use App\Listeners\SendChatNotification;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -27,15 +31,19 @@ class EventServiceProvider extends ServiceProvider
         ChatMessageUpdated::class => [
             SendChatNotification::class,
         ],
+        BalanceApprovedEvent::class => [
+            BalanceApprovedListener::class,
+        ],
+        BalanceRejectedEvent::class => [
+            BalanceRejectedListener::class,
+        ],
     ];
 
     /**
      * Register any events for your application.
      */
     public function boot(): void
-    {
-        //
-    }
+    {}
 
     /**
      * Determine if events and listeners should be automatically discovered.

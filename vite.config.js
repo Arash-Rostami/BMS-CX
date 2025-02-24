@@ -8,7 +8,8 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/css/main-fonts.css',
                 'resources/css/filament/admin/theme.css',
-                'resources/js/app.js'],
+                'resources/js/app.js'
+            ],
             refresh: true,
         }),
     ],

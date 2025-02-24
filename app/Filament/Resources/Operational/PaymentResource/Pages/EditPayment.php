@@ -3,17 +3,12 @@
 namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 
 use App\Filament\Resources\PaymentResource;
-use App\Models\User;
-use App\Notifications\FilamentNotification;
 use App\Services\Notification\PaymentService;
-use App\Services\NotificationManager;
-use App\Services\PaymentRequestService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 

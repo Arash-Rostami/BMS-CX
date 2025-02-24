@@ -14,9 +14,12 @@ use Filament\Support\Enums\FontFamily;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\Summarizers\Count;
+use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
@@ -80,12 +83,12 @@ trait Table
     {
         return TextColumn::make('order.part')
             ->label('Part')
-            ->grow(false)
-            ->state(fn(Model $record) => $record->order?->part ? $record->order->part : ($record->department->code != 'CX' ? '🌐' : '⭐'))
+            ->state(fn(Model $record) => $record->order?->part ? (isModernDesign() ? 'Part: ' . $record->order->part : $record->order->part) : ($record->department->code != 'CX' ? '🌐' : '⭐'))
             ->tooltip(fn(Model $record) => $record->order_id
                 ? ($record->order->logistic->booking_number ?? 'Booking Number Unavailable')
                 : ($record->order->proformaInvoice->proforma_number ?? 'No Booking Number')
             )
+            ->hidden(fn($record) => !(($record != null && $record->department_id == 6)))
             ->badge()
             ->color(fn(Model $record) => !($record->order_id) ? 'secondary' : 'secondary');
     }
@@ -98,7 +101,7 @@ trait Table
         return TextColumn::make('type_of_payment')
             ->label('Payment Type')
             ->grow(false)
-            ->formatStateUsing(fn($state) => ucwords($state))
+            ->formatStateUsing(fn($state) => isModernDesign() ? 'Type: ' . ucwords($state) : ucwords($state))
             ->sortable()
             ->searchable()
             ->badge();
@@ -163,14 +166,46 @@ trait Table
     /**
      * @return TextColumn
      */
+
     public static function showCaseNumber(): TextColumn
     {
-        return TextColumn::make('extra.caseNumber')
+        return TextColumn::make('case_number')
             ->label('Case/Contract No.')
-            ->grow(false)
-            ->searchable()
+            ->tooltip('Case/Project No')
+            ->state(function (Model $record) {
+                $caseNumber = $record->case_number;
+
+                if ($caseNumber !== null) {
+                    return $caseNumber;
+                }
+
+                $contractNumber = $record?->associatedProformaInvoices?->first()?->contract_number;
+                if ($contractNumber) {
+                    return $contractNumber;
+                }
+
+                $invoiceNumber = $record->order?->invoice_number;
+                if ($invoiceNumber) {
+                    return $invoiceNumber;
+                }
+
+                return $record->sequential_id ?? 'Undefined Case No.';
+            })
             ->color('secondary')
-            ->badge();
+            ->badge()
+            ->grow(false)
+            ->searchable(query: function ($query, $search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('case_number', 'like', "%{$search}%")
+                        ->orWhere('sequential_id', 'like', "%{$search}%")
+                        ->orWhereHas('associatedProformaInvoices', function ($query) use ($search) {
+                            $query->where('contract_number', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('order', function ($query) use ($search) {
+                            $query->where('invoice_number', 'like', "%{$search}%");
+                        });
+                });
+            });
     }
 
 
@@ -182,8 +217,10 @@ trait Table
         return TextColumn::make('reason.reason')
             ->label('Reason')
             ->sortable()
+            ->formatStateUsing(fn($state) => isModernDesign() ? 'Reason: ' . $state : $state)
             ->searchable()
             ->badge()
+            ->grow(false)
             ->limit(20)
             ->tooltip(fn($record) => $record->reason->reason);
     }
@@ -206,19 +243,7 @@ trait Table
                     ?? null;
             })->tooltip('Beneficiary Name')
             ->toggleable()
-            ->searchable(query: function (Builder $query, string $search): Builder {
-                return $query->where(function ($query) use ($search) {
-                    $query->whereHas('contractor', function ($subQuery) use ($search) {
-                        $subQuery->where('name', 'like', '%' . $search . '%');
-                    })
-                        ->orWhereHas('supplier', function ($subQuery) use ($search) {
-                            $subQuery->where('name', 'like', '%' . $search . '%');
-                        })
-                        ->orWhereHas('beneficiary', function ($subQuery) use ($search) {
-                            $subQuery->where('name', 'like', '%' . $search . '%');
-                        });
-                });
-            })
+            ->searchable(query: fn(Builder $query, string $search) => PaymentRequest::searchBeneficiaries($query, $search))
             ->limit(25)
             ->badge();
     }
@@ -293,7 +318,7 @@ trait Table
      */
     public static function showPayableAmount(): TextColumn
     {
-        return TextColumn::make('requested_amount')
+        $col = TextColumn::make('requested_amount')
             ->label('Payable Amount')
             ->color('warning')
             ->grow(false)
@@ -301,6 +326,29 @@ trait Table
             ->sortable()
             ->toggleable()
             ->badge();
+//
+//        if (request()->url() === route('filament.admin.resources.payment-requests.index')) {
+//            $col->summarize(
+//                Summarizer::make()
+//                    ->label('Total Requested Amount')
+//                    ->using(fn(QueryBuilder $query) => self::calculateRequestedAmountSum($query))
+//            );
+//        }
+        return $col;
+    }
+
+    private static function calculateRequestedAmountSum(QueryBuilder $query): string
+    {
+        $currencies = $query->select('currency')->distinct()->pluck('currency');
+
+        // If all currencies are the same, calculate the sum
+        if ($currencies->count() === 1) {
+            $sum = $query->sum('requested_amount');
+            return number_format($sum) . ' ' . $currencies->first();
+        }
+
+        // If multiple currencies, return a message
+        return 'Multiple currencies';
     }
 
     /**
@@ -309,13 +357,27 @@ trait Table
     public static function showDeadline(): TextColumn
     {
         return TextColumn::make('deadline')
-            ->color('danger')
             ->dateTime()
             ->sortable()
             ->badge()
             ->tooltip(fn(?Model $record) => self::showRemainingDays($record))
             ->toggleable(isToggledHiddenByDefault: false)
-            ->formatStateUsing(fn(string $state): string => '📅 Deadline: ' . Carbon::parse($state)->format('M j, Y'));
+            ->formatStateUsing(fn(string $state): string => '📅 Deadline: ' . Carbon::parse($state)->format('M j, Y'))
+            ->color(function (?Model $record): string {
+                if (!$record || !$record->deadline || !in_array($record->status, ['pending', 'allowed', 'approved'])) {
+                    return 'secondary';
+                }
+                $deadline = Carbon::parse($record->deadline);
+                $diffInDays = now()->diffInDays($deadline, false);
+
+                if ($diffInDays < 0) {
+                    return 'danger';
+                } elseif ($diffInDays <= 3) {
+                    return 'warning';
+                } else {
+                    return 'success';
+                }
+            });
     }
 
     /**
@@ -387,6 +449,7 @@ trait Table
             ->label('Account Number')
             ->color('info')
             ->fontFamily(FontFamily::Mono)
+            ->formatStateUsing(fn($state) => isModernDesign() ? 'Type: ' . ucwords($state) : ucwords($state))
             ->copyable()
             ->copyMessage('🗐 Account No. Copied')
             ->copyMessageDuration(1500)
@@ -410,6 +473,7 @@ trait Table
                 'cash' => 'Payment Method: Cash',
                 default => 'Payment Method: Unlisted',
             })
+            ->grow(false)
             ->sortable()
             ->toggleable()
             ->searchable()
@@ -495,7 +559,7 @@ trait Table
             ->label('Made By')
             ->tooltip(fn(Model $record) => $record->created_at)
             ->color('secondary')
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->searchable(query: function (Builder $query, string $search): Builder {
                 return $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.made_by')) LIKE ?", ["%{$search}%"]);
             })
@@ -513,7 +577,7 @@ trait Table
         return TextColumn::make('extra.statusChangeInfo.changed_by')
             ->tooltip(fn(Model $record) => Arr::get($record->extra, 'statusChangeInfo.changed_at', 'No status change recorded'))
             ->label('Status Changed By')
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->searchable(query: function (Builder $query, string $search): Builder {
                 return $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.statusChangeInfo.changed_by')) LIKE ?", ["%{$search}%"]);
             })
@@ -610,7 +674,7 @@ trait Table
     {
         return TextEntry::make('beneficiary_address')
             ->label('Beneficiary Address')
-            ->columnSpanFull()
+//            ->columnSpanFull()
             ->color('secondary')
             ->badge();
     }
@@ -621,6 +685,27 @@ trait Table
     public static function viewDepartment(): TextEntry
     {
         return TextEntry::make('department.code')
+            ->color('secondary')
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewRequester(): TextEntry
+    {
+        return TextEntry::make('extra.made_by')
+            ->label('Requester')
+            ->color('secondary')
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewCostCenter(): TextEntry
+    {
+        return TextEntry::make('costCenter.name')
             ->color('secondary')
             ->badge();
     }
@@ -640,11 +725,33 @@ trait Table
     /**
      * @return TextEntry
      */
+    public static function viewCreationTime(): TextEntry
+    {
+        return TextEntry::make('created_at')
+            ->label('Created')
+            ->color('secondary')
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewStatusChanger(): TextEntry
+    {
+        return TextEntry::make('extra.statusChangeInfo.changed_by')
+            ->label('Status Change')
+            ->color('secondary')
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
     public static function viewBankAddress(): TextEntry
     {
         return TextEntry::make('bank_address')
             ->label('Bank Address')
-            ->columnSpanFull()
+//            ->columnSpanFull()
             ->color('secondary')
             ->badge();
     }
@@ -676,6 +783,7 @@ trait Table
                 'sheba' => 'Payment Method: SHEBA',
                 'card_transfer' => 'Payment Method: Card Transfer',
                 'bank_account' => 'Payment Method: Bank Account',
+                'cash' => 'Payment Method: Cash',
                 default => 'Payment Method: Unlisted',
             })
             ->badge();

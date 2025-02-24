@@ -658,15 +658,15 @@ class ViewOrder extends ViewRecord
      */
     protected function formatPayslip(Model $record): string
     {
-        if (!$record->orderDetail || !$record->orderDetail->extra) {
+        if (!$record->orderDetail) {
             return 'N/A';
         }
 
-        $extra = $record->orderDetail->extra;
-        $paid = ($extra['initialPayment'] ?? 0) + ($extra['provisionalTotal'] ?? 0) + ($extra['finalTotal'] ?? 0);
+        $extra = $record->orderDetail;
+        $paid = ($extra->initial_payment ?? 0) + ($extra->provisional_total ?? 0) + ($extra->final_total ?? 0);
         return sprintf(
             '%s %s',
-            $extra['currency'] ?? '',
+            $extra->currency ?? '',
             numberify(($paid) ?? 0),
         );
     }

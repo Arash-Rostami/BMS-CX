@@ -15,15 +15,24 @@ class OrderDetail extends Model
     protected $table = 'order_details';
 
 
+
     protected $fillable = [
         'buying_quantity',
-        'initial_quantity',
         'provisional_quantity',
         'final_quantity',
         'buying_price',
-        'initial_price',
         'provisional_price',
         'final_price',
+        'currency',
+        'remaining',
+        'payment',
+        'initial_payment',
+        'provisional_payment',
+        'total',
+        'initial_total',
+        'provisional_total',
+        'final_total',
+        'payable_quantity',
         'extra',
         'user_id',
     ];
@@ -200,7 +209,8 @@ class OrderDetail extends Model
     {
         if ($this->order && $this->order->paymentRequests && !$this->order->paymentRequests->isEmpty()) {
             return $this->order->paymentRequests->contains(function ($paymentRequest) {
-                return in_array($paymentRequest->status, ['approved', 'allowed', 'processing', 'completed']);
+                return in_array($paymentRequest->status, ['approved', 'allowed', 'processing', 'completed'])
+                    && $paymentRequest->currency == $this->order->currency;
             });
         }
         return false;

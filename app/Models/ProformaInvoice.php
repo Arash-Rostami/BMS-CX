@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 
 class ProformaInvoice extends Model
@@ -29,6 +30,7 @@ class ProformaInvoice extends Model
         'proforma_date',
         'contract_number',
         'user_id',
+        'assignee_id',
         'category_id',
         'product_id',
         'buyer_id',
@@ -131,7 +133,7 @@ class ProformaInvoice extends Model
         )
             ->whereNull('order_id')
             ->whereNull('deleted_at')
-            ->whereIn('status', ['approved', 'allowed']);
+            ->whereNotIn('status', ['pending', 'cancelled', 'rejected']);
     }
 
     public function product()
@@ -142,6 +144,11 @@ class ProformaInvoice extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class, 'supplier_id');
+    }
+
+    public function assignee()
+    {
+        return $this->belongsTo(User::class, 'assignee_id');
     }
 
     public function user()
@@ -298,5 +305,278 @@ class ProformaInvoice extends Model
             optional($this->grade)->name ?? 'N/A',
             $this->reference_number ?? 'N/A'
         );
+    }
+
+    public static function getTabCounts(): array
+    {
+        $userId = auth()->id();
+        return Cache::remember("proforma_invoice_tab_counts_{$userId}", 60, function () use ($userId) {
+            return self::select(
+                DB::raw('COUNT(*) as total'),
+                DB::raw('COUNT(CASE WHEN status = "approved" THEN 1 END) as approved_count'),
+                DB::raw('COUNT(CASE WHEN status = "rejected" THEN 1 END) as rejected_count'),
+                DB::raw('COUNT(CASE WHEN status = "fulfilled" THEN 1 END) as fulfilled_count'),
+                DB::raw('COUNT(CASE WHEN category_id = "1" THEN 1 END) as mineral_count'),
+                DB::raw('COUNT(CASE WHEN category_id = "2" THEN 1 END) as polymers_count'),
+                DB::raw('COUNT(CASE WHEN category_id = "3" THEN 1 END) as chemicals_count'),
+                DB::raw('COUNT(CASE WHEN category_id = "4" THEN 1 END) as petro_count'),
+                DB::raw('COUNT(CASE WHEN buyer_id = "5" THEN 1 END) as persore_count'),
+                DB::raw('COUNT(CASE WHEN buyer_id = "2" THEN 1 END) as paidon_count'),
+                DB::raw('COUNT(CASE WHEN buyer_id = "3" THEN 1 END) as zhuo_count'),
+                DB::raw('COUNT(CASE WHEN buyer_id = "4" THEN 1 END) as solsun_count'),
+            )
+                ->first()
+                ->toArray();
+        });
+    }
+
+    public function hasCompletedBalancePayment()
+    {
+        $proformaInvoiceId = $this->id;
+        $cacheKey = "hasCompletedBalancePayment_" . $proformaInvoiceId;
+
+        return Cache::remember($cacheKey, 300, function () use ($proformaInvoiceId) {
+            $sql = "
+            SELECT 1
+            FROM proforma_invoices pi
+            INNER JOIN orders o ON pi.id = o.proforma_invoice_id
+            WHERE EXISTS (
+                SELECT 1
+                FROM payment_requests pr
+                JOIN payment_payment_request ppr ON pr.id = ppr.payment_request_id
+                JOIN payments p ON ppr.payment_id = p.id
+                WHERE pr.status = 'completed'
+                AND pr.type_of_payment = 'balance'
+                AND pr.deleted_at IS NULL
+                AND p.deleted_at IS NULL
+                AND p.date < CURDATE() - INTERVAL 3 DAY
+                AND o.id = pr.order_id
+                GROUP BY pr.id, pr.requested_amount
+                HAVING SUM(p.amount) >= pr.requested_amount
+            )
+            AND NOT EXISTS (
+                SELECT 1
+                FROM attachments a
+                WHERE a.order_id = o.id
+                AND LOWER(a.name) LIKE '%telex-release%'
+            )
+            AND pi.id = ?
+            LIMIT 1
+        ";
+
+            $result = DB::select($sql, [$proformaInvoiceId]);
+
+            return !empty($result);
+        });
+    }
+
+    // DEPRECATED as they belonged to single filter QUERY
+//    public static function getLatestProformaDate(): ?string
+//    {
+//        return Cache::remember('latest_proforma_date', now()->addMinutes(15), function () {
+//            $latestProformaDate = self::whereNotNull('proforma_date')
+//                ->orderByDesc('proforma_date')
+//                ->value('proforma_date');
+//
+//            return $latestProformaDate ? Carbon::parse($latestProformaDate)->format('j F Y') : 'N/A';
+//        });
+//    }
+//    public static function getTotalQuantityByYearAndCategoryAndMonth($year, $category_id = null, $month = null): int
+//    {
+//        if (!$year || $year === 'all') {
+//            return 0;
+//        }
+//
+//        $monthCacheKey = is_array($month) ? implode('_', $month) : ($month ?? 'all');
+//        $categoryCacheKey = is_array($category_id) ? implode('_', $category_id) : ($category_id ?? 'all');
+//        $cacheKey = 'proforma_invoices_total_quantity_' . $year . '_' . $categoryCacheKey . '_' . $monthCacheKey;
+//
+//        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month) {
+//            $query = "SELECT SUM(quantity) AS total_quantity FROM proforma_invoices WHERE deleted_at IS NULL AND YEAR(proforma_date) = ?";
+//            $bindings = [$year];
+//
+//            if ($category_id) {
+//                $query .= is_array($category_id) ? " AND category_id IN (" . implode(',', array_fill(0, count($category_id), '?')) . ")" : " AND category_id = ?";
+//                $bindings = array_merge($bindings, (array)$category_id);
+//            }
+//
+//            if ($month && $month !== 'all') {
+//                if (is_array($month)) {
+//                    $query .= " AND MONTH(proforma_date) IN (" . implode(',', array_fill(0, count($month), '?')) . ")";
+//                    $bindings = array_merge($bindings, $month);
+//                } else {
+//                    $query .= " AND MONTH(proforma_date) = ?";
+//                    $bindings[] = $month;
+//                }
+//            }
+//
+//            $result = DB::selectOne($query, $bindings);
+//            return $result->total_quantity ?? 0;
+//        });
+//    }
+//    public static function getTotalQuantityWithBLDateByFilters($year, $category_id = null, $month = null): int
+//    {
+//        if (!$year || $year === 'all') {
+//            return 0;
+//        }
+//
+//        $cacheKey = 'proforma_invoices_total_quantity_with_bl_' . $year . '_' . ($category_id ?? 'all') . '_' . ($month ?? 'all');
+//
+//        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month) {
+//        return self::whereNull('deleted_at')
+//            ->whereHas('orders', function ($query) use ($year, $month) {
+//                $query->whereHas('doc', function ($subQuery) use ($year, $month) {
+//                    $subQuery->whereNotNull('BL_date')
+//                        ->when($year && $year !== 'all', fn($query) => $query->whereYear('BL_date', $year))
+//                        ->when($month && $month !== 'all', fn($query) => $query->whereMonth('BL_date', $month));
+//                });
+//            })
+//            ->when($category_id, fn($query) => $query->where('category_id', $category_id))
+//            ->sum('quantity') ?: 0;
+//        });
+//    }
+//    public static function getTotalQuantityWithBLDateByFilters($year, $category_id = null, $month = null): int
+//    {
+//        if (!$year || $year === 'all') {
+//            return 0;
+//        }
+//
+//        $monthCacheKey = is_array($month) ? implode('_', $month) : ($month ?? 'all');
+//        $categoryCacheKey = is_array($category_id) ? implode('_', $category_id) : ($category_id ?? 'all');
+//        $cacheKey = 'proforma_invoices_total_quantity_with_bl_' . $year . '_' . $categoryCacheKey . '_' . $monthCacheKey;
+//
+//
+//        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month) {
+//            return self::whereNull('deleted_at')
+//                ->whereHas('orders', function ($query) use ($year, $month) {
+//                    $query->whereHas('doc', function ($subQuery) use ($year, $month) {
+//                        $subQuery->whereNotNull('BL_date')
+//                            ->when($year && $year !== 'all', fn($query) => $query->whereYear('BL_date', $year))
+//                            ->when($month && $month !== 'all', function ($query) use ($month) {
+//                                if (is_array($month)) {
+//                                    $query->whereMonth('BL_date', $month[0]);
+//                                    foreach (array_slice($month, 1) as $monthValue) {
+//                                        $query->orWhereMonth('BL_date', $monthValue);
+//                                    }
+//                                } else {
+//                                    $query->whereMonth('BL_date', $month);
+//                                }
+//                            });
+//                    });
+//                })
+//                ->when($category_id, function ($query) use ($category_id) {
+//                    if (is_array($category_id)) {
+//                        $query->whereIn('category_id', $category_id);
+//                    } else {
+//                        $query->where('category_id', $category_id);
+//                    }
+//                })
+//                ->sum('quantity') ?: 0;
+//        });
+//    }
+
+    public static function getLatestProformaDate(): ?string
+    {
+        return Cache::remember('latest_proforma_date', now()->addMinutes(15), function () {
+            $query = "SELECT proforma_date FROM proforma_invoices WHERE proforma_date IS NOT NULL ORDER BY proforma_date DESC LIMIT 1";
+
+            $result = DB::selectOne($query);
+
+            return $result && $result->proforma_date
+                ? Carbon::parse($result->proforma_date)->format('j F Y')
+                : 'N/A';
+        });
+    }
+
+    public static function getTotalQuantityByYearAndCategoryAndMonth($year, $category_id = null, $month = null): int
+    {
+        if (!$year || $year === 'all') {
+            return 0;
+        }
+
+        $cacheKey = self::generateCacheKey('pi_total_quantity_', $month, $category_id, $year);
+
+        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month) {
+            $query = "SELECT SUM(quantity) AS total_quantity FROM proforma_invoices WHERE deleted_at IS NULL AND YEAR(proforma_date) = ?";
+            $bindings = [$year];
+
+            if ($category_id) {
+                $query .= is_array($category_id) ? " AND category_id IN (" . implode(',', array_fill(0, count($category_id), '?')) . ")" : " AND category_id = ?";
+                $bindings = array_merge($bindings, (array)$category_id);
+            }
+
+            if ($month && $month !== 'all') {
+                if (is_array($month)) {
+                    $query .= " AND MONTH(proforma_date) IN (" . implode(',', array_fill(0, count($month), '?')) . ")";
+                    $bindings = array_merge($bindings, $month);
+                } else {
+                    $query .= " AND MONTH(proforma_date) = ?";
+                    $bindings[] = $month;
+                }
+            }
+
+            $result = DB::selectOne($query, $bindings);
+            return $result->total_quantity ?? 0;
+        });
+    }
+
+    public static function getTotalQuantityWithBLDateByFilters($year, $category_id = null, $month = null): int
+    {
+        if (!$year || $year === 'all') {
+            return 0;
+        }
+
+        // Generate unique cache key
+        $cacheKey = self::generateCacheKey('pi_total_quantity_with_bl_', $month, $category_id, $year);
+
+        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month) {
+            $query = "
+            SELECT SUM(pi.quantity) AS total_quantity
+            FROM proforma_invoices pi
+            INNER JOIN orders o ON pi.id = o.proforma_invoice_id
+            INNER JOIN docs d ON o.doc_id = d.id
+            WHERE pi.deleted_at IS NULL
+              AND d.BL_date IS NOT NULL
+        ";
+
+            $bindings = [];
+            if ($year && $year !== 'all') {
+                $query .= " AND YEAR(d.BL_date) = ?";
+                $bindings[] = $year;
+            }
+
+            if ($month && $month !== 'all') {
+                if (is_array($month)) {
+                    $placeholders = implode(',', array_fill(0, count($month), '?'));
+                    $query .= " AND MONTH(d.BL_date) IN ($placeholders)";
+                    $bindings = array_merge($bindings, $month);
+                } else {
+                    $query .= " AND MONTH(d.BL_date) = ?";
+                    $bindings[] = $month;
+                }
+            }
+
+            if ($category_id) {
+                if (is_array($category_id)) {
+                    $placeholders = implode(',', array_fill(0, count($category_id), '?'));
+                    $query .= " AND pi.category_id IN ($placeholders)";
+                    $bindings = array_merge($bindings, $category_id);
+                } else {
+                    $query .= " AND pi.category_id = ?";
+                    $bindings[] = $category_id;
+                }
+            }
+
+            $result = DB::selectOne($query, $bindings);
+            return $result->total_quantity ?? 0;
+        });
+    }
+
+
+    private static function generateCacheKey($prefix, $month, $category_id, $year): string
+    {
+        $monthCacheKey = is_array($month) ? implode('_', $month) : ($month ?? 'all');
+        $categoryCacheKey = is_array($category_id) ? implode('_', $category_id) : ($category_id ?? 'all');
+        return $prefix . $year . '_' . $categoryCacheKey . '_' . $monthCacheKey;
     }
 }

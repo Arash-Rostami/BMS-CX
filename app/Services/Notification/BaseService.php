@@ -149,15 +149,48 @@ abstract class BaseService
 //        $cacheKey = 'subscribed_users:' . get_class($record) . ':' . $record->id;
 //
 //        return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($record) {
+
         $subscriptions = NotificationSubscription::where('notifiable_type', get_class($record))
             ->whereIn('notifiable_id', [0])
             ->get();
 
+        list($recordDepartments, $recordCostCenters) = $this->narrowToDepartmentOnly($record);
+
         return $subscriptions->map(function ($subscription) {
             $user = $subscription->user;
             $user->notificationPreferences = $subscription;
+            $user->department = (int)$user->info['department'] ?? null;
             return $user;
+        })->filter(function ($user) use ($recordDepartments, $recordCostCenters) {
+            return empty($recordDepartments) && empty($recordCostCenters)
+                ||
+                in_array($user->department, $recordDepartments)
+                ||
+                in_array($user->department, $recordCostCenters);
         })->unique('id');
+
+
 //        });
     }
+
+    /**
+     * @param $record
+     * @return array
+     */
+    protected function narrowToDepartmentOnly($record): array
+    {
+        $recordDepartments = [];
+        $recordCostCenters = [];
+
+        if (get_class($record) == "App\Models\Payment") {
+            $recordDepartments = $record->paymentRequests->pluck('department_id')->toArray();
+            $recordCostCenters = $record->paymentRequests->pluck('cost_center')->toArray();
+        } elseif (get_class($record) == "App\Models\PaymentRequest") {
+            $recordDepartments = [$record->department_id];
+            $recordCostCenters = [$record->cost_center];
+        }
+        return array($recordDepartments, $recordCostCenters);
+    }
+
+
 }

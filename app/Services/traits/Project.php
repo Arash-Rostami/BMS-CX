@@ -30,6 +30,7 @@ trait Project
         $details = self::computePaymentRequestDetails($paymentRequests, $details);
 
 
+
 //       Getting total records of Pro forma Invoices sharing similar payment requests optimally instead of => $proformaInvoices = ProformaInvoice::fetchApprovedProformas($details['allProformaNumber']);
         $proformaInvoices = ProformaInvoice::fetchActiveApprovedProformas($paymentRequests);
         if ($proformaInvoices->isEmpty()) {
@@ -78,14 +79,14 @@ trait Project
         $details['remaining'] = $details['total'] - $details['cumulative'];
 
         $keys = [
-            'initialPaymentForOrder' => 'initialPayment',
-            'initialPayment' => 'initialTotal',
-            'provisionalTotal' => 'provisionalTotal',
-            'finalTotal' => 'finalTotal',
+            'initialPaymentForOrder' => 'initial_payment',
+            'initialPayment' => 'initial_total',
+            'provisionalTotal' => 'provisional_total',
+            'finalTotal' => 'final_total',
             'cumulative' => 'payment',
             'remaining' => 'remaining',
             'total' => 'total',
-            'availableQuantity' => 'payableQuantity'
+            'availableQuantity' => 'payable_quantity'
         ];
         self::setOrderDetails($set, $details, $keys);
     }
@@ -94,7 +95,7 @@ trait Project
     {
         foreach ($keys as $detailKey => $setKey) {
             if (isset($details[$detailKey])) {
-                $set("orderDetail.extra.$setKey", sprintf("%.2f", $details[$detailKey]));
+                $set("orderDetail.$setKey", sprintf("%.2f", $details[$detailKey]));
             }
         }
         // list($details['initialCombined'], $details['provisionalCombined'], $details['finalCombined'], $details['quantityCombined'])= self::computeCombinedTotals($orders);

@@ -75,7 +75,7 @@ class PaymentRequestMessage
 
         return $this->formatMessage(
             "The payment request status has changed.",
-            "Reference: Status:{$statusDescription}\n{$this->reference_number}\nInvoice: {$this->invoice}"
+            "Status: {$statusDescription}\nReference: {$this->reference_number}\nInvoice: {$this->invoice}"
         );
     }
 

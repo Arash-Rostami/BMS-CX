@@ -13,7 +13,6 @@ use App\Models\DeliveryTerm;
 use App\Models\Grade;
 use App\Models\Notification;
 use App\Models\Order;
-use App\Models\OrderRequest;
 use App\Models\Packaging;
 use App\Models\Payment;
 use App\Models\PaymentRequest;
@@ -28,6 +27,7 @@ use App\Models\QuoteProvider;
 use App\Models\ShippingLine;
 use App\Models\Supplier;
 use App\Models\Tag;
+use App\Models\Target;
 use App\Models\User;
 use App\Policies\AllocationPolicy;
 use App\Policies\BalancePolicy;
@@ -39,7 +39,6 @@ use App\Policies\DeliveryTermPolicy;
 use App\Policies\GradePolicy;
 use App\Policies\NotificationPolicy;
 use App\Policies\OrderPolicy;
-use App\Policies\OrderRequestPolicy;
 use App\Policies\PackagingPolicy;
 use App\Policies\PaymentPolicy;
 use App\Policies\PaymentRequestPolicy;
@@ -54,6 +53,7 @@ use App\Policies\QuoteProviderPolicy;
 use App\Policies\ShippingLinePolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\TagPolicy;
+use App\Policies\TargetPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
@@ -75,7 +75,7 @@ class AuthServiceProvider extends ServiceProvider
         Grade::class => GradePolicy::class,
         Notification::class => NotificationPolicy::class,
         Order::class => OrderPolicy::class,
-        OrderRequest::class => OrderRequestPolicy::class,
+//        OrderRequest::class => OrderRequestPolicy::class,
         Packaging::class => PackagingPolicy::class,
         Payment::class => PaymentPolicy::class,
         PaymentRequest::class => PaymentRequestPolicy::class,
@@ -90,8 +90,8 @@ class AuthServiceProvider extends ServiceProvider
         ShippingLine::class => ShippingLinePolicy::class,
         Supplier::class => SupplierPolicy::class,
         Tag::class => TagPolicy::class,
+        Target::class => TargetPolicy::class,
         User::class => UserPolicy::class,
-
     ];
 
     /**

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Operational\NotificationSubscriptionResource\Pa
 use App\Models\User;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -32,10 +33,8 @@ class Admin
             ->columnSpan(1);
     }
 
-    /**
-     * @return Select
-     */
-    public static function getUser(): Select
+
+    public static function getUser()
     {
         $currentUser = auth()->user();
         $isAdminOrManager = in_array($currentUser->role, ['admin', 'manager']);
@@ -49,14 +48,17 @@ class Admin
                 ->mapWithKeys(fn($user) => [$user->id => $user->full_name])
             : collect([$currentUser->id => $currentUser->full_name]);
 
+        if (!$isAdminOrManager) {
+            return Hidden::make('user_id')->default($currentUser->id);
+        }
+
         return Select::make('user_id')
             ->label('User')
             ->options($options)
-            ->searchable($isAdminOrManager)
-            ->default(!$isAdminOrManager ? $currentUser->id : null)
-            ->required()
+            ->searchable()
+            ->default(null)
             ->columnSpan(1)
-            ->disabled(!$isAdminOrManager);
+            ->required();
     }
 
 

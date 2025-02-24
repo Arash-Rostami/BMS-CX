@@ -19,6 +19,18 @@ class PurchaseStatus extends Model
         });
     }
 
+    public function getEmoticonAttribute()
+    {
+        return explode(' ', $this->name)[0] ?? '';
+    }
+
+    public function getBareTitleAttribute()
+    {
+        $parts = explode(' ', $this->name);
+        array_shift($parts);
+        return implode(' ', $parts);
+    }
+
     public function orders()
     {
         return $this->hasMany(Order::class);

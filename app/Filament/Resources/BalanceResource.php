@@ -7,7 +7,9 @@ use App\Filament\Resources\BalanceResource\RelationManagers;
 use App\Filament\Resources\Operational\BalanceResource\Pages\Admin;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Models\Balance;
+use App\Models\Department;
 use Filament\Forms\Form;
+use Filament\Resources\Components\Tab;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\Layout\Panel;
@@ -69,10 +71,13 @@ class BalanceResource extends Resource
                 Admin::groupBySumCurrency(),
             ])
             ->paginated([10, 20, 30])
-            ->filters([Admin::filterByDepartment(), AdminOrder::filterCreatedAt()])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->filtersFormColumns(3)
+            ->filters([
+                Admin::filterByDepartment(),
+                Admin::filterByRecipient(),
+                AdminOrder::filterCreatedAt()
             ])
+            ->actions([Tables\Actions\EditAction::make()])
             ->bulkActions([Tables\Actions\BulkActionGroup::make([]),
             ]);
     }
@@ -82,26 +87,24 @@ class BalanceResource extends Resource
     {
         return $table
             ->columns([
+                Stack::make([
+                    Split::make([
+                        Admin::showDepartment(),
+                        Admin::showRecipient(),
+                        Admin::showCurrency(),
+                        Admin::showTotal(),
+                        Admin::showUser(),
+                    ]),
+                ])->space(3),
                 Split::make([
-                    Panel::make([
-                        Stack::make([
-                            Split::make([
-                                Admin::showCurrency(),
-                                Admin::showBase(),
-                                Admin::showPayment(),
-                                Admin::showTotal(),
-                                Admin::showUser(),
-                            ]),
-                            Split::make([
-                                Admin::showDepartment(),
-                                Admin::showRecipient(),
-                                Admin::showTimeStamp(),
-                            ]),
-                        ])->space(2),
-                    ])
-                ])->columnSpanFull(),
-                Admin::showTimeStamp()
+                    Split::make([
+                        Admin::showBase(),
+                        Admin::showPayment(),
+                        Admin::showTimeStamp()
+                    ])->columnSpanFull(true),
+                ])->collapsible(),
             ]);
+
     }
 
     public static function getClassicLayout(Table $table): Table
@@ -133,7 +136,7 @@ class BalanceResource extends Resource
             ->filterByUserDepartment($user)
             ->count();
 
-        return (string) $count;
+        return (string)$count;
     }
 
     public static function getNavigationBadgeColor(): ?string

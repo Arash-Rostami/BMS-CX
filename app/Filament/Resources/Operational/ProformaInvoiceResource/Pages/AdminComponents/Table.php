@@ -22,6 +22,8 @@ trait Table
             ->sortable()
             ->formatStateUsing(fn(Model $record) => $record->reference_number ?? sprintf('PI-%s%04d', $record->created_at->format('y'), $record->id))
             ->grow(false)
+            ->copyable()
+            ->extraAttributes(['class' => 'copyable-content'])
             ->tooltip(fn(?string $state): ?string => ($state) ? "Pro forma Ref. No. / ID" : '')
             ->toggleable()
             ->searchable();
@@ -36,6 +38,7 @@ trait Table
             ->icon('heroicon-s-paper-clip')
             ->iconPosition(IconPosition::Before)
             ->grow(false)
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'PI: ' : '') . $record->proforma_number ?? null)
             ->tooltip(fn(?string $state): ?string => ($state) ? "Pro forma Invoice Number" : '')
             ->toggleable()
             ->searchable(isIndividual: true);
@@ -84,6 +87,7 @@ trait Table
             ->grow(false)
             ->tooltip(fn(string $state): string => "Product")
             ->iconPosition(IconPosition::Before)
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'Pr: ' : '') . optional($record->product)->name ?? null)
             ->badge()
             ->searchable()
             ->sortable();
@@ -98,6 +102,7 @@ trait Table
             ->label('Buyer')
             ->sortable()
             ->searchable()
+            ->grow(false)
             ->color('secondary');
     }
 
@@ -113,8 +118,14 @@ trait Table
             ->color(fn($state): string => self::$statusColors[$state] ?? null)
             ->sortable()
             ->badge()
-            ->toggleable()
-            ->searchable();
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->searchable(query: function (Builder $query, string $search): Builder {
+                $normalizedSearch = strtolower($search);
+                if (str_contains($normalizedSearch, 'declin') || str_contains($normalizedSearch, 'cancel')) {
+                    return $query->where('status', 'like', '%reject%');
+                }
+                return $query->where('status', 'like', "%{$search}%");
+            });
     }
 
     /**
@@ -127,6 +138,8 @@ trait Table
             ->sortable()
             ->searchable()
             ->toggleable()
+            ->icon('heroicon-o-arrow-up-on-square-stack')
+            ->badge()
             ->color('secondary');
     }
 
@@ -140,7 +153,8 @@ trait Table
             ->badge()
             ->grow(false)
             ->color('secondary')
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '📏 Gr: ' : '') . optional($record->grade)->name ?? null)
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'Gr: ' : '') . optional($record->grade)->name ?? null)
+            ->tooltip('Grade')
             ->searchable()
             ->toggleable()
             ->sortable();
@@ -168,9 +182,12 @@ trait Table
     {
         return TextColumn::make('contract_number')
             ->label('Contract No.')
+            ->color('primary')
             ->badge()
             ->color('secondary')
             ->searchable()
+            ->grow(false)
+            ->tooltip('Contract/Project No')
             ->toggleable()
             ->sortable();
     }
@@ -185,9 +202,36 @@ trait Table
             ->badge()
             ->color('secondary')
             ->searchable(['first_name', 'middle_name', 'last_name'])
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
+
+    public static function showAssignedTo(): TextColumn
+    {
+        return TextColumn::make('assignee.fullName')
+            ->label('Assigned to')
+            ->badge()
+            ->color('secondary')
+            ->searchable(['first_name', 'middle_name', 'last_name'])
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->sortable()
+            ->default('None');
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showTimeStamp(): TextColumn
+    {
+        return TextColumn::make('created_at')
+            ->label('Created at')
+            ->badge()
+            ->date()
+            ->color('secondary')
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->sortable();
+    }
+
 
     /**
      * @return TextColumn
@@ -211,6 +255,7 @@ trait Table
     {
         return TextColumn::make('price')
             ->color('info')
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '💰 Pri: ' : '') . number_format($record->price ?? 0))
             ->searchable()
             ->toggleable()
             ->grow(false)
@@ -225,8 +270,9 @@ trait Table
     {
         return TextColumn::make('percentage')
             ->label('%')
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '°/•' : '') . $record->percentage ?? 0)
             ->tooltip('Percentage of payment')
-            ->grow()
+            ->grow(false)
             ->toggleable()
             ->color('secondary')
             ->badge()
@@ -250,18 +296,6 @@ trait Table
             ->badge();
     }
 
-    /**
-     * @return TextColumn
-     */
-    public static function showTimeStamp(): TextColumn
-    {
-        return TextColumn::make('created_at')
-            ->dateTime()
-            ->icon('heroicon-s-calendar-days')
-            ->sortable()
-            ->toggleable()
-            ->alignRight();
-    }
 
     /**
      * @return TextEntry

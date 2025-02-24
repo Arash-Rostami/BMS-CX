@@ -17,6 +17,7 @@ class Logistic extends Model
 
 
     protected $casts = [
+        'loading_deadline' => 'date',
         'extra' => 'json',
     ];
 
@@ -95,7 +96,6 @@ class Logistic extends Model
     {
         return $this->belongsTo(DeliveryTerm::class);
     }
-
 
     public function getLoadingStartlineAttribute()
     {

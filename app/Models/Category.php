@@ -24,11 +24,6 @@ class Category extends Model
         return $this->hasMany(Order::class);
     }
 
-    public function orderRequests()
-    {
-        return $this->hasMany(OrderRequest::class);
-    }
-
     public function products()
     {
         return $this->hasMany(Product::class, 'category_id');

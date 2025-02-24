@@ -27,12 +27,14 @@ trait Form
      */
     public static function getPaymentRequest(): Select
     {
-        return Select::make('paymentRequests.id')
+        return Select::make('paymentRequests')
             ->relationship('paymentRequests',
                 'reference_number',
                 modifyQueryUsing: function (Builder $query, string $operation) {
                     if ($operation == 'create') {
-                        $query->whereIn('status', ['processing', 'approved', 'allowed'])->orderBy('deadline', 'asc');
+                        $query->whereIn('status', ['processing', 'approved', 'allowed'])
+                            ->whereNull('deleted_at')
+                            ->orderBy('deadline', 'asc');
                     }
                 })
             ->getOptionLabelFromRecordUsing(fn(Model $record, $operation) => $record->getCustomizedDisplayName())
@@ -129,7 +131,7 @@ trait Form
         return FileUpload::make('file_path')
             ->label('')
             ->image()
-            ->disabled(fn($operation, $record) => $operation === 'edit' && (!$record || !auth()->user()->can('canEditInput', $record)))
+            ->disabled(fn($operation, $record) => $operation === 'edit' ? (auth()->user()->can('canEditInput', $record)) : false)
             ->hint(fn(?Model $record) => $record ? $record->getCreatedAtBy() : 'To add an attachment, save the record.')
             ->getUploadedFileNameForStorageUsing(self::nameUploadedFile())
             ->previewable()

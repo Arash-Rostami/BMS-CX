@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Egulias\EmailValidator\Result\Reason\Reason;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class PaymentRequest extends Model
 {
@@ -19,6 +21,14 @@ class PaymentRequest extends Model
         'extra' => 'json',
     ];
 
+
+    public static array $typesOfPayment = [
+        'advance' => 'Advance (First Installment)',
+        'partial' => 'Partial (Next Installment)',
+        'balance' => 'Balance (Final Installment)',
+        'full' => 'Full (One-Time Only)',
+        'other' => 'Other'
+    ];
 
     protected $fillable = [
         'reference_number',
@@ -51,19 +61,16 @@ class PaymentRequest extends Model
         'contractor_id',
         'payee_id',
         'department_id',
+        'case_number',
+        'sequential_id',
     ];
 
-    public static array $typesOfPayment = [
-        'advance' => 'Advance (First Installment)',
-        'partial' => 'Partial (Next Installment)',
-        'balance' => 'Balance (Final Installment)',
-        'full' => 'Full (One-Time Only)',
-        'other' => 'Other'
-//        'check' => 'Check',
-//        'credit' => 'Credit',
-//        'in_kind' => 'In Kind',
-//        'lc' => 'LC (Letter of Credit)',
-//        'cod' => 'COD (Cash on Delivery)',
+    public static array $typesOfPaymentInFarsi = [
+        'advance' => '💼 Advance (پیش پرداخت)',
+        'partial' => '📉 Partial (اقساط)',
+        'balance' => '⚖️ Balance (تسویه)',
+        'full' => '✅ Full (یکجا/کامل)',
+        'other' => '🔄 Other (سایر)'
     ];
 
     public static array $status = [
@@ -79,7 +86,7 @@ class PaymentRequest extends Model
 
     public function attachments()
     {
-        return $this->hasMany(Attachment::class);
+        return $this->hasMany(Attachment::class, 'payment_request_id');
     }
 
     public function contractor()
@@ -106,7 +113,15 @@ class PaymentRequest extends Model
     {
         static::creating(function ($paymentRequest) {
             $paymentRequest->user_id = auth()->id();
+            $paymentRequest->sequential_id = self::getNextReferenceNumberForCurrency($paymentRequest->currency);
         });
+
+        static::updating(function ($paymentRequest) {
+            if ($paymentRequest->isDirty('currency')) {
+                $paymentRequest->sequential_id = self::getNextReferenceNumberForCurrency($paymentRequest->currency, $paymentRequest->id);
+            }
+        });
+
 
         static::saving(function ($paymentRequest) {
             $paymentRequest->attachments->each(function ($attachment) {
@@ -194,6 +209,20 @@ class PaymentRequest extends Model
 
 
     // Computational Methods
+
+    public static function searchBeneficiaries($query, $search): void
+    {
+        $query->whereHas('contractor', function ($contractorQuery) use ($search) {
+            $contractorQuery->where('name', 'like', '%' . $search . '%');
+        })
+            ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                $supplierQuery->where('name', 'like', '%' . $search . '%');
+            })
+            ->orWhereHas('beneficiary', function ($beneficiaryQuery) use ($search) {
+                $beneficiaryQuery->where('name', 'like', '%' . $search . '%');
+            });
+    }
+
     public static function getStatusCounts()
     {
         $user = auth()->user();
@@ -234,10 +263,10 @@ class PaymentRequest extends Model
         $formattedDate = optional($this->deadline)->format('Y-m-d') ?? 'No Deadline';
 
         return sprintf(
-            " %s 💢 Ref: %s  ┆ 📅  %s",
-            $proformaInvoiceNo,
+            "Ref: %s  ┆ 📅  %s 💢  %s ",
             $this->reference_number,
-            $formattedDate
+            $formattedDate,
+            $proformaInvoiceNo,
         );
     }
 
@@ -294,5 +323,81 @@ class PaymentRequest extends Model
             $subQuery->whereIn('department_id', [$department, 0])
                 ->orWhereIn('cost_center', [$department, 0]);
         });
+    }
+
+
+    public static function getMadeByOptions(): array
+    {
+        return Cache::remember('payment_request_made_by_options', 60, function () {
+            return self::query()
+                ->select('extra')
+                ->distinct()
+                ->get()
+                ->pluck('extra')
+                ->filter(fn($extra) => is_array($extra) && array_key_exists('made_by', $extra))
+                ->pluck('made_by', 'made_by')
+                ->toArray();
+        });
+    }
+
+    public static function getTabCounts(): array
+    {
+        $userId = auth()->id();
+
+        return Cache::remember("payment_request_tab_counts_{$userId}", 60, function () use ($userId) {
+            return self::select(
+                DB::raw('COUNT(*) as total'),
+                DB::raw('COUNT(CASE WHEN status = "pending" THEN 1 END) as pending_count'),
+                DB::raw('COUNT(CASE WHEN status = "processing" THEN 1 END) as processing_count'),
+                DB::raw('COUNT(CASE WHEN status = "allowed" THEN 1 END) as allowed_count'),
+                DB::raw('COUNT(CASE WHEN status = "approved" THEN 1 END) as approved_count'),
+                DB::raw('COUNT(CASE WHEN status = "rejected" THEN 1 END) as rejected_count'),
+                DB::raw('COUNT(CASE WHEN status = "completed" THEN 1 END) as completed_count'),
+//                DB::raw('COUNT(CASE WHEN status = "cancelled" THEN 1 END) as cancelled_count'),
+                DB::raw('COUNT(CASE WHEN currency = "Rial" THEN 1 END) as rial_count'),
+                DB::raw('COUNT(CASE WHEN currency = "USD" THEN 1 END) as usd_count'),
+                DB::raw('COUNT(CASE WHEN type_of_payment = "advance" THEN 1 END) as advance_count'),
+                DB::raw('COUNT(CASE WHEN type_of_payment = "balance" THEN 1 END) as balance_count'),
+                DB::raw('COUNT(CASE WHEN type_of_payment = "other" THEN 1 END) as other_count'),
+            )
+                ->authorizedForUser(auth()->user())
+                ->first()
+                ->toArray();
+        });
+    }
+
+    public static function getLastPaymentDetails(string $recipientName, string $paymentMethod, string $currency)
+    {
+        return self::query()
+            ->where('recipient_name', $recipientName)
+            ->where('extra->paymentMethod', $paymentMethod)
+            ->where('currency', $currency)
+            ->latest('created_at')
+            ->first();
+    }
+
+    public static function getNextReferenceNumberForCurrency(string $currency, $excludeId = null): string
+    {
+        $year = now()->format('Y');
+
+        if ($currency === 'Rial') {
+            $prefix = "Rial-{$year}-";
+            $query = PaymentRequest::where('currency', 'Rial');
+        } else {
+            $prefix = "{$currency}-{$year}-";
+            $query = PaymentRequest::where('currency', '!=', 'Rial');
+        }
+
+        $query->whereYear('created_at', $year);
+        if ($excludeId) {
+            $query->where('id', '!=', $excludeId);
+        }
+
+        $maxSequentialId = $query
+            ->selectRaw("MAX(CAST(SUBSTRING_INDEX(sequential_id, '-', -1) AS UNSIGNED)) as max_id")
+            ->value('max_id') ?: 0;
+
+        $nextSequentialId = $maxSequentialId + 1;
+        return $prefix . sprintf('%05d', $nextSequentialId);
     }
 }

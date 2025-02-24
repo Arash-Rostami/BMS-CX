@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
+use App\Models\Attachment;
 use App\Models\User;
 use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\AttachmentCreationService;
@@ -27,6 +28,26 @@ class EditPaymentRequest extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('open_payment_attachments')
+                ->label('👁️ Instant View of Payment Attachments')
+                ->extraAttributes(['class' => 'animate-bounce'])
+                ->visible(fn(Model $record) => Attachment::whereIn('payment_id', $record->payments->pluck('id'))->exists())
+                ->action(function (Model $record) {
+                    $attachmentUrls = Attachment::whereIn('payment_id', $record->payments->pluck('id'))
+                        ->pluck('file_path')
+                        ->map(fn($path) => asset($path))
+                        ->all();
+
+                    if (empty($attachmentUrls)){
+                        Notification::make()
+                            ->warning()
+                            ->title('No Attachments Found')
+                            ->body('No attachments found for the linked payments.')
+                            ->send();
+                        return;
+                    }
+                    $this->dispatch('open-new-tab', $attachmentUrls);
+                }),
             PrintAction::make()
                 ->color('amber'),
             Actions\Action::make('pdf')
@@ -64,8 +85,11 @@ class EditPaymentRequest extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-
         $data['extra'] = data_get($this->form->getRawState(), 'extra');
+
+        if (! isset($data['total_amount'])) {
+            $data['total_amount'] = $data['requested_amount'];
+        }
 
         $data = (new CreatePaymentRequest())->persistAccountNo($data);
 
@@ -106,6 +130,7 @@ class EditPaymentRequest extends EditRecord
     private function sendStatusNotification($service)
     {
         $newStatus = $this->record['status'];
+
 
         if ($newStatus && $newStatus !== session('old_status_payment')) {
 

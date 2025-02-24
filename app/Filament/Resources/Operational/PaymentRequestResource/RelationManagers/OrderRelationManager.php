@@ -3,17 +3,40 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\RelationManagers;
 
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
+use App\Filament\Resources\Operational\OrderResource\Pages\ListOrders;
 use App\Filament\Resources\OrderResource;
 use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
+use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
 class OrderRelationManager extends RelationManager
 {
     protected static string $relationship = 'order';
+
+    public function scrollLeft()
+    {
+        $this->dispatch('scrollLeft');
+    }
+
+    public function scrollRight()
+    {
+        $this->dispatch('scrollRight');
+    }
+
+    public function toggleFullScreen()
+    {
+        $this->dispatch('toggleFullScreen');
+    }
+
+    public function clearTableSort()
+    {
+        $this->dispatch('clearTableSort');
+    }
 
     public function form(Form $form): Form
     {
@@ -41,29 +64,27 @@ class OrderRelationManager extends RelationManager
                 AdminOrder::filterCreatedAt(),
                 AdminOrder::filterSoftDeletes()
             ])
+            ->recordClasses(fn(Model $record) => isShadeSelected( 'order-table'))
             ->actions([
-                Tables\Actions\ViewAction::make()
-                    ->url(function (?Model $record) {
-                        if (!$record || !$record->id) {
-                            return null;
-                        }
-                        return OrderResource::getUrl('view', ['record' => $record->id]);
-                    }, shouldOpenInNewTab: true),
-                Tables\Actions\EditAction::make()
-                    ->icon('heroicon-m-arrow-top-right-on-square')
-                    ->url(function (?Model $record) {
-                        if (!$record || !$record->id) {
-                            return null;
-                        }
-                        return OrderResource::getUrl('edit', ['record' => $record->id]);
-                    }, shouldOpenInNewTab: true),
-            ])
-            ->headerActions([
-                Tables\Actions\CreateAction::make()
-                    ->label('New')
-                    ->icon('heroicon-m-arrow-top-right-on-square')
-                    ->url(fn() => OrderResource::getUrl('create'), shouldOpenInNewTab: true),
-            ])
-            ->poll(30);
+                ActionGroup::make([
+                    Tables\Actions\ViewAction::make()
+                        ->url(function (?Model $record) {
+                            if (!$record || !$record->id) {
+                                return null;
+                            }
+                            return OrderResource::getUrl('view', ['record' => $record->id]);
+                        }, shouldOpenInNewTab: true),
+                    Tables\Actions\EditAction::make()
+                        ->icon('heroicon-m-arrow-top-right-on-square')
+                        ->url(function (?Model $record) {
+                            if (!$record || !$record->id) {
+                                return null;
+                            }
+                            return OrderResource::getUrl('edit', ['record' => $record->id]);
+                        }, shouldOpenInNewTab: true)
+                ])
+            ], position: ActionsPosition::BeforeCells)
+            ->headerActions((new ListOrders())->getTableHeaderActions())
+            ->poll('30s');
     }
 }

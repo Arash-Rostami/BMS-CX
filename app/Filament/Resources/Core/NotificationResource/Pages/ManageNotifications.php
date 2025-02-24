@@ -76,7 +76,7 @@ class ManageNotifications extends ManageRecords
                 self::sendPriorityEmail($data);
             }
         } else {
-            dd("Processing priority: {$data['priority']}");
+            dd("Processing priority: {$data['priority']} ??????");
         }
 
         return $data;

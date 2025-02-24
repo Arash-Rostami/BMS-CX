@@ -2,9 +2,7 @@
 
 namespace App\Providers\Filament;
 
-use App\Services\AvatarMaker;
 use App\Services\ColorTheme;
-use App\Services\FullScreenPlugin;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -17,8 +15,8 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\MaxWidth;
-use Filament\Support\Facades\FilamentView;
 use Filament\Widgets;
+use Hasnayeen\Themes\Http\Middleware\SetTheme;
 use Hasnayeen\Themes\ThemesPlugin;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -26,13 +24,10 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Kenepa\Banner\BannerPlugin;
-use LaraZeus\Delia\DeliaPlugin;
 use SolutionForest\FilamentSimpleLightBox\SimpleLightBoxPlugin;
-use \Hasnayeen\Themes\Http\Middleware\SetTheme;
 
 
 class AdminPanelProvider extends PanelProvider
@@ -59,9 +54,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
-            ->pages([
-//                Pages\Dashboard::class,
-            ])
+            ->pages([])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
@@ -81,23 +74,29 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationGroups([
                 NavigationGroup::make()
-                    ->label('Operational Data'),
+                    ->label('Operational Data')
+                    ->icon(fn() => isMenuTop() || isSimpleSidebar() ? 'heroicon-o-rocket-launch' : ''),
+
                 NavigationGroup::make()
-                    ->label('Master Data'),
+                    ->label('Master Data')
+                    ->icon(fn() => isMenuTop() || isSimpleSidebar() ? 'heroicon-c-square-3-stack-3d' : ''),
+
                 NavigationGroup::make()
                     ->label('Core Data')
+                    ->icon(fn() => isMenuTop() || isSimpleSidebar() ? 'heroicon-s-cpu-chip' : '')
             ])
-//            ->navigationItems([
-//                NavigationItem::make('payment')
-//                    ->visible(fn(): bool => auth()->user()->can('canEditInput'))
-//
-//                ]
-//            )
+            ->navigationItems([
+                NavigationItem::make('About us')
+                    ->label('Case Summary')
+                    ->url(fn() => route('case-summary'), shouldOpenInNewTab: true)
+//                    ->visible(fn() => auth()->check() && (isUserAdmin() || isUserManager()))
+                    ->icon('heroicon-c-magnifying-glass'),
+            ])
             ->authMiddleware([
                 Authenticate::class,
             ])
             ->databaseNotifications()
-            ->databaseNotificationsPolling('5s')
+            ->databaseNotificationsPolling('10s')
             ->maxContentWidth(MaxWidth::Full)
             ->spa()
             ->brandName('BMS')
@@ -114,9 +113,7 @@ class AdminPanelProvider extends PanelProvider
                 BannerPlugin::make()
                     ->navigationGroup('Core Data')
                     ->navigationLabel('Banners')
-
-
-//                DeliaPlugin::make()
+                    ->bannerManagerAccessPermission('banner-manager')
             ])
             ->sidebarCollapsibleOnDesktop()
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
@@ -124,17 +121,31 @@ class AdminPanelProvider extends PanelProvider
             ->breadcrumbs()
             ->userMenuItems([
                 MenuItem::make()
-                    ->label('Table Design')
+                    ->label(fn() => auth()->check() && isMenuTop() ? 'Side Menu' : 'Top Menu')
+                    ->url('/menu-design-toggle')
+                    ->icon(fn() => auth()->check() && isMenuTop() ? 'heroicon-o-arrow-left-circle' : 'heroicon-o-arrow-up-circle'),
+
+                MenuItem::make()
+                    ->label('Menu Items')
+                    ->label(fn() => auth()->check() && !isSimpleSidebar() ? 'Hide SubMenu' : 'Show SubMenu')
+                    ->url('/sidebar-items-toggle')
+                    ->icon(fn() => auth()->check() && isSimpleSidebar() ? 'heroicon-o-eye' : 'heroicon-m-eye-slash'),
+                MenuItem::make()
+                    ->label(fn() => auth()->check() && !isModernDesign() ? 'Modern Table' : 'Classic Table')
                     ->url('/table-design-toggle')
-                    ->icon('heroicon-s-table-cells'),
-
-//                MenuItem::make()
-//                    ->label('Chat')
-//                    ->url(route('test'))
-//                    ->icon('heroicon-o-chat-bubble-left-right'),
+                    ->icon(fn() => auth()->check() && !isModernDesign() ? 'heroicon-o-device-tablet' : 'heroicon-s-table-cells'),
+                MenuItem::make()
+                    ->label(fn() => auth()->check() && !isFilterSelected() ? 'Show Filters' : 'Hide Filters')
+                    ->url('/filter-design-toggle')
+                    ->icon(fn() => auth()->check() && !isFilterSelected() ? 'heroicon-o-funnel' : 'heroicon-c-arrow-path-rounded-square'),
+                MenuItem::make()
+                    ->label(fn() => auth()->check() && !isColorSelected() ? 'Enable Shades' : 'Disable Shades')
+                    ->url('/shade-design-toggle')
+                    ->icon(fn() => auth()->check() && !isColorSelected() ? 'heroicon-m-eye-dropper' : 'heroicon-c-arrow-path-rounded-square'),
             ])
-            ->viteTheme('resources/css/filament/admin/theme.css');
+            ->sidebarWidth('18rem')
+            ->unsavedChangesAlerts()
+            ->viteTheme('resources/css/filament/admin/theme.css')
+            ->topNavigation(fn() => auth()->check() && isMenuTop());
     }
-
-
 }

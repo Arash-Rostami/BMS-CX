@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 
 class Order extends Model
@@ -205,22 +206,43 @@ class Order extends Model
         ];
     }
 
+//    protected static function getTotalPaymentRequestedAmountAndQuantity($orders): array
+//    {
+//        $payment = $orders->sum(function ($order) {
+//            return
+//                data_get($order, 'orderDetail.initial_payment', 0) +
+//                data_get($order, 'orderDetail.provisional_total', 0) +
+//                data_get($order, 'orderDetail.final_total', 0);
+//        });
+//
+//        $quantity = $orders->sum(function ($order) {
+//            return data_get($order, 'orderDetail.final_quantity', 0)
+//                ?: data_get($order, 'orderDetail.provisional_quantity', 0);
+//        });
+//        return array($payment, $quantity);
+//    }
+
     protected static function getTotalPaymentRequestedAmountAndQuantity($orders): array
     {
         $payment = $orders->sum(function ($order) {
-            return
-                data_get($order, 'orderDetail.extra.initialPayment', 0) +
-                data_get($order, 'orderDetail.extra.provisionalTotal', 0) +
-                data_get($order, 'orderDetail.extra.finalTotal', 0);
+            if ($order->orderDetail) {
+                return
+                    (float)($order->orderDetail->initial_payment ?? 0) +
+                    (float)($order->orderDetail->provisional_total ?? 0) +
+                    (float)($order->orderDetail->final_total ?? 0);
+            }
+            return 0;
         });
 
         $quantity = $orders->sum(function ($order) {
-            return data_get($order, 'orderDetail.final_quantity', 0)
-                ?: data_get($order, 'orderDetail.provisional_quantity', 0);
+            if ($order->orderDetail) {
+                return (float)($order->orderDetail->final_quantity ?? $order->orderDetail->provisional_quantity ?? 0);
+            }
+            return 0;
         });
-        return array($payment, $quantity);
-    }
 
+        return [$payment, $quantity];
+    }
 
     protected static function getPaymentRequestBalance($record, $orders): array
     {
@@ -387,7 +409,7 @@ class Order extends Model
     public function getInvoiceNumberWithPartAttribute()
     {
         $firstIdentifier = $this->logistic->booking_number ?? 'N/A';
-        $secondIdentifier = $this->extra['reference_number'] ?? 'N/A';
+        $secondIdentifier = $this->reference_number ?? 'N/A';
 
         return "Booking# {$firstIdentifier} 💢Ref: {$secondIdentifier}";
     }
@@ -395,7 +417,7 @@ class Order extends Model
     public function getInvoiceNumberWithReferenceNumberAttribute()
     {
         $prjNum = $this->invoice_number;
-        $refNum = $this->extra['reference_number'] ?? 'No Ref. No.';
+        $refNum = $this->reference_number ?? 'No Ref. No.';
 
         return "{$prjNum} (Ref: {$refNum})";
     }
@@ -429,7 +451,7 @@ class Order extends Model
 
         return Cache::remember($cacheKey, 120, function () {
             return $this->query()
-                ->with('orderDetail:id,extra,provisional_quantity,final_quantity')
+                ->with('orderDetail')
                 ->where('invoice_number', $this->invoice_number)
                 ->where('proforma_invoice_id', $this->proforma_invoice_id)
                 ->whereNull('deleted_at')
@@ -464,5 +486,59 @@ class Order extends Model
         $doc = "-D" . $post->doc_id;
 
         return $category . $product . $proforma . $party . $orderDetail . $logistic . $doc;
+    }
+
+
+    public static function getTabCounts(): array
+    {
+        $userId = auth()->id();
+        return Cache::remember("order_tab_counts_{$userId}", 60, function () use ($userId) {
+            return self::select(
+                DB::raw('COUNT(*) as total'),
+                DB::raw('COUNT(CASE WHEN purchase_status_id = 1 THEN 1 END) as pending_count'),
+                DB::raw('COUNT(CASE WHEN purchase_status_id = 3 THEN 1 END) as in_transit_count'),
+                DB::raw('COUNT(CASE WHEN purchase_status_id = 4 THEN 1 END) as customs_count'),
+                DB::raw('COUNT(CASE WHEN purchase_status_id = 5 THEN 1 END) as delivered_count'),
+                DB::raw('COUNT(CASE WHEN purchase_status_id = 6 THEN 1 END) as shipped_count'),
+                DB::raw('COUNT(CASE WHEN purchase_status_id = 2 THEN 1 END) as released_count'),
+            )
+                ->first()
+                ->toArray();
+        });
+    }
+
+    public function hasCompletedBalancePayment()
+    {
+        $orderId = $this->id;
+        $cacheKey = "hasCompletedBalancePayment_" . $orderId;
+
+        return Cache::remember($cacheKey, 5 * 60, function () use ($orderId) {
+            $sql = "
+            SELECT 1
+            FROM payment_requests pr
+            INNER JOIN orders o ON pr.order_id = o.id
+            INNER JOIN payment_payment_request ppr ON pr.id = ppr.payment_request_id
+            INNER JOIN payments p ON ppr.payment_id = p.id
+            WHERE pr.status = 'completed'
+              AND pr.type_of_payment = 'balance'
+              AND pr.deleted_at IS NULL
+              AND p.deleted_at IS NULL
+              AND p.date < CURDATE() - INTERVAL 3 DAY
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM attachments a
+                  WHERE a.order_id = o.id
+                    AND LOWER(a.name) LIKE '%telex-release%'
+              )
+              AND o.id = ?
+            GROUP BY pr.id, pr.requested_amount
+            HAVING SUM(p.amount) >= pr.requested_amount
+            LIMIT 1
+        ";
+
+            $results = DB::select($sql, [$orderId]);
+
+            return !empty($results);
+        });
     }
 }

@@ -17,7 +17,8 @@ class StatsOverview extends BaseWidget
         $icons = $this->getIcons($statuses);
 
         return array_map(function ($status) use ($statusCounts, $icons) {
-            $statusLabel = ucfirst($status) === 'Review' ? 'Under Review' : ucfirst($status);
+            $statusLabel = ucfirst($status) === 'Review' ? 'Under Review'
+                : (ucfirst($status) === 'Rejected' ? 'Declined/Cancelled' : ucfirst($status));
             return Stat::make($status, $statusCounts->get($status, 0))
                 ->extraAttributes([
                     'class' => "hidden md:block" . ($status === 'review' ? ' border-2 border-red-500' : ''),

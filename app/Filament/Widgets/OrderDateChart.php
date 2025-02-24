@@ -2,40 +2,49 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Order;
+use App\Filament\Pages\Trait\BaseOrderChart;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
-use Filament\Widgets\StatsOverviewWidget\Stat;
-
+use Illuminate\Support\Facades\DB;
 
 class OrderDateChart extends ChartWidget
 {
-    use InteractsWithPageFilters;
+    use InteractsWithPageFilters, BaseOrderChart;
 
-    protected static ?string $heading = 'Yearly Order Trend';
+    protected static ?string $heading = '📆 Monthly Order Distribution';
 
-    protected static ?int $sort = 1;
+    protected static ?string $maxHeight = '250px';
 
 
     protected function getData(): array
     {
-        $year = $this->filters['yearlyOrders'] ?? 'all';
+        $filterType = $this->filter ?? 'quantity';
 
-        $monthlyCounts = $this->separateByMonth(Order::countOrdersByMonth($year));
+        $monthlyData = $this->getMonthlyOrderData();
 
+        $data = $filterType === 'quantity' ?
+            array_column($monthlyData, 'quantity') :
+            array_column($monthlyData, 'percentage');
+
+
+        $datasets = [];
+
+        $label = ($filterType === 'quantity') ? 'Quantity by Month' : 'Percentage by Month';
+        $color = $this->getBackgroundColor();
+
+        $datasets[] = [
+            'label' => $label,
+            'data' => $data,
+            'backgroundColor' => $color,
+            'borderColor' => $color,
+            'tension' => 0.1,
+            'hoverOffset' => 4,
+            'type' => 'line',
+        ];
 
         return [
             'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            'datasets' => [
-                [
-                    'label' => 'Orders by Month',
-                    'data' => array_values($monthlyCounts),
-                    'backgroundColor' => '#4F46E5',
-                    'borderColor' => 'rgba(37, 99, 235, 1)',
-                    'tension' => 0.1,
-                    'hoverOffset' => 4
-                ]
-            ],
+            'datasets' => $datasets,
             'options' => [
                 'responsive' => true,
                 'maintainAspectRatio' => false,
@@ -44,24 +53,62 @@ class OrderDateChart extends ChartWidget
                     'easing' => 'linear',
                     'from' => 1,
                     'to' => 0,
-                    'loop' => true
-                ]
-                ,
-            ]
+                    'loop' => false,
+                ],
+            ],
         ];
     }
+
+    protected function getFilters(): ?array
+    {
+        return ['quantity' => 'Quantity', 'percentage' => 'Percentage'];
+    }
+
+    private function getMonthlyOrderData()
+    {
+
+        $bindings = [];
+        $query = "
+            SELECT
+                MONTH(o.proforma_date) as month,
+                SUM(COALESCE(od.final_quantity, od.provisional_quantity, od.buying_quantity, 0)) AS quantity
+            FROM orders o
+            JOIN order_details od ON o.order_detail_id = od.id
+            WHERE 1=1
+        ";
+
+        $query = $this->buildQuery($query, $bindings);
+
+        $query .= " GROUP BY month ORDER BY month";
+
+        $monthlyData = DB::select($query, $bindings);
+
+        $monthlyResults = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $monthlyResults[$i] = [
+                'quantity' => 0,
+                'percentage' => 0,
+            ];
+            foreach ($monthlyData as $item) {
+                if ($item->month == $i) {
+                    $monthlyResults[$i]['quantity'] = $item->quantity;
+                    break;
+                }
+            }
+        }
+
+        $totalQuantity = array_sum(array_column($monthlyResults, 'quantity'));
+
+        foreach ($monthlyResults as &$result) {
+            $result['percentage'] = $totalQuantity > 0 ? ($result['quantity'] / $totalQuantity) * 100 : 0;
+        }
+
+        return $monthlyResults;
+    }
+
 
     protected function getType(): string
     {
         return 'line';
-    }
-
-    private function separateByMonth(\Illuminate\Support\Collection $ordersByMonth): array
-    {
-        $monthlyCounts = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $monthlyCounts[] = $ordersByMonth[$i] ?? 0;
-        }
-        return $monthlyCounts;
     }
 }

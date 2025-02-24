@@ -2,14 +2,18 @@
 
 namespace App\Filament\Resources\Operational\BalanceResource\Pages;
 
+use App\Models\Balance;
 use App\Models\Beneficiary;
 use App\Models\Contractor;
 use App\Models\Department;
 use App\Models\Supplier;
+use App\Models\User;
 use App\Services\BalanceSummarizer;
+use Carbon\Carbon;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
@@ -76,6 +80,7 @@ class Admin
     public static function getPayment(): TextInput
     {
         return TextInput::make('payment')
+            ->label('Debit (Paid)')
             ->required()
             ->default(0)
             ->numeric();
@@ -88,7 +93,16 @@ class Admin
     public static function getBase(): TextInput
     {
         return TextInput::make('base')
+            ->label('Credit (Receivable)')
             ->default(0)
+            ->afterStateHydrated(function (Set $set, Get $get, $state, $record) {
+                if ($record && !Balance::isBaseColumnUpdatable(auth()->user())) {
+                    $proposedBase = $record->extra['proposed_base'] ?? null;
+                    if ($proposedBase) {
+                        $set('base', $proposedBase);
+                    }
+                }
+            })
             ->numeric();
     }
 
@@ -122,15 +136,27 @@ class Admin
     public static function showBase(): TextColumn
     {
         return TextColumn::make('base')
+            ->label('Credit (Receivable)')
             ->default("N/A")
             ->badge()
             ->formatStateUsing(fn($state) => $state ? number_format($state) : 'N/A')
             ->grow(false)
-            ->tooltip('Base Balance')
+            ->tooltip(function (Balance $record) {
+                if (isset($record->extra['base_approved_at'])) {
+                    $approvedAt = Carbon::parse($record->extra['base_approved_at'])
+                        ->format('M j, Y g:i A');
+
+                    $approvedBy = User::find($record->extra['base_approved_by'] ?? null);
+                    $name = $approvedBy ? $approvedBy->full_name : 'Unknown User';
+
+                    return "Approved on {$approvedAt}\nBy {$name}";
+                }
+
+                return 'No Credit or Pending Approval';
+            })
             ->color('warning')
             ->numeric()
             ->sortable();
-//            ->summarize(Sum::make()->label('Base Sum'));
     }
 
     /**
@@ -139,7 +165,7 @@ class Admin
     public static function showPayment(): TextColumn
     {
         return TextColumn::make('payment')
-            ->label('Payment')
+            ->label('Debit (Paid)')
             ->formatStateUsing(fn($state) => $state ? number_format($state) : 'N/A')
             ->grow(false)
             ->tooltip('Payment Sum')
@@ -167,11 +193,12 @@ class Admin
     public static function showTotal(): TextColumn
     {
         return TextColumn::make('total')
+            ->label('Net Balance')
             ->numeric()
             ->sortable()
             ->badge()
-            ->grow()
-            ->tooltip('Total')
+            ->grow(true)
+            ->tooltip('Total sum')
             ->color(fn(Model $record) => self::determineColorBasedOnCurrency($record))
             ->state(fn(Model $record) => self::computeTotalBasedOnCurrency($record))
             ->summarize(
@@ -205,6 +232,7 @@ class Admin
         return TextColumn::make('category_id')
             ->label('Recipient')
             ->badge()
+            ->grow(false)
             ->color('secondary')
             ->formatStateUsing(fn(Model $record, $state) => self::showBasedOnModel($record, $state))
             ->searchable(query: fn(Builder $query, string $search) => self::searchAllModels($query, $search))
@@ -219,6 +247,7 @@ class Admin
         return TextColumn::make('user.fullName')
             ->label('Made by')
             ->badge()
+            ->alignRight()
             ->color('secondary')
             ->searchable(['first_name', 'last_name']);
     }
@@ -397,6 +426,44 @@ class Admin
                 if (!empty($data['value'])) {
                     $query->where('department_id', $data['value']);
                 }
+            });
+    }
+
+    public static function filterByRecipient(): SelectFilter
+    {
+        return SelectFilter::make('recipient')
+            ->label('Recipient')
+            ->options(fn() => Balance::getGroupedRecipientOptions())
+            ->searchable()
+            ->placeholder('Select Recipient')
+            ->multiple(false)
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    if (str_contains($data['value'], '_')) {
+                        $parts = explode('_', $data['value'], 2);
+                        if (count($parts) == 2) {
+                            [$category, $id] = $parts;
+
+                            switch ($category) {
+                                case 'supplier':
+                                    $query->where('category', 'suppliers')
+                                        ->where('category_id', $id);
+                                    break;
+                                case 'contractor':
+                                    $query->where('category', 'contractors')
+                                        ->where('category_id', $id);
+                                    break;
+                                case 'payee':
+                                    $query->where('category', 'payees')
+                                        ->where('category_id', $id);
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                    }
+                }
+
             });
     }
 }

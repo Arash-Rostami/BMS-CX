@@ -2,12 +2,21 @@
 
 namespace App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\AdminComponents;
 
+use App\Models\Buyer;
+use App\Models\Category;
+use App\Models\Grade;
+use App\Models\Product;
+use App\Models\Supplier;
+use App\Models\User;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Toggle;
 use Filament\Tables\Filters\Filter as FilamentFilter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 
 trait Filter
@@ -80,7 +89,10 @@ trait Filter
     public static function groupStatusRecords(): Grouping
     {
         return Grouping::make('status')->label('Status')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->status ?? 'Not Given'));
+            ->getTitleFromRecordUsing(function (Model $record): string {
+                $status = ucfirst($record->status ?? 'Not Given');
+                return $status === 'Rejected' ? 'Declined/Cancelled' : $status;
+            });
     }
 
     /**
@@ -132,6 +144,152 @@ trait Filter
                 }
 
                 return $indicators;
+            });
+    }
+
+    /**
+     * @return mixed
+     */
+    public static function filterCategory()
+    {
+        return SelectFilter::make('category_id')
+            ->label('Category')
+            ->options(fn() => Category::pluck('name', 'id')->toArray())
+            ->searchable()
+            ->placeholder('All Categories');
+    }
+
+    /**
+     * @return mixed
+     */
+    public static function filterProduct()
+    {
+        return SelectFilter::make('product_id')
+            ->label('Product')
+            ->options(fn() => Product::pluck('name', 'id')->toArray())
+            ->searchable();
+    }
+
+    /**
+     * @return mixed
+     */
+    public static function filterGrade()
+    {
+        return SelectFilter::make('grade_id')
+            ->label('Grade')
+            ->options(fn() => Grade::pluck('name', 'id')->toArray())
+            ->searchable();
+    }
+
+    /**
+     * @return mixed
+     */
+    public static function filterBuyer()
+    {
+        return SelectFilter::make('buyer_id')
+            ->label('Buyer')
+            ->options(fn() => Buyer::pluck('name', 'id')->toArray())
+            ->searchable();
+    }
+
+    /**
+     * @return mixed
+     */
+    public static function filterSupplier()
+    {
+        return SelectFilter::make('supplier_id')
+            ->label('Supplier')
+            ->options(fn() => Supplier::pluck('name', 'id')->toArray())
+            ->searchable();
+    }
+
+    /**
+     * @return mixed
+     */
+    public static function filterPart()
+    {
+        return SelectFilter::make('part')
+            ->label('Part')
+            ->options(array_combine(range(1, 100), range(1, 100)))
+            ->placeholder('All Parts')
+            ->searchable();
+    }
+
+    /**
+     * @return mixed
+     */
+    public static function filterStatus()
+    {
+        return SelectFilter::make('status')
+            ->label('Status')
+            ->options([
+                'pending' => 'Pending',
+                'review' => 'Review',
+                'approved' => 'Approved',
+                'rejected' => 'Rejected/Cancelled',
+                'fulfilled' => 'Completed',
+            ])
+            ->searchable();
+    }
+
+    /**
+     * @return mixed
+     */
+    public static function filterCreator()
+    {
+        return SelectFilter::make('user_id')
+            ->label('Created By')
+            ->options(fn() => User::whereJsonContains('info->department', '6')
+                ->get()
+                ->mapWithKeys(fn($user) => [
+                    $user->id => trim("{$user->first_name} {$user->middle_name} {$user->last_name}")
+                ])
+                ->toArray());
+    }
+
+
+    public static function filterTelexNeeded()
+    {
+        return FilamentFilter::make('completed_payment')
+            ->label('Completed Payment')
+            ->form([
+                Toggle::make('completed_payment')
+                    ->offColor('secondary')
+                    ->onColor('primary')
+                    ->label('Telex Needed'),
+            ])
+            ->query(function (Builder $query, array $data): Builder {
+                if (!empty($data['completed_payment'])) {
+                    $query->whereRaw(
+                        "EXISTS (
+                        SELECT 1
+                        FROM orders o
+                        WHERE o.proforma_invoice_id = proforma_invoices.id
+                        AND EXISTS (
+                            SELECT 1
+                            FROM payment_requests pr
+                            INNER JOIN payment_payment_request ppr ON pr.id = ppr.payment_request_id
+                            INNER JOIN payments p ON ppr.payment_id = p.id
+                            WHERE pr.order_id = o.id
+                              AND pr.status = 'completed'
+                              AND pr.type_of_payment = 'balance'
+                              AND pr.deleted_at IS NULL
+                              AND p.deleted_at IS NULL
+                              AND p.date < CURDATE() - INTERVAL 3 DAY
+                            GROUP BY pr.id, pr.requested_amount
+                            HAVING SUM(p.amount) >= pr.requested_amount
+                        )
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM attachments a
+                            WHERE a.order_id = o.id
+                              AND LOWER(a.name) LIKE '%telex-release%'
+                              AND a.deleted_at IS NULL
+                        )
+                    )"
+                    );
+                }
+                return $query;
             });
     }
 }

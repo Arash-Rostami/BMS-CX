@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponen
 use App\Models\Allocation;
 use App\Models\Department;
 use App\Models\Payment;
+use App\Models\PaymentRequest;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Builder;
@@ -97,7 +98,7 @@ trait Filter
     public static function filterReason(): SelectFilter
     {
         return SelectFilter::make('reason')
-            ->label('Reason for Payment')
+            ->label('Reasons')
             ->options(Cache::remember('reason_options', 60, fn() => Allocation::orderBy('reason')->pluck('reason', 'id')->toArray()))
             ->query(function (Builder $query, array $data) {
                 if (!empty($data['value'])) {
@@ -139,6 +140,33 @@ trait Filter
                 if (!empty($data['value'])) {
                     $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
                         $query->where('cost_center', $data['value']);
+                    });
+                }
+            });
+    }
+
+    public static function filterByPRCurrency(): SelectFilter
+    {
+        return SelectFilter::make('currency')
+            ->label('Currency')
+            ->options(Payment::getCurrencyOptions())
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->where('currency', $data['value']);
+                }
+            });
+    }
+
+
+    public static function filterMadeBy(): SelectFilter
+    {
+        return SelectFilter::make('made_by')
+            ->label('Made By')
+            ->options(PaymentRequest::getMadeByOptions())
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
+                        $query->whereJsonContains('extra->made_by', $data['value']);
                     });
                 }
             });

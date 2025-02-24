@@ -41,5 +41,4 @@ class Allocation extends Model
                 ->toArray();
         });
     }
-
 }

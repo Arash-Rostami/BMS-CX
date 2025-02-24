@@ -5,17 +5,16 @@
 
     function extractPaymentData(array $record): array {
         $orderDetail = $record['orderDetail'] ?? [];
-        $extra = $orderDetail['extra'] ?? [];
 
         return [
-            'initialAdvancePayment' => $extra['initialPayment'] ?? '± 0',
-            'provisionalTotalPayment' => $extra['provisionalTotal'] ?? '± 0',
-            'finalTotalPayment' => $extra['finalTotal'] ?? '± 0',
-            'cumulativePayment' => $extra['payment'] ?? '± 0',
-            'remainingPayment' => $extra['remaining'] ?? '± 0',
-            'totalPayment' => $extra['total'] ?? '± 0',
-            'currency' => $extra['currency'] ?? '',
-            'payableQuantity' => $extra['payableQuantity'] ?? ''
+            'initialAdvancePayment' => $orderDetail['initial_payment'] ?? '± 0',
+            'provisionalTotalPayment' => $orderDetail['provisional_total'] ?? '± 0',
+            'finalTotalPayment' => $orderDetail['final_total'] ?? '± 0',
+            'cumulativePayment' => $orderDetail['payment'] ?? '± 0',
+            'remainingPayment' => $orderDetail['remaining'] ?? '± 0',
+            'totalPayment' => $orderDetail['total'] ?? '± 0',
+            'currency' => $orderDetail['currency'] ?? '',
+            'payableQuantity' => $orderDetail['payable_quantity']  ?? ''
         ];
     }
 
@@ -34,7 +33,7 @@
 @endif
 <!-- Receipt Container with Perforated Style -->
 <div
-    class="max-w-md mx-auto p-6 bg-gray-100 dark:bg-gray-800 shadow-lg rounded-lg border-2 border-gray-300 dark:border-gray-700 font-mono print:border-none print:shadow-none border-dotted">
+        class="max-w-md mx-auto p-6 bg-gray-100 dark:bg-gray-800 shadow-lg rounded-lg border-2 border-gray-300 dark:border-gray-700 font-mono print:border-none print:shadow-none border-dotted">
     <div class="w-full">
         <!-- First Table for Payment Details -->
         <table class="w-full text-sm">
@@ -82,13 +81,13 @@
     </div>
     @if($paymentData['currency'] != '')
         <span
-            class="font-mono text-xs text-right float-right scale-75">denominated in {{ $paymentData['currency'] }}</span>
+                class="font-mono text-xs text-right float-right scale-75">denominated in {{ $paymentData['currency'] }}</span>
     @endif
 
 </div>
 @if($paymentData['payableQuantity'] != '')
     <span
-        class="font-mono text-xs text-center scale-50 p-2">available quantity w/o this record: {{ $paymentData['payableQuantity'] }} (mt)</span>
+            class="font-mono text-xs text-center scale-50 p-2">available quantity w/o this record: {{ $paymentData['payableQuantity'] }} (mt)</span>
     <br>
 @endif
 

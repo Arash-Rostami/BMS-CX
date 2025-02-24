@@ -86,4 +86,27 @@ class Department extends Model
                 ->toArray();
 //        });
     }
+
+
+    public static function getSimplifiedDepartments(): \Illuminate\Support\Collection
+    {
+        return Cache::remember('simplified_departments', 60, function () {
+            return self::orderBy('name')->get()->map(function ($department) {
+                $simplifiedName = $department->name;
+
+                if (str_contains($simplifiedName, 'Commercial Import Operation')) {
+                    $simplifiedName = 'Import';
+                }
+                if (str_contains($simplifiedName, 'Commercial Export Operation')) {
+                    $simplifiedName = 'Export';
+                }
+                if (str_contains($simplifiedName, 'BAZORG (Sales Platform)')) {
+                    $simplifiedName = 'BAZORG';
+                }
+
+                $department->simplified_name = $simplifiedName;
+                return $department;
+            });
+        });
+    }
 }

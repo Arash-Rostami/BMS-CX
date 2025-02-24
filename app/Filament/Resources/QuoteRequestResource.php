@@ -15,6 +15,7 @@ use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use Filament\Tables\Columns\Layout\Stack;
@@ -79,6 +80,7 @@ class QuoteRequestResource extends Resource
     {
         return $table
             ->emptyStateIcon('heroicon-o-bookmark')
+            ->recordClasses(fn(Model $record) => ($record->extra['use_markdown'] ?? false) ? 'major-row' : '')
             ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
             ->defaultSort('created_at', 'desc')
@@ -103,6 +105,7 @@ class QuoteRequestResource extends Resource
             ->columns([
                 Admin::showTitle(),
                 Admin::showResponseRate(),
+                Admin::showMarkdown(),
                 Admin::showOriginPort(),
                 Admin::showDestinationPort(),
                 Admin::showContainerType(),
@@ -125,29 +128,25 @@ class QuoteRequestResource extends Resource
     {
         return $table
             ->columns([
+                Stack::make([
+                    Split::make([
+                        Admin::showTitle(),
+                        Admin::showResponseRate(),
+                        Admin::showMarkdown(),
+                        Admin::showOriginPort(),
+                        Admin::showDestinationPort(),
+                    ]),
+                ])->space(3),
                 Split::make([
-                    Panel::make([
-                        Stack::make([
-                            Split::make([
-                                Admin::showTitle(),
-                                Admin::showResponseRate(),
-                                Admin::showOriginPort(),
-                                Admin::showDestinationPort(),
-                            ]),
-                            Split::make([
-                                Admin::showCommodity(),
-                                Admin::showPackaging(),
-                                Admin::showContainerType(),
-                                Admin::showPackaging(),
-                            ]),
-//                            Split::make([
-                            Admin::showValidity(),
-//                            ]),
-                        ])->space(2),
-                    ])
-                ])->columnSpanFull(),
-                Admin::showRequester(),
-                Admin::showTimeStamp(),
+                    Split::make([
+                        Admin::showCommodity(),
+                        Admin::showPackaging(),
+                        Admin::showContainerType(),
+                        Admin::showPackaging(),
+                        Admin::showValidity(),
+                        Admin::showRequester(),
+                    ])->columnSpan(3),
+                ])->collapsible(),
             ]);
     }
 

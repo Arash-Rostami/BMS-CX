@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Support\Enums\FontWeight;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
@@ -26,6 +27,10 @@ trait Table
             ->label(new HtmlString('<span class="text-primary-500 cursor-pointer" title="Record Unique ID">Ref. No. ⋮ ID</span>'))
             ->weight(FontWeight::ExtraLight)
             ->sortable()
+            ->copyable()
+            ->copyMessage('🗐 Ref. No. Copied')
+            ->copyMessageDuration(1500)
+            ->extraAttributes(['class' => 'copyable-content'])
             ->grow(false)
             ->tooltip(fn(?string $state): ?string => ($state) ? "Payment Ref. No. / ID" : '')
             ->toggleable()
@@ -84,8 +89,13 @@ trait Table
                     ->label('Total Payments')
                     ->using(fn(Builder $query): int => PaymentSummarizer::calculateTotalPaymentCount($query))
             )
-            ->searchable()
-            ->html()
+            ->searchable(query: function (QueryBuilder $query, string $search): QueryBuilder {
+                return $query->where(function (QueryBuilder $query) use ($search) {
+                    $query->where('payment_request', 'like', "%{$search}%");
+                });
+            })->html()
+            ->limit(50)
+            ->tooltip(fn(Model $record) => trim(explode("💢", self::getCustomizedDisplayName($record))[1]))
             ->state(fn(Model $record) => self::getCustomizedDisplayName($record));
     }
 
@@ -96,12 +106,78 @@ trait Table
     {
         return TextColumn::make('paymentRequests.type_of_payment')
             ->label('Type')
-            ->grow()
+            ->grow(false)
             ->formatStateUsing(fn($state) => PaymentRequest::$typesOfPayment[$state])
             ->sortable()
             ->searchable()
             ->badge();
     }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showPaymentRequestDep(): TextColumn
+    {
+        return TextColumn::make('paymentRequests.department.code')
+            ->label('Department')
+            ->tooltip(function (Model $record) {
+                $firstRequest = optional($record->paymentRequests)->first();
+                return 'Requester: ' . optional($firstRequest)->extra['made_by'] ?? null;
+            })
+            ->grow(false)
+            ->sortable()
+            ->searchable(query: function ($query, string $search) {
+                return $query->whereHas('paymentRequests', function ($paymentRequestQuery) use ($search) {
+                    $paymentRequestQuery->whereHas('department', function ($departmentQuery) use ($search) {
+                        $departmentQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('code', 'like', '%' . $search . '%');
+                    });
+                });
+            })
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showPaymentRequestCostCenter(): TextColumn
+    {
+        return TextColumn::make('paymentRequests.costCenter.code')
+            ->label('Cost Center')
+            ->grow()
+            ->sortable()
+            ->searchable()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showPaymentRequestBeneficiary(): TextColumn
+    {
+        return TextColumn::make('paymentRequests.beneficiary_name')
+            ->label('Beneficiary')
+            ->formatStateUsing(function (Model $record) {
+                $firstRequest = optional($record->paymentRequests)->first();
+                $beneficiaryName = $firstRequest->contractor?->name
+                    ?? $firstRequest->supplier?->name
+                    ?? $firstRequest->beneficiary?->name
+                    ?? null;
+
+                return $beneficiaryName ? (isModernDesign() ? 'Beneficiary: ' . $beneficiaryName : $beneficiaryName) : null;
+            })
+            ->grow(false)
+            ->sortable()
+            ->icon('heroicon-o-identification')
+            ->badge()
+            ->tooltip('Beneficiary')
+            ->searchable(query: function (QueryBuilder $query, string $search): QueryBuilder {
+                return $query->whereHas('paymentRequests', function ($paymentRequestQuery) use ($search) {
+                    PaymentRequest::searchBeneficiaries($paymentRequestQuery, $search);
+                });
+            });
+    }
+
 
     /**
      * @return TextColumn
@@ -190,8 +266,8 @@ trait Table
         return TextColumn::make('paymentRequests.requested_amount')
             ->label('Requested')
             ->color('secondary')
+            ->grow(true)
             ->formatStateUsing(fn($state) => $state ? number_format($state, 2) : 'N/A')
-            ->grow(false)
             ->badge();
     }
 
@@ -235,7 +311,7 @@ trait Table
             ->color('secondary')
             ->sortable()
             ->searchable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 
@@ -249,7 +325,7 @@ trait Table
             ->badge()
             ->color('secondary')
             ->searchable(['first_name', 'last_name'])
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
 
@@ -264,7 +340,7 @@ trait Table
             ->formatStateUsing(fn($state) => $state ? Carbon::parse($state)->format('F j, Y') : null)
             ->sortable()
             ->searchable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 
@@ -291,6 +367,44 @@ trait Table
                 };
             })
             ->badge();
+    }
+
+    public static function showStatus()
+    {
+        return IconColumn::make('process_status')
+            ->label('Status')
+            ->grow(false)
+            ->alignRight()
+            ->getStateUsing(function (Model $record) {
+                if ($record->has_processing_payment_request > 0) {
+                    return 'processing';
+                } elseif ($record->has_rejected_proforma_invoice > 0) {
+                    return 'cancelled';
+                } else {
+                    return 'completed';
+                }
+            })
+            ->tooltip(function (Model $record) {
+                if ($record->has_processing_payment_request > 0) {
+                    return 'Insufficient Payment';
+                } elseif ($record->has_rejected_proforma_invoice > 0) {
+                    return 'Refundable Payment';
+                } else {
+                    return 'Sufficient Payment';
+                }
+            })
+            ->icon(fn(string $state): string => match ($state) {
+                'processing' => 'heroicon-o-clock',
+                'cancelled' => 'heroicon-o-no-symbol',
+                'completed' => 'heroicon-s-check-circle',
+                default => 'heroicon-o-question-mark-circle',
+            })
+            ->color(fn(string $state): string => match ($state) {
+                'insufficient' => 'warning',
+                'closed' => 'danger',
+                'complete' => 'success',
+                default => 'gray',
+            });
     }
 
     /**
@@ -322,6 +436,61 @@ trait Table
             ->label('Payment request')
             ->badge();
     }
+
+    public static function viewPaymentRequester(): TextEntry
+    {
+        return TextEntry::make('paymentRequests')
+            ->label('Requester')
+            ->formatStateUsing(function (?Model $record): ?string {
+                $madeByValues = optional($record->paymentRequests)
+                    ->pluck('extra.made_by')
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                return !empty($madeByValues) ? implode(', ', $madeByValues) : null;
+            })
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewDepartment(): TextEntry
+    {
+        return TextEntry::make('paymentRequests')
+            ->label('Department')
+            ->formatStateUsing(function (?Model $record): ?string {
+                $departmentNames = optional($record->paymentRequests)
+                    ->pluck('department.name')
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                return !empty($departmentNames) ? implode(', ', $departmentNames) : null;
+            })
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewCostCenter(): TextEntry
+    {
+        return TextEntry::make('paymentRequests')
+            ->label('Cost Center')
+            ->formatStateUsing(function (?Model $record): ?string {
+                $costCenters = optional($record->paymentRequests)
+                    ->pluck('costCenter.code')
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                return !empty($costCenters) ? implode(', ', $costCenters) : null;
+            })
+            ->badge();
+    }
+
 
     /**
      * @return TextEntry

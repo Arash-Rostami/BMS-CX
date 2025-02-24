@@ -166,7 +166,7 @@ trait Form
     {
         return TextInput::make('requested_amount')
             ->label(fn() => new HtmlString('<span class="grayscale">💳 </span><span class="text-primary-500 font-normal">Payable Amount</span>'))
-            ->live()
+            ->live(debounce: 1000)
             ->numeric()
             ->required()
             ->placeholder('The amount to pay')
@@ -194,6 +194,25 @@ trait Form
                         ->send();
                 }
             })
+            ->rules([
+                function (Get $get) {
+                    return function (string $attribute, $value, $fail) use ($get) {
+                        $currency = $get('currency');
+                        $department = $get('department_id');
+                        $paymentMethod = $get('extra.paymentMethod');
+
+                        if ($currency === 'Rial' && $value < 200000000 && $department != 6) {
+                            $fail('🚫 The requested amount must be at least 200,000,000 Rials.');
+                        }
+                        if ($currency === 'Rial' && $paymentMethod === 'card_transfer' && $value > 100000000) {
+                            $fail('🚫 It is not possible to transfer more than 100,000,000 Rial with a card. Please choose another payment method.');
+                        }
+                        if ($currency === 'Rial' && $paymentMethod === 'bank_account' && $value > 500000000) {
+                            $fail('🚫 For amount more than 500,000,000 Rial, Sheba is recommended for better assurance. Please choose another payment method.');
+                        }
+                    };
+                },
+            ])
             ->hint(fn(Get $get) => is_numeric($get('requested_amount')) ? showDelimiter($get('requested_amount'), $get('currency')) : $get('requested_amount'));
     }
 
@@ -206,13 +225,13 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">💰 </span><span class="text-primary-500 font-normal">Total amount</span>'))
             ->numeric()
             ->live()
-            ->gte('requested_amount')
+            ->tooltip('Enter the total amount expected for this request. This is used for tracking partial, advance, and balance payments. If not provided, it will be automatically set to the requested amount under certain conditions.')->gte('requested_amount')
             ->validationMessages([
                 'gte' => 'Total amount cannot be less tan the payable/requested amount.',
                 'required' => '🚫 The field is required.',
             ])
             ->required(fn(Get $get) => $get('currency') != 'Rial' && $get('department_id') != 8)
-            ->visible(fn(Get $get) => $get('currency') != 'Rial' && $get('department_id') != 8)
+            ->visible(fn(Get $get) => in_array($get('type_of_payment'), ['partial', 'advance', 'balance']))
             ->placeholder('Inclusive of the payable amount')
             ->hint(fn(Get $get) => is_numeric($get('total_amount')) ? showDelimiter($get('total_amount'), $get('currency')) : $get('total_amount'));
     }
@@ -272,10 +291,25 @@ trait Form
     {
         return Select::make('type_of_payment')
             ->label(fn() => new HtmlString('<span class="grayscale">✒️ </span><span class="text-primary-500 font-normal">Payment Type</span>'))
-            ->options(PaymentRequest::$typesOfPayment)
+            ->options(PaymentRequest::$typesOfPaymentInFarsi)
             ->columnSpan(1)
             ->live()
-            ->afterStateUpdated(fn($state, Set $set) => ($state != 'advance') ? $set('extra.collectivePayment', 0) : $set('extra.collectivePayment', 1))
+            ->tooltip('For "Advance", "Partial", and "Balance" payment requests, you need to enter the total amount as well.')
+            ->afterStateUpdated(function ($state, Get $get, Set $set, Livewire $livewire) {
+                ($state != 'advance') ? $set('extra.collectivePayment', 0) : $set('extra.collectivePayment', 1);
+                if ($get('currency') === null) {
+                    return;
+                }
+
+                if ($get('department_id') == 6) {
+                    $livewire->dispatch('triggerNext');
+                    return;
+                }
+
+                if ($get('reason_for_payment') !== null && $get('cost_center') !== null) {
+                    $livewire->dispatch('triggerNext');
+                }
+            })
             ->required();
     }
 
@@ -284,9 +318,10 @@ trait Form
      */
     public static function getCaseNumber(): TextInput
     {
-        return TextInput::make('extra.caseNumber')
+        return TextInput::make('case_number')
             ->label(fn() => new HtmlString('<span class="grayscale">📑️ </span><span class="text-primary-500 font-normal">Case/Contract No.</span>'))
             ->placeholder('Optional for tracking')
+            ->tooltip('Add a Case/Project number for improved searchability and more detailed payment notifications within BMS.')
             ->columnSpan(1);
     }
 
@@ -432,6 +467,7 @@ trait Form
             ->placeholder('optional');
     }
 
+
     public static function getPaymentMethod()
     {
         return Select::make('extra.paymentMethod')
@@ -453,7 +489,7 @@ trait Form
             })
             ->reactive()
             ->required()
-            ->afterStateUpdated(fn($state, Set $set) => ($state == 'cash') ? $set('bank_name', 'None - Cash Transaction') : null);
+            ->afterStateUpdated(fn($state, Set $set, Get $get) => self::fetchBankAccountDetails($get, $state, $set));
     }
 
     public static function getShebaAccount()
@@ -519,6 +555,7 @@ trait Form
         return TextInput::make('swift_code')
             ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">Swift</span>'))
             ->placeholder('optional')
+            ->visible(fn(Get $get) => $get('currency') != 'Rial')
             ->maxLength(255);
     }
 
@@ -530,6 +567,7 @@ trait Form
         return TextInput::make('IBAN')
             ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">IBAN</span>'))
             ->placeholder('optional')
+            ->visible(fn(Get $get) => $get('currency') != 'Rial')
             ->maxLength(255);
     }
 
@@ -542,6 +580,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">IFSC</span>'))
             ->placeholder('')
             ->placeholder('optional')
+            ->visible(fn(Get $get) => $get('currency') != 'Rial')
             ->maxLength(255);
     }
 
@@ -554,6 +593,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">MICR</span>'))
             ->placeholder('optional')
             ->numeric()
+            ->visible(fn(Get $get) => $get('currency') != 'Rial')
             ->placeholder('optional')
             ->maxLength(255);
     }
@@ -665,12 +705,13 @@ trait Form
             ->requiredIf('extra.collectivePayment', 0)
             ->visible(fn(Get $get) => $get('extra.collectivePayment') == 0 && !empty($get('part')))
             ->disabled(fn($operation) => $operation == 'edit')
-            ->afterStateUpdated(function (Get $get, Set $set, $old, $state) {
-                $details = self::calculateOrderFinancials($state);
-
-                $set('currency', $details['currency']);
-                $set('total_amount', $details['total']);
-                $set('requested_amount', $details['requested']);
+            ->afterStateUpdated(function ($set, $get, $state) {
+                if (in_array($get('type_of_payment'), ['advance', 'balance'])) {
+                    $details = self::calculateOrderFinancials($state);
+                    $set('currency', $details['currency']);
+                    $set('total_amount', $details['total']);
+                    $set('requested_amount', $details['requested']);
+                }
             })
             ->live()
             ->label(fn() => new HtmlString('<span class="grayscale">🔢 </span><span class="text-primary-500 font-normal">Order</span>'))

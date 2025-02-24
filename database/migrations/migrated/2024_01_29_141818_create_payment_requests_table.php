@@ -70,6 +70,7 @@ return new class extends Migration {
             $table->integer('department_id')->unsigned()->index()->nullable();
             $table->foreign('department_id')->references('id')->on('departments');
             // Additional Data
+            $table->text('sequential_id')->nullable()->unique();
             $table->json('extra')->nullable();
             $table->timestamps();
             $table->softDeletes();

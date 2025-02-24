@@ -2,51 +2,55 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Logistic;
-use App\Services\ColorTheme;
+use App\Filament\Pages\Trait\BaseOrderChart;
+
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class OrderPackagingChart extends ChartWidget
 {
-    use InteractsWithPageFilters;
+    use InteractsWithPageFilters, BaseOrderChart;
 
-    protected static ?string $heading = 'Packaging Types Distribution';
+    protected static ?string $heading = '📦 Packaging Types Distribution';
 
     protected static ?string $maxHeight = '250px';
 
-    protected static ?int $sort = 8;
-
     protected function getData(): array
     {
+        $filterType = $this->filter ?? 'quantity';
+        $packagingData = $this->getPackagingData();
 
-        $year = $this->filters['yearlyOrders'] ?? 'all';
-
-        $packagingData = Logistic::countByPackagingType($year);
-
-        $bgColor = $this->getCachedBackgroundColor();
-
-
-        return [
-            'labels' => $packagingData->pluck('name')->toArray(),
-            'datasets' => [
-                [
-                    'label' => "Types of Packaging",
-                    'data' => $packagingData->pluck('total')->toArray(),
-                    'backgroundColor' => $bgColor,
-                    'borderColor' => 'transparent',
-                    'borderWidth' => 1,
-                ],
-            ],
-        ];
+        return $this->prepareChartData($packagingData, $filterType, 'packaging_name');
     }
 
-    protected function getCachedBackgroundColor()
+    protected function getFilters(): ?array
     {
-        return Cache::remember('widget-bg-color-packaging', 300, function () {
-            return ColorTheme::getRandomColorForWidget();
-        });
+        return ['quantity' => 'Quantity', 'percentage' => 'Percentage'];
+    }
+
+    public function getPackagingData()
+    {
+
+        $bindings = [];
+        $query = "
+            SELECT
+                p.name AS packaging_name,
+                SUM(COALESCE(od.final_quantity, od.provisional_quantity, od.buying_quantity, 0)) AS quantity
+            FROM order_details od
+            JOIN orders o ON od.id = o.order_detail_id
+            JOIN logistics l ON l.id = o.logistic_id
+            JOIN packagings p ON l.packaging_id = p.id
+            WHERE 1=1
+        ";
+
+        $query = $this->buildQuery($query, $bindings);
+
+        $query .= " GROUP BY p.name";
+
+        $orders = DB::select($query, $bindings);
+
+        return $this->processOrders($orders, 'packaging_name');
     }
 
     protected function getType(): string

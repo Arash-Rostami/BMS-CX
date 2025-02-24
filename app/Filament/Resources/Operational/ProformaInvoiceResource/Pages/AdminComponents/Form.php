@@ -110,9 +110,31 @@ trait Form
     public static function getShipmentPart(): Select
     {
         return Select::make('part')
-            ->label(fn() => new HtmlString('<span class="grayscale">🚢 </span><span class="text-primary-500 font-normal">Parts</span>'))
-            ->options(range(0, 99))
+            ->label(fn() => new HtmlString('<span class="grayscale">🚢 </span><span class="text-primary-500 font-normal">Total Parts</span>'))
+            ->options(array_combine(range(1, 99), range(1, 99)))
             ->placeholder('');
+    }
+
+
+    /**
+     * @return Select
+     */
+    public static function getAssignee(): Select
+    {
+        return Select::make('assignee_id')
+            ->label(fn() => new HtmlString('<span class="grayscale">👤 </span><span class="text-primary-500 font-normal">Assigned to</span>'))
+            ->options(function () {
+                return User::query()
+                    ->select(['id', 'first_name', 'middle_name', 'last_name'])
+                    ->where('status', 'active')
+                    ->whereJsonContains('info->department', '6')
+                    ->orderBy('first_name')
+                    ->get()
+                    ->mapWithKeys(fn($user) => [$user->id => $user->full_name])
+                    ->toArray();
+            })
+            ->default(auth()->id())
+            ->placeholder('Select one member');
     }
 
 
@@ -122,7 +144,7 @@ trait Form
     public static function getDetails(): MarkdownEditor
     {
         return MarkdownEditor::make('details.notes')
-            ->label(' ')
+            ->label(fn() => new HtmlString('<span class="grayscale">📝  </span><span class="text-primary-500 font-normal">Notes</span>'))
             ->placeholder('Optional description')
             ->disableAllToolbarButtons()
             ->columnSpanFull();

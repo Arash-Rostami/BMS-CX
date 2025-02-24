@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #E6E6E6;
+            background-color: #f5f5f5;
             margin: 0;
             padding: 20px;
         }
@@ -26,6 +26,7 @@
             justify-content: space-between;
             align-items: center;
         }
+
         .logo {
             color: #2980b9;
             font-size: 28px;
@@ -114,7 +115,9 @@
         <div class="logo">BMS</div>
         <div class="details">
             <h1>Payment Details</h1>
-            <div>Reference #: {{ $record->reference_number }}</div>
+            @if($record->reference_number)
+                <div>Reference #: {{ $record->reference_number }}</div>
+            @endif
             <div>Print Date: {{ now()->format('M d, Y') }}</div>
         </div>
     </div>
@@ -122,39 +125,105 @@
     <!-- Payment Information -->
     <h2>Payment Information</h2>
     <table class="table">
-        <tr>
-            <th class="label">Payment Request</th>
-            <td class="value">{{ implode(', ', $record->paymentRequests->pluck('reference_number')->toArray()) }}</td>
-        </tr>
-        <tr>
-            <th class="label">Currency</th>
-            <td class="value">{{ $record->currency }}</td>
-        </tr>
-        <tr>
-            <th class="label">Amount</th>
-            <td class="value">{{ $record->amount }}</td>
-        </tr>
-        <tr>
-            <th class="label">Payer</th>
-            <td class="value">{{ $record->payer }}</td>
-        </tr>
+        @if($record->paymentRequests->isNotEmpty())
+            <tr>
+                <th class="label">Payment Request</th>
+                <td class="value">{{ implode(', ', $record->paymentRequests->pluck('reference_number')->toArray()) }}</td>
+            </tr>
+        @endif
+        @if($record->currency)
+            <tr>
+                <th class="label">Currency</th>
+                <td class="value">{{ $record->currency }}</td>
+            </tr>
+        @endif
+        @if($record->amount)
+            <tr>
+                <th class="label">Amount</th>
+                <td class="value">{{ number_format($record->amount, 2) }}</td>
+            </tr>
+        @endif
+        @if($record->payer)
+            <tr>
+                <th class="label">Payer</th>
+                <td class="value">{{ $record->payer }}</td>
+            </tr>
+        @endif
     </table>
 
-    <!-- Notes Section -->
-    <h2>Details</h2>
+    <!-- Additional Payment Information -->
+    <h2>Additional Information</h2>
     <table class="table">
+        @if($record->paymentRequests->first()?->department?->name)
+            <tr>
+                <th class="label">Department</th>
+                <td class="value">{{ $record->paymentRequests->first()->department->name }}</td>
+            </tr>
+        @endif
+
+        @if($record->paymentRequests->first()?->costCenter?->code)
+            <tr>
+                <th class="label">Cost Center</th>
+                <td class="value">{{ $record->paymentRequests->first()->costCenter->code }}</td>
+            </tr>
+        @endif
+
+        @if($record->paymentRequests->first()?->recipient_name)
+            <tr>
+                <th class="label">Beneficiary Name</th>
+                <td class="value">{{ ucfirst($record->paymentRequests->first()->recipient_name) }}</td>
+            </tr>
+        @endif
+
+        @if($record->paymentRequests->first()?->requested_amount)
+            <tr>
+                <th class="label">Requested Amount</th>
+                <td class="value">{{ number_format($record->paymentRequests->first()->requested_amount, 2) }}</td>
+            </tr>
+        @endif
+
+        @if($record->paymentRequests->first()?->deadline)
+            <tr>
+                <th class="label">Deadline</th>
+                <td class="value">{{ optional($record->paymentRequests->first()->deadline)->format('M d, Y') }}</td>
+            </tr>
+        @endif
+
         <tr>
-            <th class="label">Transaction ID</th>
-            <td class="value">{{ $record->transaction_id }}</td>
+            <th class="label">Process Status</th>
+            <td class="value">{{ $record->process_status }}</td>
         </tr>
-        <tr>
-            <th class="label">Transfer Date</th>
-            <td class="value">{{ optional($record->date)->format('M d, Y') }}</td>
-        </tr>
-        <tr>
-            <th class="label">Notes</th>
-            <td class="value">{{ $record->notes ?? 'N/A' }}</td>
-        </tr>
+
+        @if($record->transaction_id)
+            <tr>
+                <th class="label">Transaction ID</th>
+                <td class="value">{{ $record->transaction_id }}</td>
+            </tr>
+        @endif
+        @if($record->date)
+            <tr>
+                <th class="label">Transfer Date</th>
+                <td class="value">{{ $record->date->format('M d, Y') }}</td>
+            </tr>
+        @endif
+        @if($record->extra['remainderSum'] ?? false)
+            <tr>
+                <th class="label">Remainder Sum</th>
+                <td class="value">{{ number_format($record->extra['remainderSum'], 2) }}</td>
+            </tr>
+        @endif
+        @if($record->extra['balanceStatus'] ?? false)
+            <tr>
+                <th class="label">Balance Status</th>
+                <td class="value">{{ ucfirst($record->extra['balanceStatus']) }}</td>
+            </tr>
+        @endif
+        @if($record->notes)
+            <tr>
+                <th class="label">Notes</th>
+                <td class="value">{{ $record->notes }}</td>
+            </tr>
+        @endif
     </table>
     <div></div>
 

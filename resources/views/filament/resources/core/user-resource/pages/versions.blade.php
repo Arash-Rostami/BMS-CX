@@ -1,5 +1,83 @@
 <x-filament-panels::page>
     <div class="max-w-4xl mx-auto py-8 text-gray-900 dark:text-gray-200">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.8-Beta
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(January 20, 2025)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>Financial Dashboard: Beneficiary Table and Bar Chart, Payment Requests Total (Filterable)
+            </li>
+            <li>Target Feature: Target Module For Association With Main Dashboard.
+            </li>
+            <li>DB Improvements: Order Module Normalization, Payment Request Total & Requested Amount .
+            </li>
+            <li>Notification Subscription Improvement: Department Based Alert For Payment Request & Payment.
+            </li>
+            <li>Proforma Invoice Improvements: Enhanced Modern Table (UI & UX), Smart/One-Click Order-,
+                Payment Request-, Payment-Maker, Order Part Maker, Sortable Columns, New Sets of Filters, Telex-Release
+                Filter, Telex-Release Record Finder, Button Groups, Contractor/Supplier Summarizer,
+                Filter/Stats Shortcut Toggle, Table Nav Buttons, Auto-off Toggles, Enhanced PDF Format (Filled Columns),
+                Fine-Tuned Project Number Creation.
+            </li>
+            <li>Order Improvements: Enhanced Modern Table (UI & UX), Smart/One-Click Proforma Invoice-,
+                Payment Request-Maker, Smart Payment Request Addition, Sortable Columns, Telex-Release Filter,
+                Telex-Release Record Finder, Button Groups, Contractor/Supplier Summarizer,
+                Filter/Stats Shortcut Toggle, Table Nav Buttons, Auto-off Toggles, Enhanced PDF Format (Filled Columns).
+            </li>
+            <li>Payment Request Improvements: Enhanced Modern Table (UI & UX), Smart/One-Click Attachment View, Sortable
+                Columns, Deadline Highlighter, Distinct View & Edit Page, Button Groups, New Sets of Filters, Farsi Equivalents,
+                Smart/One-Click Attachment View, Filter/Stats Shortcut Toggle, Table Nav Buttons, Auto-off Toggles,
+                Enhanced PDF Format (Filled Columns), Enhanced Logics For Requested & Total Amounts.
+            </li>
+            <li>Payment Improvements: Enhanced Modern Table (UI & UX), Sortable Columns, Column Addition From Payment Request
+                (Beneficiary Name, Requester, Department, Cost Center), Button Groups, New Sets of Filters, Filter/Stats Shortcut Toggle,
+                Table Nav Buttons, Auto-off Toggles, Enhanced PDF Format (Filled Columns).
+            </li>
+
+            <li>Other Updates: Color Shading, Menu Top & Side Navigation, Simple Menu Items Design For Simpler/Minimal Navigation,
+                Persisting Setting In User Profile (Filter Shortcuts, Menu Position, Menu Items, and Shades), Enhanced
+                Dashboard Account Info and Footer.
+            <li>Application Maintenance & DB Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.8
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(December 17, 2024)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>DB: Banners, Smart Notification, Notification Subscription.
+            </li>
+            <li>DB Improvements: Payment Request, Beneficiary, Balance, Payment, User, Notification.
+            </li>
+            <li>Notification Subscription Module (Proforma Invoice, Order, Payment Request, Payment) for Creation,
+                Modification, & Deletion, SMS, Email, In-App.
+            </li>
+            <li>Smart Notification Module (SMS, In-App, Email or Any Combination Delivery)</li>
+            <li>Smart Banner Module (Smart English-Persian Font Direction, Banner Styling, Smart Scheduling, Banner
+                Placement).
+            </li>
+            <li>Quote Request Improvements: Dual Function, AI Template Creator, Markdown Template Creator, Email
+                Scheduler, Admin Panel
+                Form Enhancement, Providers Form Enhancement, Multiple Select Field Menus.
+            </li>
+            <li>Payment Request Improvements: Departmental & Role-based Customization, Smart Statistics, Payment Wizard,
+                Auto Validation, Currency Delimiters,
+                Smart Error Notification, Auto Filled Fields Based On Users Department, Persian Support, Updated
+                Departmental Allocation Reasons,
+                UX Optimization (Smart Scroller, Button Navigation, Table FullScreen Mode, Brief/Detailed Switcher,
+                Improved Filtered Buttons, Simultaneous Currency, Department, and Payment Type Filters,
+                Smart Adaptability to Users)
+            </li>
+            <li>Payment Improvements: Stats Modifications (K, M, B in Stats), Simultaneous Department, Cost Center, and
+                Payment Reason Filters, Smart Currency Auto-Filled, Customized Edit-Free Access to Other Departments.
+            </li>
+            <li>Pro forma Invoice Improvements: Cancelled Status, Cancelled Statistics, Cancelled Grouping & Filtering.
+            </li>
+            <li>Balance Improvements: Department Filtering Select Button, Auto Currency Detection.
+            </li>
+            <li>Other Updates: User Position & Access, Personalized View & Statistics, Updated Data Sets in Payment
+                Requests Reasons, Improved Access & Permission Levels.
+            <li>Application Maintenance & DB Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
         <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.7
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(November 19, 2024)</span>
         </h1>

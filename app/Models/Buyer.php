@@ -18,11 +18,6 @@ class Buyer extends Model
         });
     }
 
-    public function orderRequests()
-    {
-        return $this->hasMany(OrderRequest::class);
-    }
-
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');

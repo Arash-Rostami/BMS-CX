@@ -34,6 +34,21 @@ function formatNumber(int $number)
     return Number::format($number / 1000000, 2) . 'm';
 }
 
+function formatCurrency($amount): string
+{
+    if ($amount >= 1_000_000_000_000) {
+        return round($amount / 1_000_000_000_000, 2) . 'T';
+    } elseif ($amount >= 1_000_000_000) {
+        return round($amount / 1_000_000_000, 2) . 'B';
+    } elseif ($amount >= 1_000_000) {
+        return round($amount / 1_000_000, 2) . 'M';
+    } elseif ($amount >= 1_000) {
+        return round($amount / 1_000, 2) . 'K';
+    }
+
+    return number_format($amount, 2);
+}
+
 function formatHTML(string $text, array $classes = [])
 {
     $classString = implode(' ', $classes);
@@ -50,12 +65,54 @@ function getCurrencySymbols($currency)
         'Dirham' => 'D',
         'Ruble' => '₽',
         'Rial' => 'R'
-    ][$currency];
+    ][$currency] ?? ['Rial'];
 }
 
 function getTableDesign()
 {
     return data_get(optional(auth()->user()->info), 'tableDesign');
+}
+
+function getMenuDesign()
+{
+    return data_get(optional(auth()->user()->info), 'menuDesign');
+}
+
+function isModernDesign()
+{
+    return getTableDesign() == 'modern';
+}
+
+function isMenuTop()
+{
+    return getMenuDesign() == 'top';
+}
+
+function isSimpleSidebar()
+{
+    $user = auth()->user();
+
+    return $user && (($user->info['sideBarItems'] ?? 'show') === 'hide');
+}
+
+function isFilterSelected()
+{
+    $user = auth()->user();
+
+    return ($user && ($user->info['filterDesign'] ?? 'hide') == 'show');
+}
+
+function isColorSelected()
+{
+    $user = auth()->user();
+
+    return ($user && ($user->info['shadeDesign'] ?? 'hide') === 'show');
+
+}
+
+function isShadeSelected($bg)
+{
+    return isColorSelected() ? $bg : '' ?? null;
 }
 
 
@@ -80,6 +137,17 @@ function isUserAgent()
 function isUserAccountant()
 {
     return auth()->user()->role === 'accountant';
+}
+
+function isUserCXHead()
+{
+    $user = auth()->user();
+
+    if (!$user || !isset($user->role, $user->info['department'], $user->info['position'])) {
+        return false;
+    }
+
+    return $user->role === 'agent' && $user->info['department'] == 6 && $user->info['position'] == 'mdr';
 }
 
 

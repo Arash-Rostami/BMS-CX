@@ -36,8 +36,6 @@ class QuoteResource extends Resource
     protected static ?int $navigationSort = 8;
 
 
-
-
     public static function form(Form $form): Form
     {
         return $form->schema([]);
@@ -105,25 +103,23 @@ class QuoteResource extends Resource
         return $table
             ->columns([
                 Split::make([
-                    Panel::make([
-                        Stack::make([
-                            Split::make([
-                                Admin::showQuoteProvider(),
-                                Admin::showCommodity(),
-                            ]),
-                            Split::make([
-                                Admin::showOriginPort(),
-                                Admin::showDestinationPort(),
-                            ]),
-                            Split::make([
-                                Admin::showOfferedRate(),
-                                Admin::showLocalCharges(),
-                                Admin::showSwitchBLFee(),
-                                Admin::showAttachment(),
-                            ]),
-                            Admin::showValidity(),
-                        ])->space(2),
-                    ])->columnSpanFull(),
+                    Stack::make([
+                        Split::make([
+                            Admin::showQuoteProvider(),
+                            Admin::showCommodity(),
+                        ]),
+                        Split::make([
+                            Admin::showOriginPort(),
+                            Admin::showDestinationPort(),
+                        ]),
+                        Split::make([
+                            Admin::showOfferedRate(),
+                            Admin::showLocalCharges(),
+                            Admin::showSwitchBLFee(),
+                            Admin::showAttachment(),
+                        ]),
+                        Admin::showValidity(),
+                    ])->space(2),
                 ])->columnSpanFull(),
                 Admin::showTimeStamp(),
             ])->contentGrid([
@@ -135,7 +131,7 @@ class QuoteResource extends Resource
 
     public static function getRelations(): array
     {
-        return [ ];
+        return [];
     }
 
     public static function getPages(): array
@@ -155,6 +151,12 @@ class QuoteResource extends Resource
                 SoftDeletingScope::class,
             ]);
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
+    }
+
 
     public static function getNavigationBadge(): ?string
     {

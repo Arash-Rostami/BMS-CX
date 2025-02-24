@@ -15,14 +15,14 @@ class SmartPaymentRequest
      * @param string|null $module
      * @param \Filament\Forms\Form $form The form instance to fill.
      */
-    public static function fillForm(?int $id, ?string $module, $form): void
+    public static function fillForm(?int $id, ?string $module, $form, $type = 'balance'): void
     {
         if ($id) {
             if ($module === 'proforma-invoice') {
                 self::fillProformaInvoiceForm($id, $form);
             }
             if ($module === 'order') {
-                self::fillOrderForm($id, $form);
+                self::fillOrderForm($id, $form, $type);
             }
         }
     }
@@ -62,30 +62,30 @@ class SmartPaymentRequest
      * @param int $id
      * @param \Filament\Forms\Form $form
      */
-    protected static function fillOrderForm(int $id, $form): void
+    protected static function fillOrderForm(int $id, $form, $type): void
     {
         $order = Order::find($id);
 
         if ($order) {
             $orderDetails = optional($order->orderDetail) ?? null;
-            $requested = ($orderDetails?->extra['finalTotal'] != null && $orderDetails?->extra['finalTotal'] != 0.0)
-                ? $orderDetails?->extra['finalTotal']
-                : $orderDetails?->extra['provisionalTotal'] ?? null;
+            $requested = ($orderDetails?->final_total != null && $orderDetails?->final_total != 0.0)
+                ? $orderDetails?->final_total
+                : $orderDetails?->provisional_total ?? null;
             $total = ($orderDetails?->buying_price ?? 0) * ($orderDetails->buying_quantity ?? 0);
 
             $form->fill([
                 'extra.collectivePayment' => 0,
                 'department_id' => 6,
-                'type_of_payment' => 'balance',
+                'type_of_payment' => $type ?? 'balance',
                 'proforma_invoice_number' => $order->proforma_number ?? null,
                 'part' => 'PR/GR',
                 'order_id' => $id,
-                'beneficiary_name' => 'supplier',
+                'beneficiary_name' => ($type ?? null) === 'balance' ? 'supplier' : ($type === null ? 'supplier' : 'contractor'),
                 'supplier_id' => $order->party->supplier_id ?? null,
-                'reason_for_payment' => 20,
-                'currency' => 'USD',
-                'requested_amount' => $requested,
-                'total_amount' => $total,
+                'reason_for_payment' => ($type ?? null) === 'balance' ? 20 : ($type === null ? 20 : 23),
+                'currency' => ($type ?? null) === 'balance' ? 'USD' : ($type === null ? 'USD' : 'Rial'),
+                'requested_amount' => ($type ?? null) === 'balance' ? $requested : 0,
+                'total_amount' => ($type ?? null) === 'balance' ? $total : 0,
             ]);
         }
     }

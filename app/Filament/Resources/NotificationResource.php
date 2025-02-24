@@ -91,19 +91,16 @@ class NotificationResource extends Resource
         return $table
             ->columns([
                 Stack::make([
-                    Panel::make([
-                        Split::make([
-                            Stack::make([
-                                Admin::showRecipient(),
-                                Admin::showMessage(),
-                            ]),
-                            Stack::make([
-                                Admin::showReadTime(),
-                                Admin::showClearingTime(),
-                            ])
+                    Split::make([
+                        Stack::make([
+                            Admin::showRecipient(),
+                            Admin::showMessage(),
+                        ]),
+                        Stack::make([
+                            Admin::showReadTime(),
+                            Admin::showClearingTime(),
                         ])
-
-                    ])->columnSpanFull(true),
+                    ])
                 ])->space(4),
                 Admin::showCreatedTime()
                     ->alignRight(),

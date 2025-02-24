@@ -278,9 +278,9 @@ trait Filter
 
     public static function groupByCurrency(): Group
     {
-        return Group::make('orderDetail.extra')->label('Currency')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->orderDetail)->extra['currency'] ?? 'N/A')
-            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->orderDetail)->extra['currency'] ?? 'N/A');
+        return Group::make('orderDetail')->label('Currency')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->orderDetail)->currency ?? 'N/A')
+            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->orderDetail)->currency ?? 'N/A');
     }
 
     public static function groupByTags(): Group

@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #E6E6E6;
+            background-color: #f5f5f5;
             margin: 0;
             padding: 20px;
         }
@@ -26,6 +26,7 @@
             justify-content: space-between;
             align-items: center;
         }
+
         .logo {
             color: #2980b9;
             font-size: 28px;
@@ -109,106 +110,151 @@
 </head>
 <body>
 <div class="container">
+
     <!-- Header -->
     <div class="header">
         <div class="logo">BMS</div>
         <div class="details">
             <h1>Pro forma Invoice Details</h1>
-            <div>Reference #: {{ $record->reference_number }}</div>
-            <div>Proforma Number: {{ $record->proforma_number }}</div>
-            <div>Proforma Date: {{ optional($record->proforma_date)->format('M d, Y') }}</div>
-            <div>Status: {{ ucfirst($record->status) }}</div>
+            @if($record->reference_number)
+                <div>Reference #: {{ $record->reference_number }}</div>
+            @endif
+
+            @if($record->proforma_number)
+                <div>Proforma Number: {{ $record->proforma_number }}</div>
+            @endif
+
+            @if($record->proforma_date)
+                <div>Proforma Date: {{ $record->proforma_date->format('M d, Y') }}</div>
+            @endif
+
+            @if($record->status)
+                <div>Status: {{ ucfirst($record->status) }}</div>
+            @endif
         </div>
     </div>
 
     <!-- General Information -->
     <h2>General Information</h2>
     <table class="table">
-        <tr>
-            <th class="label">Contract Number</th>
-            <td class="value">{{ $record->contract_number }}</td>
-        </tr>
-        <tr>
-            <th class="label">Category</th>
-            <td class="value">{{ $record->category->name }}</td>
-        </tr>
-        <tr>
-            <th class="label">Product</th>
-            <td class="value">{{ $record->product->name }}</td>
-        </tr>
-        <tr>
-            <th class="label">Grade</th>
-            <td class="value">{{ $record->grade->name }}</td>
-        </tr>
+        @if($record->contract_number)
+            <tr>
+                <th class="label">Contract Number</th>
+                <td class="value">{{ $record->contract_number }}</td>
+            </tr>
+        @endif
+
+        @if(optional($record->category)->name)
+            <tr>
+                <th class="label">Category</th>
+                <td class="value">{{ $record->category->name }}</td>
+            </tr>
+        @endif
+
+        @if(optional($record->product)->name)
+            <tr>
+                <th class="label">Product</th>
+                <td class="value">{{ $record->product->name }}</td>
+            </tr>
+        @endif
+
+        @if(optional($record->grade)->name)
+            <tr>
+                <th class="label">Grade</th>
+                <td class="value">{{ $record->grade->name }}</td>
+            </tr>
+        @endif
     </table>
 
     <!-- Buyer and Supplier Information -->
     <h2>Buyer and Supplier Information</h2>
     <table class="table">
-        <tr>
-            <th class="label">Buyer</th>
-            <td class="value">{{ $record->buyer->name }}</td>
-        </tr>
-        <tr>
-            <th class="label">Supplier</th>
-            <td class="value">{{ $record->supplier->name }}</td>
-        </tr>
+        @if(optional($record->buyer)->name)
+            <tr>
+                <th class="label">Buyer</th>
+                <td class="value">{{ $record->buyer->name }}</td>
+            </tr>
+        @endif
+
+        @if(optional($record->supplier)->name)
+            <tr>
+                <th class="label">Supplier</th>
+                <td class="value">{{ $record->supplier->name }}</td>
+            </tr>
+        @endif
     </table>
 
     <!-- Pricing and Quantity Information -->
     <h2>Pricing and Quantity</h2>
     <table class="table">
-        <tr>
-            <th class="label">Unit Price</th>
-            <td class="value">{{ number_format($record->price,2) }}</td>
-        </tr>
-        <tr>
-            <th class="label">Quantity (mt)</th>
-            <td class="value">{{ number_format($record->quantity,2) }}</td>
-        </tr>
-        <tr>
-            <th class="label">Percentage</th>
-            <td class="value">{{ $record->percentage }}%</td>
-        </tr>
-        <tr>
-            <th class="label">Part</th>
-            <td class="value">{{ $record->part }}</td>
-        </tr>
+        @if($record->price)
+            <tr>
+                <th class="label">Unit Price</th>
+                <td class="value">{{ number_format($record->price, 2) }}</td>
+            </tr>
+        @endif
+
+        @if($record->quantity)
+            <tr>
+                <th class="label">Quantity (mt)</th>
+                <td class="value">{{ number_format($record->quantity, 2) }}</td>
+            </tr>
+        @endif
+
+        @if($record->percentage)
+            <tr>
+                <th class="label">Percentage</th>
+                <td class="value">{{ $record->percentage }}%</td>
+            </tr>
+        @endif
+
+        @if($record->part)
+            <tr>
+                <th class="label">Part</th>
+                <td class="value">{{ $record->part }}</td>
+            </tr>
+        @endif
     </table>
 
     <!-- Extra Information -->
     <h2>Extra Information</h2>
     @if(is_array($record->extra))
         @foreach($record->extra as $key => $value)
-            <div><span class="label">{{ ucfirst($key) }}:</span>
-                <span class="value">
-                @if(is_array($value))
-                        {{ implode(', ', $value) }}
-                    @else
-                        {{ $value }}
-                    @endif
-            </span>
-            </div>
+            @if($value)
+                <div><span class="label">{{ ucfirst($key) }}:</span> <span class="value">
+                    @if(is_array($value))
+                            {{ implode(', ', $value) }}
+                        @else
+                            {{ $value }}
+                        @endif
+                </span></div>
+            @endif
         @endforeach
-    @else
-        <div><span class="label">Extra:</span><span class="value">{{ $record->extra }}</span></div>
     @endif
 
     <!-- Details Section -->
     <h2>Details</h2>
     <table class="table">
-        <tr>
-            <th class="label">Details</th>
-            <td class="value">{{ $record->details['notes'] ?? 'N/A' }}</td>
-        </tr>
-        <tr>
-            <th class="label">Created on</th>
-            <td class="value">{{ optional($record->created_at)->format('M d, Y') }}</td>
-        </tr>
-        <tr>
-            <th class="label">Updated on</th>
-            <td class="value">{{ optional($record->updated_at)->format('M d, Y') }}</td>
-        </tr>
+        @if($record->details['notes'])
+            <tr>
+                <th class="label">Details</th>
+                <td class="value">{{ $record->details['notes'] }}</td>
+            </tr>
+        @endif
+
+        @if($record->created_at)
+            <tr>
+                <th class="label">Created on</th>
+                <td class="value">{{ $record->created_at->format('M d, Y') }}</td>
+            </tr>
+        @endif
+
+        @if($record->updated_at)
+            <tr>
+                <th class="label">Updated on</th>
+                <td class="value">{{ $record->updated_at->format('M d, Y') }}</td>
+            </tr>
+        @endif
     </table>
 
     <div class="footer">

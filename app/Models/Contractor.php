@@ -20,12 +20,6 @@ class Contractor extends Model
         });
     }
 
-    public function orderRequests()
-    {
-        return $this->hasMany(OrderRequest::class);
-    }
-
-
     /**
      * Get the user that owns the contractor.
      */

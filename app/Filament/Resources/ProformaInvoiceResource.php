@@ -2,13 +2,11 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\Admin;
+use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\ListProformaInvoices;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Widgets\StatsOverview;
 use App\Models\ProformaInvoice;
 use App\Services\AttachmentDeletionService;
-use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Hidden;
@@ -18,20 +16,11 @@ use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\MaxWidth;
-use Filament\Tables;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\ReplicateAction;
-use Filament\Tables\Actions\RestoreBulkAction;
-use Filament\Tables\Columns\Layout\Panel;
-use Filament\Tables\Columns\Layout\Split;
-use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
-use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class ProformaInvoiceResource extends Resource
 {
@@ -139,8 +128,9 @@ class ProformaInvoiceResource extends Resource
                             ])
                             ->collapsible()
                             ->collapsed(),
-                        Section::make(new HtmlString('Notes <span class="red"> </span>'))
+                        Section::make(new HtmlString('Extra <span class="red"> </span>'))
                             ->schema([
+                                Admin::getAssignee(),
                                 Admin::getDetails(),
                             ])
                             ->collapsible(),
@@ -150,11 +140,7 @@ class ProformaInvoiceResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? self::getModernLayout($table)
-            : self::getClassicLayout($table);
+        return $table;
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -217,126 +203,24 @@ class ProformaInvoiceResource extends Resource
 
     private static function configureCommonTableSettings(Table $table): Table
     {
-        return $table
-            ->filters([Admin::filterProforma(), AdminOrder::filterSoftDeletes()])
-            ->emptyStateIcon('heroicon-o-bookmark')
-            ->emptyStateDescription('Once you create your first record, it will appear here.')
-            ->searchDebounce('1000ms')
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                ReplicateAction::make()
-                    ->color('info')
-                    ->modalWidth(MaxWidth::Medium)
-                    ->modalIcon('heroicon-o-clipboard-document-list')
-                    ->record(fn(Model $record) => $record)
-                    ->mutateRecordDataUsing(function (array $data): array {
-                        $data['user_id'] = auth()->id();
-                        return $data;
-                    })
-                    ->after(fn(Model $replica) => Admin::syncProformaInvoice($replica))
-                    ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.proforma-invoices.edit', ['record' => $replica->id,])),
-                Tables\Actions\DeleteAction::make()
-                    ->successNotification(fn(Model $record) => Admin::send($record))
-                    ->hidden(fn(?Model $record) => $record && ($record->activeApprovedPaymentRequests->isNotEmpty() || $record->activeOrders->isNotEmpty())),
-                Tables\Actions\RestoreAction::make(),
-                Tables\Actions\Action::make('pdf')
-                    ->label('PDF')
-                    ->color('success')
-                    ->icon('heroicon-c-inbox-arrow-down')
-                    ->action(function (Model $record) {
-                        return response()->streamDownload(function () use ($record) {
-                            echo Pdf::loadHtml(view('filament.pdfs.proformaInvoice', ['record' => $record])
-                                ->render())
-                                ->stream();
-                        }, 'BMS-' . $record->reference_number . '.pdf');
-                    }),
-
-                Tables\Actions\Action::make('createPaymentRequest')
-                    ->label('Smart Payment')
-                    ->url(fn($record) => route('filament.admin.resources.payment-requests.create', ['id' => $record->id, 'module' => 'proforma-invoice']))
-                    ->icon('heroicon-o-credit-card')
-                    ->color('warning')
-                    ->openUrlInNewTab(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->action(fn(Collection $records) => Admin::separateRecordsIntoDeletableAndNonDeletable($records))
-                        ->deselectRecordsAfterCompletion(),
-                    RestoreBulkAction::make(),
-                    ExportBulkAction::make(),
-                    PrintBulkAction::make(),
-                ])
-            ])
-            ->poll('120s')
-            ->groupingSettingsInDropdownOnDesktop()
-            ->defaultSort('reference_number', 'desc')
-            ->groups([
-                Admin::groupProformaInvoiceRecords(),
-                Admin::groupProformaDateRecords(),
-                Admin::groupPartRecords(),
-                Admin::groupCategoryRecords(),
-                Admin::groupProductRecords(),
-                Admin::groupBuyerRecords(),
-                Admin::groupSupplierRecords(),
-                Admin::groupContractRecords(),
-                Admin::groupStatusRecords(),
-            ]);
+        return (new ListProformaInvoices())->configureCommonTableSettings($table);
     }
 
     public static function getModernLayout(Table $table): Table
     {
-        return $table
-            ->columns([
-                Split::make([
-                    Panel::make([
-                        Stack::make([
-                            Split::make([
-                                Admin::showCategory(),
-                                Admin::showProduct(),
-                                Admin::showBuyer(),
-                            ]),
-                            Split::make([
-                                Admin::showProformaNumber(),
-                                Admin::showProformaDate(),
-                                Admin::showStatus(),
-                            ]),
-                            Split::make([
-                                Admin::showGrade(),
-                                Admin::showShipmentPart(),
-                                Admin::showTotal(),
-                            ]),
-                        ])->space(2)
-
-                    ])->columnSpanFull(true),
-                ]),
-                Admin::showTimeStamp()
-            ]);
+        return (new ListProformaInvoices())->getModernLayout($table);
     }
 
     public static function getClassicLayout(Table $table): Table
     {
-        return $table
-            ->columns([
-                Admin::showID(),
-                Admin::showProformaNumber(),
-                Admin::showProformaDate(),
-                Admin::showBuyer(),
-                Admin::showSupplier(),
-                Admin::showCategory(),
-                Admin::showProduct(),
-                Admin::showGrade(),
-                Admin::showPrice(),
-                Admin::showQuantity(),
-                Admin::showPercentage(),
-                Admin::showTotal(),
-                Admin::showShipmentPart(),
-                Admin::showContractName(),
-                Admin::showCreator(),
-                Admin::showStatus(),
-            ])->striped();
+        return (new ListProformaInvoices())->getClassicLayout($table);
     }
+
+    public static function getNavigationLabel(): string
+    {
+        return isSimpleSidebar() ? 'Contracts' : 'Pro forma Invoices';
+    }
+
 
     public static function getNavigationBadge(): ?string
     {
@@ -363,7 +247,8 @@ class ProformaInvoiceResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['proforma_number', 'reference_number'];
+        return ['proforma_number', 'reference_number', 'contract_number', 'category.name',
+            'product.name', 'supplier.name', 'user.first_name', 'user.last_name'];
     }
 
 
@@ -375,6 +260,7 @@ class ProformaInvoiceResource extends Resource
 
     public static function getGlobalSearchResultTitle(Model $record): string
     {
-        return '📋 ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
+//        return '📋 ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
+        return '📋 ' . $record->reference_number . '  🔎 ' . $record->contract_number . ' - ' . $record->proforma_number;
     }
 }

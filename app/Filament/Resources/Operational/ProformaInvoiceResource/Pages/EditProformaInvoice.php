@@ -27,13 +27,6 @@ class EditProformaInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('createPaymentRequest')
-                ->label('Smart Payment')
-                ->url(fn(Model $record) => route('filament.admin.resources.payment-requests.create', ['id' => $record->id, 'module' => 'proforma-invoice']))
-                ->icon('heroicon-o-credit-card')
-                ->color('warning')
-                ->hidden(fn(?Model $record) => $record ? $record->activeApprovedPaymentRequests->isNotEmpty() : false)
-                ->openUrlInNewTab(),
             PrintAction::make()
                 ->color('amber'),
             Actions\Action::make('pdf')

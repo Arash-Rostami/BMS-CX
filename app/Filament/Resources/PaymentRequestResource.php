@@ -51,9 +51,7 @@ class PaymentRequestResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
     protected static ?string $navigationGroup = 'Operational Data';
-
     protected static ?array $badgeData = null;
-
 
     protected static ?int $navigationSort = 4;
 
@@ -80,10 +78,12 @@ class PaymentRequestResource extends Resource
             ->schema([
                 Group::make()
                     ->schema([
+                        // Status
                         Section::make('💫 Status')
                             ->schema([Admin::getStatus()])
                             ->hidden(fn(string $operation) => $operation === 'create')
                             ->collapsible(),
+                        // Chat
                         Section::make('')
                             ->description('📩 This section is only visible when the status is denied. Here you can add messages related to this status to facilitate discussion or clarification.')
                             ->schema([
@@ -103,7 +103,7 @@ class PaymentRequestResource extends Resource
                             ])
                             ->visible(fn(Get $get) => $get('status') == 'rejected')
                             ->collapsible(),
-
+                        //Create for all departments, excluding CX
                         Wizard::make([
                             Wizard\Step::make('1')
                                 ->icon('heroicon-o-building-storefront')
@@ -159,8 +159,8 @@ class PaymentRequestResource extends Resource
                                                     Admin::getContractor(),
                                                     Admin::getPayee(),
                                                     Admin::getRecipientName(),
-                                                    Admin::getBankName(),
                                                     Admin::getPaymentMethod(),
+                                                    Admin::getBankName(),
                                                     Admin::getAccountNumber(),
                                                     Admin::getCardTransfer(),
                                                     Admin::getShebaAccount(),
@@ -224,7 +224,6 @@ class PaymentRequestResource extends Resource
                                                 ])
                                                 ->columns(2)
                                                 ->collapsible(),
-
                                         ])
                                         ->columnSpan(2),
                                 ]),
@@ -258,8 +257,130 @@ class PaymentRequestResource extends Resource
                                         ->columns(2),
                                 ]),
                         ])
-                            ->nextAction(fn(Action $action) => $action->label('⮞')->tooltip('⏩ Next step'))
-                            ->previousAction(fn(Action $action) => $action->label('⮜')->tooltip('⏪ Previous step'))
+                            ->hidden(fn(string $operation, Get $get) => $operation !== 'create' or $get('department_id') == 6)
+                            ->nextAction(fn(Action $action) => $action->label('⮞')->tooltip('⏩ Next step')->extraAttributes(['id' => 'next-step-button']))
+                            ->previousAction(fn(Action $action) => $action->label('⮜')->tooltip('⏪ Previous step')),
+                        //Edit for all departments and Create for CX
+                        Group::make()
+                            ->schema([
+                                Section::make(new HtmlString('Linked to CPS (Centralized Payment Service)'))
+                                    ->icon('heroicon-o-information-circle')
+                                    ->schema([
+                                        Section::make(new HtmlString('Organizational Details'))
+                                            ->schema([
+                                                Admin::getDepartment(),
+                                                Admin::getCurrency(),
+                                                Admin::getCPSReasons(),
+                                                Admin::getCostCenter(),
+                                                Admin::getTypeOfPayment(),
+                                            ])
+                                            ->columns(5)
+                                            ->collapsible(),
+                                    ])->columnSpanFull(),
+                                Section::make('Pro forma Invoice/Order Details')
+                                    ->schema([
+                                        Grid::make(3)->schema([
+                                            Admin::hiddenInvoiceNumber(),
+                                            Admin::getProformaInvoiceNumber(),
+                                            Admin::getProformaInvoiceNumbers(),
+                                            Admin::getTotalOrPart(),
+                                            Admin::getPart(),
+                                            Admin::getOrder(),
+                                        ]),
+                                        Grid::make(2)->schema([
+                                            Admin::getType(),
+                                            Admin::getBeneficiary(),
+                                            Admin::getPurpose(),
+                                        ]),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->hidden(fn(string $operation, Get $get) => $get('department_id') != 6),
+                                Group::make()->schema([
+                                    Section::make('Account Details')
+                                        ->schema([
+                                            Group::make()->schema([
+                                                Admin::getSupplier(),
+                                                Admin::getContractor(),
+                                                Admin::getPayee(),
+                                                Admin::getRecipientName(),
+                                                Admin::getPaymentMethod(),
+                                                Admin::getBankName(),
+                                                Admin::getAccountNumber(),
+                                                Admin::getCardTransfer(),
+                                                Admin::getShebaAccount(),
+                                                Admin::getBankAddress(),
+                                                Admin::getBeneficiaryAddress(),
+                                                Admin::getDescription(),
+                                                Admin::getAttachmentToggle(),
+                                                Section::make()->schema([
+                                                    Admin::getSourceSelection(),
+                                                    Admin::getAllProformaInvoicesOrOrders(),
+                                                    Admin::getProformaInvoicesAttachments(),
+                                                ])
+                                                    ->columns(3)
+                                                    ->visible(fn($get) => $get('use_existing_attachments')),
+                                            ])->columns(2),
+                                            Repeater::make('attachments')
+                                                ->relationship('attachments')
+                                                ->label('Attachments')
+                                                ->schema([
+                                                    Group::make()->schema([
+                                                        Hidden::make('id'),
+                                                        Admin::getAttachmentFile(),
+                                                    ])->columnSpan(2),
+
+                                                    Group::make()->schema([
+                                                        Section::make()->schema([
+                                                            Admin::getAttachmentFileName(),
+                                                        ]),
+                                                    ])->columnSpan(2),
+                                                ])
+                                                ->columns(4)
+                                                ->itemLabel('Attachments:')
+                                                ->addActionLabel('➕')
+                                                ->extraItemActions([
+                                                    Action::make('deleteAttachment')
+                                                        ->label('deleteMe')
+                                                        ->visible(fn($operation, $record) => $operation == 'edit' || ($record === null) || ($record->payments->isEmpty()))
+                                                        ->icon('heroicon-o-trash')
+                                                        ->color('danger')
+                                                        ->modalHeading('Delete Attachment?')
+                                                        ->action(fn(array $arguments, Repeater $component) => AttachmentDeletionService::removeAttachment($component, $arguments['item'])
+                                                        )
+                                                        ->modalContent(function (Action $action, array $arguments, Repeater $component, $operation, ?Model $record) {
+                                                            if (str_contains($arguments['item'], 'record')) {
+                                                                return AttachmentDeletionService::validateAttachmentExists($component, $arguments['item'], $operation, $action, $record);
+                                                            }
+                                                            return new HtmlString("<span>Of course, it is an empty attachment.</span>");
+                                                        })
+                                                        ->modalSubmitActionLabel('Confirm')
+                                                        ->modalWidth(MaxWidth::Medium)
+                                                        ->modalIcon('heroicon-s-exclamation-triangle'),
+                                                ])
+                                                ->deletable(false)
+                                                ->columnSpanFull()
+                                                ->collapsible()
+                                                ->collapsed(),
+                                        ])
+                                        ->columnSpan(4)
+                                        ->collapsible(),
+                                    Section::make(new HtmlString('Payment Details  <span class="red"> *</span>'))
+                                        ->schema([
+                                            Admin::getPayableAmount(),
+                                            Admin::getTotalAmount(),
+                                            Admin::getDeadline(),
+                                            Admin::getCaseNumber(),
+                                            Admin::getSwiftCode(),
+                                            Admin::getIBANCode(),
+                                            Admin::getIFSCCode(),
+                                            Admin::getMICRCode(),
+                                        ])
+                                        ->columnSpan(2)
+                                        ->collapsible()
+                                ])->columns(6)
+                            ])
+                            ->hidden(fn(string $operation, Get $get) => ($operation === 'create' && $get('department_id') != 6))
                     ])
                     ->columnSpanFull()
                     ->columns(1)
@@ -275,37 +396,29 @@ class PaymentRequestResource extends Resource
     {
         return $infolist
             ->schema([
-                Tabs::make('Tabs')
-                    ->tabs([
-                        Tabs\Tab::make('Request Details')
-                            ->schema([
-                                Admin::viewReason(),
-                                Admin::viewType(),
-                                Admin::viewDepartment(),
-                                Admin::viewOrder(),
-                                Admin::viewAmount(),
-                                Admin::viewDeadline(),
-                                Admin::viewStatus(),
-                            ])->columns(3),
-                        Tabs\Tab::make('Account Details')
-                            ->schema([
-                                Admin::viewBeneficiaryName(),
-                                Admin::viewRecipientName(),
-                                Admin::viewBankName(),
-                                Admin::viewAccountNumber(),
-                                Admin::viewSwiftCode(),
-                                Admin::viewIBAN(),
-                                Admin::viewIFSC(),
-                                Admin::viewMICR(),
-                            ])->columns(2),
-                        Tabs\Tab::make('Extra Details')
-                            ->schema([
-                                Admin::viewBeneficiaryAddress(),
-                                Admin::viewBankAddress(),
-                                Admin::viewDescription(),
-                            ]),
-                    ])->columnSpanFull(),
-            ]);
+                Admin::viewReason(),
+                Admin::viewType(),
+                Admin::viewDepartment(),
+                Admin::viewCostCenter(),
+                Admin::viewBeneficiaryName(),
+                Admin::viewRecipientName(),
+                Admin::viewRequester(),
+                Admin::viewAmount(),
+                Admin::viewDeadline(),
+                Admin::viewStatus(),
+                Admin::viewOrder(),
+                Admin::viewBankName(),
+                Admin::viewAccountNumber(),
+                Admin::viewBeneficiaryAddress(),
+                Admin::viewBankAddress(),
+                Admin::viewSwiftCode(),
+                Admin::viewIBAN(),
+                Admin::viewIFSC(),
+                Admin::viewMICR(),
+                Admin::viewCreationTime(),
+                Admin::viewStatusChanger(),
+                Admin::viewDescription()
+            ])->columns(3);
     }
 
     public static function getWidgets(): array
@@ -338,6 +451,11 @@ class PaymentRequestResource extends Resource
             'create' => Operational\PaymentRequestResource\Pages\CreatePaymentRequest::route('/create'),
             'edit' => Operational\PaymentRequestResource\Pages\EditPaymentRequest::route('/{record}/edit'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 
     protected static function fetchBadgeData(): array

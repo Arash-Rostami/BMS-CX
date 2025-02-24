@@ -21,13 +21,14 @@ class CreatePaymentRequest extends CreateRecord
 
     public ?int $id = null;
     public ?string $module = null;
+    public ?string $type = null;
 
-    protected array $queryString = ['id', 'module'];
+    protected array $queryString = ['id', 'module', 'type'];
 
 
     protected function afterFill(): void
     {
-        SmartPaymentRequest::fillForm($this->id, $this->module, $this->form);
+        SmartPaymentRequest::fillForm($this->id, $this->module, $this->form, $this->type);
     }
 
 
@@ -71,6 +72,7 @@ class CreatePaymentRequest extends CreateRecord
 
         Async::run(function () use ($record, $service) {
             AttachmentCreationService::createFromExisting($record->id, 'payment_request_id');
+
             $service->notifyAccountants($record);
         });
     }

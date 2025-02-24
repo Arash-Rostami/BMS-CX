@@ -14,7 +14,7 @@ trait Calculator
         });
 
         $details['initialProjectPayment'] = $filteredOrders->sum(function ($order) {
-            return (float)($order->orderDetail->extra['initialPayment'] ?? 0);
+            return (float)($order->orderDetail->initial_payment ?? 0);
         });
 
         $details['totalQuantity'] = $filteredOrders->sum(function ($order) {
@@ -49,7 +49,7 @@ trait Calculator
                 return $record !== null && $eachOrder->id === $record->id;
             })->sum(function ($order) {
                 // Sum the initial payment for the remaining orders
-                return (float)(optional($order->orderDetail->extra)['initialPayment'] ?? 0);
+                return (float)(optional($order->orderDetail)->initial_payment ?? 0);
             }));
         });
 

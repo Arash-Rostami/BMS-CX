@@ -3,32 +3,20 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\Operational\PaymentResource\Pages\Admin;
+use App\Filament\Resources\Operational\PaymentResource\Pages\ListPayments;
 use App\Filament\Resources\Operational\PaymentResource\Widgets\StatsOverview;
 use App\Models\Payment;
-use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
-use App\Services\TableObserver;
-use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
-use Filament\Support\Enums\MaxWidth;
-use Filament\Tables;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\RestoreBulkAction;
-use Filament\Tables\Columns\Layout\Panel;
-use Filament\Tables\Columns\Layout\Split;
-use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
-use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
-use Illuminate\Database\Eloquent\Collection;
 
 
 class PaymentResource extends Resource
@@ -107,11 +95,7 @@ class PaymentResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $table = self::configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? self::getModernLayout($table)
-            : self::getClassicLayout($table);
+        return $table;
     }
 
     public static function getEloquentQuery(): Builder
@@ -128,6 +112,9 @@ class PaymentResource extends Resource
             ->schema([
                 Admin::viewOrder(),
                 Admin::viewPaymentRequest(),
+                Admin::viewPaymentRequester(),
+                Admin::viewDepartment(),
+                Admin::viewCostCenter(),
                 Admin::viewPaymentRequestReason(),
                 Admin::viewPaymentType(),
                 Admin::viewTransferredAmount(),
@@ -170,6 +157,11 @@ class PaymentResource extends Resource
         return (string)$count;
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
+    }
+
 
     public static function getNavigationBadgeColor(): ?string
     {
@@ -189,109 +181,18 @@ class PaymentResource extends Resource
 
     public static function configureCommonTableSettings(Table $table): Table
     {
-        return $table
-            ->modifyQueryUsing(fn(Builder $query) => $query->filterByUserPaymentRequests(auth()->user()))
-            ->filters([
-                AdminOrder::filterCreatedAt(),
-                Admin::filterDepartments(),
-                Admin::filterCostCenter(),
-                Admin::filterReason(),
-                AdminOrder::filterSoftDeletes(),
-            ])
-            ->filtersFormWidth(MaxWidth::FourExtraLarge)
-            ->filtersFormColumns(5)
-            ->emptyStateIcon('heroicon-o-bookmark')
-            ->emptyStateDescription('Once you create your first record, it will appear here.')
-            ->searchDebounce('1000ms')
-            ->groupingSettingsInDropdownOnDesktop()
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make()
-                    ->successNotification(fn(Model $record) => Admin::send($record)),
-                Tables\Actions\RestoreAction::make(),
-                Tables\Actions\Action::make('pdf')
-                    ->label('PDF')
-                    ->color('success')
-                    ->icon('heroicon-c-inbox-arrow-down')
-                    ->action(function (Model $record) {
-                        return response()->streamDownload(function () use ($record) {
-                            echo Pdf::loadHtml(view('filament.pdfs.payment', ['record' => $record])
-                                ->render())
-                                ->stream();
-                        }, 'BMS-' . $record->reference_number . '.pdf');
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->action(function (Collection $selectedRecords) {
-                            $selectedRecords->each->delete();
-                            $selectedRecords->each(
-                                fn(Model $selectedRecord) => Admin::send($selectedRecord)
-                            );
-                        }),
-                    RestoreBulkAction::make(),
-                    ExportBulkAction::make(),
-                    PrintBulkAction::make(),
-                ])
-            ])
-            ->paginated([10, 20, 30])
-            ->defaultSort('created_at', 'desc')
-            ->poll('120s')
-            ->groups([
-                Admin::filterByPayer(),
-                Admin::filterByCurrency(),
-                Admin::filterByBalance(),
-                Admin::filterByPaymentRequest(),
-                Admin::filterByTransferringDate(),
-            ]);
+        return (new ListPayments())->configureCommonTableSettings($table);
     }
 
 
     public static function getModernLayout(Table $table): Table
     {
-        return $table
-            ->columns([
-                Split::make([
-                    Panel::make([
-                        Stack::make([
-                            Split::make([
-                                Admin::showPaymentRequest(),
-                                Admin::showPaymentRequestType(),
-                                Admin::showTimeGap(),
-                            ]),
-                            Split::make([
-                                Admin::showTransferredAmount(),
-                                Admin::showBalance(),
-                            ]),
-                        ])->space(2),
-                    ])
-                ])->columnSpanFull(),
-                Admin::showTimeStamp()
-            ]);
+        return (new ListPayments())->getModernLayout($table);
+
     }
 
     public static function getClassicLayout(Table $table): Table
     {
-        return $table
-            ->columns([
-                Admin::showID(),
-                Admin::showPaymentRequest(),
-                Admin::showPaymentRequestType(),
-                Admin::showPaymentRequestID(),
-                Admin::showAmount(),
-                Admin::showBalance(),
-                Admin::showCurrency(),
-                Admin::showRequestedAmount(),
-                Admin::showTotalAmount(),
-                Admin::showDate(),
-                Admin::showTimeGap(),
-                Admin::showPayer(),
-                Admin::showTransactionID(),
-                Admin::showCreator(),
-                TableObserver::showMissingData(-3),
-                Admin::showTimeStamp()
-            ])->striped();
+        return (new ListPayments())->getClassicLayout($table);
     }
 }

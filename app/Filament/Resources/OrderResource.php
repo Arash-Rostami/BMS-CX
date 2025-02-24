@@ -3,20 +3,18 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin;
+use App\Filament\Resources\Operational\OrderResource\Pages\ListOrders;
+use App\Filament\Resources\Operational\OrderResource\Pages\ViewOrder;
 use App\Filament\Resources\Operational\OrderResource\Widgets\StatsOverview;
 use App\Models\Order;
 use App\Services\AttachmentDeletionService;
 use App\Services\OrderPaymentCalculationService;
-use App\Services\TableObserver;
-use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\Hidden;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\MaxWidth;
-use Filament\Tables\Actions\Action as TableAction;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
@@ -26,23 +24,13 @@ use Filament\Forms\Set;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Resources\Pages\Page;
 use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\ReplicateAction;
-use Filament\Tables\Actions\RestoreBulkAction;
-use Filament\Tables\Columns\Layout\Panel;
-use Filament\Tables\Columns\Layout\Split;
-use Filament\Tables\Columns\Layout\Stack;
 use Filament\Forms\Components\View as ComponentView;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\HtmlString;
-use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
-use Illuminate\Database\Eloquent\Collection;
-use Filament\Notifications\Notification;
+use Filament\Infolists\Infolist;
 
 
 class OrderResource extends Resource
@@ -53,12 +41,13 @@ class OrderResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
 
+
     protected static ?int $navigationSort = 3;
 
     protected static ?string $recordTitleAttribute = 'reference_number';
 
-    protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
+    protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
     public static function form(Form $form): Form
     {
@@ -341,20 +330,20 @@ class OrderResource extends Resource
             ])->columns(5);
     }
 
-    public static function refreshComponent()
+    public static function table(Table $table): Table
     {
-        return self::refreshComponent();
+        return $table;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 
 
-    public static function table(Table $table): Table
+    public static function refreshComponent()
     {
-        $table = self::configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? self::getModernLayout($table)
-            : self::getClassicLayout($table);
-
+        return self::refreshComponent();
     }
 
     public static function getEloquentQuery(): Builder
@@ -378,7 +367,7 @@ class OrderResource extends Resource
     {
         return [
             Operational\OrderResource\RelationManagers\ProformaInvoiceRelationManagers::class,
-            Operational\OrderResource\RelationManagers\MainPaymentRequestsRelationManager::class,
+//            Operational\OrderResource\RelationManagers\MainPaymentRequestsRelationManager::class,
             Operational\OrderResource\RelationManagers\PaymentRequestsRelationManager::class,
             Operational\OrderResource\RelationManagers\PaymentsRelationManager::class
         ];
@@ -408,198 +397,10 @@ class OrderResource extends Resource
         ]);
     }
 
-    public static function configureCommonTableSettings(Table $table): Table
-    {
-        return $table
-            ->defaultGroup('invoice_number')
-            ->emptyStateIcon('heroicon-o-bookmark')
-            ->emptyStateDescription('Once you create your first record, it will appear here.')
-            ->searchDebounce('1000ms')
-            ->paginated([10, 15, 20])
-            ->groupingSettingsInDropdownOnDesktop()
-            ->filters([
-                Admin::filterSoftDeletes(),
-                Admin::filterBasedOnQuery()
-//                Admin::filterOrderStatus(), Admin::filterCreatedAt(),
-            ], layout: Tables\Enums\FiltersLayout::AboveContentCollapsible)
-            ->filtersTriggerAction(fn(TableAction $action) => $action->button()->label('')->tooltip('Filter records'))
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                ReplicateAction::make()
-                    ->color('info')
-                    ->modalWidth(MaxWidth::Medium)
-                    ->modalIcon('heroicon-o-clipboard-document-list')
-                    ->record(fn(Model $record) => $record)
-                    ->visible(fn($record) => Admin::isPaymentCalculated($record))
-                    ->beforeReplicaSaved(function (Model $replica) {
-                        Admin::increasePart($replica);
-                        Admin::replicateRelatedModels($replica);
-                    })
-                    ->after(fn(Model $replica) => Admin::syncOrder($replica))
-                    ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.orders.edit', ['record' => $replica->id,])),
-                Tables\Actions\DeleteAction::make()
-                    ->successNotification(fn(Model $record) => Admin::send($record))
-                    ->hidden(fn(?Model $record) => $record ? $record->paymentRequests->isNotEmpty() : false),
-                Tables\Actions\RestoreAction::make(),
-                Tables\Actions\Action::make('pdf')
-                    ->label('PDF')
-                    ->color('success')
-                    ->icon('heroicon-c-inbox-arrow-down')
-                    ->action(function (Model $record) {
-                        return response()->streamDownload(function () use ($record) {
-                            echo Pdf::loadHtml(view('filament.pdfs.order', ['record' => $record])
-                                ->render())
-                                ->stream();
-                        }, 'BMS-' . $record->reference_number . '.pdf');
-                    }),
-                Tables\Actions\Action::make('createPaymentRequest')
-                    ->label('Smart Payment')
-                    ->url(fn($record) => route('filament.admin.resources.payment-requests.create', ['id' => $record->id, 'module' => 'order']))
-                    ->icon('heroicon-o-credit-card')
-                    ->color('warning')
-                    ->openUrlInNewTab(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->action(fn(Collection $records) => Admin::separateRecordsIntoDeletableAndNonDeletable($records))
-                        ->deselectRecordsAfterCompletion(),
-                    RestoreBulkAction::make(),
-                    ExportBulkAction::make(),
-                    PrintBulkAction::make(),
-                ])
-            ])
-            ->defaultSort('part', 'asc')
-            ->deferLoading()
-            ->poll('120s')
-            ->groups([
-                Admin::groupByBuyer(),
-                Admin::groupByCategory(),
-                Admin::groupByCurrency(),
-                Admin::groupByDeliveryTerm(),
-                Admin::groupByInvoiceNumber(),
-                Admin::groupByPackaging(),
-                Admin::groupByPart(),
-                Admin::groupByProduct(),
-                Admin::groupByGrade(),
-                Admin::groupByProformaNumber(),
-                Admin::groupByShippingLine(),
-                Admin::groupByStage(),
-                Admin::groupByStatus(),
-                Admin::groupBySupplier(),
-                Admin::groupByTags(),
-            ]);
-    }
-
-    public static function getModernLayout(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Split::make([
-                    Panel::make([
-                        Stack::make([
-                            Split::make([
-                                Admin::showReferenceNumber(),
-                                Admin::showProjectNumber(),
-                                Admin::showOrderPart(),
-                                Admin::showSupplier(),
-                                Admin::showBuyer(),
-                            ]),
-                            Split::make([
-                                Admin::showProformaNumber(),
-                                Admin::showProformaDate(),
-                                Admin::showAllPayments(),
-                            ]),
-                            Split::make([
-                                Admin::showProduct(),
-                                Admin::showGrade(),
-                                Admin::showPurchaseStatus(),
-                                Admin::showOrderStatus(),
-                            ]),
-                            Split::make([
-                                Admin::showBookingNumber(),
-                                Admin::showBLNumber(),
-//                                TableObserver::showMissingDataWithRel(-12),
-                            ]),
-                            Split::make([
-                                Admin::showPaymentRequests(),
-                                Admin::showPayments(),
-                            ]),
-                        ])->space(2),
-                    ])
-                ])->columnSpanFull(),
-//                Split::make([
-//                    View::make('filament.orders.collapsible-row-content')
-//                ]),
-                Split::make([
-                    Admin::showOrderNumber(),
-                ]),
-                Admin::showUpdatedAt(),
-            ]);
-    }
-
-    public static function getClassicLayout(Table $table): Table
-    {
-        $showAllDocs = Admin::showAllDocs();
-        return $table
-            ->columns([
-                Admin::showReferenceNumber(),
-                Admin::showProjectNumber(),
-                Admin::showSupplier(),
-                Admin::showProformaNumber(),
-                Admin::showProformaDate(),
-                Admin::showProduct(),
-                Admin::showGrade(),
-                Admin::showOrderPart(),
-                Admin::showQuantities(),
-                Admin::showAllPayments(),
-                Admin::showPortOfDelivery(),
-                Admin::showBookingNumber(),
-                Admin::showBLNumber(),
-                Admin::showBLDate(),
-                Admin::showVoyageNumber(),
-                Admin::showGrossWeight(),
-                Admin::showNetWeight(),
-                Admin::showPurchaseStatus(),
-                Admin::showCategory(),
-                Admin::showBuyer(),
-                Admin::showDeliveryTerm(),
-                Admin::showPackaging(),
-                Admin::showShippingLine(),
-                Admin::showLoadingStartline(),
-                Admin::showLoadingDeadline(),
-                Admin::showEtd(),
-                Admin::showEta(),
-                Admin::showFCL(),
-                Admin::showFCLType(),
-                Admin::showNumberOfContainers(),
-                Admin::showOceanFreight(),
-                Admin::showTHC(),
-                Admin::showFreeTimePOD(),
-                Admin::showDeclarationNumber(),
-                Admin::showDeclarationDate(),
-                Admin::showBLNumberLegTwo(),
-                Admin::showBLDateLegTwo(),
-                Admin::showVoyageNumberLegTwo(),
-                Admin::showOrderNumber(),
-                Admin::showChangeOfDestination(),
-                ...$showAllDocs,
-                Admin::showCreator(),
-                Admin::showOrderStatus(),
-                TableObserver::showMissingDataWithRel(-12),
-            ]);
-    }
-
     public static function getAllDocs()
     {
         return Admin::showAllDocs();
     }
-
-//    public static function getTableQuery()
-//    {
-//        return parent::getTableQuery()->orderBy('part', 'asc')->orderBy('created_at', 'desc');
-//    }
 
     public static function getGlobalSearchResultUrl(Model $record): string
     {
@@ -609,5 +410,25 @@ class OrderResource extends Resource
     public static function getGlobalSearchResultTitle(Model $record): string
     {
         return '🛒 ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return (new ViewOrder())->infolist($infolist);
+    }
+
+    public static function configureCommonTableSettings(Table $table): Table
+    {
+        return (new ListOrders())->configureCommonTableSettings($table);
+    }
+
+    public static function getModernLayout(Table $table): Table
+    {
+        return (new ListOrders())->getModernLayout($table);
+    }
+
+    public static function getClassicLayout(Table $table)
+    {
+        return (new ListOrders())->getClassicLayout($table);
     }
 }

@@ -139,6 +139,49 @@ class ColorTheme
         950 => '30, 40, 90',     // Blackened blue
     ];
 
+    public const White = [
+        50 => '255, 255, 255',
+        100 => '255, 255, 255',
+        200 => '255, 255, 255',
+        300 => '255, 255, 255',
+        400 => '255, 255, 255',
+        500 => '255, 255, 255',
+        600 => '255, 255, 255',
+        700 => '255, 255, 255',
+        800 => '255, 255, 255',
+        900 => '255, 255, 255',
+        950 => '255, 255, 255',
+    ];
+
+    public const Gray = [
+        50 => '120, 120, 120',
+        100 => '130, 130, 130',
+        200 => '140, 140, 140',
+        300 => '150, 150, 150',
+        400 => '160, 160, 160',
+        500 => '110, 110, 110',
+        600 => '100, 100, 100',
+        700 => '90, 90, 90',
+        800 => '80, 80, 80',
+        900 => '70, 70, 70',
+        950 => '60, 60, 60',
+    ];
+
+    public const DarkBlueGray = [
+        50 => '210, 212, 230',
+        100 => '190, 193, 220',
+        200 => '170, 173, 210',
+        300 => '140, 144, 195',
+        400 => '110, 115, 180',
+        500 => '80, 85, 124',
+        600 => '70, 75, 110',
+        700 => '60, 65, 95',
+        800 => '50, 55, 80',
+        900 => '40, 45, 65',
+        950 => '30, 35, 50',
+    ];
+
+
 
     public static function getRandomColorForWidget()
     {
@@ -176,11 +219,13 @@ class ColorTheme
 //            'goldenDusk' => self::GoldenDusk,
 //            'smokyQuartz' => self::SmokyQuartz,
 //            'radiantCoral' => self::RadiantCoral,
-//            'coolGraphite' => self::CoolGraphite,
 //            'velvetAubergine' => self::VelvetAubergine,
-            'midnightTeal' => self::MidnightTeal,
+//            'midnightTeal' => self::MidnightTeal,
 //            'blushRose' => self::BlushRose,
-            'slateBlue' => self::SlateBlue,
+//            'gray' => self::Gray,
+            'darkBlueGray' => self::DarkBlueGray,
+            'coolGraphite' => self::CoolGraphite,
+//            'slateBlue' => self::SlateBlue,
         ];
 
         return $colors[array_rand($colors)];

@@ -3,25 +3,47 @@
 namespace App\Services;
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Str;
 
 class ProjectNumberGenerator
 {
-    public static function generate()
+    protected static array $modelMap = [
+        'proforma-invoices' => ['model' => 'ProformaInvoice', 'prefix' => 'CT', 'field' => 'contract_number'],
+        'orders' => ['model' => 'Order', 'prefix' => 'PN', 'field' => 'invoice_number'],
+    ];
+
+    public static function generate(): string
     {
         $now = Carbon::now();
+        $baseNumber = $now->format('y') . $now->format('md');
 
-        $yearLastTwoDigits = $now->format('y');
-        $monthDay = $now->format('md');
+        $modelData = self::getModelDataFromUrl(Request::url());
+        if (!$modelData) {
+            return "ERROR-{$baseNumber}-URL";
+        }
 
-        // Map hour to alphabet (A=0, B=1, ..., Z=25), wrapping every 24 hours
-        $hourInAlphabet = chr(65 + ($now->hour % 24));
+        $modelClass = "App\\Models\\{$modelData['model']}";
+        if (!class_exists($modelClass)) {
+            return "ERROR-{$baseNumber}-MODEL";
+        }
 
-        $minuteSecond = $now->format('is');
+        $generatedNumber = "{$modelData['prefix']}-{$baseNumber}";
+        $existingCount = DB::table((new $modelClass)->getTable())
+            ->whereRaw("{$modelData['field']} LIKE ?", ["{$generatedNumber}%"])
+            ->count();
 
-        $url = request()->url();
+        return $existingCount > 0 ? "{$generatedNumber}-" . ($existingCount + 1) : $generatedNumber;
+    }
 
-        $prefix = str_contains($url, 'proforma') ? 'CT' : 'PN';
-
-        return "{$prefix}-{$yearLastTwoDigits}{$monthDay}-{$hourInAlphabet}{$minuteSecond}";
+    private static function getModelDataFromUrl(string $url): ?array
+    {
+        foreach (self::$modelMap as $key => $data) {
+            if (Str::contains($url, $key)) {
+                return $data;
+            }
+        }
+        return null;
     }
 }

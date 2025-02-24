@@ -74,6 +74,11 @@ class DeliveryTermResource extends Resource
         ];
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
+    }
+
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::count();

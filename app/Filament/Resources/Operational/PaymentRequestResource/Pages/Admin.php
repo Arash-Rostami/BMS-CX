@@ -9,6 +9,7 @@ use App\Filament\Resources\Operational\PaymentRequestResource\Pages\AdminCompone
 use App\Models\Attachment;
 use App\Models\Order;
 use App\Models\PaymentRequest;
+use App\Models\ProformaInvoice;
 use App\Services\AttachmentDeletionService;
 use App\Services\Notification\PaymentRequestService;
 use Carbon\Carbon;
@@ -236,9 +237,9 @@ class Admin
         $quantity = $order->orderDetail->final_quantity ?? $order->orderDetail->provisional_quantity ?? $order->orderDetail->buying_quantity ?? $order->proformaInvoice->quantity ?? 0;
         $rawAmount = (float)$price * (float)$quantity;
 
-        $calculatedAmount = (float)$order->orderDetail->extra['finalTotal'] > 0
-            ? (float)$order->orderDetail->extra['finalTotal']
-            : (float)$order->orderDetail->extra['provisionalTotal'];
+        $calculatedAmount = (float)$order->orderDetail->final_total > 0
+            ? (float)$order->orderDetail->final_total
+            : (float)$order->orderDetail->provisional_total;
 
         $requested = $calculatedAmount != 0 ? $calculatedAmount : $rawAmount;
 
@@ -299,6 +300,10 @@ class Admin
             ->color('success')
             ->icon('heroicon-s-check-circle')
             ->tooltip('Awaiting accounting review')
+            ->extraAttributes([
+                'style' => 'border-top: 2px solid #ddd;',
+            ])
+            ->visible(fn($record) => $record->status === 'pending')
             ->action(function (Model $record) {
                 $record->update(['status' => 'allowed']);
                 Notification::make()
@@ -319,6 +324,7 @@ class Admin
             ->color('success')
             ->icon('heroicon-s-check-circle')
             ->tooltip('Managerial approval received')
+            ->visible(fn($record) => $record->status === 'pending')
             ->action(function (Model $record) {
                 $record->update(['status' => 'approved']);
                 Notification::make()
@@ -339,6 +345,7 @@ class Admin
             ->color('warning')
             ->icon('heroicon-s-clock')
             ->tooltip('Payment in progress')
+            ->visible(fn($record) => $record->status === 'pending')
             ->action(function (Model $record) {
                 $record->update(['status' => 'processing']);
                 Notification::make()
@@ -359,6 +366,7 @@ class Admin
             ->color('danger')
             ->icon('heroicon-s-x-circle')
             ->tooltip('Payment request denied')
+            ->visible(fn($record) => $record->status === 'pending')
             ->action(function (Model $record) {
                 $record->update(['status' => 'rejected']);
                 Notification::make()
@@ -366,5 +374,81 @@ class Admin
                     ->success()
                     ->send();
             });
+    }
+
+    /**
+     * @param Model $record
+     * @return string
+     */
+    public static function changeBgColor(Model $record): string
+    {
+        $hasRejectedProforma = $record->associatedProformaInvoices &&
+            $record->associatedProformaInvoices->contains(function (ProformaInvoice $proforma) {
+                return $proforma->status === 'rejected';
+            });
+
+        if ($hasRejectedProforma) {
+            return 'bg-cancelled';
+        }
+
+        if (!$record || !$record->deadline || !in_array($record->status, ['pending', 'allowed', 'approved'])) {
+            return isShadeSelected('payment-request-table');
+        }
+        $deadline = Carbon::parse($record->deadline);
+        $diffInDays = now()->diffInDays($deadline, false);
+
+        if ($diffInDays < 0) {
+            return 'bg-past-deadline ';
+        }
+        return isShadeSelected('payment-request-table');
+    }
+
+    public static function calculateTotals($column, $value, $id)
+    {
+        if (!$id) {
+            return '';
+        }
+
+        return PaymentRequest::where($column, $value)
+            ->whereNull('deleted_at')
+            ->whereIn('status', ['processing', 'allowed', 'approved', 'completed'])
+            ->whereHas('order', fn($query) => $query->where('proforma_invoice_id', $id))
+            ->selectRaw('currency, SUM(requested_amount) as total')
+            ->groupBy('currency')
+            ->get()
+            ->map(fn($item) => number_format($item->total) . ' ' . $item->currency)
+            ->implode(' | ');
+    }
+
+
+    public static function fetchBankAccountDetails($get, $state, $set): void
+    {
+        $recipientName = $get('recipient_name');
+        $currency = $get('currency');
+
+        $setters = [
+            'sheba'         => 'sheba_number',
+            'card_transfer' => 'card_transfer_number',
+            'bank_account'  => 'account_number',
+        ];
+
+        if (! empty($state) && $state !== 'cash' && $recipientName && $currency) {
+            $lastPayment = PaymentRequest::getLastPaymentDetails($recipientName, $state, $currency);
+
+            if ($lastPayment) {
+                $set($setters[$state] ?? null, $lastPayment->account_number);
+                $set('bank_name', $lastPayment->bank_name);
+            } else {
+                foreach ($setters as $setter) {
+                    $set($setter, null);
+                }
+                $set('bank_name', null);
+            }
+        } elseif ($state === 'cash') {
+            $set('bank_name', 'None - Cash Transaction');
+            foreach ($setters as $setter) {
+                $set($setter, null);
+            }
+        }
     }
 }

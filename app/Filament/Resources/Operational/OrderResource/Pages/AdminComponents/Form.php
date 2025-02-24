@@ -328,7 +328,7 @@ trait Form
      */
     public static function getCurrency(): Select
     {
-        return Select::make('extra.currency')
+        return Select::make('currency')
             ->options(showCurrencies())
             ->required()
             ->label(fn() => new HtmlString('<span class="grayscale">💱 </span><span class="text-primary-500 font-normal">Currency</span>'))
@@ -390,7 +390,7 @@ trait Form
     public
     static function getPayment(): Hidden
     {
-        return Hidden::make('extra.payment');
+        return Hidden::make('payment');
     }
 
     /**
@@ -399,7 +399,7 @@ trait Form
     public
     static function getRemaining(): Hidden
     {
-        return Hidden::make('extra.remaining');
+        return Hidden::make('remaining');
     }
 
     /**
@@ -408,7 +408,7 @@ trait Form
     public
     static function getInitialPayment(): Hidden
     {
-        return Hidden::make('extra.initialPayment');
+        return Hidden::make('initial_payment');
     }
 
     /**
@@ -417,7 +417,7 @@ trait Form
     public
     static function getProvisionalPayment(): Hidden
     {
-        return Hidden::make('extra.provisionalPayment');
+        return Hidden::make('provisional_payment');
     }
 
 
@@ -427,7 +427,7 @@ trait Form
     public
     static function getTotal(): Hidden
     {
-        return Hidden::make('extra.total');
+        return Hidden::make('total');
     }
 
 
@@ -437,7 +437,7 @@ trait Form
     public
     static function getInitialTotal(): Hidden
     {
-        return Hidden::make('extra.initialTotal');
+        return Hidden::make('initial_total');
     }
 
 
@@ -447,7 +447,7 @@ trait Form
     public
     static function getProvisionalTotal(): Hidden
     {
-        return Hidden::make('extra.provisionalTotal');
+        return Hidden::make('provisional_total');
     }
 
 
@@ -457,7 +457,7 @@ trait Form
     public
     static function getFinalTotal(): Hidden
     {
-        return Hidden::make('extra.finalTotal');
+        return Hidden::make('final_total');
     }
 
     /**
@@ -484,7 +484,7 @@ trait Form
     public
     static function getHiddenPayableQuantity(): Hidden
     {
-        return Hidden::make('extra.payableQuantity');
+        return Hidden::make('payable_quantity');
     }
 
     /**
@@ -493,7 +493,7 @@ trait Form
     public
     static function getManualInitialPayment(): TextInput
     {
-        return TextInput::make('extra.initialPayment')
+        return TextInput::make('initial_payment')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Init. Advance</span>'))
             ->placeholder('Optional')
             ->numeric();
@@ -505,7 +505,7 @@ trait Form
     public
     static function getManualProvisionalPayment(): TextInput
     {
-        return TextInput::make('extra.provisionalTotal')
+        return TextInput::make('provisional_total')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Prov. Payment</span>'))
             ->placeholder('Optional')
             ->numeric();
@@ -517,7 +517,7 @@ trait Form
     public
     static function getManualFinalPayment(): TextInput
     {
-        return TextInput::make('extra.finalTotal')
+        return TextInput::make('final_total')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Fin. Payment</span>'))
             ->placeholder('Optional')
             ->numeric();
@@ -573,7 +573,7 @@ trait Form
         return TextInput::make('buying_price')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Initial</span>'))
             ->disabled(true)
-            ->placeholder(fn(Get $get) => $get('extra.currency'))
+            ->placeholder(fn(Get $get) => $get('currency'))
             ->required()
             ->numeric();
     }
@@ -587,7 +587,7 @@ trait Form
     {
         return TextInput::make('provisional_price')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Provisional</span>'))
-            ->placeholder(fn(Get $get) => $get('extra.currency'))
+            ->placeholder(fn(Get $get) => $get('currency'))
             ->disabled(fn(?Model $record) => $record ? $record->hasApprovedRelatedRequests() : false)
             ->numeric();
     }
@@ -600,7 +600,7 @@ trait Form
     {
         return TextInput::make('final_price')
             ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Final</span>'))
-            ->placeholder(fn(Get $get) => $get('extra.currency'))
+            ->placeholder(fn(Get $get) => $get('currency'))
             ->numeric();
     }
 
@@ -1092,7 +1092,7 @@ trait Form
     static function getDocumentsReceived()
     {
         return CheckboxList::make('extra.docs_received')
-            ->options(self::$documents)
+            ->options(self::getDynamicDocuments())
             ->hint(new HtmlString())
             ->live()
             ->bulkToggleable()

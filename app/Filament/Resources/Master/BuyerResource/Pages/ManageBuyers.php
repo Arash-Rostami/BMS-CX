@@ -15,8 +15,7 @@ class ManageBuyers extends ManageRecords
         return [
             Actions\CreateAction::make()
                 ->label('New')
-                ->icon('heroicon-o-sparkles')
-                ->createAnother(false),
+
         ];
     }
 }

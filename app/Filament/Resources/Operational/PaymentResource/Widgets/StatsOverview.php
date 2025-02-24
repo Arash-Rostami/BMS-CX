@@ -40,14 +40,6 @@ class StatsOverview extends BaseWidget
                 ->label(new HtmlString("<span class='text-gray'>EURO</span>"))
                 ->color('green'),
 
-
-            Stat::make('Dirham Amount', $condensedSums['Dirham'])
-                ->extraAttributes([
-                    'class' => 'hidden md:block',
-                ])
-                ->description('AED ' . ($formattedSums['Dirham'] ?? '0.00'))
-                ->label(new HtmlString("<span class='text-gray'>Dirham</span>"))
-                ->color('purple'),
         ];
     }
 

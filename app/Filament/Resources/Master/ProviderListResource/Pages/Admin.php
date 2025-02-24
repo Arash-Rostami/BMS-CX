@@ -32,7 +32,7 @@ class Admin
             ->label('Quote Providers')
             ->multiple()
             ->placeholder('Choose all recipients of this list.')
-            ->relationship('quoteProviders')
+            ->relationship('quoteProviders', 'name')
             ->options(QuoteProvider::orderBy('name', 'asc')->pluck('name', 'id'));
     }
 

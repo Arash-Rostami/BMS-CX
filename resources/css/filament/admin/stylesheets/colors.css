@@ -23,11 +23,11 @@
 }
 
 .major-row {
-    @apply bg-gray-200 dark:bg-gray-950/50 border-l-8 border-l-warning-700;
+    @apply bg-gray-200 dark:bg-gray-950/50 ;
 }
 
 .major-row-second {
-    @apply bg-blue-200 dark:bg-white/5 border-l-8 border-l-warning-700;
+    @apply bg-blue-200 dark:bg-white/5;
 }
 
 .bg-light-blue {
@@ -35,8 +35,197 @@
     @apply dark:bg-gray-950
 }
 
-.bg-wheat{
+.bg-wheat {
     background-color: rgb(249, 235, 210, 0.7);
     @apply dark:bg-gray-950
+}
+
+.bg-cancelled {
+    background-image: linear-gradient(to left, #fca5a5, #fee2e2, #fff1f2);
+    @apply dark:bg-none dark:bg-red-900/10
+}
+
+.bg-processing {
+    background-image: linear-gradient(to right, #fdebd0, white, white);
+    @apply dark:bg-none dark:bg-yellow-900/10 dark:text-yellow-300;
+}
+
+.bg-past-deadline {
+    background-image: linear-gradient(to right, #fca5a5, white, white, white, white);
+    @apply dark:bg-none dark:bg-red-900/10
+}
+
+
+.proforma-table {
+    background: linear-gradient(to right, #CEDFFD, #f5f8fc, white);
+    transition: background-color 0.3s ease;
+    @apply dark:bg-slate-950 dark:bg-none
+}
+
+.proforma-table:hover {
+    background: none;
+}
+
+.order-table {
+    background: linear-gradient(to right, #c2d6c7 , #f8fcfb, white);
+    transition: background-color 0.3s ease;
+    @apply dark:bg-[#0b2128] dark:bg-none
+}
+
+.order-table:hover {
+    background: none;
+}
+
+.payment-request-table {
+    background: linear-gradient(to right, #E1D9D0, #f5f5f5, white);
+    transition: background-color 0.3s ease;
+    @apply dark:bg-[#25222a] dark:bg-none
+}
+
+.payment-request-table:hover {
+    background: none;
+}
+
+.payment-table {
+    background: linear-gradient(to right, #d1d3e1, #fffefe, white);
+    transition: background-color 0.3s ease;
+    @apply dark:bg-stone-900 dark:bg-none
+}
+
+.payment-table:hover {
+    background: none;
+}
+
+
+@keyframes subtle-color-shift-blue {
+    0% {
+        background-image: linear-gradient(to right, #e8f0fe, white);
+    }
+    5% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 5%), white);
+    }
+    10% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 10%), white);
+    }
+    15% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 15%), white);
+    }
+    20% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 20%), white);
+    }
+    25% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 25%), white);
+    }
+    30% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 30%), white);
+    }
+    35% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 35%), white);
+    }
+    40% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 40%), white);
+    }
+    45% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 45%), white);
+    }
+    50% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 50%), white);
+    }
+    55% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 45%), white);
+    }
+    60% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 40%), white);
+    }
+    65% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 35%), white);
+    }
+    70% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 30%), white);
+    }
+    75% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 25%), white);
+    }
+    80% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 20%), white);
+    }
+    85% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 15%), white);
+    }
+    90% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 10%), white);
+    }
+    95% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f0fe, skyblue 5%), white);
+    }
+    100% {
+        background-image: linear-gradient(to right, #e8f0fe, white);
+    }
+}
+
+@keyframes subtle-color-shift-green {
+    0% {
+        background-image: linear-gradient(to right, #e8f5e9, white);
+    }
+    5% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 5%), white);
+    }
+    10% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 10%), white);
+    }
+    15% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 15%), white);
+    }
+    20% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 20%), white);
+    }
+    25% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 25%), white);
+    }
+    30% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 30%), white);
+    }
+    35% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 35%), white);
+    }
+    40% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 40%), white);
+    }
+    45% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 45%), white);
+    }
+    50% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 50%), white);
+    }
+    55% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 45%), white);
+    }
+    60% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 40%), white);
+    }
+    65% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 35%), white);
+    }
+    70% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 30%), white);
+    }
+    75% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 25%), white);
+    }
+    80% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 20%), white);
+    }
+    85% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 15%), white);
+    }
+    90% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 10%), white);
+    }
+    95% {
+        background-image: linear-gradient(to right, color-mix(in srgb, #e8f5e9, green 5%), white);
+    }
+    100% {
+        background-image: linear-gradient(to right, #e8f5e9, white);
+    }
 }
 

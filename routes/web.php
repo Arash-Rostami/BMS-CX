@@ -1,33 +1,60 @@
 <?php
 
 //use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\BalanceApprovalController;
+use App\Http\Controllers\ManagerialDashboard;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\UserController;
-use App\Mail\QuoteRequestEmail;
+use App\Livewire\CaseSummary;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-use Illuminate\Support\Facades\Mail;
 
-Route::get('/test-email', function () {
-//     Mail::to('arashrostami@time-gr.com')->send(new QuoteRequestEmail(
-//        'Quote Request: New Details', // Dynamic subject
-//        'Hello **User**, here are your quote details.'
-//    ));
-//    Mail::raw('This is a test email.', function ($message) {
-//        $message->to('arashrostami@time-gr.com')->subject('Test Email');
-//    });
-//
-//    return 'Test email sent!';
-});
+Route::get('/clear', function () {
+    if (!Auth::check()) {
+        abort(403, 'Unauthorized');
+    }
+    Artisan::call('schedule:clear-cache');
+    Artisan::call('cache:clear');
+    Artisan::call('config:clear');
+    Artisan::call('route:clear');
+    Artisan::call('view:clear');
 
-Route::get('/clear', function() {
     Artisan::call('optimize:clear');
-    return redirect()->back();
+
+    return "All caches have been cleared successfully!";
 });
 
-Route::get('/table-design-toggle', [UserController::class, 'toggleTableDesign'])
-    ->name('table.design.toggle');
+
+Route::middleware(['web', 'custom_auth'])->group(function () {
+    Route::get('/auth-checker/attachment/{path}', [AttachmentController::class, 'serve'])
+        ->where('path', '.*')
+        ->name('attachments.secure');
+
+    Route::get('/dashboard', [ManagerialDashboard::class, 'index'])
+        ->name('ManagerialDashboard');
+
+    Route::get('/table-design-toggle', [UserController::class, 'toggleTableDesign'])
+        ->name('table.design.toggle');
+
+    Route::get('/menu-design-toggle', [UserController::class, 'toggleMenuDesign'])
+        ->name('menu.design.toggle');
+
+    Route::get('/filter-design-toggle', [UserController::class, 'toggleFilterDesign'])
+        ->name('filter.design.toggle');
+
+    Route::get('/sidebar-items-toggle', [UserController::class, 'toggleSidebarItems'])
+        ->name('sidebar-items-toggle');
+
+    Route::get('/shade-design-toggle', [UserController::class, 'toggleShadeDesign'])
+        ->name('shade-design-toggle');
+
+    Route::get('/case-summary', [CaseSummary::class, 'index'])
+        ->name('case-summary');
+
+});
 
 Route::get('/quote-service/{token}', [QuoteController::class, 'authenticate'])->name('quote-service');
 

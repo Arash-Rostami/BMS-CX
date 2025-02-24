@@ -7,6 +7,7 @@ use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\AdminCompon
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\AdminComponents\Form;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\AdminComponents\Table;
 use App\Models\Attachment;
+use App\Models\PaymentRequest;
 use App\Notifications\FilamentNotification;
 use App\Services\AttachmentDeletionService;
 use App\Services\Notification\ProformaInvoiceService;
@@ -30,8 +31,8 @@ class Admin
         'pending' => 'Pending',
         'review' => 'Under Review',
         'approved' => 'Approved',
-        'rejected' => 'Rejected',
-        'fulfilled' => 'Fulfilled',
+        'rejected' => 'Rejected/Cancelled',
+        'fulfilled' => 'Completed',
     ];
 
     protected static array $statusIcons = [
@@ -54,8 +55,8 @@ class Admin
         'pending' => '⏳ Pending',
         'review' => '⚠ Under Review',
         'approved' => '✅ Approved',
-        'rejected' => '❌ Rejected',
-        'fulfilled' => '🏁 Fulfilled',
+        'rejected' => '❌ Declined/Cancelled',
+        'fulfilled' => '🏁 Completed',
     ];
 
 
