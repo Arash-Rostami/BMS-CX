@@ -121,7 +121,9 @@ class MainPaymentRequestsRelationManager extends RelationManager
                         ->hidden(fn($livewire) => $livewire->ownerRecord ? $livewire->ownerRecord->activeApprovedPaymentRequests->isNotEmpty() : false)
                         ->openUrlInNewTab(),
                 ],
-                    (new ListPaymentRequests())->getTableHeaderActions()
+                    (isModernDesign())
+                        ? [ActionGroup::make((new ListPaymentRequests())->getInvisibleTableHeaderActions())]
+                        : (new ListPaymentRequests())->getInvisibleTableHeaderActions()
                 ))
             ->
             poll('30s');

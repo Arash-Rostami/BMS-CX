@@ -20,7 +20,7 @@ class ProformaInvoice extends Model
 
 
     protected $fillable = [
-        'grade',
+        'grade_id',
         'quantity',
         'price',
         'details',

@@ -1,11 +1,11 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-obtruBuJ.css",
+    "file": "assets/app-073MZkZ8.css",
     "isEntry": true,
     "src": "resources/css/app.css"
   },
   "resources/css/filament/admin/theme.css": {
-    "file": "assets/theme-H2eANr4N.css",
+    "file": "assets/theme-Qs4dXw4f.css",
     "isEntry": true,
     "src": "resources/css/filament/admin/theme.css"
   },
@@ -54,6 +54,14 @@
     "file": "assets/manager-lNXAK0M1.svg",
     "src": "resources/images/avatars/manager.svg"
   },
+  "resources/images/avatars/partner.png": {
+    "file": "assets/viewer-ANmOMvP3.png",
+    "src": "resources/images/avatars/viewer.png"
+  },
+  "resources/images/avatars/partner.svg": {
+    "file": "assets/viewer-dBUqkQ1t.svg",
+    "src": "resources/images/avatars/viewer.svg"
+  },
   "resources/images/avatars/viewer.png": {
     "file": "assets/viewer-ANmOMvP3.png",
     "src": "resources/images/avatars/viewer.png"
@@ -70,6 +78,10 @@
     "file": "assets/cloud-KMB3wBWF.svg",
     "src": "resources/images/cloud.svg"
   },
+  "resources/images/logos/backdrop-new.jpg": {
+    "file": "assets/backdrop-new-BOWxWJFf.jpg",
+    "src": "resources/images/logos/backdrop-new.jpg"
+  },
   "resources/images/logos/bms-fav-icon.png": {
     "file": "assets/bms-fav-icon-c2fp8kL3.png",
     "src": "resources/images/logos/bms-fav-icon.png"
@@ -77,10 +89,6 @@
   "resources/images/logos/bms-login-backdrop.jpg": {
     "file": "assets/bms-login-backdrop-Hd4KdXq3.jpg",
     "src": "resources/images/logos/bms-login-backdrop.jpg"
-  },
-  "resources/images/logos/bms-logo-updated.png": {
-    "file": "assets/bms-logo-updated-s66ZTrY9.png",
-    "src": "resources/images/logos/bms-logo-updated.png"
   },
   "resources/images/logos/bms-logo-v2.png": {
     "file": "assets/bms-logo-v2-m6mLPnEk.png",
@@ -94,25 +102,53 @@
     "file": "assets/bms-logo-v4-Sfu6pJ0K.png",
     "src": "resources/images/logos/bms-logo-v4.png"
   },
-  "resources/images/logos/bms-logo-v5.png": {
-    "file": "assets/bms-logo-v5-wsvws8gW.png",
-    "src": "resources/images/logos/bms-logo-v5.png"
-  },
-  "resources/images/logos/bms-logo-v6.png": {
-    "file": "assets/bms-logo-v6-0RGB_ORV.png",
-    "src": "resources/images/logos/bms-logo-v6.png"
-  },
-  "resources/images/logos/bms-logo.png": {
-    "file": "assets/bms-logo-kk5kTPKB.png",
-    "src": "resources/images/logos/bms-logo.png"
-  },
-  "resources/images/logos/bms-main-logo-dark.png": {
-    "file": "assets/bms-main-logo-dark-xhk2ddCr.png",
-    "src": "resources/images/logos/bms-main-logo-dark.png"
-  },
   "resources/images/logos/bms-main-logo.png": {
     "file": "assets/bms-main-logo-kANpU4aa.png",
     "src": "resources/images/logos/bms-main-logo.png"
+  },
+  "resources/images/logos/bms-new-logo.png": {
+    "file": "assets/bms-new-logo-isY62kam.png",
+    "src": "resources/images/logos/bms-new-logo.png"
+  },
+  "resources/images/logos/connection.png": {
+    "file": "assets/connection-giPr57FT.png",
+    "src": "resources/images/logos/connection.png"
+  },
+  "resources/images/logos/curves.png": {
+    "file": "assets/curves-q0k_xrCz.png",
+    "src": "resources/images/logos/curves.png"
+  },
+  "resources/images/logos/desk.jpg": {
+    "file": "assets/desk-h4ixe78I.jpg",
+    "src": "resources/images/logos/desk.jpg"
+  },
+  "resources/images/logos/laptop.jpg": {
+    "file": "assets/laptop-Dy6KzFX6.jpg",
+    "src": "resources/images/logos/laptop.jpg"
+  },
+  "resources/images/logos/minimal.jpg": {
+    "file": "assets/minimal-uLPwyC_5.jpg",
+    "src": "resources/images/logos/minimal.jpg"
+  },
+  "resources/images/logos/plugs.png": {
+    "file": "assets/plugs-glBulfD0.png",
+    "src": "resources/images/logos/plugs.png"
+  },
+  "resources/images/logos/roll-large.png": {
+    "file": "assets/roll-large-UhI0EgiF.png",
+    "src": "resources/images/logos/roll-large.png"
+  },
+  "resources/images/logos/roll.png": {
+    "file": "assets/roll-blvjO63R.png",
+    "src": "resources/images/logos/roll.png"
+  },
+  "resources/images/logos/world.png": {
+    "file": "assets/world-QNe1wFOY.png",
+    "src": "resources/images/logos/world.png"
+  },
+  "resources/images/logos/wrap.png": {
+    "file": "assets/wrap-NXhjF0Tz.png",
+    "src": "resources/images/logos/wrap.png"
   },
   "resources/images/main-bg.png": {
     "file": "assets/main-bg-rCHIBv3t.png",

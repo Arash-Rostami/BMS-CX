@@ -386,8 +386,10 @@ trait Form
     {
         return TagsInput::make('extra.port')
             ->label('')
-            ->placeholder('Add the requested ports of delivery')
+            ->placeholder('Enter delivery ports: [CITY] [Part No] [Quantity] (e.g., DALIAN P2 222.5)')
+            ->tooltip('Format: [CITY] [Part No] [Quantity]. Example: DALIAN P2 222.5 (CITY: DALIAN, Port Code: P2, Quantity: 222.5)')
             ->splitKeys(['Tab', 'Enter'])
+            ->extraAttributes(['style' => 'padding:5px; font-weight: bold; border-radius: 5px;']) // Gray-Blue
             ->suggestions(PortOfDelivery::all()->pluck('name')->sort()->toArray())
             ->label(new HtmlString('<span class="grayscale">🏗️  </span><span class="text-primary-500">Port(s)</span> '))
             ->columnSpanFull();

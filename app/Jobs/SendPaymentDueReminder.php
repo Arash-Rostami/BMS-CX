@@ -18,10 +18,15 @@ class SendPaymentDueReminder implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public PaymentRequest $paymentRequest;
+
     /**
      * Create a new job instance.
      */
-    public function __construct(){}
+    public function __construct(PaymentRequest $paymentRequest)
+    {
+        $this->paymentRequest = $paymentRequest;
+    }
 
     /**
      * Execute the job.
@@ -30,20 +35,6 @@ class SendPaymentDueReminder implements ShouldQueue
     {
         $financeUsers = User::getUsersByRole('admin');
 
-        // Send a notification to each finance user about each due payment
-        foreach ($this->getDuePayments() as $payment) {
-            Notification::send($financeUsers, new PaymentDueNotification($payment));
-        }
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getDuePayments()
-    {
-        return PaymentRequest::whereIn('status', ['allowed', 'approved', 'processing'])
-            ->where('deadline', '>', Carbon::now())
-            ->where('deadline', '<=', Carbon::now()->addWeek())
-            ->get();
+        Notification::send($financeUsers, new PaymentDueNotification($this->paymentRequest));
     }
 }

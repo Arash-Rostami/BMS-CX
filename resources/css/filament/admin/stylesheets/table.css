@@ -4,7 +4,7 @@
 }
 
 div.fi-ta-record {
-    box-shadow: inset 0 1px 0 #cccccc;
+    box-shadow: inset 0 0.75px 0 darkgrey;
     line-height: 0;
     text-align: left;
 }
@@ -34,7 +34,8 @@ div.fi-ta-record {
 }
 
 thead > tr th {
-    background-color: #B0BCC5;
+    /*background-color: #B0BCC5;*/
+    background-color: lightgrey;
     padding-top: 9px;
     padding-bottom: 9px;
     font-weight: 500;
@@ -42,14 +43,15 @@ thead > tr th {
 }
 
 nav.fi-ta-pagination {
-        background: linear-gradient(135deg, #D0DBE1, #D0DBE1, lightgrey, #D0DBE1, #D0DBE1);
-    /*background-color: #D0DBE1;*/
+    /*background: linear-gradient(135deg, #D0DBE1, #D0DBE1, lightgrey, #D0DBE1, #D0DBE1);*/
+    background-color: lightgrey;
     padding: 8px;
     border-radius: 0 0 10px 10px;
 }
 
 thead > tr th {
-    background-color: #B0BCC5;
+    /*background-color: #B0BCC5;*/
+    background-color: rgb(142, 140, 147, 0.7);
     @apply dark:bg-gray-700
 }
 
@@ -70,20 +72,23 @@ thead > tr th {
 }
 
 .fi-ta {
-    border-radius: 12px;
-    padding: 8px;
+    border-radius: 5%;
+    border: 1px solid lightgrey;
+    padding: 0;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     transition: background 0.3s ease, box-shadow 0.3s ease;
+    @apply dark:border-none
 }
 
 .fi-ta-content, .fi-ta-record {
     border-radius: 8px;
-    border: 0px;
+    border: 0;
 }
 
 
 .fi-ta:hover {
-    background: #e0e7eb;
+    /*background: #e0e7eb;*/
+    /*background: lightgrey;*/
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     @apply dark:bg-gray-900
 }
@@ -97,7 +102,8 @@ thead > tr th {
 
 
 .fi-wi-stats-overview-stat:hover, .fi-tabs-item:hover {
-    background: #D0DAE1;
+    /*background: #D0DAE1;*/
+    background: lightgrey;
     transform: translateY(-2px);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
     @apply dark:bg-gray-900
@@ -105,8 +111,8 @@ thead > tr th {
 
 
 .fi-ta-header-ctn {
-    /*background-color: #D0DBE1;*/
-    background: linear-gradient(135deg, #D0DBE1, #D0DBE1, lightgrey, #D0DBE1, #D0DBE1);
+    background-color: lightgrey;
+    /*background: linear-gradient(135deg, #D0DBE1, #D0DBE1, lightgrey, #D0DBE1, #D0DBE1);*/
     color: #333;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); /* Subtler header container shadow */
     /*padding: 10px; !* Added padding to header container *!*/
@@ -136,10 +142,12 @@ thead > tr th {
 
 div[wire\:key$=".table.column-toggle.panel"], .fi-dropdown-panel {
     max-height: 400px;
-    overflow-y: auto;
-    background: #D0DAE1;
+    /*overflow-y: auto;*/
+    /*background: #D0DAE1;*/
+    background: lightgrey;
     border-radius: 8px;
     box-shadow: 0 3px 9px rgba(0, 0, 0, 0.07);
+    overflow: auto;
 }
 
 nav div.fi-dropdown-panel[x-ref="panel"] {
@@ -192,7 +200,6 @@ nav div.fi-dropdown-panel[x-ref="panel"] {
 }
 
 
-
 .copyable-content:hover::after {
     opacity: 1;
     color: #666;
@@ -236,6 +243,11 @@ nav div.fi-dropdown-panel[x-ref="panel"] {
     @apply dark:bg-none dark:bg-red-950
 }
 
+.fi-checkbox-input {
+    /*border: 0.5px dotted darkgrey;*/
+    @apply bg-primary-300
+}
+
 
 @media (max-width: 1200px) {
     .fi-tabs {
@@ -246,47 +258,7 @@ nav div.fi-dropdown-panel[x-ref="panel"] {
     }
 
     .fi-tabs-item {
-        font-size: 0.75rem; /* Slightly smaller font on mobile */
+        font-size: 0.75rem;
         padding: 0.3rem 0.6rem;
     }
 }
-
-/*.fi-ta-header-cell{*/
-/*    background-color: #eae4df;*/
-/*    @apply dark:bg-gray-900/10 border-none;*/
-/*}*/
-
-
-/*.fi-section-header {*/
-/*    font-weight: bold;*/
-/*    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);*/
-/*    border-radius: 5px;*/
-/*    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);*/
-/*}*/
-
-/*table {*/
-/*    position: relative;*/
-/*}*/
-
-/*table th {*/
-/*    position: sticky;*/
-/*    top: 0;*/
-/*    z-index: 2;*/
-/*    background: #fafafa;*/
-/*}*/
-
-/*table th:nth-child(1) {*/
-/*    left: 0;*/
-/*    z-index: 3;*/
-/*}*/
-
-/*table tbody tr td:nth-child(2) {*/
-/*    position: sticky !important;*/
-/*    width:auto;*/
-/*    left: 0;*/
-/*    z-index: 1;*/
-/*}*/
-
-/*table tbody tr td:nth-child(2) {*/
-/*    @apply bg-gray-300 dark:bg-gray-950/50;*/
-/*}*/

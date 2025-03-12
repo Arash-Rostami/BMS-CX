@@ -25,36 +25,33 @@ class DispatchSendPaymentDueReminder extends Command
      */
     protected $description = 'Dispatching due payment request reminders.';
 
-    /**
-     * Execute the console command.
-     */
+
     public function handle()
     {
-        $pendingCount = $this->countPendingRequests();
+        $pendingRequests = $this->getPendingRequests();
+        $pendingCount = $pendingRequests->count();
 
         if ($pendingCount === 0) {
             $this->info('No pending payment requests due soon.');
-            return;
+            return 0;
         }
 
         $this->info("Dispatching jobs for $pendingCount pending payment request(s).");
-        Queue::push(new SendPaymentDueReminder());
 
-        $this->processQueue();
-        $this->info('Payment requests reminder sent successfully.');
+        foreach ($pendingRequests as $paymentRequest) {
+            SendPaymentDueReminder::dispatch($paymentRequest);
+        }
+
+        $this->info('Payment request reminders dispatched successfully to the queue.');
+        return 0;
     }
 
-    protected function countPendingRequests()
+    protected function getPendingRequests()
     {
-        return PaymentRequest::whereIn('status', ['allowed', 'approved', 'processing'])
-            ->whereBetween('deadline', [Carbon::now(), Carbon::now()->addWeek()])
-            ->count();
-    }
-
-    protected function processQueue()
-    {
-        sleep(5);
-
-        Artisan::call('queue:work --stop-when-empty');
+        return PaymentRequest::query()
+            ->whereIn('status', ['allowed', 'approved', 'processing'])
+            ->where('deadline', '>', Carbon::now())
+            ->where('deadline', '<=', Carbon::now()->addWeek())
+            ->get();
     }
 }

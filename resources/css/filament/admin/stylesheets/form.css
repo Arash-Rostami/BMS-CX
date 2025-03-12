@@ -1,8 +1,7 @@
-
 .fi-section-content {
     box-shadow: 0 3px 9px rgba(0, 0, 0, 0.08);
     transition: background 0.3s ease, box-shadow 0.3s ease, border-radius 0.3s ease;
-    background-color: rgb(209, 216, 225, 0.7);
+    background-color: rgb(212, 212, 212, 0.8);
     border-radius: 8px;
     padding: 12px;
     @apply dark:bg-gray-900;
@@ -10,15 +9,16 @@
 
 
 .fi-section-content:hover {
-    background: #D0DAE1;
+    /*background: #D0DAE1;*/
+    background-color: rgb(212, 212, 212, 0.9);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     border-radius: 10px;
     @apply dark:bg-gray-950/50
 }
 
 header.fi-section-header {
-    /*background-color: #D0DBE1;*/
-    background: linear-gradient(135deg, #D0DBE1, #D0DBE1, lightgrey, #D0DBE1, #D0DBE1);
+    background-color: lightgrey;
+    /*background: linear-gradient(135deg, #D0DBE1, #D0DBE1, lightgrey, #D0DBE1, #D0DBE1);*/
     padding: 8px 15px;
     border-radius: 7px 7px 0 0;
     font-weight: 500;
@@ -29,7 +29,8 @@ header.fi-section-header {
 }
 
 .fi-fieldset {
-    border: solid 1px #e0e7eb;
+    /*border: solid 1px #e0e7eb;*/
+    border: solid 1px lightgrey;
     border-radius: 6px;
     padding: 10px;
     margin-bottom: 10px;
@@ -50,14 +51,16 @@ header.fi-section-header {
 }
 
 .choices__list:hover {
-    background-color: #E6ECEE;
+    /*background-color: #E6ECEE;*/
+    background-color: lightgrey;
     border-radius: 6px;
     @apply dark:bg-gray-900;
 }
 
 
 .fi-fo-wizard-header {
-    background-color: #DFE7EA;
+    /*background-color: #DFE7EA;*/
+    background-color: lightgrey;
     padding: 10px 15px;
     border-bottom: solid 1px #e0e7eb;
     @apply dark:bg-gray-950/50
@@ -68,7 +71,8 @@ header.fi-section-header {
 }
 
 .fi-modal-window:hover {
-    background-color: #E6ECEE;
+    /*background-color: #E6ECEE;*/
+    background-color: lightgrey;
     border-radius: 8px;
     @apply dark:bg-gray-900;
 }

@@ -116,7 +116,9 @@ class OrdersRelationManager extends RelationManager
             ->filters([
                 Admin::filterSoftDeletes(),
                 Admin::filterBasedOnQuery()
-            ], layout: FiltersLayout::AboveContentCollapsible)
+            ],  layout: FiltersLayout::Modal)
+            ->filtersFormWidth(MaxWidth::FiveExtraLarge)
+            ->filtersFormColumns(6)
             ->actions([
                 ActionGroup::make([
                     Tables\Actions\ViewAction::make(),
@@ -230,7 +232,9 @@ class OrdersRelationManager extends RelationManager
                                 $livewire->dispatch('refreshTable');
                             }),
                     ],
-                    (new ListOrders())->getTableHeaderActions()
+                       (isModernDesign())
+                           ? [ActionGroup::make( (new ListOrders())->getInvisibleTableHeaderActions())]
+                           : (new ListOrders())->getInvisibleTableHeaderActions()
                 )
             )
             ->groups([

@@ -19,6 +19,7 @@ use Filament\Support\Facades\FilamentIcon;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\HtmlString;
 
 /**
  * @property Form $form
@@ -130,7 +131,13 @@ class RequestPasswordReset extends SimplePage
     protected function getEmailFormComponent(): Component
     {
         return TextInput::make('email')
-            ->label(__('📫'))
+            ->label(new HtmlString('
+                 <svg class="inline-block" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <path d="M22 6l-10 7L2 6"/>
+                </svg>'))
+            ->placeholder('Type your email to receive the password reset link')
             ->email()
             ->required()
             ->autocomplete()
@@ -172,7 +179,12 @@ class RequestPasswordReset extends SimplePage
     protected function getRequestFormAction(): Action
     {
         return Action::make('request')
-            ->label(__('📑'))
+            ->label(new HtmlString('
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 2L11 13"/>
+                  <path d="M22 2L15 22l-4-9-9-4z"/>
+                </svg>'))
             ->submit('request');
     }
 

@@ -28,7 +28,7 @@ class Admin
     public static function getFirstName(): TextInput
     {
         return TextInput::make('first_name')
-            ->label(fn()=>new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Forename</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Forename</span>'))
             ->autocapitalize('words')
             ->placeholder('First Name in English only')
             ->minLength(2)
@@ -43,7 +43,7 @@ class Admin
     public static function getMiddleName(): TextInput
     {
         return TextInput::make('middle_name')
-            ->label(fn()=>new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Middle Name</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Middle Name</span>'))
             ->autocapitalize('words')
             ->placeholder('Middle Name in English only')
             ->minLength(2)
@@ -56,7 +56,7 @@ class Admin
     public static function getLastName(): TextInput
     {
         return TextInput::make('last_name')
-            ->label(fn()=>new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Surname</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Surname</span>'))
             ->autocapitalize('words')
             ->placeholder('Last Name in English only')
             ->minLength(2)
@@ -70,7 +70,7 @@ class Admin
     public static function getPhoneNum(): PhoneInput
     {
         return PhoneInput::make('phone')
-            ->label(fn()=>new HtmlString('<span class="grayscale">📞 </span><span class="text-primary-500 font-normal">Phone No.</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale">📞 </span><span class="text-primary-500 font-normal">Phone No.</span>'))
             ->ipLookup(function () {
                 return rescue(fn() => Http::get('http://ip-api.com/json/')->json('country'), app()->getLocale(), report: false);
             })
@@ -85,7 +85,7 @@ class Admin
     public static function getPassword(): Password
     {
         return Password::make('password')
-            ->label(fn()=>new HtmlString('<span class="grayscale">🗝️</span><span class="text-primary-500 font-normal">Password</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale">🗝️</span><span class="text-primary-500 font-normal">Password</span>'))
             ->placeholder('Write your Password')
             ->visibleOn('create')
             ->password()
@@ -100,7 +100,7 @@ class Admin
     public static function getPassWordConfirmation(): Password
     {
         return Password::make('password_confirmation')
-            ->label(fn()=>new HtmlString('<span class="grayscale">🗝️🗝  </span><span class="text-primary-500 font-normal">Password Confirmation</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale">🗝️🗝  </span><span class="text-primary-500 font-normal">Password Confirmation</span>'))
             ->visibleOn('create')
             ->password()
             ->minLength(8)
@@ -116,7 +116,7 @@ class Admin
     public static function getCompany(): TextInput
     {
         return TextInput::make('company')
-            ->label(fn()=>new HtmlString('<span class="grayscale">🏛 </span><span class="text-primary-500 font-normal">Company</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale">🏛 </span><span class="text-primary-500 font-normal">Company</span>'))
             ->placeholder('Write your Company Name')
             ->visibleOn('create')
             ->required();
@@ -128,7 +128,7 @@ class Admin
     public static function getDepartment(): Select
     {
         return Select::make('info.department')
-            ->label(fn()=>new HtmlString('<span class="grayscale"> 📚</span><span class="text-primary-500 font-normal">Department</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale"> 📚</span><span class="text-primary-500 font-normal">Department</span>'))
             ->relationship('department', 'name')
             ->default('0')
             ->required();
@@ -140,7 +140,7 @@ class Admin
     public static function getEmail(): TextInput
     {
         return TextInput::make('email')
-            ->label(fn()=>new HtmlString('<span class="grayscale">📧 </span><span class="text-primary-500 font-normal">Email</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale">📧 </span><span class="text-primary-500 font-normal">Email</span>'))
             ->email()
             ->rules([self::validateEmail()])
             ->placeholder('Write your Company Email (it must end with @persoreco.com, @solsuntrading.com, or @persolco.com)')
@@ -153,7 +153,7 @@ class Admin
     public static function getStatus(): ButtonGroup
     {
         return ButtonGroup::make('status')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Status</span>'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Status</span>'))
             ->options([
                 'active' => 'Active ✅',
                 'inactive' => 'Inactive ❌',
@@ -168,7 +168,7 @@ class Admin
     public static function getPosition(): ButtonGroup
     {
         return ButtonGroup::make('info.position')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Positions</span>'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Positions</span>'))
             ->options([
                 'jnr' => 'Junior 🟡',
                 'mdr' => 'Medior 🟠',
@@ -185,7 +185,7 @@ class Admin
     public static function getRole(): ButtonGroup
     {
         return ButtonGroup::make('role')
-            ->label(fn()=>new HtmlString('<span class="text-primary-500 font-normal">Role</span>'))
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Role</span>'))
             ->options([
                 'agent' => 'Agent 🎧',
                 'accountant' => 'Accountant 💰',
@@ -206,7 +206,7 @@ class Admin
             ->square()
             ->height(20)
             ->grow(false)
-            ->defaultImageUrl(fn(User $record) => Vite::asset(sprintf('%s%s.svg', 'resources/images/avatars/', strtolower($record->role))));
+            ->defaultImageUrl(fn(User $record) => Vite::asset(sprintf('%s%s.svg', 'resources/images/avatars/', strtolower(($record->role == 'partner') ? 'viewer' : $record->role))));
     }
 
     /**

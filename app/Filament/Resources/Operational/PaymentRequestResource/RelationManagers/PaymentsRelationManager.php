@@ -93,7 +93,9 @@ class PaymentsRelationManager extends RelationManager
                             ->openUrlInNewTab()
                             ->url(fn($livewire) => route('filament.admin.resources.payments.create', ['id' => [$livewire->getOwnerRecord()->id], 'module' => 'payment-request'])),
                     ],
-                    (new ListPayments())->getTableHeaderActions()
+                    (isModernDesign())
+                        ? [ActionGroup::make((new ListPayments())->getInvisibleTableHeaderActions())]
+                        : (new ListPayments())->getInvisibleTableHeaderActions()
                 )
             )
             ->poll('30s');

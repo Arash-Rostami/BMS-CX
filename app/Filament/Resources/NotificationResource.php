@@ -2,29 +2,17 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Core\NotificationResource\Pages\Admin;
 use App\Filament\Resources\NotificationResource\Pages;
 use App\Filament\Resources\NotificationResource\RelationManagers;
+use App\Filament\Resources\Operational\NotificationResource\Pages\Admin;
 use App\Models\Notification;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
-
-use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
-use Filament\Tables\Enums\FiltersLayout;
-use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\QueryBuilder\Constraints\TextConstraint;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\DB;
-use Filament\Tables\Filters\QueryBuilder;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Support\Str;
 
 
 class NotificationResource extends Resource
@@ -127,7 +115,7 @@ class NotificationResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Core\NotificationResource\Pages\ManageNotifications::route('/'),
+            'index' => Operational\NotificationResource\Pages\ManageNotifications::route('/'),
         ];
     }
 }

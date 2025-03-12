@@ -1,5 +1,30 @@
 <x-filament-panels::page>
     <div class="max-w-4xl mx-auto py-8 text-gray-900 dark:text-gray-200">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.9
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(March 12, 2025)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>Case Summary Feature: Development of Business Insights, Proforma Invoice, Order, Payment Requests &
+                Payments Summaries,
+                Supplier Payment Records Summary
+            </li>
+            <li>AI Feature: Integration of AI Bot with Case Summary, Botpress Chatbot Accounts, API AI Table Update,
+                Annotation for AI Integration
+            </li>
+            <li>Balance Credit Notification Feature: Managerial Notification for any Credit Suggested.
+            </li>
+            <li>Dashboard Improvements: Multi-Select Filters, Optimization of DB Queries.
+            </li>
+            <li>Payment Request Improvements: Development of Unique Tracking System for Rial and Non-Rial Payment
+                Requests, Multi-Select Filters.
+            </li>
+            <li>Balance Improvements: Enhanced Naming for Columns (credit, debit, and total), Re-organizing Logic.
+            </li>
+            <li>Other Updates: Minimal Table Configs, PR Tracking, Global Search into CX Department, Enhanced Welcome
+                Message, Enhanced Logo and Branding Image.
+            <li>Application Maintenance & DB Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
         <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.8-Beta
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(January 20, 2025)</span>
         </h1>
@@ -24,16 +49,20 @@
                 Filter/Stats Shortcut Toggle, Table Nav Buttons, Auto-off Toggles, Enhanced PDF Format (Filled Columns).
             </li>
             <li>Payment Request Improvements: Enhanced Modern Table (UI & UX), Smart/One-Click Attachment View, Sortable
-                Columns, Deadline Highlighter, Distinct View & Edit Page, Button Groups, New Sets of Filters, Farsi Equivalents,
+                Columns, Deadline Highlighter, Distinct View & Edit Page, Button Groups, New Sets of Filters, Farsi
+                Equivalents,
                 Smart/One-Click Attachment View, Filter/Stats Shortcut Toggle, Table Nav Buttons, Auto-off Toggles,
                 Enhanced PDF Format (Filled Columns), Enhanced Logics For Requested & Total Amounts.
             </li>
-            <li>Payment Improvements: Enhanced Modern Table (UI & UX), Sortable Columns, Column Addition From Payment Request
-                (Beneficiary Name, Requester, Department, Cost Center), Button Groups, New Sets of Filters, Filter/Stats Shortcut Toggle,
+            <li>Payment Improvements: Enhanced Modern Table (UI & UX), Sortable Columns, Column Addition From Payment
+                Request
+                (Beneficiary Name, Requester, Department, Cost Center), Button Groups, New Sets of Filters, Filter/Stats
+                Shortcut Toggle,
                 Table Nav Buttons, Auto-off Toggles, Enhanced PDF Format (Filled Columns).
             </li>
 
-            <li>Other Updates: Color Shading, Menu Top & Side Navigation, Simple Menu Items Design For Simpler/Minimal Navigation,
+            <li>Other Updates: Color Shading, Menu Top & Side Navigation, Simple Menu Items Design For Simpler/Minimal
+                Navigation,
                 Persisting Setting In User Profile (Filter Shortcuts, Menu Position, Menu Items, and Shades), Enhanced
                 Dashboard Account Info and Footer.
             <li>Application Maintenance & DB Backup.</li>

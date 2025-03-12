@@ -2,7 +2,6 @@
 
 //use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\AttachmentController;
-use App\Http\Controllers\BalanceApprovalController;
 use App\Http\Controllers\ManagerialDashboard;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\UserController;
@@ -26,6 +25,7 @@ Route::get('/clear', function () {
 
     return "All caches have been cleared successfully!";
 });
+
 
 
 Route::middleware(['web', 'custom_auth'])->group(function () {

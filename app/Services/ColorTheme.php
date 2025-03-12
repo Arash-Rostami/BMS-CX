@@ -213,7 +213,7 @@ class ColorTheme
 //            'coral' => self::RadiantCoral,
 //            'orange' => Color::Orange,
 //            'slate' => Color::Slate,
-//            'zinc' => Color::Zinc,
+            'zinc' => Color::Zinc,
 //            'indigo' => Color::Indigo,
 //            'darkMaroon' => self::DarkMaroon,
 //            'goldenDusk' => self::GoldenDusk,
@@ -223,8 +223,8 @@ class ColorTheme
 //            'midnightTeal' => self::MidnightTeal,
 //            'blushRose' => self::BlushRose,
 //            'gray' => self::Gray,
-            'darkBlueGray' => self::DarkBlueGray,
-            'coolGraphite' => self::CoolGraphite,
+//            'darkBlueGray' => self::DarkBlueGray,
+//            'coolGraphite' => self::CoolGraphite,
 //            'slateBlue' => self::SlateBlue,
         ];
 

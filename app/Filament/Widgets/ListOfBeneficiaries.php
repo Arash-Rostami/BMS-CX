@@ -26,10 +26,18 @@ class ListOfBeneficiaries extends BaseWidget
     {
         $repository = new PaymentRequestRepository();
 
+        $user = auth()->user();
+        $departmentFilter = $user
+            ? ((isUserSnrAccountant() || isUserManager() || isUserAdmin())
+                ? ($this->filters['department'] ?? null)
+                : ($user->info['department'] ?? null))
+            : null;
+
+
         $repository
             ->filterByTimePeriod($this->filters['period'] ?? 'monthly')
             ->filterByAttributes([
-                'department' => $this->filters['department'] ?? null,
+                'department' => $departmentFilter,
                 'currency' => $this->filters['currency'] ?? null,
                 'payment_type' => $this->filters['payment_type'] ?? null,
                 'status' => $this->filters['status'] ?? null,

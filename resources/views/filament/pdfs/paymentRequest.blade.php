@@ -193,6 +193,13 @@
                 </tr>
             @endif
 
+            @if($record->deadline)
+                <tr>
+                    <th>Deadline</th>
+                    <td>{{ $record->deadline->format('Y-m-d') }}</td>
+                </tr>
+            @endif
+
             @if($record->purpose)
                 <tr>
                     <th>Purpose</th>

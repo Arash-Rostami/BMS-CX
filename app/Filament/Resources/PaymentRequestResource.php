@@ -114,17 +114,13 @@ class PaymentRequestResource extends Resource
                                         ->icon('heroicon-o-information-circle')
                                         ->description(' You need to select your department (then currency) to follow the appropriate organizational procedure.')
                                         ->schema([
-                                            Section::make(new HtmlString('Organizational Details'))
-                                                ->schema([
-                                                    Admin::getDepartment(),
-                                                    Admin::getCurrency(),
-                                                    Admin::getCPSReasons(),
-                                                    Admin::getCostCenter(),
-                                                    Admin::getTypeOfPayment(),
-                                                ])
-                                                ->columns(5)
-                                                ->collapsible(),
-                                        ]),
+                                            Admin::getDepartment(),
+                                            Admin::getCurrency(),
+                                            Admin::getCPSReasons(),
+                                            Admin::getCostCenter(),
+                                            Admin::getTypeOfPayment()
+                                        ])->columns(5)
+                                        ->collapsible(),
                                 ]),
                             Wizard\Step::make('2')
                                 ->icon('heroicon-s-globe-alt')
@@ -263,20 +259,15 @@ class PaymentRequestResource extends Resource
                         //Edit for all departments and Create for CX
                         Group::make()
                             ->schema([
-                                Section::make(new HtmlString('Linked to CPS (Centralized Payment Service)'))
-                                    ->icon('heroicon-o-information-circle')
+                                Section::make(new HtmlString('Organizational Details'))
                                     ->schema([
-                                        Section::make(new HtmlString('Organizational Details'))
-                                            ->schema([
-                                                Admin::getDepartment(),
-                                                Admin::getCurrency(),
-                                                Admin::getCPSReasons(),
-                                                Admin::getCostCenter(),
-                                                Admin::getTypeOfPayment(),
-                                            ])
-                                            ->columns(5)
-                                            ->collapsible(),
-                                    ])->columnSpanFull(),
+                                        Admin::getDepartment(),
+                                        Admin::getCurrency(),
+                                        Admin::getCPSReasons(),
+                                        Admin::getCostCenter(),
+                                        Admin::getTypeOfPayment()
+                                    ])->columns(5)
+                                    ->collapsible(),
                                 Section::make('Pro forma Invoice/Order Details')
                                     ->schema([
                                         Grid::make(3)->schema([

@@ -84,7 +84,11 @@ class ProformaInvoiceRelationManager extends RelationManager
                         return ProformaInvoiceResource::getUrl('edit', ['record' => $record->id]);
                     }, shouldOpenInNewTab: true),
             ])
-            ->headerActions((new ListProformaInvoices())->getTableHeaderActions())
+            ->headerActions(
+                (isModernDesign())
+                    ? [ActionGroup::make( (new ListProformaInvoices())->getInvisibleTableHeaderActions())]
+                    :  (new ListProformaInvoices())->getInvisibleTableHeaderActions()
+            )
             ->poll('30s');
     }
 }

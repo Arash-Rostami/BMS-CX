@@ -150,8 +150,9 @@ class MainPaymentsRelationManager extends RelationManager
                                 ->required(),
                         ]),
                 ],
-                    (new ListPayments())->getTableHeaderActions()
-                )
+                    (isModernDesign())
+                        ? [ActionGroup::make((new ListPayments())->getInvisibleTableHeaderActions())]
+                        : (new ListPayments())->getInvisibleTableHeaderActions())
             )
             ->poll('30s');
     }

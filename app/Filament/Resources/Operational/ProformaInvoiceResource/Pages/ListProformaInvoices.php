@@ -168,7 +168,7 @@ class ListProformaInvoices extends ListRecords
         ];
     }
 
-    public function getTableHeaderActions(): array
+    public function getInvisibleTableHeaderActions(): array
     {
         $design = isModernDesign();
 
@@ -222,9 +222,9 @@ class ListProformaInvoices extends ListRecords
                 ->action('toggleFullScreen'),
         ];
 
-        if ($design) {
-            return [ActionGroup::make($actions)];
-        }
+//        if ($design) {
+//            return [ActionGroup::make($actions)];
+//        }
 
         return $actions;
     }
@@ -235,19 +235,22 @@ class ListProformaInvoices extends ListRecords
             Actions\CreateAction::make()
                 ->label('New')
                 ->icon('heroicon-o-sparkles'),
-            ActionGroup::make([
-                Actions\Action::make('Toggle Tabs')
-                    ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
-                    ->tooltip('Toggle Filter Shortcuts')
-                    ->color($this->showTabs ? 'secondary' : 'primary')
-                    ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
-                    ->action('toggleTabs'),
-                PrintAction::make(),
-                ExcelImportAction::make()
-                    ->color("success"),
-            ])
+            ActionGroup::make(array_merge(
+                [
+                    Actions\Action::make('Toggle Tabs')
+                        ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
+                        ->tooltip('Toggle Filter Shortcuts')
+                        ->color($this->showTabs ? 'secondary' : 'primary')
+                        ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
+                        ->action('toggleTabs'),
+                    PrintAction::make(),
+                    ExcelImportAction::make()->color("success"),
+                ],
+                $this->getInvisibleTableHeaderActions() ?? []
+            ))
         ];
     }
+
 
     protected static function getOriginalTable()
     {
@@ -277,13 +280,16 @@ class ListProformaInvoices extends ListRecords
                 Admin::filterGrade(),
                 Admin::filterBuyer(),
                 Admin::filterSupplier(),
-                Admin::filterProforma(),
+                Admin::filterCreator(),
                 Admin::filterPart(),
                 Admin::filterStatus(),
-                Admin::filterCreator(),
+                Admin::filterProforma(),
+
                 AdminOrder::filterSoftDeletes(),
                 Admin::filterTelexNeeded(),
-            ], layout: FiltersLayout::AboveContentCollapsible)
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormWidth(MaxWidth::FiveExtraLarge)
+            ->filtersFormColumns(4)
             ->recordClasses(fn(Model $record) => ($record->status == 'rejected')
                 ? 'bg-cancelled'
                 : isShadeSelected('proforma-table'))

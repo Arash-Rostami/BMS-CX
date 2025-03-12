@@ -361,7 +361,7 @@ class Admin
     public static function rejectRecord(): TableAction
     {
         return TableAction::make('reject')
-            ->disabled(fn() => (auth()->user()->role == 'partner' || auth()->user()->role == 'agent'))
+//            ->disabled(fn() => (auth()->user()->role == 'partner' || auth()->user()->role == 'agent'))
             ->label('Reject')
             ->color('danger')
             ->icon('heroicon-s-x-circle')

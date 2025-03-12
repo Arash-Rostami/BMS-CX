@@ -100,7 +100,7 @@ class PaymentRequestPolicy
         }
 
         if (isUserCXHead()) {
-            if ($record->getOriginal('department_id') == 6) {
+            if ($record->getOriginal('department_id') == 6 or $record->getOriginal('cost_center') == 6) {
                 return !in_array($status, ['allowed', 'rejected', 'cancelled']);
             }
             return true;

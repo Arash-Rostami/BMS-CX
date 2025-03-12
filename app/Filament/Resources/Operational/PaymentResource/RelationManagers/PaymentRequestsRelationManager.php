@@ -84,7 +84,11 @@ class PaymentRequestsRelationManager extends RelationManager
                         }, shouldOpenInNewTab: true)
                 ])
             ], position: ActionsPosition::BeforeCells)
-            ->headerActions((new ListPaymentRequests())->getTableHeaderActions())
+            ->headerActions(
+                (isModernDesign())
+                    ? [ActionGroup::make((new ListPaymentRequests())->getInvisibleTableHeaderActions())]
+                    : (new ListPaymentRequests())->getInvisibleTableHeaderActions()
+            )
             ->searchDebounce('1000ms');
     }
 }

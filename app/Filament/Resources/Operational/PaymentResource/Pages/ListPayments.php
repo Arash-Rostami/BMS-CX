@@ -148,7 +148,7 @@ class ListPayments extends ListRecords
         return $tabs;
     }
 
-    public function getTableHeaderActions(): array
+    public function getInvisibleTableHeaderActions(): array
     {
         $design = getTableDesign() == 'modern';
 
@@ -202,9 +202,9 @@ class ListPayments extends ListRecords
                 ->action('toggleFullScreen'),
         ];
 
-        if ($design) {
-            return [ActionGroup::make($actions)];
-        }
+//        if ($design) {
+//            return [ActionGroup::make($actions)];
+//        }
 
         return $actions;
     }
@@ -217,17 +217,21 @@ class ListPayments extends ListRecords
                 ->label('New')
                 ->url(fn() => static::getResource()::getUrl('create'))
                 ->icon('heroicon-o-sparkles'),
-            ActionGroup::make([
-                Actions\Action::make('Toggle Tabs')
-                    ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
-                    ->tooltip('Toggle Filter Shortcuts')
-                    ->color($this->showTabs ? 'secondary' : 'primary')
-                    ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
-                    ->action('toggleTabs'),
-                PrintAction::make(),
-                ExcelImportAction::make()
-                    ->color("success"),
-            ])
+            ActionGroup::make(array_merge(
+                    [
+                        Actions\Action::make('Toggle Tabs')
+                            ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
+                            ->tooltip('Toggle Filter Shortcuts')
+                            ->color($this->showTabs ? 'secondary' : 'primary')
+                            ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
+                            ->action('toggleTabs'),
+                        PrintAction::make(),
+                        ExcelImportAction::make()
+                            ->color("success"),
+                    ],
+                    $this->getInvisibleTableHeaderActions() ?? []
+                )
+            )
         ];
     }
 
@@ -270,19 +274,20 @@ class ListPayments extends ListRecords
             })
             ->headerActions($this->getTableHeaderActions())
             ->filters([
-                AdminOrder::filterCreatedAt(),
                 Admin::filterDepartments(),
                 Admin::filterCostCenter(),
                 Admin::filterByPRCurrency(),
                 Admin::filterReason(),
                 Admin::filterMadeBy(),
                 AdminOrder::filterSoftDeletes(),
-            ], layout: FiltersLayout::AboveContentCollapsible)
+                AdminOrder::filterCreatedAt(),
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormWidth(MaxWidth::FiveExtraLarge)
+            ->filtersFormColumns(4)
             ->recordClasses(fn(Model $record) => $record->has_rejected_proforma_invoice
                 ? 'bg-cancelled'
                 : ($record->has_processing_payment_request ? 'bg-processing' : isShadeSelected('payment-table'))
-            )->filtersFormWidth(MaxWidth::FourExtraLarge)
-            ->filtersFormColumns(7)
+            )
             ->emptyStateIcon('heroicon-o-bookmark')
             ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->searchDebounce('1000ms')

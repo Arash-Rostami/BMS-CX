@@ -120,9 +120,10 @@ class PaymentRequestsRelationManager extends RelationManager
                                     ->required(),
                             ])
                     ],
-                    (new ListPaymentRequests())->getTableHeaderActions()
+                    (isModernDesign())
+                        ? [ActionGroup::make((new ListPaymentRequests())->getInvisibleTableHeaderActions())]
+                        : (new ListPaymentRequests())->getInvisibleTableHeaderActions()
                 ))
-            ->
-            searchDebounce('1000ms');
+            ->searchDebounce('1000ms');
     }
 }

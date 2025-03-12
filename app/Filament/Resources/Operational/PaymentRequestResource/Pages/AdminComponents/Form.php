@@ -71,7 +71,7 @@ trait Form
             ->live()
             ->afterStateUpdated(function ($state, Set $set) {
                 $set('cost_center', $state);
-                return in_array($state, [2, 5, 6, 8]) ? $set('currency', 'USD') : $set('currency', 'Rial');
+                return in_array($state, [2, 5, 6, 8, 21, 22, 23]) ? $set('currency', 'USD') : $set('currency', 'Rial');
             })
             ->default(auth()->user()->info['department'] ?? '')
 //            ->disabled(function () {
@@ -245,7 +245,7 @@ trait Form
             ->reactive()
             ->options(function (callable $get) {
                 $departmentId = $get('department_id');
-                return in_array($departmentId, [2, 5, 6, 8, 10]) ? showCurrencies() : ['Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')];
+                return in_array($departmentId, [2, 5, 6, 8, 10, 21, 22, 23]) ? showCurrencies() : ['Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')];
             })
             ->afterStateUpdated(fn($state, Set $set) => ($state != 'Rial') ? $set('extra.paymentMethod', 'bank_account') : $set('extra.paymentMethod', ''))
             ->required()

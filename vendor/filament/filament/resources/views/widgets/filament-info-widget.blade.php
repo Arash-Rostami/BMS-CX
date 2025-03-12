@@ -2,7 +2,7 @@
     <x-filament::section >
         <!-- Back to Top Button -->
         <button
-            onclick="window.scrollTo({ top: 0, behavior: 'smooth' });"
+            onclick="let currentPosition = window.pageYOffset; let scrollInterval = setInterval(() => { if (currentPosition > 0) { currentPosition -= 10; window.scrollTo(0, currentPosition); } else { clearInterval(scrollInterval); } }, 10);"
             class="flex items-center px-3 py-2 text-sm text-gray-600 dark:text-white-400 dark:font-bold bg-primary-200 dark:bg-primary-900
             rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition animate-pulse"
             aria-label="Back to Top" style="position: absolute; bottom:8%; right:1%!important;"
@@ -15,10 +15,9 @@
         <div class="flex flex-col items-center justify-center space-y-2">
             <!-- Logo Section -->
             <div class="flex items-center space-x-2">
-                <img src="{{ Vite::asset('resources/images/logos/bms-logo-v5.png') }}" alt="BMS Logo" width="60"
+                <img src="{{ Vite::asset('resources/images/logos/bms-new-logo.png') }}" alt="BMS Logo" width="60"
                      class="object-contain">
                 <span
-                    @click="window.open('https://time-gr.com/cv')"
                     title="Business Management Software, crafted with ❤ by Arash Rostami (Last Update: {{ config('app.update') }})"
                     class="text-gray-700 dark:text-gray-300 cursor-pointer hover:underline transition"
                 >

@@ -14,7 +14,6 @@ use Filament\Notifications\Notification;
 use Filament\Notifications\Actions\Action;
 
 
-
 class Balance extends Model
 {
     use HasFactory;
@@ -128,6 +127,10 @@ class Balance extends Model
         $departmentId = $user->info['department'] ?? 0;
         $position = $user->info['position'] ?? null;
 
+        if ($user->role == 'accountant' && $position == 'jnr') {
+            return $query->whereIn('department_id', [6, $departmentId]);
+        }
+
         if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
             return $query;
         }
@@ -138,6 +141,7 @@ class Balance extends Model
 
         return $query->whereIn('department_id', [$departmentId, 0]);
     }
+
 
     protected function fetchAllUsersPaymentRequest(Builder $query, $user): Builder
     {

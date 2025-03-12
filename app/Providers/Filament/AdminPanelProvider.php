@@ -42,24 +42,14 @@ class AdminPanelProvider extends PanelProvider
             ->passwordReset()
             ->emailVerification()
             ->colors([
-//                'gray' => Color::Gray, // bg color
                 'primary' => ColorTheme::getRandomFontTheme(), //initial text color
-                'secondary' => Color::Slate, //secondary text color
-//                'danger' => Color::Rose,
-//                'info' => Color::Blue,
-//                'success' => Color::Emerald,
-//                'warning' => Color::Orange,
-//                'amber' => Color::Amber,
-//                'indigo' => Color::Indigo,
+                'secondary' => Color::Slate,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
-            ->widgets([
-                Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
-            ])
+            ->widgets([Widgets\AccountWidget::class, Widgets\FilamentInfoWidget::class])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -89,6 +79,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationItem::make('About us')
                     ->label('Case Summary')
                     ->url(fn() => route('case-summary'), shouldOpenInNewTab: true)
+                    ->badge("+ AI", 'success')
 //                    ->visible(fn() => auth()->check() && (isUserAdmin() || isUserManager()))
                     ->icon('heroicon-c-magnifying-glass'),
             ])
@@ -100,7 +91,7 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth(MaxWidth::Full)
             ->spa()
             ->brandName('BMS')
-            ->brandLogo(Vite::asset('resources/images/logos/bms-logo-v5.png'))
+            ->brandLogo(Vite::asset('resources/images/logos/bms-new-logo.png'))
             ->brandLogoHeight('6rem')
             ->favicon(Vite::asset('resources/images/logos/bms-fav-icon.png'))
             ->font(

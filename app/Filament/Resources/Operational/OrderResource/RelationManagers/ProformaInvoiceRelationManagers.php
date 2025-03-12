@@ -94,7 +94,9 @@ class ProformaInvoiceRelationManagers extends RelationManager
                             ->icon('heroicon-m-arrow-top-right-on-square')
                             ->url(fn() => ProformaInvoiceResource::getUrl('create'), shouldOpenInNewTab: true),
                     ],
-                    (new ListProformaInvoices())->getTableHeaderActions()
+                    (isModernDesign())
+                        ? [ActionGroup::make( (new ListProformaInvoices())->getInvisibleTableHeaderActions())]
+                        :  (new ListProformaInvoices())->getInvisibleTableHeaderActions()
                 )
             )
             ->poll('30s');

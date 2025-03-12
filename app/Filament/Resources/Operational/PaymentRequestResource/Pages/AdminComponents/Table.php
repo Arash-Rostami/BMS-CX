@@ -309,7 +309,7 @@ trait Table
                             ->success()
                             ->send();
                     }),
-            )
+            )->hidden(isUserPartner() or isUserAccountant())
             ->badge();
     }
 

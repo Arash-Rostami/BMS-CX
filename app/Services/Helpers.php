@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\AvatarMaker;
+use App\Services\traits\BpCredentials;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
 
@@ -102,6 +103,20 @@ function isFilterSelected()
     return ($user && ($user->info['filterDesign'] ?? 'hide') == 'show');
 }
 
+function initializeBp($key)
+{
+    $bpHelper = new class {
+        use BpCredentials;
+    };
+
+    $bpHelper->initializeBpCredentials();
+
+    return [
+        'client_id' => $bpHelper->clientId,
+        'bot_id' => $bpHelper->botId,
+    ][$key];
+}
+
 function isColorSelected()
 {
     $user = auth()->user();
@@ -133,10 +148,26 @@ function isUserAgent()
     return auth()->user()->role === 'agent';
 }
 
+function isUserJnrAccountant()
+{
+    return auth()->user()->role === 'accountant' &&
+        auth()->user()->position == 'jnr';
+}
+
+function isUserSnrAccountant()
+{
+    return auth()->user()->role === 'accountant' &&
+        auth()->user()->position == 'snr';
+}
 
 function isUserAccountant()
 {
     return auth()->user()->role === 'accountant';
+}
+
+function isUserPartner()
+{
+    return auth()->user()->role === 'partner';
 }
 
 function isUserCXHead()

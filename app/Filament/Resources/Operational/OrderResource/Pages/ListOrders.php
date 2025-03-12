@@ -148,7 +148,7 @@ class ListOrders extends ListRecords
     }
 
 
-    public function getTableHeaderActions(): array
+    public function getInvisibleTableHeaderActions(): array
     {
         $design = getTableDesign() == 'modern';
 
@@ -202,9 +202,9 @@ class ListOrders extends ListRecords
                 ->action('toggleFullScreen'),
         ];
 
-        if ($design) {
-            return [ActionGroup::make($actions)];
-        }
+//        if ($design) {
+//            return [ActionGroup::make($actions)];
+//        }
 
         return $actions;
     }
@@ -216,17 +216,21 @@ class ListOrders extends ListRecords
             Actions\CreateAction::make()
                 ->label('New')
                 ->icon('heroicon-o-sparkles'),
-            ActionGroup::make([
-                Actions\Action::make('Toggle Tabs')
-                    ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
-                    ->tooltip('Toggle Filter Shortcuts')
-                    ->color($this->showTabs ? 'secondary' : 'primary')
-                    ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
-                    ->action('toggleTabs'),
-                PrintAction::make(),
-                ExcelImportAction::make()
-                    ->color("success"),
-            ])
+
+            ActionGroup::make(array_merge(
+                [
+                    Actions\Action::make('Toggle Tabs')
+                        ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
+                        ->tooltip('Toggle Filter Shortcuts')
+                        ->color($this->showTabs ? 'secondary' : 'primary')
+                        ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
+                        ->action('toggleTabs'),
+                    PrintAction::make(),
+                    ExcelImportAction::make()
+                        ->color("success"),
+                ],
+                $this->getInvisibleTableHeaderActions() ?? []
+            ))
         ];
     }
 
@@ -270,10 +274,12 @@ class ListOrders extends ListRecords
                 Admin::filterSoftDeletes(),
                 Admin::filterBasedOnQuery()
 //                Admin::filterOrderStatus(), Admin::filterCreatedAt(),
-            ], layout: FiltersLayout::AboveContentCollapsible)
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormWidth(MaxWidth::FiveExtraLarge)
+            ->filtersFormColumns(6)
             ->filtersTriggerAction(fn(TableAction $action) => $action->button()->label('')->tooltip('Filter records'))
             ->headerActions($this->getTableHeaderActions())
-            ->recordUrl(fn(Model $record): string => OrderResource::getUrl('edit', ['record' => $record]))
+            ->recordUrl(fn(Model $record): string => OrderResource::getUrl(isUserPartner() ? 'view' : 'edit', ['record' => $record]))
             ->actions([
                 ActionGroup::make([
                     ViewAction::make(),

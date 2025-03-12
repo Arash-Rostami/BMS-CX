@@ -264,30 +264,36 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar, 
         return $query->whereNotIn('role', $roles);
     }
 
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
     public static function getByDepAndPos($department, $position)
     {
         return self::where('info->position', $position)
             ->where('info->department', $department)
+            ->where('role', '!=', 'partner')
             ->get();
     }
 
     public static function getUsersByRole($role)
     {
-        return self::byRole($role)->get();
+        return self::active()->byRole($role)->get();
     }
 
     public static function getUsersByRoles($roles)
     {
-        return self::byRoles($roles)->get();
+        return self::active()->byRoles($roles)->get();
     }
 
     public static function getUsersExcludingRole($role)
     {
-        return self::excludeRole($role)->get();
+        return self::active()->excludeRole($role)->get();
     }
 
     public static function getUsersExcludingRoles($roles)
     {
-        return self::excludeRoles($roles)->get();
+        return self::active()->excludeRoles($roles)->get();
     }
 }

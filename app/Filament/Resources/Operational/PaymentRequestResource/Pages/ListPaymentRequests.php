@@ -196,7 +196,7 @@ class ListPaymentRequests extends ListRecords
     }
 
 
-    public function getTableHeaderActions(): array
+    public function getInvisibleTableHeaderActions(): array
     {
         $cxDep = (auth()->user()->info['department'] == 6) || isModernDesign();
         $design = getTableDesign() == 'modern';
@@ -259,9 +259,9 @@ class ListPaymentRequests extends ListRecords
                 ->action('toggleFullScreen'),
         ];
 
-        if ($design) {
-            return [ActionGroup::make($actions)];
-        }
+//        if ($design) {
+//            return [ActionGroup::make($actions)];
+//        }
 
         return $actions;
     }
@@ -273,17 +273,21 @@ class ListPaymentRequests extends ListRecords
                 ->label('New')
                 ->url(fn() => static::getResource()::getUrl('create'))
                 ->icon('heroicon-o-sparkles'),
-            ActionGroup::make([
-                Actions\Action::make('Toggle Tabs')
-                    ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
-                    ->tooltip('Toggle Filter Shortcuts')
-                    ->color($this->showTabs ? 'secondary' : 'primary')
-                    ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
-                    ->action('toggleTabs'),
-                PrintAction::make(),
-                ExcelImportAction::make()
-                    ->color("success"),
-            ])
+            ActionGroup::make(array_merge(
+                    [
+                        Actions\Action::make('Toggle Tabs')
+                            ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
+                            ->tooltip('Toggle Filter Shortcuts')
+                            ->color($this->showTabs ? 'secondary' : 'primary')
+                            ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
+                            ->action('toggleTabs'),
+                        PrintAction::make(),
+                        ExcelImportAction::make()
+                            ->color("success"),
+                    ],
+                    $this->getInvisibleTableHeaderActions() ?? []
+                )
+            )
         ];
     }
 
@@ -330,7 +334,9 @@ class ListPaymentRequests extends ListRecords
                 Admin::filterByBankName(),
                 AdminOrder::filterSoftDeletes(),
 
-            ], layout: FiltersLayout::AboveContentCollapsible)
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormWidth(MaxWidth::FiveExtraLarge)
+            ->filtersFormColumns(6)
             ->headerActions($this->getTableHeaderActions())
             ->filtersFormColumns(5)
             ->filtersFormWidth(MaxWidth::FourExtraLarge)

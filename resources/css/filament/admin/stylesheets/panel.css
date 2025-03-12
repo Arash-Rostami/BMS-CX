@@ -8,7 +8,7 @@ html, body, * {
 }
 
 .fi-body {
-    background-color: #E0E4E7;
+    background-color: rgb(224, 228, 231, 0.75);
 }
 
 .fi-sidebar-header {
@@ -24,9 +24,13 @@ html, body, * {
 
 .fi-sidebar-item > a:hover {
     border-radius: 7px;
-    @apply hover:bg-gray-200 dark:hover:bg-white/10;
+    background-color: lightgrey;
+    @apply dark:hover:bg-white/10;
 }
 
+.fi-wi-widget{
+    padding: 0;
+}
 
 .fi-topbar > nav {
     background-color: lightgrey;
@@ -34,7 +38,8 @@ html, body, * {
 }
 
 .fi-sidebar-nav {
-    background-color: #D0DAE1;
+    /*background-color: #D0DAE1;*/
+    background-color: rgb(224, 228, 231,0.75);
     border-right: solid 1px #e0e7eb;
 }
 
@@ -45,10 +50,12 @@ html, body, * {
 
 
 .fi-topbar, .fi-sidebar-header {
-    background-color: #D0DBE1;
+    /*background-color: #D0DBE1;*/
+    background-color: lightgrey;
     @apply dark:bg-gray-950 border-none;
 
 }
+
 
 ::-webkit-scrollbar {
     width: 8px;
@@ -72,7 +79,8 @@ html, body, * {
 
 
 ::-webkit-scrollbar-thumb, .fi-sidebar-nav::-webkit-scrollbar-thumb { /* SCROLLER */
-    background: #B0BCC5;
+    /*background: #B0BCC5;*/
+    background: lightgrey;
     border-radius: 8px;
     border: 2px solid transparent;
     background-clip: padding-box;

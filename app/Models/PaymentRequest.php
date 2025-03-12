@@ -311,6 +311,15 @@ class PaymentRequest extends Model
         $department = $user->info['department'] ?? 0;
         $position = $user->info['position'] ?? null;
 
+        if ($user->role == 'accountant' && $position == 'jnr') {
+            return $query->where(function ($subQuery) use ($department) {
+                $subQuery->where('department_id', 6)
+                    ->orWhere('cost_center', 6)
+                    ->orWhere('department_id', $department)
+                    ->orWhere('cost_center', $department);
+            });
+        }
+
         if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
             return $query;
         }

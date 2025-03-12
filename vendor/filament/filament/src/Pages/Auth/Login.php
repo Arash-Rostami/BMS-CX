@@ -72,7 +72,7 @@ class Login extends SimplePage
         // Check active or inactive users
         if (strtolower($user->status) != 'active') {
             Filament::auth()->logout();
-            return  throw ValidationException::withMessages([
+            return throw ValidationException::withMessages([
                 'data.email' => 'Account Deactivated; Please contact the BMS administrator.',
             ]);
         }
@@ -151,7 +151,12 @@ class Login extends SimplePage
     protected function getEmailFormComponent(): Component
     {
         return TextInput::make('email')
-            ->label(__('📫'))
+            ->label(new HtmlString('
+                 <svg class="inline-block" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <path d="M22 6l-10 7L2 6"/>
+                </svg>'))
             ->email()
             ->required()
             ->autocomplete()
@@ -162,19 +167,29 @@ class Login extends SimplePage
     protected function getPasswordFormComponent(): Component
     {
         return TextInput::make('password')
-            ->label(__('🔑'))
+            ->label(new HtmlString('
+            <svg class="inline-block" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>'))
+            ->required()
             ->hint(filament()->hasPasswordReset() ? new HtmlString(Blade::render('<x-filament::link :href="filament()->getRequestPasswordResetUrl()" tabindex="3"> {{ __(\'filament-panels::pages/auth/login.actions.request_password_reset.label\') }}</x-filament::link>')) : null)
             ->password()
             ->revealable(filament()->arePasswordsRevealable())
             ->autocomplete('current-password')
-            ->required()
             ->extraInputAttributes(['tabindex' => 2]);
     }
 
     protected function getRememberFormComponent(): Component
     {
         return Checkbox::make('remember')
-            ->label(__('🔗 Remember it'));
+            ->label(new HtmlString('
+                 <svg class="inline-block" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="10" cy="10" r="4"/>
+                  <path d="M14 10h7v2h-7v2h-2v-4h2z"/>
+                </svg> Remember it'));
     }
 
     public function registerAction(): Action
@@ -208,7 +223,14 @@ class Login extends SimplePage
     protected function getAuthenticateFormAction(): Action
     {
         return Action::make('authenticate')
-            ->label(__('🔓'))
+            ->label(new HtmlString('
+                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                  <polyline points="10 17 15 12 10 7"></polyline>
+                  <line x1="15" y1="12" x2="3" y2="12"></line>
+                </svg>
+            '))
             ->submit('authenticate');
     }
 

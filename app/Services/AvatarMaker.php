@@ -21,7 +21,7 @@ class AvatarMaker
      */
     public function getPNG(string $userType): string
     {
-        return Vite::asset(sprintf('%s%s.svg', $this->createBasePath(), $userType));
+        return Vite::asset(sprintf('%s%s.svg', $this->createBasePath(), $userType == 'partner' ? 'viewer' : $userType));
     }
 
     /**

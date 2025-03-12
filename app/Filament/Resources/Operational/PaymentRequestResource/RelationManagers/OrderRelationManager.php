@@ -84,7 +84,11 @@ class OrderRelationManager extends RelationManager
                         }, shouldOpenInNewTab: true)
                 ])
             ], position: ActionsPosition::BeforeCells)
-            ->headerActions((new ListOrders())->getTableHeaderActions())
+            ->headerActions(
+                (isModernDesign())
+                    ? [ActionGroup::make( (new ListOrders())->getInvisibleTableHeaderActions())]
+                    : (new ListOrders())->getInvisibleTableHeaderActions()
+            )
             ->poll('30s');
     }
 }
