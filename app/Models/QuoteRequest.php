@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\QuoteRequestComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class QuoteRequest extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, QuoteRequestComputations;
 
 
     protected $fillable = [
@@ -38,21 +39,6 @@ class QuoteRequest extends Model
         static::creating(function ($post) {
             $post->user_id = auth()->id();
         });
-    }
-
-    public static function showQuoteResponseRate($id)
-    {
-        $tokenCount = QuoteToken::countNum($id);
-
-        if ($tokenCount === 0) {
-            return '✖️ 0/0 (No Received Quote)';
-        }
-
-        $responseCount = Quote::countNum($id);
-
-        $percentage = number_format(($responseCount / $tokenCount) * 100, 2, '.', '');
-
-        return "🖂 $responseCount/$tokenCount ({$percentage}%)";
     }
 
     public function product()

@@ -8,13 +8,14 @@ use App\Filament\Resources\ProformaInvoiceResource;
 use App\Models\ProformaInvoice;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
-use Barryvdh\DomPDF\Facade\Pdf;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\MaxWidth;
+use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkActionGroup;
@@ -25,18 +26,21 @@ use Filament\Tables\Actions\ReplicateAction;
 use Filament\Tables\Actions\RestoreAction;
 use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
-use Illuminate\Contracts\Support\Htmlable;
+use Filament\Tables\View\TablesRenderHook;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\View\View;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+
+//use Filament\Tables\Actions\ExportBulkAction;
+
 
 class ListProformaInvoices extends ListRecords
 {
@@ -45,9 +49,13 @@ class ListProformaInvoices extends ListRecords
     public bool $showActionsAhead = true;
 
     public bool $showTabs;
+    public ?string $activeTab = '';
 
 
-    protected $listeners = ['refreshPage' => '$refresh'];
+    protected $listeners = [
+        'refreshPage' => '$refresh',
+        'updateActiveTab'
+    ];
 
 
     public function mount(): void
@@ -55,8 +63,23 @@ class ListProformaInvoices extends ListRecords
         $this->showActionsAhead = $this->showActionsAhead ?? true;
         $this->showTabs = (auth()->user()->info['filterDesign'] ?? 'hide') == 'show';
         $this->dispatch('refreshSortJs');
+        $this->dispatch('refreshTabFilters');
     }
 
+    public function updateActiveTab(string $scope = ''): void
+    {
+        $this->activeTab = $scope;
+        $this->dispatch('refreshTabFilters');
+    }
+
+    private function registerTableRenderHook()
+    {
+        FilamentView::registerRenderHook(
+            TablesRenderHook::HEADER_BEFORE,
+            fn(): View => view('filament.resources.proforma-invoice-resource.table-tabs', ['activeTab' => $this->activeTab]),
+            scopes: ListProformaInvoices::class,
+        );
+    }
 
     public function toggleTabs()
     {
@@ -100,72 +123,57 @@ class ListProformaInvoices extends ListRecords
     public function getTabs(): array
     {
         if (!$this->showTabs) {
+            $this->registerTableRenderHook();
             return [];
         }
 
         $counts = ProformaInvoice::getTabCounts();
 
-        return [
-            null => Tab::make('All')
-                ->query(fn($query) => $query)
-                ->badge($counts['total'] ?? 0)
-                ->icon('heroicon-o-inbox'),
-
-            'Mineral' => Tab::make('Mineral')
-                ->query(fn($query) => $query->where('category_id', 1))
-                ->badge($counts['mineral_count'] ?? 0)
-                ->icon('heroicon-o-cube'),
-
-            'Polymers' => Tab::make('Polymers')
-                ->query(fn($query) => $query->where('category_id', 2))
-                ->badge($counts['polymers_count'] ?? 0)
-                ->icon('heroicon-m-circle-stack'),
-
-            'Chemicals' => Tab::make('Chemicals')
-                ->query(fn($query) => $query->where('category_id', 3))
-                ->badge($counts['chemicals_count'] ?? 0)
-                ->icon('heroicon-o-beaker'),
-
-            'Petro' => Tab::make('Petroleum')
-                ->query(fn($query) => $query->where('category_id', 4))
-                ->badge($counts['petro_count'] ?? 0)
-                ->icon('heroicon-s-fire'),
-
-            'Persore' => Tab::make('Persore')
-                ->query(fn($query) => $query->where('buyer_id', 5))
-                ->badge($counts['persore_count'] ?? 0)
-                ->icon('heroicon-o-user-group'),
-
-            'Paidon' => Tab::make('Paidon')
-                ->query(fn($query) => $query->where('buyer_id', 2))
-                ->badge($counts['paidon_count'] ?? 0)
-                ->icon('heroicon-o-user-group'),
-
-            'Zhuo' => Tab::make('Zhuo')
-                ->query(fn($query) => $query->where('buyer_id', 3))
-                ->badge($counts['zhuo_count'] ?? 0)
-                ->icon('heroicon-o-user-group'),
-
-            'Solsun' => Tab::make('Solsun')
-                ->query(fn($query) => $query->where('buyer_id', 4))
-                ->badge($counts['solsun_count'] ?? 0)
-                ->icon('heroicon-o-user-group'),
-
-            'Approved' => Tab::make('Approved')
-                ->query(fn($query) => $query->where('status', 'approved'))
-                ->badge($counts['approved_count'] ?? 0)
-                ->icon('heroicon-o-check-circle'),
-
-            'Rejected' => Tab::make('Rejected/Cancelled')
-                ->query(fn($query) => $query->where('status', 'rejected'))
-                ->badge($counts['rejected_count'] ?? 0)
-                ->icon('heroicon-o-x-circle'),
-
-            'Completed' => Tab::make('Completed')
-                ->query(fn($query) => $query->where('status', 'fulfilled'))
-                ->badge($counts['fulfilled_count'] ?? 0)
-                ->icon('heroicon-s-check-circle'),
+        $categoryTabs = [
+            null => ['label' => 'All', 'icon' => 'heroicon-o-inbox'],
+            'Mineral' => ['category_id' => 1, 'icon' => 'heroicon-o-cube'],
+            'Polymers' => ['category_id' => 2, 'icon' => 'heroicon-m-circle-stack'],
+            'Chemicals' => ['category_id' => 3, 'icon' => 'heroicon-o-beaker'],
+            'Petro' => ['category_id' => 4, 'icon' => 'heroicon-s-fire'],
         ];
+
+        $buyerTabs = [
+            'Persore' => ['buyer_id' => 5],
+            'Paidon' => ['buyer_id' => 2],
+            'Zhuo' => ['buyer_id' => 3],
+            'Solsun' => ['buyer_id' => 4],
+        ];
+
+        $statusTabs = [
+            'Approved' => ['status' => 'approved', 'icon' => 'heroicon-o-check-circle'],
+            'Rejected' => ['status' => 'rejected', 'icon' => 'heroicon-o-x-circle'],
+            'Completed' => ['status' => 'fulfilled', 'icon' => 'heroicon-s-check-circle'],
+        ];
+
+        $tabs = [];
+
+        foreach ($categoryTabs as $key => $config) {
+            $tabs[$key] = Tab::make($config['label'] ?? $key)
+                ->query(fn($query) => isset($config['category_id']) ? $query->where('category_id', $config['category_id']) : $query)
+                ->badge($counts[strtolower($key) . '_count'] ?? $counts['total'] ?? 0)
+                ->icon($config['icon']);
+        }
+
+        foreach ($buyerTabs as $key => $config) {
+            $tabs[$key] = Tab::make($key)
+                ->query(fn($query) => $query->where('buyer_id', $config['buyer_id']))
+                ->badge($counts[strtolower($key) . '_count'] ?? 0)
+                ->icon('heroicon-o-user-group');
+        }
+
+        foreach ($statusTabs as $key => $config) {
+            $tabs[$key] = Tab::make($key === 'Rejected' ? 'Rejected/Cancelled' : $key)
+                ->query(fn($query) => $query->where('status', $config['status']))
+                ->badge($counts[strtolower($config['status']) . '_count'] ?? 0)
+                ->icon($config['icon']);
+        }
+
+        return $tabs;
     }
 
     public function getInvisibleTableHeaderActions(): array
@@ -259,8 +267,22 @@ class ListProformaInvoices extends ListRecords
 
     protected function getTableQuery(): ?Builder
     {
-        return self::getOriginalTable();
+        $query = ProformaInvoice::query();
+
+        $categoryTabs = [
+            'Mineral' => 1,
+            'Polymers' => 2,
+            'Chemicals' => 3,
+            'Petro' => 4,
+        ];
+
+        if (array_key_exists($this->activeTab, $categoryTabs)) {
+            $query->where('category_id', $categoryTabs[$this->activeTab]);
+        }
+
+        return $query;
     }
+
 
     public function table(Table $table): Table
     {
@@ -286,6 +308,7 @@ class ListProformaInvoices extends ListRecords
                 Admin::filterProforma(),
 
                 AdminOrder::filterSoftDeletes(),
+                Admin::filterVerified(),
                 Admin::filterTelexNeeded(),
             ], layout: FiltersLayout::Modal)
             ->filtersFormWidth(MaxWidth::FiveExtraLarge)
@@ -311,18 +334,18 @@ class ListProformaInvoices extends ListRecords
                         ->icon('heroicon-c-inbox-arrow-down')
                         ->action(function (Model $record) {
                             return response()->streamDownload(function () use ($record) {
-                                echo Pdf::loadHtml(view('filament.pdfs.proformaInvoice', ['record' => $record])
-                                    ->render())
-                                    ->stream();
+                                echo Pdf::loadView('filament.pdfs.proformaInvoice', ['record' => $record])->output();
                             }, 'BMS-' . $record->reference_number . '.pdf');
                         }),
                     Action::make('createPaymentRequest')
+                        ->authorize('create')
                         ->label('Smart Payment')
                         ->url(fn($record) => route('filament.admin.resources.payment-requests.create', ['id' => $record->id, 'module' => 'proforma-invoice']))
                         ->icon('heroicon-o-credit-card')
                         ->color('warning')
                         ->openUrlInNewTab(),
                     ReplicateAction::make()
+                        ->authorize('create')
                         ->color('info')
                         ->modalWidth(MaxWidth::Medium)
                         ->modalIcon('heroicon-o-clipboard-document-list')
@@ -343,6 +366,8 @@ class ListProformaInvoices extends ListRecords
                         ->deselectRecordsAfterCompletion(),
                     RestoreBulkAction::make(),
                     ExportBulkAction::make(),
+//                    ExportBulkAction::make()
+//                    ->chunkSize(250),
                     PrintBulkAction::make(),
                 ])
             ])
@@ -374,12 +399,14 @@ class ListProformaInvoices extends ListRecords
                         Admin::showProduct(),
                         Admin::showGrade(),
                         Admin::showSupplier(),
+                        Admin::showVerifiable(),
                         Admin::showContractName(),
                     ]),
                 ])->space(3),
                 Split::make([
                     Split::make([
                         Admin::showBuyer(),
+                        Admin::showSupplier(),
                         Admin::showPrice(),
                         Admin::showQuantity(),
                         Admin::showPercentage(),
@@ -398,6 +425,7 @@ class ListProformaInvoices extends ListRecords
                 Admin::showProformaNumber(),
                 Admin::showProformaDate(),
                 Admin::showBuyer(),
+                Admin::showSupplier(),
                 Admin::showCategory(),
                 Admin::showProduct(),
                 Admin::showGrade(),
@@ -406,6 +434,7 @@ class ListProformaInvoices extends ListRecords
                 Admin::showPercentage(),
                 Admin::showTotal(),
                 Admin::showShipmentPart(),
+                Admin::showVerifiable(),
                 Admin::showContractName(),
                 Admin::showCreator(),
                 Admin::showAssignedTo(),

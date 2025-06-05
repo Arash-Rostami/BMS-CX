@@ -414,7 +414,7 @@ class Admin
     {
         return function () {
             return function (string $attribute, $value, Closure $fail) {
-                if (preg_match('/@(persoreco\.com|solsuntrading\.com|persolco\.com)$/i', $value)) {
+                if (preg_match('/@(persoreco\.com|solsuntrading\.com|persolco\.com|zhuoyuanenergy\.cn|persol\.cn|qq\.com|admont\.ae)$/i', $value)) {
                     return true;
                 }
                 $fail("The email given is invalid.");

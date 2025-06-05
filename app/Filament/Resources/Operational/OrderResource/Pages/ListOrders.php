@@ -7,13 +7,13 @@ use App\Models\Order;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
-use Barryvdh\DomPDF\Facade\Pdf;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\MaxWidth;
+use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Actions\ActionGroup;
@@ -25,18 +25,19 @@ use Filament\Tables\Actions\ReplicateAction;
 use Filament\Tables\Actions\RestoreAction;
 use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Columns\Layout\Panel;
+use Illuminate\View\View;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Filament\Tables\View\TablesRenderHook;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
-use Filament\Notifications\Notification;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 
 class ListOrders extends ListRecords
@@ -44,9 +45,10 @@ class ListOrders extends ListRecords
     public $shipmentStatusFilter;
 
     public bool $showTabs;
+    public ?string $activeTab = '';
 
 
-    protected $listeners = ['setShipmentStatusFilter', 'refreshPage' => '$refresh'];
+    protected $listeners = ['setShipmentStatusFilter', 'refreshPage' => '$refresh', 'updateActiveTab'];
 
 
     protected static string $resource = OrderResource::class;
@@ -58,7 +60,24 @@ class ListOrders extends ListRecords
         $this->showActionsAhead = $this->showActionsAhead ?? true;
         $this->showTabs = (auth()->user()->info['filterDesign'] ?? 'hide') == 'show';
         $this->dispatch('refreshSortJs');
+        $this->dispatch('refreshTabFilters');
     }
+
+    public function updateActiveTab(string $scope = ''): void
+    {
+        $this->activeTab = $scope;
+        $this->dispatch('refreshTabFilters');
+    }
+
+    private function registerTableRenderHook()
+    {
+        FilamentView::registerRenderHook(
+            TablesRenderHook::HEADER_BEFORE,
+            fn(): View => view('filament.resources.order-resource.table-tabs', ['activeTab' => $this->activeTab]),
+            scopes: ListOrders::class,
+        );
+    }
+
 
     public function toggleTabs()
     {
@@ -108,9 +127,9 @@ class ListOrders extends ListRecords
     public function getTabs(): array
     {
         if (!$this->showTabs) {
+            $this->registerTableRenderHook();
             return [];
         }
-
 
         $counts = Order::getTabCounts();
 
@@ -120,30 +139,25 @@ class ListOrders extends ListRecords
                 ->badge($counts['total'] ?? 0)
                 ->icon('heroicon-o-inbox'),
 
-            'Pending' => Tab::make('Pending')
-                ->query(fn($query) => $query->where('purchase_status_id', 1))
-                ->badge($counts['pending_count'] ?? 0)
-                ->icon('heroicon-o-clock'),
+            'Review' => Tab::make('Review')
+                ->query(fn($query) => $query->where('order_status', 'accounting_review'))
+                ->badge($counts['review_count'] ?? 0)
+                ->icon('heroicon-o-eye'),
 
-            'In Transit' => Tab::make('In Transit')
-                ->query(fn($query) => $query->where('purchase_status_id', 3))
-                ->badge($counts['in_transit_count'] ?? 0)
-                ->icon('heroicon-o-truck'),
+            'Approved' => Tab::make('Approved')
+                ->query(fn($query) => $query->where('order_status', 'accounting_approved'))
+                ->badge($counts['approved_count'] ?? 0)
+                ->icon('heroicon-o-check-badge'),
 
-            'Delivered' => Tab::make('Delivered')
-                ->query(fn($query) => $query->where('purchase_status_id', 5))
-                ->badge($counts['delivered_count'] ?? 0)
+            'Rejected' => Tab::make('Rejected')
+                ->query(fn($query) => $query->where('order_status', 'accounting_rejected'))
+                ->badge($counts['rejected_count'] ?? 0)
+                ->icon('heroicon-o-x-circle'),
+
+            'Closed' => Tab::make('Closed')
+                ->query(fn($query) => $query->where('order_status', 'closed'))
+                ->badge($counts['closed_count'] ?? 0)
                 ->icon('heroicon-o-check-circle'),
-
-            'Shipped' => Tab::make('Shipped')
-                ->query(fn($query) => $query->where('purchase_status_id', 6))
-                ->badge($counts['shipped_count'] ?? 0)
-                ->icon('heroicon-o-paper-airplane'),
-
-            'Released' => Tab::make('Released')
-                ->query(fn($query) => $query->where('purchase_status_id', 2))
-                ->badge($counts['released_count'] ?? 0)
-                ->icon('heroicon-o-arrow-up-tray'),
         ];
     }
 
@@ -241,13 +255,15 @@ class ListOrders extends ListRecords
     }
 
 
-    protected function getTableQuery(): Builder
+    protected function getTableQuery(): ?Builder
     {
-        //        if ($this->shipmentStatusFilter) {
-//            $query->where('purchase_status_id', $this->shipmentStatusFilter);
-//        }
+        $query = Order::query();
 
-        return self::getOriginalTable();
+        if ($this->activeTab !== '') {
+            $query->where('order_status', $this->activeTab);
+        }
+
+        return $query;
     }
 
 
@@ -285,6 +301,7 @@ class ListOrders extends ListRecords
                     ViewAction::make(),
                     EditAction::make(),
                     ReplicateAction::make()
+                        ->authorize('create')
                         ->color('info')
                         ->modalWidth(MaxWidth::Medium)
                         ->modalIcon('heroicon-o-clipboard-document-list')
@@ -306,12 +323,11 @@ class ListOrders extends ListRecords
                         ->icon('heroicon-c-inbox-arrow-down')
                         ->action(function (Model $record) {
                             return response()->streamDownload(function () use ($record) {
-                                echo Pdf::loadHtml(view('filament.pdfs.order', ['record' => $record])
-                                    ->render())
-                                    ->stream();
+                                echo Pdf::loadView('filament.pdfs.paymentRequest', ['record' => $record])->output();
                             }, 'BMS-' . $record->reference_number . '.pdf');
                         }),
                     Action::make('createPaymentRequest')
+                        ->authorize('create')
                         ->label('Smart Payment')
                         ->url(fn($record) => route('filament.admin.resources.payment-requests.create', ['id' => $record->id, 'module' => 'order']))
                         ->icon('heroicon-o-credit-card')

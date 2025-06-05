@@ -233,6 +233,38 @@ nav div.fi-dropdown-panel[x-ref="panel"] {
     @apply bg-white dark:bg-gray-950/50
 }
 
+
+/*filter tabs of tables*/
+.tab-container {
+    @apply flex bg-[#E7EAED] dark:bg-transparent mb-0 border-b border-b-transparent m-auto space-x-1;
+}
+
+.tab-item {
+    @apply px-2.5 py-1 text-gray-600 dark:text-gray-400 cursor-pointer text-xs bg-[#E7EAED] dark:bg-transparent border border-transparent
+    rounded-t-md transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500
+    min-w-[80px] text-center;
+    border-bottom: none;
+}
+
+.tab-item.active {
+    @apply text-gray-900 dark:text-gray-500 bg-primary-200 font-medium dark:bg-transparent border-b-primary-500;
+    border-bottom: 2px solid;
+    margin-bottom: -1px;
+}
+
+.dark .tab-item.active {
+    @apply bg-primary-800;
+}
+
+.tab-item:hover {
+    @apply text-gray-800 bg-[#eeeeee] dark:bg-gray-700;
+}
+
+.tab-item.active:hover {
+    @apply bg-white dark:bg-gray-800;
+}
+
+
 .proforma-modern-telex, .order-modern-telex {
     background-image: linear-gradient(to right, #fca5a5, white, white, white, white);
     @apply dark:bg-none dark:bg-red-950

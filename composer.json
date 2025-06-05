@@ -28,6 +28,7 @@
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "livewire/livewire": "^3.3",
+        "niklasravnsborg/laravel-pdf": "^4.1",
         "psr/simple-cache": "2.0",
         "pxlrbt/filament-excel": "^2.3",
         "pxlrbt/filament-spotlight": "^1.2",

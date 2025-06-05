@@ -85,7 +85,10 @@ trait Table
             ->label('Part')
             ->state(fn(Model $record) => $record->order?->part ? (isModernDesign() ? 'Part: ' . $record->order->part : $record->order->part) : ($record->department->code != 'CX' ? '🌐' : '⭐'))
             ->tooltip(fn(Model $record) => $record->order_id
-                ? ($record->order->logistic->booking_number ?? 'Booking Number Unavailable')
+                ? (
+                    'BK No: ' . ($record->order->logistic->booking_number ?? 'Unavailable') .
+                    ' | BL No: ' . ($record->order->doc->BL_number ?? 'Unavailable')
+                )
                 : ($record->order->proformaInvoice->proforma_number ?? 'No Booking Number')
             )
             ->hidden(fn($record) => !(($record != null && $record->department_id == 6)))
@@ -308,8 +311,8 @@ trait Table
                             ->title('Status updated: ' . ucfirst($data['status']))
                             ->success()
                             ->send();
-                    }),
-            )->hidden(isUserPartner() or isUserAccountant())
+                    })->hidden(isUserPartner() or isUserJnrAccountant()),
+            )->hidden(isUserPartner() or isUserJnrAccountant())
             ->badge();
     }
 

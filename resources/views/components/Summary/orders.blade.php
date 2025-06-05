@@ -1,6 +1,10 @@
 @if ($selectedProforma->orders->isNotEmpty())
         <?php
-        $totalPayableQuantity = $selectedProforma->orders->filter(fn($order) => $order->orderDetail !== null)->sum(fn($order) => $order->orderDetail->payable_quantity);
+        $totalPayableQuantity = $selectedProforma->orders
+            ->filter(fn($order) => $order->orderDetail !== null)
+            ->sum(fn($order) => ($order->orderDetail->final_quantity ?? 0) > 0
+                ? $order->orderDetail->final_quantity
+                : $order->orderDetail->provisional_quantity);
         $proformaQuantity = $selectedProforma->quantity;
 
         $badgeText = '';
@@ -16,6 +20,7 @@
             $badgeText = 'Equal';
             $badgeColor = 'bg-gray-500 text-white';
         }
+        $shippedQuantitySoFar = 0;
         ?>
 
         <!-- Header -->
@@ -29,8 +34,8 @@
         <div x-data="{ open: false }" class="border rounded-lg shadow-lg mb-2">
             <button @click="open = !open"
                     class="w-full flex justify-between items-center my-dark-class px-4 py-3 text-left text-lg font-semibold rounded-xl">
-                <span> No: {{ $order->reference_number ?? 'N/A' }}</span>
-                <span class="material-icons-outlined" x-show="open">expand_less</span>
+                <span title="part {{ $order->part ?? 'N/A' }}">No: {{ $order->reference_number ?? 'N/A' }} (🛒{{ $order->part ?? 'Undefined Part' }})</span> <span
+                    class="material-icons-outlined" x-show="open">expand_less</span>
                 <span class="material-icons-outlined" x-show="!open">expand_more</span>
             </button>
 
@@ -50,10 +55,17 @@
                         <pre>{{ $order->part ?? 'N/A' }}</pre>
                     </div>
                     <div class="proforma-details-box">
-                        <div class="font-medium"><span class="material-icons-outlined">info</span> Purchase Status:
+                        <div class="font-medium"><span class="material-icons-outlined">info</span> Logistic Status:
                         </div>
-                        <pre>{{ $order->purchaseStatus?->name ?? 'N/A' }}</pre>
+                        <pre><span class="status-badge info">{{ $order->purchaseStatus?->name ?? 'N/A' }}</span></pre>
                     </div>
+
+                    <div class="proforma-details-box">
+                        <div class="font-medium"><span class="material-icons-outlined">info</span> Order Status:
+                        </div>
+                        <pre><span class="status-badge settled">{{ $order->order_status ?? 'N/A' }}</span></pre>
+                    </div>
+
                     <div class="proforma-details-box">
                         <div class="font-medium"><span class="material-icons-outlined">person</span> Created by:</div>
                         <pre>{{ $order->user?->first_name ?? 'N/A' }}</pre>
@@ -114,7 +126,8 @@
                             <pre>${{ number_format($order->orderDetail->initial_payment, 2) ?? 'N/A' }}</pre>
                         </div>
                         <div class="proforma-details-box">
-                            <div class="font-medium"><span class="material-icons-outlined">show_chart</span> Prov. Total:
+                            <div class="font-medium"><span class="material-icons-outlined">show_chart</span> Prov.
+                                Total:
                             </div>
                             <pre>${{ number_format($order->orderDetail->provisional_total, 2) ?? 'N/A' }}</pre>
                         </div>
@@ -130,12 +143,15 @@
                             </div>
                             <pre>${{ number_format(($order->orderDetail->initial_payment ?? 0)+($order->orderDetail->provisional_total ?? 0)+($order->orderDetail->final_total ?? 0), 2) ?? 'N/A' }}</pre>
                         </div>
+                            <?php
+                            $currentOrderQuantity = ($order->orderDetail->final_quantity ?? 0) > 0 ? $order->orderDetail->final_quantity : $order->orderDetail->provisional_quantity;
+                            $shippedQuantitySoFar += $currentOrderQuantity;
+                            $remainingQuantityAfterThisOrder = $proformaQuantity - $shippedQuantitySoFar;
+                            ?>
                         <div class="proforma-details-box">
-                            <div class="font-medium"><span class="material-icons-outlined">archive</span> Payable
-                                Quantity:
+                            <div class="font-medium"><span class="material-icons-outlined">inventory</span> Remaining (after this part):
                             </div>
-                            <pre>{{ $order->orderDetail->payable_quantity ?? 'N/A' }} <span
-                                    class="px-2 py-1 rounded text-xs inline-block {{ $badgeColor }}"> {{ $badgeText }} ({{ $difference > 0 ? '+' : '' }}{{ $difference }})</span></pre>
+                            <pre>{{ number_format($remainingQuantityAfterThisOrder) }} mt</pre>
                         </div>
                     @endif
                     @if ($order->logistic)
@@ -234,26 +250,20 @@
                         </div>
                     @endif
                     <h5 class="text-xl font-semibold col-span-full mt-6 divider-attachment">Attachments:</h5>
-                    @foreach ($orderAttachmentNames  as $attachmentName)
-                        @php
-                            $attachment = $selectedProforma->orders->flatMap->attachments
-                                ->firstWhere('name', $attachmentName);
-                        @endphp
+                    @foreach ($order->attachments  as $attachment)
                         <div class="flex items-center justify-between p-2 rounded border
-                {{ $attachment ? 'status-badge approved' : 'status-badge cancelled' }}">
+                                 {{ $attachment ? 'status-badge approved' : 'status-badge cancelled' }}">
                             <div class="flex items-center gap-2">
                                 <span class="material-icons-outlined">attachment</span>
-                                @if ($attachment && $attachment->file_path)
+                                @if ($attachment && $attachment->file_path )
                                     <a href="{{ asset($attachment->file_path) }}" target="_blank" class="underline">
                                         <span class="text-lg font-medium">{{ $attachment->name }}</span>
                                     </a>
-                                @else
-                                    <span class="text-lg font-medium">{{ $attachmentName }}</span>
                                 @endif
                             </div>
                         </div>
                     @endforeach
-                    @if ($orderAttachmentNames->isEmpty())
+                    @if ($order->attachments->isEmpty())
                         <div class="p-2 rounded border bg-gray-100 border-gray-400 text-gray-600">
                             No attachments found!
                         </div>

@@ -2,21 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Traits\AttachmentComputations;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\HtmlString;
-use function PHPUnit\Framework\isNull;
+
 
 class Attachment extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
+    use HasFactory, SoftDeletes, AttachmentComputations;
 
     protected $fillable = [
         'name',
@@ -92,43 +89,5 @@ class Attachment extends Model
     public function proformaInvoice()
     {
         return $this->belongsTo(ProformaInvoice::class, 'proforma_invoice_id');
-    }
-
-    //Computational Methods
-
-    public function getCreatedAtBy()
-    {
-        $creator = optional($this->user)->fullName;
-        $time = $this->created_at->format('F d, Y');;
-        $message = "Uploaded on {$time} by {$creator}";
-
-        return new HtmlString("<span class='italic'>$message</span>");
-    }
-
-    public function isUsedElsewhere(): bool
-    {
-        return $this->where('file_path', $this->file_path)
-            ->where('name', $this->name)
-            ->where('id', '!=', $this->id)
-            ->whereNull('deleted_at')
-            ->exists();
-    }
-
-    public static function getRelatedRecords(Attachment $attachment, $relations)
-    {
-        if (empty($attachment->file_path) && empty($attachment->name)) {
-            return collect();
-        }
-
-        $query = self::query()
-            ->when(!empty($attachment->file_path), function ($query) use ($attachment) {
-                $query->where('file_path', $attachment->file_path);
-            });
-
-        if (!empty($relations)) {
-            $query->with($relations);
-        }
-
-        return $query->get();
     }
 }

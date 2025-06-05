@@ -27,6 +27,7 @@
     box-shadow: rgba(0, 0, 0, 0.1) 0px 3px 6px,
     rgba(0, 0, 0, 0.1) 0px 6px 12px,
     rgba(0, 0, 0, 0.1) 0px 12px 24px;
+    @apply dark:bg-stone-900
 }
 
 .fi-pw-reveal-button {

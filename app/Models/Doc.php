@@ -2,16 +2,17 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
+use App\Models\Traits\DocCache;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Cache;
 
 class Doc extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
+    use HasFactory, SoftDeletes, DocCache;
+
+    public static bool $filamentDetection = false;
+
 
     protected $fillable = [
         'voyage_number',
@@ -29,9 +30,6 @@ class Doc extends Model
         'BL_date' => 'date',
     ];
 
-    public static bool $filamentDetection = false;
-
-
 
     public function attachments()
     {
@@ -44,22 +42,9 @@ class Doc extends Model
             $doc->user_id = auth()->id();
         });
     }
-    /**
-     * Get the user that owns the doc.
-     */
+
     public function user()
     {
         return $this->belongsTo(User::class);
-    }
-
-    public static function getLatestBLDate(): ?string
-    {
-        return Cache::remember('latest_bl_date', now()->addMinutes(15), function () {
-            $latestBLDate = self::whereNotNull('BL_date')
-                ->orderByDesc('BL_date')
-                ->value('BL_date');
-
-            return $latestBLDate ? Carbon::parse($latestBLDate)->format('j F Y') : 'N/A';
-        });
     }
 }

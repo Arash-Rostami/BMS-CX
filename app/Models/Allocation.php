@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Egulias\EmailValidator\Result\Reason\Reason;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;

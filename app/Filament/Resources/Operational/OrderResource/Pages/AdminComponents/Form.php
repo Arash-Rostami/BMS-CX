@@ -235,11 +235,7 @@ trait Form
     {
         return Select::make('order_status')
             ->label(fn() => new HtmlString('<span class="grayscale">🛒 </span><span class="text-primary-500 font-normal">Order</span>'))
-            ->options([
-                'processing' => 'Processing',
-                'closed' => 'Closed',
-                'cancelled' => 'Cancelled',
-            ])
+            ->options(self::$statusTexts)
             ->required();
     }
 

@@ -6,16 +6,20 @@ use App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents\Fil
 use App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents\Form;
 use App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents\Table;
 use App\Models\PaymentRequest;
-use App\Models\User;
+use App\Models\SupplierSummary;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use App\Services\Notification\PaymentService;
 use Carbon\Carbon;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Component as Livewire;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Support\Collection;
 
 
 class Admin
@@ -167,6 +171,45 @@ class Admin
             if (count($uniqueCurrencies) === 1) {
                 $set('currency', $uniqueCurrencies[0]);
             }
+        }
+
+        static::checkAndNotifyForSupplierCredit($records);
+    }
+
+    public static function checkAndNotifyForSupplierCredit(Collection $records): void
+    {
+        $supplierIds = $records->pluck('supplier_id')->filter()->unique();
+
+        if ($supplierIds->count() !== 1) {
+            return;
+        }
+
+        $supplierId = $supplierIds->first();
+        $paymentCurrency = $records->first()->currency;
+
+        $creditAmount = SupplierSummary::query()
+            ->where('supplier_id', $supplierId)
+            ->where('currency', $paymentCurrency)
+            ->sum('diff');
+
+        if ($creditAmount > 0) {
+            Notification::make()
+                ->title('📢 Supplier Credit Available')
+                ->body(new HtmlString("This supplier has a credit of <strong>{$creditAmount} {$paymentCurrency}</strong>. Would you like to apply it?"))
+                ->persistent()
+                ->actions([
+                    NotificationAction::make('apply_credit')
+                        ->label('Yes, Apply Credit')
+                        ->color('success')
+                        ->button()
+                        ->dispatch('applyCredit', [$creditAmount])
+                        ->close(),
+                    NotificationAction::make('decline_credit')
+                        ->label('No')
+                        ->color('secondary')
+                        ->button()
+                        ->close(),
+                ])->send();
         }
     }
 }

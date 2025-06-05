@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Jobs\RefreshAllSupplierSummaries;
 use App\Jobs\TelexReleaseNotificationJob;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -20,6 +21,9 @@ class Kernel extends ConsoleKernel
                 $dayOfWeek = now()->dayOfWeek;
                 return $dayOfWeek !== 4 && $dayOfWeek !== 5;
             });
+
+        $schedule->job(new RefreshAllSupplierSummaries)
+            ->cron('0 6,12,18 * * *');
     }
 
     /**

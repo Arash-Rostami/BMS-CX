@@ -74,11 +74,18 @@ class TargetStatsOverview extends BaseWidget
 
     protected function fetchFilters(): array
     {
-        $year = $this->filters['yearlyOrders'] ?? null;
-        $categoryId = $this->filters['category_id'] ?? null;
-        $month = $this->filters['monthlyOrders'] ?? null;
-        $monthName = !empty($month) ? $this->generateMonthName((int)$month) : null;
+        $months = $this->filters['monthlyOrders'] ?? [];
 
-        return [$year, $categoryId, $month, $monthName];
+        $monthNames = array_map(
+            fn($month) => $this->generateMonthName((int)$month),
+            $months
+        );
+
+        return [
+            $this->filters['yearlyOrders'] ?? null,
+            $this->filters['category_id'] ?? null,
+            $months,
+            $monthNames
+        ];
     }
 }

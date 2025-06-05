@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Traits\QuoteComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Cache;
 
 class Quote extends Model
 {
 
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, QuoteComputations;
 
     protected $fillable = [
         'container_number',
@@ -31,15 +31,6 @@ class Quote extends Model
         'quote_provider_id',
         'attachment_id',
     ];
-
-    public static function countNum($id)
-    {
-        $cacheKey = 'quote_count_' . $id;
-
-        return Cache::remember($cacheKey, 60, function () use ($id) {
-            return self::where('quote_request_id', $id)->count();
-        });
-    }
 
     public function quoteRequest()
     {
@@ -64,12 +55,5 @@ class Quote extends Model
     public function product()
     {
         return $this->belongsTo(Product::class, 'commodity_type');
-    }
-
-    public function scopeLowestCosts($query)
-    {
-        return $query->orderBy('offered_rate', 'asc')
-            ->orderBy('local_charges', 'asc')
-            ->orderBy('switch_bl_fee', 'asc');
     }
 }

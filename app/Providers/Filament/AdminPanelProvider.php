@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Models\CostCalculation;
 use App\Services\ColorTheme;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
@@ -82,6 +83,12 @@ class AdminPanelProvider extends PanelProvider
                     ->badge("+ AI", 'success')
 //                    ->visible(fn() => auth()->check() && (isUserAdmin() || isUserManager()))
                     ->icon('heroicon-c-magnifying-glass'),
+                NavigationItem::make('cost-overview')
+                    ->label('Cost Overview')
+                    ->url(fn() => route('cost-calculation'), shouldOpenInNewTab: true)
+                    ->badge(fn (): string => (string) CostCalculation::count(), 'success')
+//                    ->visible(fn() => auth()->check() && (isUserAdmin() || isUserManager()))
+                    ->icon('heroicon-o-calculator'),
             ])
             ->authMiddleware([
                 Authenticate::class,

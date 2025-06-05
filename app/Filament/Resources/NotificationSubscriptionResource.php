@@ -22,7 +22,7 @@ class NotificationSubscriptionResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
 
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 12;
 
 
     public static function form(Forms\Form $form): Forms\Form

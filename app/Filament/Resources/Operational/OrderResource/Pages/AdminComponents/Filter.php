@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents
 
 use App\Models\Order;
 use App\Models\Tag;
-use App\Services\traits\Calculator;
+use App\Services\Traits\Calculator;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\QueryBuilder;
@@ -31,11 +31,7 @@ trait Filter
     {
         return SelectFilter::make('order_status')
             ->label('Status')
-            ->options([
-                'processing' => 'Processing',
-                'closed' => 'Closed',
-                'cancelled' => 'Cancelled',
-            ]);
+            ->options(self::$statusTexts);
     }
 
     public static function filterProforma()
@@ -118,9 +114,9 @@ trait Filter
             ->constraints([
                 SelectConstraint::make('order_status')
                     ->multiple()
-                    ->options(['processing' => 'Processing', 'closed' => 'Closed', 'cancelled' => 'Cancelled']),
+                    ->options(self::$statusTexts),
                 TextConstraint::make('invoice_number')
-                    ->label('Invoice Number'),
+                    ->label('Contract Number'),
                 NumberConstraint::make('orderDetail.buying_price')
                     ->label('Initial Price')
                     ->icon('heroicon-m-currency-dollar'),
@@ -201,7 +197,9 @@ trait Filter
     public static function groupByStatus(): Group
     {
         return Group::make('order_status')->label('Status')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->order_status ?? 'N/A'));
+            ->getTitleFromRecordUsing(fn(Model $record): string => self::$statusTexts[$record->order_status]
+                ?? ucfirst(str_replace('_', ' ', $record->order_status))
+            );
     }
 
     public static function groupByInvoiceNumber(): Group

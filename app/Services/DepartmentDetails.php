@@ -5,15 +5,20 @@ namespace App\Services;
 class DepartmentDetails
 {
     protected static array $departments = [
-        'AS' => [
-            'name' => 'Administration & Support',
-            'code' => 'AS',
-            'description' => 'اداری و پشتیبانی',
-        ],
         'AC' => [
             'name' => 'Accounting',
             'code' => 'AC',
             'description' => 'مالی',
+        ],
+        'AD' => [
+            'name' => 'ADMONT',
+            'code' => 'AD',
+            'description' => 'شرکت ادمونت',
+        ],
+        'AS' => [
+            'name' => 'Administration & Support',
+            'code' => 'AS',
+            'description' => 'اداری و پشتیبانی',
         ],
         'BD' => [
             'name' => 'Business Development',
@@ -30,6 +35,16 @@ class DepartmentDetails
             'code' => 'CM',
             'description' => 'بازرگانی (واردات و خرید داخلی)',
         ],
+        'CS (A)' => [
+            'name' => 'Cellulosic Sales (Alireza)',
+            'code' => 'CS (A)',
+            'description' => ' (علیرضا) فروش محصولات سلولزی',
+        ],
+        'CS (M)' => [
+            'name' => 'Cellulosic Sales (Mahsa)',
+            'code' => 'CS (M)',
+            'description' => ' (محسا) فروش محصولات سلولزی',
+        ],
         'CX' => [
             'name' => 'Commercial Export Operation',
             'code' => 'CX',
@@ -45,10 +60,25 @@ class DepartmentDetails
             'code' => 'MA',
             'description' => 'مدیریت',
         ],
+        'MA (PA)' => [
+            'name' => 'Parva',
+            'code' => 'MA (PA)',
+            'description' => 'پروا سلطانی',
+        ],
+        'MA (PE)' => [
+            'name' => 'Pedram',
+            'code' => 'MA (PE)',
+            'description' => 'پدرام سلطانی',
+        ],
         'MK' => [
             'name' => 'Marketing',
             'code' => 'MK',
             'description' => 'واحد بازاریابی',
+        ],
+        'PERSOL' => [
+            'name' => 'PERSOL',
+            'code' => 'PERSOL',
+            'description' => 'شرکت پرسال',
         ],
         'PERSORE' => [
             'name' => 'PERSORE',
@@ -65,25 +95,30 @@ class DepartmentDetails
             'code' => 'PS',
             'description' => 'برنامه‌ریزی و بهبود سیستم‌ها',
         ],
-        'SP' => [
-            'name' => 'BAZORG (Sales Platform)',
-            'code' => 'SP',
-            'description' => 'پلتفرم فروش',
-        ],
         'SA' => [
             'name' => 'Sales',
             'code' => 'SA',
             'description' => 'واحد(های) فروش',
         ],
+        'SO' => [
+            'name' => 'Solar Panel',
+            'code' => 'SO',
+            'description' => 'پنل خورشیدی',
+        ],
+        'SOLSUN' => [
+            'name' => 'SOLSUN',
+            'code' => 'SOLSUN',
+            'description' => 'کارگذاری',
+        ],
+        'SP' => [
+            'name' => 'BAZORG (Sales Platform)',
+            'code' => 'SP',
+            'description' => 'پلتفرم فروش',
+        ],
         'WP' => [
             'name' => 'Wood Products',
             'code' => 'WP',
             'description' => 'فروش فراورده های چوب',
-        ],
-        'PERSOL' => [
-            'name' => 'PERSOL',
-            'code' => 'PERSOL',
-            'description' => 'شرکت پرسال',
         ],
     ];
 

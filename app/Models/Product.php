@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\ProductComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, ProductComputations;
 
     protected $fillable = ['name', 'description', 'user_id', 'category_id'];
 
@@ -22,16 +23,6 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class, 'category_id');
     }
-
-    public static function scopeFilterCategory($query, $categoryIds)
-    {
-        if (!empty($categoryIds)) {
-            return $query->where('category_id', $categoryIds);
-        }
-
-        return $query;
-    }
-
 
     public function orders()
     {

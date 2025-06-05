@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\NameCache;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Name extends Model
 {
-    use HasFactory;
+    use HasFactory, NameCache;
 
     public static $filamentDetection = false;
 
@@ -23,14 +24,6 @@ class Name extends Model
         static::creating(function ($name) {
             $name->user_id = auth()->id();
         });
-    }
-
-    public static function getSortedNamesForModule(string $module): array
-    {
-        return self::where('module', $module)
-            ->orderBy('title')
-            ->pluck('title', 'title')
-            ->toArray();
     }
 
     public function user()

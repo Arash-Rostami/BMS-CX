@@ -6,25 +6,44 @@
     <title>BMS Order Details</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: DejaVu Sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f5f5;
             margin: 0;
-            padding: 20px;
+            padding: 1px;
+        }
+
+        .monospace {
+            font-family: monospace !important;
+            font-size: 13px;
         }
 
         .container {
             background-color: #fff;
             border-radius: 8px;
-            padding: 40px;
+            padding: 20px;
             max-width: 900px;
             margin: auto;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            page-break-inside: avoid;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        .header img {
+            max-height: 50px;
+        }
+
+        .header .details {
+            text-align: right;
+        }
+
+        .header .details h1 {
+            font-size: 24px;
+            margin: 0;
+            color: #2980b9;
         }
 
         .logo {
@@ -36,31 +55,117 @@
             border-bottom: 1px solid #ddd;
         }
 
-        h2 {
-            color: #34495e;
-            font-size: 18px;
-            margin: 40px 0 20px;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 10px;
+        .header .details div {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        h3 {
+            margin: 1.5em 0 0.5em;
+            color: #2980b9;
+            font-size: 16px;
+            padding-bottom: .5em;
+        }
+
+        .details-section {
+            margin-bottom: 30px;
+        }
+
+        .details-section .label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .details-section .value {
+            color: #2c3e50;
+            font-family: monospace;
+        }
+
+        .beneficiary {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .beneficiary .beneficiary-details,
+        .beneficiary .bank-details {
+            width: 80%;
         }
 
         .table {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 40px;
+            page-break-inside: auto;
         }
 
         .table th, .table td {
+            border: none;
+            border-bottom: 1px solid #eee; /* light divider */
             padding: 12px;
-            border: 1px solid #ddd;
             text-align: left;
         }
 
-        .footer {
+        .table tr:nth-child(even) {
+            background-color: #fbfbfb; /* zebra stripe */
+        }
+
+        .table tr:last-child th,
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        .table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .table td.value {
+            font-family: "Courier New", Courier, monospace;
+            color: #2c3e50;
+        }
+
+        .table td pre.value {
+            margin: 0;
+        }
+
+        .total {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .total div {
+            width: 300px;
+        }
+
+        .total .label {
+            font-weight: bold;
+            font-size: 16px;
+            color: #555;
+        }
+
+        div.total + div {
+            font-size: 16px;
+            font-family: "Courier New", Courier, monospace;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+
+        .footer, .final {
             text-align: center;
             font-size: 12px;
             color: #7f8c8d;
-            margin-top: 40px;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -94,7 +199,7 @@
     </div>
 
     <!-- General Information -->
-    <h2>General Information</h2>
+    <h3>General Information</h3>
     <table class="table">
         @if(optional($record->category)->name)
             <tr>
@@ -140,7 +245,7 @@
     </table>
 
     <!-- Order Additional Details -->
-    <h2>Order Details</h2>
+    <h3>Order Details</h3>
     <table class="table">
         @if($record->orderDetail->buying_quantity)
             <tr>
@@ -193,7 +298,7 @@
     </table>
 
     <!-- Payment Details Section -->
-    <h2>Payment</h2>
+    <h3>Payment</h3>
     <table class="table">
         @if($record->orderDetail->initial_payment)
             <tr>
@@ -219,7 +324,7 @@
 
 
     <!-- Logistics Details Section -->
-    <h2>Logistics</h2>
+    <h3>Logistics</h3>
     <table class="table">
         @if(optional($record->logistic->deliveryTerm)?->name)
             <tr>
@@ -343,7 +448,7 @@
 
 
     <!-- BL and Declaration Details Section -->
-    <h2>BL and Declaration</h2>
+    <h3>BL and Declaration</h3>
     <table class="table">
         @if($record->logistic->booking_number)
             <tr>

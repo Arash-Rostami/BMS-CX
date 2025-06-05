@@ -37,6 +37,9 @@ return new class extends Migration {
             $table->foreign('grade_id')->references('id')->on('grades');
             $table->foreign('buyer_id')->references('id')->on('buyers');
             $table->foreign('supplier_id')->references('id')->on('suppliers');
+            $table->foreign('verified_by')->references('id')->on('users');
+            $table->boolean('verified')->default(false);
+            $table->timestamp('verified_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

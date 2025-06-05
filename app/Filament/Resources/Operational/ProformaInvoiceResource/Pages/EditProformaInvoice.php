@@ -9,16 +9,14 @@ use App\Models\User;
 use App\Notifications\ProformaInvoiceStatusNotification;
 use App\Services\AttachmentCreationService;
 use App\Services\Notification\ProformaInvoiceService;
-use App\Services\RetryableEmailService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\MaxWidth;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
-use LaraZeus\Delia\Filament\Actions\BookmarkHeaderAction;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 class EditProformaInvoice extends EditRecord
 {
@@ -35,7 +33,7 @@ class EditProformaInvoice extends EditRecord
                 ->icon('heroicon-c-inbox-arrow-down')
                 ->action(function (Model $record) {
                     return response()->streamDownload(function () use ($record) {
-                        echo Pdf::loadHtml(view('filament.pdfs.proformaInvoice', ['record' => $record])->render())->stream();
+                        echo Pdf::loadView('filament.pdfs.proformaInvoice', ['record' => $record])->output();
                     }, 'BMS-' . $record->reference_number . '.pdf');
                 }),
             Actions\ReplicateAction::make()

@@ -191,7 +191,7 @@ trait Table
     static function showProjectNumber(): TextColumn
     {
         return TextColumn::make('invoice_number')
-            ->label('Project No.')
+            ->label('Contract/Project No.')
             ->color('primary')
             ->state(fn(Model $record) => optional($record->proformaInvoice)->contract_number ?? $record->invoice_number ?? 'N/A')
             ->size(TextColumnSize::ExtraSmall)

@@ -246,16 +246,6 @@ class Admin
         return ['total' => $total, 'requested' => $requested, 'currency' => $currency];
     }
 
-//    protected static function showSearchResults($invoice): array
-//    {
-//        return [$invoice->id => sprintf(
-//            "%s (%s - %s) 💢 Ref: %s",
-//            $invoice->proforma_number ?? 'N/A',
-//            optional($invoice->product)->name ?? 'N/A',
-//            optional($invoice->grade)->name ?? 'N/A',
-//            $invoice->reference_number ?? 'N/A'
-//        )];
-//    }
 
     public static function syncPaymentRequest(Model $replica): void
     {

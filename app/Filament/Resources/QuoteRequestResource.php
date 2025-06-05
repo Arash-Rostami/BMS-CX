@@ -29,7 +29,7 @@ class QuoteRequestResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 8;
 
     public static function form(Form $form): Form
     {

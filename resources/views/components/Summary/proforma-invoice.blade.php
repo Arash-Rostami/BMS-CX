@@ -101,14 +101,14 @@
                 </div>
                 <pre>{{ $selectedProforma->user?->first_name ?? 'N/A' }} | {{ $selectedProforma->assignee?->first_name ?? 'N/A' }}</pre>
             </div>
-            <div class="proforma-details-box">
-                <div class="font-medium">
-                    <span class="material-icons-outlined">check_circle</span> Status:
-                </div>
-                <span class="status-badge {{ $selectedProforma->status == 'approved' ? 'approved' : 'pending' }}">
-          {{ ucfirst($selectedProforma->status == 'approved' ? 'ongoing' : $selectedProforma->status) }}
-        </span>
-            </div>
+{{--            <div class="proforma-details-box">--}}
+{{--                <div class="font-medium">--}}
+{{--                    <span class="material-icons-outlined">check_circle</span> Status:--}}
+{{--                </div>--}}
+{{--                <span class="status-badge {{ $selectedProforma->status == 'approved' ? 'approved' : 'pending' }}">--}}
+{{--          {{ ucfirst($selectedProforma->status == 'approved' ? 'ongoing' : $selectedProforma->status) }}--}}
+{{--        </span>--}}
+{{--            </div>--}}
             @if ($selectedProforma->extra && isset($selectedProforma->extra['port']) && !empty($selectedProforma->extra['port']))
                 <div class="proforma-details-box">
                     <div class="font-medium">
@@ -122,13 +122,16 @@
                     <div class="font-medium">
                         <span class="material-icons-outlined">info</span> Details:
                     </div>
-                    <pre>@if (is_array($selectedProforma->details['notes'])){{ implode(", ", $selectedProforma->details['notes']) }} @else {{ $selectedProforma->details['notes'] }}@endif</pre>
+                    <pre>@if (is_array($selectedProforma->details['notes']))
+                            {{ implode(", ", $selectedProforma->details['notes']) }}
+                        @else
+                            {{ $selectedProforma->details['notes'] }}
+                        @endif</pre>
                 </div>
             @endif
 
             <h5 class="text-xl font-semibold col-span-full mt-6 divider-attachment">Attachments:</h5>
-            @foreach ($proformaAttachmentNames  as $attachmentName)
-                @php($attachment = $selectedProforma->attachments->firstWhere('name', $attachmentName))
+            @foreach ($selectedProforma->attachments  as $attachment)
                 <div class="flex items-center justify-between p-2 rounded border
                 {{ $attachment ? 'status-badge approved' : 'status-badge cancelled' }}">
                     <div class="flex items-center gap-2">
@@ -137,14 +140,11 @@
                             <a href="{{ asset($attachment->file_path) }}" target="_blank" class="underline">
                                 <span class="text-lg font-medium">{{ $attachment->name }}</span>
                             </a>
-                        @else
-                            <span class="text-lg cursor-help font-medium"
-                                  title="Not yet uploaded!">{{ $attachmentName }}</span>
                         @endif
                     </div>
                 </div>
             @endforeach
-            @if ($proformaAttachmentNames->isEmpty())
+            @if ($selectedProforma->attachments->isEmpty())
                 <div class="p-2 rounded border bg-gray-100 border-gray-400 text-gray-600">
                     No attachments found!
                 </div>

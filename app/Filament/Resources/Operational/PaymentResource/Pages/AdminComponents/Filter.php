@@ -44,6 +44,139 @@ trait Filter
     }
 
 
+
+    public static function groupByContractor(): Grouping
+    {
+        return Grouping::make('paymentRequests.contractor.name')
+            ->collapsible()
+            ->label('Contractor')
+            ->getKeyFromRecordUsing(function ($record): string {
+                $contractorNames = $record->paymentRequests
+                    ->map(fn($pr) => $pr->contractor?->name)
+                    ->filter()
+                    ->unique();
+                return $contractorNames->first() ?? 'N/A';
+            })
+            ->getTitleFromRecordUsing(function ($record): string {
+                $contractorNames = $record->paymentRequests
+                    ->map(fn($pr) => $pr->contractor?->name)
+                    ->filter()
+                    ->unique();
+                return $contractorNames->implode(', ') ?: 'N/A';
+            })
+            ->orderQueryUsing(function (Builder $query, string $direction): Builder {
+                return $query->orderByRaw(
+                    "(SELECT MIN(contractors.name)
+                  FROM payment_requests
+                  INNER JOIN payment_payment_request
+                      ON payment_requests.id = payment_payment_request.payment_request_id
+                  INNER JOIN contractors
+                      ON payment_requests.contractor_id = contractors.id
+                  WHERE payments.id = payment_payment_request.payment_id
+                    AND payment_requests.deleted_at IS NULL) {$direction}"
+                );
+            });
+    }
+
+
+    public static function groupBySupplier(): Grouping
+    {
+        return Grouping::make('paymentRequests.supplier.name')
+            ->collapsible()
+            ->label('Supplier')
+            ->getKeyFromRecordUsing(function ($record): string {
+                $supplierNames = $record->paymentRequests
+                    ->map(fn($pr) => $pr->supplier?->name)
+                    ->filter()
+                    ->unique();
+                return $supplierNames->first() ?? 'N/A';
+            })
+            ->getTitleFromRecordUsing(function ($record): string {
+                $supplierNames = $record->paymentRequests
+                    ->map(fn($pr) => $pr->supplier?->name)
+                    ->filter()
+                    ->unique();
+                return $supplierNames->implode(', ') ?: 'N/A';
+            })
+            ->orderQueryUsing(function (Builder $query, string $direction): Builder {
+                return $query->orderByRaw(
+                    "(SELECT MIN(suppliers.name)
+                  FROM payment_requests
+                  INNER JOIN payment_payment_request
+                      ON payment_requests.id = payment_payment_request.payment_request_id
+                  INNER JOIN suppliers
+                      ON payment_requests.supplier_id = suppliers.id
+                  WHERE payments.id = payment_payment_request.payment_id
+                    AND payment_requests.deleted_at IS NULL) {$direction}"
+                );
+            });
+    }
+
+    public static function groupByBeneficiary(): Grouping
+    {
+        return Grouping::make('paymentRequests.beneficiary.name')
+            ->collapsible()
+            ->label('Beneficiary (Rials)')
+            ->getKeyFromRecordUsing(function ($record): string {
+                $beneficiaryNames = $record->paymentRequests
+                    ->map(fn($pr) => $pr->beneficiary?->name)
+                    ->filter()
+                    ->unique();
+                return $beneficiaryNames->first() ?? 'N/A';
+            })
+            ->getTitleFromRecordUsing(function ($record): string {
+                $beneficiaryNames = $record->paymentRequests
+                    ->map(fn($pr) => $pr->beneficiary?->name)
+                    ->filter()
+                    ->unique();
+                return $beneficiaryNames->implode(', ') ?: 'N/A';
+            })
+            ->orderQueryUsing(function (Builder $query, string $direction): Builder {
+                return $query->orderByRaw(
+                    "(SELECT MIN(beneficiaries.name)
+                    FROM payment_requests
+                    INNER JOIN payment_payment_request
+                        ON payment_requests.id = payment_payment_request.payment_request_id
+                    INNER JOIN beneficiaries
+                        ON payment_requests.payee_id = beneficiaries.id
+                    WHERE payments.id = payment_payment_request.payment_id
+                        AND payment_requests.deleted_at IS NULL) {$direction}"
+                );
+            });
+    }
+
+    public static function groupByPI(): Grouping
+    {
+        return Grouping::make('paymentRequests.proforma_invoice_number')
+            ->collapsible()
+            ->label('Proforma Invoice')
+            ->getKeyFromRecordUsing(function (Model $record): string {
+                $piNumbers = $record->paymentRequests
+                    ->map(fn($pr) => $pr->proforma_invoice_number)
+                    ->filter()
+                    ->unique();
+                return $piNumbers->first() ?? 'N/A';
+            })
+            ->getTitleFromRecordUsing(function (Model $record): string {
+                $piNumbers = $record->paymentRequests
+                    ->map(fn($pr) => $pr->proforma_invoice_number)
+                    ->filter()
+                    ->unique();
+                return $piNumbers->implode(', ') ?: 'N/A';
+            })
+            ->orderQueryUsing(function (Builder $query, string $direction): Builder {
+                return $query->orderByRaw(
+                    "(SELECT MIN(payment_requests.proforma_invoice_number)
+                  FROM payment_requests
+                  INNER JOIN payment_payment_request
+                      ON payment_requests.id = payment_payment_request.payment_request_id
+                  WHERE payments.id = payment_payment_request.payment_id
+                    AND payment_requests.deleted_at IS NULL) {$direction}"
+                );
+            });
+    }
+
+
     /**
      * @return Grouping
      */

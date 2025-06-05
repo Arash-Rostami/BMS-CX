@@ -46,7 +46,6 @@ class PersonToPersonNotification extends Notification
             ->subject("⚠️ " . $this->subjectLine)
             ->greeting('Greetings,')
             ->line($this->body)
-//            ->line('Thank you for your attention.')
             ->line(auth()->user()->fullName);
 
         return isset($this->data['link'])

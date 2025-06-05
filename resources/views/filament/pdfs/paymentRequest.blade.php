@@ -5,21 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Request Details</title>
     <style>
-
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: DejaVu Sans, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f5f5;
             margin: 0;
-            padding: 20px;
+            padding: 1px;
+        }
+
+        .monospace{
+            font-family: monospace !important;
+            font-size: 13px;
         }
 
         .container {
             background-color: #fff;
             border-radius: 8px;
-            padding: 40px;
+            padding: 20px;
             max-width: 900px;
             margin: auto;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            page-break-inside: avoid;
         }
 
         .header {
@@ -56,12 +60,11 @@
             color: #7f8c8d;
         }
 
-        h2 {
-            color: #34495e;
-            font-size: 18px;
-            margin: 40px 0 20px;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 10px;
+        h3 {
+            margin: 1.5em 0 0.5em;
+            color: #2980b9;
+            font-size: 16px;
+            padding-bottom: .5em;
         }
 
         .details-section {
@@ -75,7 +78,7 @@
 
         .details-section .value {
             color: #2c3e50;
-            font-family: "Courier New", Courier, monospace;
+            font-family: monospace;
         }
 
         .beneficiary {
@@ -89,15 +92,34 @@
         }
 
         .table {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 40px;
+            page-break-inside: auto;
         }
 
         .table th, .table td {
+            border: none;
+            border-bottom: 1px solid #eee; /* light divider */
             padding: 12px;
-            border: 1px solid #ddd;
             text-align: left;
+        }
+
+        .table tr:nth-child(even) {
+            background-color: #fbfbfb; /* zebra stripe */
+        }
+
+        .table tr:last-child th,
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
         }
 
         .table th {
@@ -109,6 +131,10 @@
         .table td.value {
             font-family: "Courier New", Courier, monospace;
             color: #2c3e50;
+        }
+
+        .table td pre.value {
+            margin: 0;
         }
 
         .total {
@@ -139,7 +165,7 @@
             text-align: center;
             font-size: 12px;
             color: #7f8c8d;
-            margin-top: 40px;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -162,7 +188,7 @@
         </div>
     </div>
 
-    <h2>General Information</h2>
+    <h3>General Information</h3>
     <div class="details-section">
         <table class="table">
             @if($record->department?->name)
@@ -209,7 +235,7 @@
         </table>
     </div>
 
-    <h2>Beneficiary Information</h2>
+    <h3>Beneficiary Information</h3>
     <table class="table">
         @if($record->supplier?->name && $record->beneficiary_name == 'supplier')
             <tr>
@@ -292,7 +318,7 @@
         </div>
     </div>
 
-    <h2>Payment Information</h2>
+    <h3>Payment Information</h3>
     <table class="table">
         @if($record->requested_amount)
             <tr>
@@ -352,7 +378,7 @@
         <div class="total">
             <div class="label">Total Payable:</div>
         </div>
-        <div class="value">
+        <div class="value monospace">
             {{ number_format($record->requested_amount ?? 0, 2) }} from total
             of {{ number_format($record->total_amount ?? 0, 2) }}
         </div>

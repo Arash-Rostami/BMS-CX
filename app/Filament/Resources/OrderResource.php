@@ -29,6 +29,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use Filament\Infolists\Infolist;
 
@@ -390,12 +391,18 @@ class OrderResource extends Resource
 
     public static function getRecordSubNavigation(Page $page): array
     {
-        return $page->generateNavigationItems([
-            Operational\OrderResource\Pages\CreateOrder::class,
+        $navigationItems = [
             Operational\OrderResource\Pages\ViewOrder::class,
             Operational\OrderResource\Pages\EditOrder::class,
-        ]);
+        ];
+
+        if (Gate::allows('create', Order::class)) {
+            array_unshift($navigationItems, Operational\OrderResource\Pages\CreateOrder::class);
+        }
+
+        return $page->generateNavigationItems($navigationItems);
     }
+
 
     public static function getAllDocs()
     {

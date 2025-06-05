@@ -51,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+
         //added js files
         FilamentAsset::register([
             Js::make('fullscreen', __DIR__ . '/../../resources/js/fullscreen.js'),

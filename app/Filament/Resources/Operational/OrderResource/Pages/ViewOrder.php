@@ -231,17 +231,20 @@ class ViewOrder extends ViewRecord
     {
         return IconEntry::make('order_status')
             ->label('Status')
-            ->tooltip(fn(string $state): string => match ($state) {
-                'processing' => 'Processing',
-                'closed' => 'Closed',
-                'cancelled' => 'Cancelled',
-            })
-            ->icon(fn(string $state): string => match ($state) {
-                'processing' => 'heroicon-s-arrow-path-rounded-square',
-                'closed' => 'heroicon-s-check-circle',
-                'cancelled' => 'heroicon-s-no-symbol',
-            });
+            ->tooltip(fn(string $state): string =>
+                Admin::$statusTexts[$state]
+                ?? ucfirst(str_replace('_', ' ', $state))
+            )
+            ->icon(fn(string $state): string =>
+                Admin::$statusIcons[$state]
+                ?? 'heroicon-s-question-mark-circle'
+            )
+            ->color(fn(string $state): string =>
+                Admin::$statusColors[$state]
+                ?? 'secondary'
+            );
     }
+
 
     /**
      * @return TextEntry

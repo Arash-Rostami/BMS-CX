@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Grade;
 use App\Models\PaymentRequest;
-use App\Services\traits\BpCredentials;
+use App\Services\Traits\BpCredentials;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;

@@ -1,7 +1,6 @@
 <?php
 
-use App\Services\AvatarMaker;
-use App\Services\traits\BpCredentials;
+use App\Services\Traits\BpCredentials;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
 
@@ -150,20 +149,24 @@ function isUserAgent()
 
 function isUserJnrAccountant()
 {
-    return auth()->user()->role === 'accountant' &&
-        auth()->user()->position == 'jnr';
+    $user = auth()->user();
+    return $user->role === 'accountant' && ($user->info['position'] ?? null) == 'jnr';
 }
 
 function isUserSnrAccountant()
 {
-    return auth()->user()->role === 'accountant' &&
-        auth()->user()->position == 'snr';
+    $user = auth()->user();
+    return $user->role === 'accountant' && ($user->info['position'] ?? null) == 'snr';
 }
+
 
 function isUserAccountant()
 {
-    return auth()->user()->role === 'accountant';
+    $user = auth()->user();
+
+    return $user->role === 'accountant' && ($user->info['position'] ?? null) == 'jnr';
 }
+
 
 function isUserPartner()
 {

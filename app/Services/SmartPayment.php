@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
+use App\Filament\Resources\Operational\PaymentResource\Pages\Admin as PaymentAdmin;
 use App\Models\PaymentRequest;
 use App\Models\ProformaInvoice;
 use Filament\Notifications\Notification;
@@ -54,8 +55,9 @@ class SmartPayment
                 'paymentRequests' => $paymentRequests->pluck('id')->toArray(),
                 'currency' => $currencies->first(),
                 'amount' => $paymentRequests->sum('requested_amount'),
-
             ]);
+
+            PaymentAdmin::checkAndNotifyForSupplierCredit($paymentRequests);
         }
     }
 }

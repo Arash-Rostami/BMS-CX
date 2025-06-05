@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents;
 
+use App\Models\Order;
 use App\Models\PaymentRequest;
+use App\Models\ProformaInvoice;
 use App\Services\PaymentSummarizer;
 use Carbon\Carbon;
 use Filament\Infolists\Components\ImageEntry;
@@ -113,6 +115,34 @@ trait Table
             ->badge();
     }
 
+    public static function showContractBuyer(): TextColumn
+    {
+        return TextColumn::make('buyer')
+            ->label('Buyer')
+            ->grow(false)
+            ->state(function ($record) {
+                $paymentRequest = optional($record->paymentRequests)->first();
+                if ($paymentRequest) {
+                    if ($paymentRequest->order_id) {
+                        return $paymentRequest->order?->proformaInvoice?->buyer?->name ?? 'N/A';
+                    }
+                    return $paymentRequest->associatedProformaInvoices()->first()?->buyer?->name ?? 'N/A';
+                }
+                return 'N/A';
+            })
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->searchable(query: function ( $query, string $search) {
+                return $query->where(function ($q) use ($search) {
+                    $q->whereHas('paymentRequests.order.proformaInvoice.buyer', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    })->orWhereHas('paymentRequests.associatedProformaInvoices.buyer', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
+                });
+            });
+    }
+
+
     /**
      * @return TextColumn
      */
@@ -145,6 +175,7 @@ trait Table
         return TextColumn::make('paymentRequests.costCenter.code')
             ->label('Cost Center')
             ->grow()
+            ->toggleable()
             ->sortable()
             ->searchable()
             ->badge();

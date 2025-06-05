@@ -2,10 +2,9 @@
 
 namespace App\Services;
 
-use App\Services\traits\NotificationConfig;
+use App\Services\Traits\NotificationConfig;
 use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Notification;
-use Illuminate\Support\HtmlString;
 
 class NotificationManager
 {

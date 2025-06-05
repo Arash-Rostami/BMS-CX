@@ -11,7 +11,6 @@ use App\Services\Notification\PaymentRequestService;
 use App\Services\NotificationManager;
 use App\Services\RetryableEmailService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -19,6 +18,7 @@ use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Actions\ReplicateAction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 
 class EditPaymentRequest extends EditRecord
@@ -56,9 +56,7 @@ class EditPaymentRequest extends EditRecord
                 ->icon('heroicon-c-inbox-arrow-down')
                 ->action(function (Model $record) {
                     return response()->streamDownload(function () use ($record) {
-                        echo Pdf::loadHtml(view('filament.pdfs.paymentRequest', ['record' => $record])
-                            ->render())
-                            ->stream();
+                        echo Pdf::loadView('filament.pdfs.paymentRequest', ['record' => $record])->output();
                     }, 'BMS-' . $record->reference_number . '.pdf');
                 }),
             Actions\ReplicateAction::make()
@@ -135,7 +133,6 @@ class EditPaymentRequest extends EditRecord
         if ($newStatus && $newStatus !== session('old_status_payment')) {
 
             $this->persistStatusChanger();
-
             $allRecipients = User::getUsersByRole('accountant');
 
             $madeBy = $this->record['user_id'] ?? null;

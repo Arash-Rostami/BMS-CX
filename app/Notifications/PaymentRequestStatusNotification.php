@@ -3,7 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Allocation;
-use App\Models\PaymentRequest;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -18,15 +18,18 @@ class PaymentRequestStatusNotification extends Notification implements ShouldQue
     public string $type;
     public string|bool $status;
     public string $state;
+    public string $deadline;
 
-    /**
-     * Create a new notification instance.
-     */
     public function __construct($record, $type = 'new', $status = false)
     {
-        $this->invoice = $record->order->reference_number ?? $record->proforma_invoice_number ?? Allocation::find($record->reason_for_payment)->reason;
+        $this->invoice = $record->order?->proforma_number
+            ?? $record->proforma_invoice_number
+            ?? Allocation::find($record->reason_for_payment)->reason;
         $this->reference_number = $record->reference_number;
         $this->state = $record->status;
+        $this->deadline = $record->deadline
+            ? Carbon::parse($record->deadline)->format('F j, Y')
+            : null;
         $this->type = $type;
         $this->status = $status;
     }
@@ -51,9 +54,17 @@ class PaymentRequestStatusNotification extends Notification implements ShouldQue
             'new' => $this->showCreatedMessage(),
             'edit' => $this->showEditedMessage(),
             'delete' => $this->showDeletedMessage(),
+            'partner' => $this->showPartnerMessage(),
         ];
 
-        return !$this->status ? $notificationMap[$this->type] : $this->showStatusMessage();
+        if ($this->type === 'partner') {
+            return $notificationMap['partner'];
+        }
+
+        return !$this->status
+            ? $notificationMap[$this->type]
+            : $this->showStatusMessage();
+
     }
 
 
@@ -137,5 +148,22 @@ class PaymentRequestStatusNotification extends Notification implements ShouldQue
             default => "updated with status: **{$this->state}**.",
         };
         return $message;
+    }
+
+    /**
+     * @return MailMessage
+     */
+    public function showPartnerMessage(): MailMessage
+    {
+        $user = ($this->state == 'approved') ? 'Parva' : 'Jouhanna';
+        return (new MailMessage)
+            ->subject('🤝  Payment Request Made & Updated')
+            ->greeting('Greetings,')
+            ->line("Please be informed that payment request **{$this->reference_number}** related to **{$this->invoice}** has a new update.")
+            ->line("Current status: **{$this->state}**.")
+            ->line("Confirmed by: dear  **{$user}**.")
+            ->line("Please ensure payment is completed by **{$this->deadline}** as per the requested timeline.")
+            ->line('Thank you for your attention.')
+            ->line('If you have any questions, please reach out to us.');
     }
 }

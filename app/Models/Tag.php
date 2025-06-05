@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
+use App\Models\Traits\TagComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Tag extends Model
 {
-    use HasFactory;
+    use HasFactory, TagComputations;
 
     public static $filamentDetection = false;
 
@@ -46,35 +46,5 @@ class Tag extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-
-    // Computational Methods
-    public static function deleteEmptyOrderTags($module)
-    {
-        self::where('module', $module)
-            ->where(function ($query) {
-                $query->where('extra', '[]')->orWhereNull('extra');
-            })
-            ->delete();
-    }
-
-    public static function formatTags($tags)
-    {
-        if ($tags->isEmpty()) {
-            return 'No Tag Assigned';
-        }
-        return $tags->unique()->join(', ');
-    }
-
-    public function scopeFilteredForUser(Builder $query, int $userId): Builder
-    {
-        return $query->where(function ($query) use ($userId) {
-            $query->where('created_by', $userId)
-                ->orWhere('updated_by', $userId);
-        })
-            ->where('module', 'Order')
-            ->where('extra', '!=', '[]')
-            ->whereNotNull('extra');
     }
 }

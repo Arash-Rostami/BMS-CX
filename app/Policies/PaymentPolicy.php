@@ -71,12 +71,12 @@ class PaymentPolicy
 
     public function canEditInput(User $user)
     {
-        if (in_array($user->role, ['accountant', 'admin'])) {
+        if (in_array($user->role, ['accountant', 'admin', 'manager', 'partner'])) {
             return true;
         }
 
         if ($user->role == 'agent') {
-            if (isset($user->info['department'], $user->info['position']) && $user->info['department'] == 6 && $user->info['position'] == 'mdr') {
+            if (isset($user->info['department'], $user->info['position']) && $user->info['department'] == 6 ) {
                 return true;
             }
         }

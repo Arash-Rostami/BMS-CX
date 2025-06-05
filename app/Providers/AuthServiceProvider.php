@@ -26,6 +26,7 @@ use App\Models\Quote;
 use App\Models\QuoteProvider;
 use App\Models\ShippingLine;
 use App\Models\Supplier;
+use App\Models\SupplierSummary;
 use App\Models\Tag;
 use App\Models\Target;
 use App\Models\User;
@@ -52,6 +53,7 @@ use App\Policies\QuotePolicy;
 use App\Policies\QuoteProviderPolicy;
 use App\Policies\ShippingLinePolicy;
 use App\Policies\SupplierPolicy;
+use App\Policies\SupplierSummaryPolicy;
 use App\Policies\TagPolicy;
 use App\Policies\TargetPolicy;
 use App\Policies\UserPolicy;
@@ -75,7 +77,6 @@ class AuthServiceProvider extends ServiceProvider
         Grade::class => GradePolicy::class,
         Notification::class => NotificationPolicy::class,
         Order::class => OrderPolicy::class,
-//        OrderRequest::class => OrderRequestPolicy::class,
         Packaging::class => PackagingPolicy::class,
         Payment::class => PaymentPolicy::class,
         PaymentRequest::class => PaymentRequestPolicy::class,
@@ -89,6 +90,7 @@ class AuthServiceProvider extends ServiceProvider
         QuoteProvider::class => QuoteProviderPolicy::class,
         ShippingLine::class => ShippingLinePolicy::class,
         Supplier::class => SupplierPolicy::class,
+        SupplierSummary::class => SupplierSummaryPolicy::class,
         Tag::class => TagPolicy::class,
         Target::class => TargetPolicy::class,
         User::class => UserPolicy::class,

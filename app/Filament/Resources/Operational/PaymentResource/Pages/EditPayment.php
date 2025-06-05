@@ -5,12 +5,13 @@ namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 use App\Filament\Resources\PaymentResource;
 use App\Services\Notification\PaymentService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
+
 
 class EditPayment extends EditRecord
 {
@@ -27,9 +28,7 @@ class EditPayment extends EditRecord
                 ->icon('heroicon-c-inbox-arrow-down')
                 ->action(function (Model $record) {
                     return response()->streamDownload(function () use ($record) {
-                        echo Pdf::loadHtml(view('filament.pdfs.payment', ['record' => $record])
-                            ->render())
-                            ->stream();
+                        echo Pdf::loadView('filament.pdfs.payment', ['record' => $record])->output();
                     }, 'BMS-' . $record->reference_number . '.pdf');
                 }),
             Actions\DeleteAction::make()

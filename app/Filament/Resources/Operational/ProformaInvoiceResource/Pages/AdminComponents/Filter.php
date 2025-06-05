@@ -247,6 +247,22 @@ trait Filter
                 ->toArray());
     }
 
+    public static function filterVerified()
+    {
+        return SelectFilter::make('verified')
+            ->form([
+                Toggle::make('verified')
+                    ->offColor('secondary')
+                    ->onColor('success')
+                    ->label('Verified'),
+            ])->query(function (Builder $query, array $data): Builder {
+                if (!empty($data['verified'])) {
+                    $query->where('verified', true);
+                }
+                return $query;
+            });
+    }
+
 
     public static function filterTelexNeeded()
     {

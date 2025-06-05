@@ -4,13 +4,13 @@ namespace App\Models;
 
 use App\Events\ChatMessageCreated;
 use App\Events\ChatMessageUpdated;
+use App\Models\Traits\ChatComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\HtmlString;
 
 class Chat extends Model
 {
-    use HasFactory;
+    use HasFactory, ChatComputations;
 
     public static $filamentDetection = false;
 
@@ -48,15 +48,5 @@ class Chat extends Model
     public function record()
     {
         return $this->morphTo();
-    }
-
-
-    // Computational Methods
-    public function getChatWriter()
-    {
-        $createdAt = $this->created_at->diffForHumans();
-        $log = " {$this->user->fullName}, {$createdAt}";
-
-        return new HtmlString('<span class="grayscale">💬</span> <span class="italic">' . $log . '</span>');
     }
 }

@@ -23,7 +23,7 @@ class NotificationResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
     public ?string $tableSortColumn = 'notifiable_id';
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 11;
 
 
     public static function form(Form $form): Form

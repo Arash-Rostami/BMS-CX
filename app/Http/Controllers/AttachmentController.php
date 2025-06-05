@@ -12,8 +12,8 @@ class AttachmentController extends Controller
     {
         $fullPath = public_path('attachments/' . $path);
 
-        abort_unless(File::exists($fullPath), 404);
-
+        abort_unless(File::exists($fullPath), 404, 'The requested file could not be found.');
+        
         return response()->file($fullPath);
     }
 }

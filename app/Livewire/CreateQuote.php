@@ -5,7 +5,7 @@ namespace App\Livewire;
 use App\Models\Attachment;
 use App\Models\Quote;
 use App\Models\QuoteToken;
-use App\Services\traits\QuoteData;
+use App\Services\Traits\QuoteData;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 

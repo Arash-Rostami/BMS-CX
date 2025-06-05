@@ -12,34 +12,34 @@ use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\CreateAction;
-use Filament\Forms\Components\Select;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
 use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\MaxWidth;
+use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\HeaderActionsPosition;
 use Filament\Tables\Actions\ReplicateAction;
 use Filament\Tables\Actions\RestoreAction;
 use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Filament\Tables\View\TablesRenderHook;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Livewire\Component;
+use Illuminate\View\View;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
+
 
 
 class ListPaymentRequests extends ListRecords
@@ -53,16 +53,40 @@ class ListPaymentRequests extends ListRecords
     public $statusFilter;
 
 
-    protected $listeners = ['setStatusFilter', 'refreshPage' => '$refresh'];
     public bool $showExtendedColumns = false;
 
     public bool $showActionsAhead = true;
+
+    public ?string $activeTab = '';
+    protected $listeners = [
+        'setStatusFilter',
+        'refreshPage' => '$refresh',
+        'updateActiveTab',
+    ];
+
 
     public function mount(): void
     {
         $this->showActionsAhead = $this->showActionsAhead ?? true;
         $this->showTabs = (auth()->user()->info['filterDesign'] ?? 'hide') == 'show';
         $this->dispatch('refreshSortJs');
+        $this->dispatch('refreshTabFilters');
+    }
+
+    public function updateActiveTab(string $scope = ''): void
+    {
+        $this->activeTab = $scope;
+        $this->dispatch('refreshTabFilters');
+        $this->resetPage();
+    }
+
+    private function registerTableRenderHook(): void
+    {
+        FilamentView::registerRenderHook(
+            TablesRenderHook::HEADER_BEFORE,
+            fn(): View => view('filament.resources.payment-request-resource.table-tabs', ['activeTab' => $this->activeTab]),
+            scopes: self::class,
+        );
     }
 
 
@@ -127,72 +151,46 @@ class ListPaymentRequests extends ListRecords
     public function getTabs(): array
     {
         if (!$this->showTabs) {
+            $this->registerTableRenderHook();
             return [];
         }
 
         $counts = PaymentRequest::getTabCounts();
 
-        return [
-            null => Tab::make('All')
+        $tabConfigs = [
+            // Status tabs
+            ['column' => 'status', 'value' => 'pending', 'label' => 'New', 'icon' => 'heroicon-o-document-plus', 'count_key' => 'pending_count'],
+            ['column' => 'status', 'value' => 'processing', 'label' => 'Processing', 'icon' => 'heroicon-o-clock', 'count_key' => 'processing_count'],
+            ['column' => 'status', 'value' => 'allowed', 'label' => 'Allowed', 'icon' => 'heroicon-o-check-circle', 'count_key' => 'allowed_count'],
+            ['column' => 'status', 'value' => 'approved', 'label' => 'Approved', 'icon' => 'heroicon-o-check-badge', 'count_key' => 'approved_count'],
+            ['column' => 'status', 'value' => 'rejected', 'label' => 'Rejected', 'icon' => 'heroicon-o-x-circle', 'count_key' => 'rejected_count'],
+            ['column' => 'status', 'value' => 'completed', 'label' => 'Completed', 'icon' => 'heroicon-s-check-circle', 'count_key' => 'completed_count'],
+            // Currency tabs
+            ['column' => 'currency', 'value' => 'Rial', 'label' => 'Rial', 'icon' => 'heroicon-o-currency-rupee', 'count_key' => 'rial_count'],
+            ['column' => 'currency', 'value' => 'USD', 'label' => 'USD', 'icon' => 'heroicon-o-currency-dollar', 'count_key' => 'usd_count'],
+            // Type tabs
+            ['column' => 'type_of_payment', 'value' => 'advance', 'label' => 'Advance', 'icon' => 'heroicon-o-credit-card', 'count_key' => 'advance_count'],
+            ['column' => 'type_of_payment', 'value' => 'balance', 'label' => 'Balance', 'icon' => 'heroicon-o-scale', 'count_key' => 'balance_count'],
+            ['column' => 'type_of_payment', 'value' => 'other', 'label' => 'Other', 'icon' => 'heroicon-o-ellipsis-horizontal-circle', 'count_key' => 'other_count'],
+        ];
+
+        $tabs = [
+            null => Tab::make('All', null)
                 ->query(fn($query) => $query)
                 ->badge($counts['total'] ?? 0)
                 ->icon('heroicon-o-inbox'),
-
-            'New' => Tab::make('New')
-                ->query(fn($query) => $query->where('status', 'pending'))
-                ->badge($counts['pending_count'] ?? 0)
-                ->icon('heroicon-o-document-plus'),
-
-            'Processing' => Tab::make('Processing')
-                ->query(fn($query) => $query->where('status', 'processing'))
-                ->badge($counts['processing_count'] ?? 0)
-                ->icon('heroicon-o-clock'),
-
-            'Allowed' => Tab::make('Allowed')
-                ->query(fn($query) => $query->where('status', 'allowed'))
-                ->badge($counts['allowed_count'] ?? 0)
-                ->icon('heroicon-o-check-circle'),
-
-            'Approved' => Tab::make('Approved')
-                ->query(fn($query) => $query->where('status', 'approved'))
-                ->badge($counts['approved_count'] ?? 0)
-                ->icon('heroicon-o-check-badge'),
-
-            'Rejected' => Tab::make('Rejected')
-                ->query(fn($query) => $query->where('status', 'rejected'))
-                ->badge($counts['rejected_count'] ?? 0)
-                ->icon('heroicon-o-x-circle'),
-
-            'Completed' => Tab::make('Completed')
-                ->query(fn($query) => $query->where('status', 'completed'))
-                ->badge($counts['completed_count'] ?? 0)
-                ->icon('heroicon-s-check-circle'),
-
-            'Rial' => Tab::make('Rial')
-                ->query(fn($query) => $query->where('currency', 'Rial'))
-                ->badge($counts['rial_count'] ?? 0)
-                ->icon('heroicon-o-currency-rupee'),
-
-            'USD' => Tab::make('USD')
-                ->query(fn($query) => $query->where('currency', 'USD'))
-                ->badge($counts['usd_count'] ?? 0)
-                ->icon('heroicon-o-currency-dollar'),
-
-            'Advance' => Tab::make('Advance')
-                ->query(fn($query) => $query->where('type_of_payment', 'advance'))
-                ->badge($counts['advance_count'] ?? 0)
-                ->icon('heroicon-s-arrow-left-circle'),
-
-            'Balance' => Tab::make('Balance')
-                ->query(fn($query) => $query->where('type_of_payment', 'balance'))
-                ->badge($counts['balance_count'] ?? 0)
-                ->icon('heroicon-s-arrow-right-circle'),
-
-            'Other' => Tab::make('Other')
-                ->query(fn($query) => $query->where('type_of_payment', 'other'))
-                ->badge($counts['other_count'] ?? 0)
-                ->icon('heroicon-o-ellipsis-horizontal-circle'),
         ];
+
+        foreach ($tabConfigs as $config) {
+            $tabs[$config['value']] = Tab::make($config['label'], $config['value'])
+                ->query(function ($query) use ($config) {
+                    return $query->where($config['column'], $config['value']);
+                })
+                ->badge($counts[$config['count_key']] ?? 0)
+                ->icon($config['icon']);
+        }
+
+        return $tabs;
     }
 
 
@@ -294,11 +292,24 @@ class ListPaymentRequests extends ListRecords
 
     protected function getTableQuery(): Builder
     {
-        //        if ($this->statusFilter) {
-//            $query->where('status', $this->statusFilter);
-//        }
+        $query = self::getOriginalTable();
 
-        return self::getOriginalTable();
+        if ($this->activeTab) {
+            $statusTabs = ['pending', 'processing', 'allowed', 'approved', 'rejected', 'completed'];
+            $currencyTabs = ['Rial', 'USD'];
+
+            $column = 'type_of_payment';
+
+            if (in_array($this->activeTab, $statusTabs)) {
+                $column = 'status';
+            } elseif (in_array($this->activeTab, $currencyTabs)) {
+                $column = 'currency';
+            }
+
+            $query->where($column, $this->activeTab);
+        }
+
+        return $query;
     }
 
 
@@ -337,7 +348,7 @@ class ListPaymentRequests extends ListRecords
             ], layout: FiltersLayout::Modal)
             ->filtersFormWidth(MaxWidth::FiveExtraLarge)
             ->filtersFormColumns(6)
-            ->headerActions($this->getTableHeaderActions())
+//            ->headerActions($this->getTableHeaderActions())
             ->filtersFormColumns(5)
             ->filtersFormWidth(MaxWidth::FourExtraLarge)
             ->recordClasses(fn(Model $record) => Admin::changeBgColor($record))
@@ -349,6 +360,7 @@ class ListPaymentRequests extends ListRecords
                     ViewAction::make(),
                     EditAction::make(),
                     ReplicateAction::make()
+                        ->authorize('create')
                         ->visible(fn(Model $record) => ($record->order_id !== null) || ($record->proforma_invoice_number === null))
                         ->color('info')
                         ->modalWidth(MaxWidth::Medium)
@@ -374,8 +386,26 @@ class ListPaymentRequests extends ListRecords
                     RestoreAction::make(),
                     Admin::allowRecord(),
                     Admin::approveRecord(),
-                    Admin::processRecord(),
+                    Admin::processRecord()
+                        ->authorize('edit'),
                     Admin::rejectRecord()
+                        ->authorize('edit'),
+                    Action::make('pdf')
+                        ->label('PDF')
+                        ->color('success')
+                        ->icon('heroicon-c-inbox-arrow-down')
+                        ->action(function (Model $record) {
+                            return response()->streamDownload(function () use ($record) {
+                                echo Pdf::loadView('filament.pdfs.paymentRequest', ['record' => $record])->output();
+                            }, 'BMS-' . $record->reference_number . '.pdf');
+                        }),
+                    Action::make('smartPayment')
+                        ->label('Smart Payment')
+                        ->icon('heroicon-o-credit-card')
+                        ->color('warning')
+                        ->openUrlInNewTab()
+                        ->url(fn($record) => route('filament.admin.resources.payments.create', ['id' => [$record->id], 'module' => 'payment-request'])),
+
 //                    ->color('secondary')
 //                    ->tooltip('⇄ Change Status')
 //                    ->visible(fn($record) => $record->status === 'pending')

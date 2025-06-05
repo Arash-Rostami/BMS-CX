@@ -2,12 +2,11 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\BalanceResource\Pages;
-use App\Filament\Resources\BalanceResource\RelationManagers;
+use App\Filament\Resources\Operational\BalanceResource\Pages;
+use App\Filament\Resources\Operational\BalanceResource\RelationManagers;
 use App\Filament\Resources\Operational\BalanceResource\Pages\Admin;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Models\Balance;
-use App\Models\Department;
 use Filament\Forms\Form;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Resource;

@@ -6,6 +6,7 @@ use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\Admin;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\IconPosition;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -172,6 +173,47 @@ trait Table
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '🚢 Part(s): ' : '') . $record->part)
             ->searchable()
             ->toggleable()
+            ->sortable();
+    }
+
+    public static function showVerifiable(): IconColumn
+    {
+        return IconColumn::make('verified')
+            ->label('Verified')
+            ->icon(function ($state) {
+                return $state ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle';
+            })
+            ->trueColor('success')
+            ->falseColor('secondary')
+            ->tooltip(function ($state, $record) {
+                if ($state) {
+                    $verifiedAt = $record->verified_at ? $record->verified_at->format('M d, Y h:i A') : 'Unknown time';
+                    $verifier = $record->verifier ? $record->verifier->full_name : 'Unknown';
+                    return "Verified on {$verifiedAt} by {$verifier}";
+                }
+                return "Needs review and verification";
+            })
+            ->size(IconColumn\IconColumnSize::Small)
+            ->grow(false)
+            ->searchable(query: function ($query, $search) {
+                $search = strtolower($search);
+
+                $positiveKeywords = ['verified', 'yes', 'confirmed', 'validated', 'checked', 'final', 'good', 'complete', 'true', '1', 'okay', 'ok', 'certified'];
+                $negativeKeywords = ['not', 'no', 'unverified', 'false', 'incomplete', 'to do', '0', 'awaiting', 'disapproved'];
+
+                $isPositiveMatch = in_array($search, $positiveKeywords);
+                $isNegativeMatch = in_array($search, $negativeKeywords);
+
+                if ($isPositiveMatch) {
+                    $query->where('verified', true);
+                }
+                if ($isNegativeMatch) {
+                    $query->where('verified', false);
+                }
+
+                return $query;
+            })
+            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
             ->sortable();
     }
 

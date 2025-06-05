@@ -7,7 +7,7 @@ use App\Filament\Resources\OrderResource;
 use App\Services\AttachmentCreationService;
 use App\Services\Notification\OrderService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
-use Barryvdh\DomPDF\Facade\Pdf;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\MaxWidth;
@@ -38,9 +38,7 @@ class EditOrder extends EditRecord
                 ->icon('heroicon-c-inbox-arrow-down')
                 ->action(function (Model $record) {
                     return response()->streamDownload(function () use ($record) {
-                        echo Pdf::loadHtml(view('filament.pdfs.order', ['record' => $record])
-                            ->render())
-                            ->stream();
+                        echo Pdf::loadView('filament.pdfs.order', ['record' => $record])->output();
                     }, 'BMS-' . $record->reference_number . '.pdf');
                 }),
             Actions\ReplicateAction::make()

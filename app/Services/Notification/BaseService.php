@@ -191,6 +191,4 @@ abstract class BaseService
         }
         return array($recordDepartments, $recordCostCenters);
     }
-
-
 }

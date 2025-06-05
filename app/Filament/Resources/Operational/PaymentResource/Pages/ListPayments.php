@@ -3,14 +3,13 @@
 namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
-use App\Filament\Resources\PaymentRequestResource;
 use App\Filament\Resources\PaymentResource;
 use App\Models\Department;
 use App\Models\Payment;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
-use Barryvdh\DomPDF\Facade\Pdf;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Actions\CreateAction;
@@ -18,6 +17,7 @@ use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\MaxWidth;
+use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkActionGroup;
@@ -27,15 +27,16 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\RestoreAction;
 use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Filament\Tables\View\TablesRenderHook;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\View\View;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class ListPayments extends ListRecords
@@ -46,7 +47,11 @@ class ListPayments extends ListRecords
 
     public bool $showTabs;
 
-    protected $listeners = ['refreshPage' => '$refresh'];
+    public ?string $activeTab = '';
+    protected $listeners = [
+        'refreshPage'     => '$refresh',
+        'updateActiveTab',
+    ];
 
 
     public function mount(): void
@@ -54,6 +59,23 @@ class ListPayments extends ListRecords
         $this->showActionsAhead = $this->showActionsAhead ?? true;
         $this->showTabs = (auth()->user()->info['filterDesign'] ?? 'hide') == 'show';
         $this->dispatch('refreshSortJs');
+        $this->dispatch('refreshTabFilters');
+    }
+
+    public function updateActiveTab(string $scope = ''): void
+    {
+        $this->activeTab = $scope;
+        $this->dispatch('refreshTabFilters');
+        $this->resetPage();
+    }
+
+    private function registerTableRenderHook(): void
+    {
+        FilamentView::registerRenderHook(
+            TablesRenderHook::HEADER_BEFORE,
+            fn(): View => view('filament.resources.payment-resource.table-tabs', ['activeTab' => $this->activeTab]),
+            scopes: self::class,
+        );
     }
 
     public function toggleTabs()
@@ -97,7 +119,8 @@ class ListPayments extends ListRecords
 
     public function getTabs(): array
     {
-        if (!$this->showTabs) {
+        if (! $this->showTabs) {
+            $this->registerTableRenderHook();
             return [];
         }
 
@@ -245,9 +268,18 @@ class ListPayments extends ListRecords
         return static::getResource()::getEloquentQuery();
     }
 
-    protected function getTableQuery(): ?Builder
+    protected function getTableQuery(): Builder
     {
-        return self::getOriginalTable();
+        $query = self::getOriginalTable();
+
+        if ($this->activeTab !== '') {
+
+            if (in_array($this->activeTab, ['Rial','USD'])) {
+                $query->where('currency', $this->activeTab);
+            }
+        }
+
+        return $query;
     }
 
     public function table(Table $table): Table
@@ -272,7 +304,7 @@ class ListPayments extends ListRecords
                         'paymentRequests as has_processing_payment_request' => fn($query) => $query->where('status', 'processing'),
                     ]);
             })
-            ->headerActions($this->getTableHeaderActions())
+//            ->headerActions($this->getInvisibleTableHeaderActions())
             ->filters([
                 Admin::filterDepartments(),
                 Admin::filterCostCenter(),
@@ -305,9 +337,7 @@ class ListPayments extends ListRecords
                         ->icon('heroicon-c-inbox-arrow-down')
                         ->action(function (Model $record) {
                             return response()->streamDownload(function () use ($record) {
-                                echo Pdf::loadHtml(view('filament.pdfs.payment', ['record' => $record])
-                                    ->render())
-                                    ->stream();
+                                echo Pdf::loadView('filament.pdfs.payment', ['record' => $record])->output();
                             }, 'BMS-' . $record->reference_number . '.pdf');
                         }),
                 ])
@@ -330,10 +360,14 @@ class ListPayments extends ListRecords
             ->defaultSort('created_at', 'desc')
             ->poll('120s')
             ->groups([
-                Admin::filterByPayer(),
-                Admin::filterByCurrency(),
                 Admin::filterByBalance(),
+                Admin::groupByBeneficiary(),
+                Admin::groupByContractor(),
+                Admin::filterByCurrency(),
                 Admin::filterByPaymentRequest(),
+                Admin::groupByPI(),
+                Admin::filterByPayer(),
+                Admin::groupBySupplier(),
                 Admin::filterByTransferringDate(),
             ]);
     }
@@ -372,6 +406,7 @@ class ListPayments extends ListRecords
                 Admin::showID(),
                 Admin::showStatus(),
                 Admin::showPaymentRequest(),
+                Admin::showContractBuyer(),
                 Admin::showPaymentRequestDep(),
                 Admin::showPaymentRequestCostCenter(),
                 Admin::showPaymentRequestBeneficiary(),

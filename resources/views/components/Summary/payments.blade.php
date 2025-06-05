@@ -9,12 +9,14 @@
         <!-- Accordion Container -->
         <div x-data="{ open: false }" class="border rounded-lg shadow-lg mb-2">
             @php
-                $paymentType = !isset($paymentRequest->order_id) ? ' (⭐)' : ' (🛒)';
-                $paymentTitle = !isset($paymentRequest->order_id) ? 'Related to Proforma Invoice' : 'Related to Orders: check the part ';
+                $paymentPart = !isset($paymentRequest->order_id) ? '' : $paymentRequest?->order->part;
+                $paymentType = !isset($paymentRequest->order_id) ? ' (⭐)' : ' (🛒' .($paymentPart ?? '') .')';
+                $paymentTitle = !isset($paymentRequest->order_id) ? 'Related to Proforma Invoice' : 'Related to Orders: Part ' .($paymentPart ?? '');
             @endphp
             <button @click="open = !open"
                     class="w-full flex justify-between items-center my-dark-class px-4 py-3 text-left text-lg font-semibold rounded-xl">
-                <span title="{{ $paymentTitle }}"> No: {{ $paymentRequest->reference_number ? $paymentRequest->reference_number .$paymentType : 'N/A' }}</span>
+                <span
+                    title="{{ $paymentTitle }}"> No: {{ $paymentRequest->reference_number ? $paymentRequest->reference_number .$paymentType : 'N/A' }}</span>
                 <span class="material-icons-outlined" x-show="open">expand_less</span>
                 <span class="material-icons-outlined" x-show="!open">expand_more</span>
             </button>
@@ -30,10 +32,14 @@
                         </div>
                         <pre>{{ $paymentRequest->reference_number ?? 'N/A' }}</pre>
                     </div>
-                    <div class="proforma-details-box">
+                    <div class="proforma-details-box cursor-help"
+                         title="{{ $paymentRequest->order_id ?
+                    ('BK No: ' . ($paymentRequest->order?->logistic->booking_number ?? 'Unavailable') . ' | BL No: ' . ($paymentRequest->order?->doc->BL_number ?? 'Unavailable') )
+                : ($paymentRequest->order?->proformaInvoice->proforma_number ?? 'No Booking Number') }}"
+                    >
                         <div class="font-medium">
                             <span
-                                    class="material-icons-outlined">{{ $paymentRequest->order ? 'shopping_cart' : 'insert_drive_file' }}</span>
+                                class="material-icons-outlined">{{ $paymentRequest->order ? 'shopping_cart' : 'insert_drive_file' }}</span>
                             {{ $paymentRequest->order ? 'Order' : 'Proforma Invoice' }}:
                         </div>
                         <pre>{{ $paymentRequest->order ? 'Part: ' .$paymentRequest->order->part .' (' .$paymentRequest->order->reference_number .')' : $paymentRequest->associatedProformaInvoices->pluck('reference_number')->implode(' | ') }}</pre>
@@ -166,7 +172,7 @@
                         <div class="font-medium"><span class="material-icons-outlined">check_circle</span> Status:</div>
                         <div class="flex items-center">
                             <span
-                                    class="status-badge {{ $paymentRequest->status == 'completed' ? 'approved' : 'pending' }}">
+                                class="status-badge {{ $paymentRequest->status == 'completed' ? 'approved' : 'pending' }}">
                                 {{ ucfirst($paymentRequest->status) }}
                             </span>
                         </div>

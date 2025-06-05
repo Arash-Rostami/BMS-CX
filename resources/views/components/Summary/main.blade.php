@@ -5,10 +5,9 @@
 
 @section('content')
     <div>
-        @livewire('case-summary')
+        <livewire:case-summary.total-summary />
     </div>
 @endsection
-
 @push('scripts')
     @includeWhen( request()->path() === 'case-summary' ,'components.Summary.js')
 @endpush

@@ -21,13 +21,49 @@ class CreatePayment extends CreateRecord
 
     public ?array $id = null;
     public ?string $module = null;
+    public float $credit = 0;
+
 
     protected array $queryString = ['id', 'module'];
+    protected $listeners = ['applyCredit'];
+
+    public function applyCredit(float $credit = 0): void
+    {
+        if ($credit <= 0) {
+            return;
+        }
+
+        $this->credit = $credit;
+        $currentAmount = (float)data_get($this->data, 'amount', 0);
+        $newAmount = $currentAmount - $credit;
+
+        $this->data['amount'] = max(0, $newAmount);
+    }
 
 
     protected function afterFill(): void
     {
         SmartPayment::fillForm($this->id, $this->module, $this->form);
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['credit'] = $this->credit;
+        if ($data['credit'] <= 0) {
+            return $data;
+        }
+
+        $existingNotes = $data['notes'] ?? '';
+        $currency = $data['currency'] ?? 'N/A';
+        $formattedCredit = number_format($data['credit'], 2);
+
+        $creditNote = "\n\n---\nSupplier Credit Applied:  {$currency} {$formattedCredit}";
+
+        if (!str_contains($existingNotes, 'Supplier Credit Applied:')) {
+            $data['notes'] = $existingNotes . $creditNote;
+        }
+
+        return $data;
     }
 
 
@@ -47,7 +83,6 @@ class CreatePayment extends CreateRecord
         $data['remainder'] = 0;
         $data['previousPayments'] = 0;
         $data['totalRequestedAmount'] = 0;
-        $data['notes'] = '';
         $data['loop'] = false;
         $data['share'] = null;
         $data['sumOfOtherPR'] = 0;
@@ -59,9 +94,10 @@ class CreatePayment extends CreateRecord
 
             $processedData = $this->processPayments($data, $paymentRequest);
             $data['remainder'] = $processedData['remainder'];
-            $data['notes'] = $processedData['notes'];
+//            $data['notes'] = $processedData['notes'];
             $data['share'] = $data['amount'] - $paymentRequest->requested_amount;
         }
+
 
         $data['payment_request'] = implode(',', $paymentRequests->pluck('reference_number')->toArray());
         $data['extra'] = [
@@ -83,10 +119,11 @@ class CreatePayment extends CreateRecord
 
         $totalPaid = ($data['previousPayments'] - ($data['sumOfOtherPR'])) + $data['amount'];
         $remainder = $paymentRequest->requested_amount - $totalPaid;
+        $credit = $data['credit'] ?? 0;
 
 
         $paymentRequest->update([
-            'status' => ($data['share'] ?? $totalPaid) >= ($paymentRequest->requested_amount)
+            'status' => (($data['share'] ?? $totalPaid) + $credit) >= ($paymentRequest->requested_amount)
                 ? 'completed' : 'processing',
         ]);
 

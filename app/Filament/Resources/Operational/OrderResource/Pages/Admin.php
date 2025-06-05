@@ -38,27 +38,35 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class Admin
 {
-
     use Form, Table, Filter;
 
-
-    protected static array $statusTexts = [
-        'processing' => 'Processing',
-        'closed' => 'Closed',
-        'cancelled' => 'Cancelled',
+    public static array $statusTexts = [
+        'processing'          => 'Processing',
+        'closed'              => 'Closed',
+        'cancelled'           => 'Cancelled',
+        'accounting_review'   => 'Under Accounting Review',
+        'accounting_approved' => 'Accounting Approved',
+        'accounting_rejected' => 'Accounting Rejected',
     ];
 
-    protected static array $statusIcons = [
-        'processing' => 'heroicon-s-arrow-path-rounded-square',
-        'closed' => 'heroicon-s-check-circle',
-        'cancelled' => 'heroicon-s-no-symbol',
+    public static array $statusIcons = [
+        'processing'          => 'heroicon-s-arrow-path-rounded-square',
+        'closed'              => 'heroicon-s-check-circle',
+        'cancelled'           => 'heroicon-s-no-symbol',
+        'accounting_review'   => 'heroicon-s-eye',
+        'accounting_approved' => 'heroicon-s-check-badge',
+        'accounting_rejected' => 'heroicon-s-x-circle',
     ];
 
-    protected static array $statusColors = [
-        'processing' => 'warning',
-        'closed' => 'success',
-        'cancelled' => 'danger',
+    public static array $statusColors = [
+        'processing'          => 'warning',
+        'closed'              => 'success',
+        'cancelled'           => 'danger',
+        'accounting_review'   => 'info',
+        'accounting_approved' => 'success',
+        'accounting_rejected' => 'danger',
     ];
+
 
     public static array $documents = [
         'COA' => 'COA',
@@ -233,10 +241,11 @@ class Admin
 
 //        return Cache::remember($cacheKey, 120, function () use ($title, $order) {
         return $order->attachments->contains(function ($attachment) use ($title) {
-            if (!empty($attachment->name)) {
-                return Str::contains($attachment->name, $title);
-            }
-            return Str::contains($attachment->file_path, $title);
+            $haystack = $attachment->name ?: $attachment->file_path;
+
+            $distance = levenshtein($title, $haystack);
+
+            return $distance === 0;
         });
 //        });
     }

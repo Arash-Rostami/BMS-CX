@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\PurchaseStatusComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PurchaseStatus extends Model
 {
-    use HasFactory;
+    use HasFactory, PurchaseStatusComputations;
 
     protected $fillable = ['name', 'description', 'user_id'];
 
@@ -17,18 +18,6 @@ class PurchaseStatus extends Model
         static::creating(function ($post) {
             $post->user_id = auth()->id();
         });
-    }
-
-    public function getEmoticonAttribute()
-    {
-        return explode(' ', $this->name)[0] ?? '';
-    }
-
-    public function getBareTitleAttribute()
-    {
-        $parts = explode(' ', $this->name);
-        array_shift($parts);
-        return implode(' ', $parts);
     }
 
     public function orders()

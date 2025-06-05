@@ -3,8 +3,8 @@
 namespace App\Services;
 
 
-use App\Services\traits\Calculator;
-use App\Services\traits\Project;
+use App\Services\Traits\Calculator;
+use App\Services\Traits\Project;
 use Illuminate\Support\Facades\Cache;
 
 

@@ -1,0 +1,9 @@
+{
+    "amiri": {
+        "normal": "amiri_normal_33a83e4333a8495ae4de68763b816f1f"
+    },
+    "tajawal": {
+        "normal": "D:\\DEV-ENV\\BMS\\vendor\\dompdf\\dompdf\/lib\/fonts\/tajawal_normal_0a18e791ea7dee5945b3096a4ef5afe1",
+        "bold": "tajawal_bold_78e6cf1be763ebcc22f980f514434a3a"
+    }
+}

@@ -1,18 +1,50 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-073MZkZ8.css",
+    "file": "assets/app-IHavaDVd.css",
     "isEntry": true,
     "src": "resources/css/app.css"
   },
   "resources/css/filament/admin/theme.css": {
-    "file": "assets/theme-Qs4dXw4f.css",
+    "file": "assets/theme-NTm88xPn.css",
     "isEntry": true,
     "src": "resources/css/filament/admin/theme.css"
   },
   "resources/css/main-fonts.css": {
-    "file": "assets/main-fonts-ydg3Ug7o.css",
+    "file": "assets/main-fonts-e9j9e3VG.css",
     "isEntry": true,
     "src": "resources/css/main-fonts.css"
+  },
+  "resources/fonts/Kalameh-Black.ttf": {
+    "file": "assets/Kalameh-Black-zUP0YK1O.ttf",
+    "src": "resources/fonts/Kalameh-Black.ttf"
+  },
+  "resources/fonts/Kalameh-Light.ttf": {
+    "file": "assets/Kalameh-Light-4eDEdm5z.ttf",
+    "src": "resources/fonts/Kalameh-Light.ttf"
+  },
+  "resources/fonts/KalamehWeb-Black.eot": {
+    "file": "assets/KalamehWeb-Black-FfiMPLFZ.eot",
+    "src": "resources/fonts/KalamehWeb-Black.eot"
+  },
+  "resources/fonts/KalamehWeb-Black.woff": {
+    "file": "assets/KalamehWeb-Black-nBaE7TQ7.woff",
+    "src": "resources/fonts/KalamehWeb-Black.woff"
+  },
+  "resources/fonts/KalamehWeb-Black.woff2": {
+    "file": "assets/KalamehWeb-Black-giBy16uf.woff2",
+    "src": "resources/fonts/KalamehWeb-Black.woff2"
+  },
+  "resources/fonts/KalamehWeb-Light.eot": {
+    "file": "assets/KalamehWeb-Light-Tj_OmdJa.eot",
+    "src": "resources/fonts/KalamehWeb-Light.eot"
+  },
+  "resources/fonts/KalamehWeb-Light.woff": {
+    "file": "assets/KalamehWeb-Light-qJhHoFEa.woff",
+    "src": "resources/fonts/KalamehWeb-Light.woff"
+  },
+  "resources/fonts/KalamehWeb-Light.woff2": {
+    "file": "assets/KalamehWeb-Light-2gjW_GTu.woff2",
+    "src": "resources/fonts/KalamehWeb-Light.woff2"
   },
   "resources/fonts/Roboto.woff": {
     "file": "assets/Roboto-u7haRXy8.woff",
