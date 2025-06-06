@@ -25,21 +25,17 @@ trait AttachmentComputations
             ->exists();
     }
 
-    public static function getRelatedRecords(Attachment $attachment, $relations)
+    public static function getRelatedRecords(Attachment $attachment, $relations = [])
     {
         if (empty($attachment->file_path) && empty($attachment->name)) {
             return collect();
         }
 
-        $query = self::query()
-            ->when(!empty($attachment->file_path), function ($query) use ($attachment) {
+        return self::query()
+            ->when($attachment->file_path, function ($query) use ($attachment) {
                 $query->where('file_path', $attachment->file_path);
-            });
-
-        if (!empty($relations)) {
-            $query->with($relations);
-        }
-
-        return $query->get();
+            })
+            ->with($relations)
+            ->get();
     }
 }

@@ -6,8 +6,8 @@
 # Node artifact files
 node_modules/
 dist/
-
-
+temp/
+.env
 # Compiled Java class files
 *.class
 
@@ -49,25 +49,3 @@ Thumbs.db
 *.mov
 *.wmv
 
-
-
-/vendor/
-node_modules/
-npm-debug.log
-yarn-error.log
-
-storage/*.key
-.env
-Homestead.yaml
-Homestead.json
-/.vagrant
-.phpunit.result.cache
-temp/
-/tests/
-
-/public/build
-/storage/pail
-.env.backup
-.env.production
-.phpactor.json
-auth.json
