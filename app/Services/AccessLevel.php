@@ -19,13 +19,15 @@ class AccessLevel
         $cacheKey = 'permissions_' . $loggedUser->id . '_' . $model . '_' . $permission;
 
         // Retrieve profile Permissions with caching
-        $permissions = Cache::remember($cacheKey, 60, function () use ($loggedUser, $permission, $model) {
+        return Cache::remember($cacheKey, 60, function () use ($loggedUser, $permission, $model) {
             return $loggedUser->permissions()
-                ->whereIn('model', [$model, 'All'])
-                ->whereIn('permission', [$permission, 'all'])
-                ->get();
+                ->where(function ($query) use ($model) {
+                    $query->where('model', $model)->orWhere('model', 'All');
+                })
+                ->where(function ($query) use ($permission) {
+                    $query->where('permission', $permission)->orWhere('permission', 'all');
+                })
+                ->exists();
         });
-
-        return $permissions->contains(fn($permission): bool => $permission->user_id === $loggedUser->id);
     }
 }
