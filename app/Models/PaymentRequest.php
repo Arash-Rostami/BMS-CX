@@ -196,6 +196,11 @@ class PaymentRequest extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function supplierSummaries()
+    {
+        return $this->hasMany(SupplierSummary::class, 'supplier_id', 'supplier_id')
+            ->where('currency', $this->currency);
+    }
 
     public function user()
     {

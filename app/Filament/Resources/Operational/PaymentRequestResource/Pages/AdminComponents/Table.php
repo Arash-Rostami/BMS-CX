@@ -13,17 +13,13 @@ use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontFamily;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Columns\Summarizers\Count;
-use Filament\Tables\Columns\Summarizers\Sum;
-use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
-use function PHPUnit\Framework\isEmpty;
 
 trait Table
 {
@@ -254,6 +250,24 @@ trait Table
     /**
      * @return TextColumn
      */
+    public static function showRecipientName(): TextColumn
+    {
+        return TextColumn::make('recipient_name')
+            ->label('Recipient Name')
+            ->color('gray')
+            ->grow(false)
+            ->sortable()
+            ->tooltip('Recipient Name')
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->searchable()
+            ->limit(25)
+            ->badge();
+    }
+
+
+    /**
+     * @return TextColumn
+     */
     public static function showBankName(): TextColumn
     {
         return TextColumn::make('bank_name')
@@ -340,20 +354,6 @@ trait Table
         return $col;
     }
 
-    private static function calculateRequestedAmountSum(QueryBuilder $query): string
-    {
-        $currencies = $query->select('currency')->distinct()->pluck('currency');
-
-        // If all currencies are the same, calculate the sum
-        if ($currencies->count() === 1) {
-            $sum = $query->sum('requested_amount');
-            return number_format($sum) . ' ' . $currencies->first();
-        }
-
-        // If multiple currencies, return a message
-        return 'Multiple currencies';
-    }
-
     /**
      * @return TextColumn
      */
@@ -396,7 +396,6 @@ trait Table
             ->alignRight()
             ->toggleable();
     }
-
 
     /**
      * @return TextColumn
@@ -441,7 +440,6 @@ trait Table
             ->toggleable()
             ->searchable();
     }
-
 
     /**
      * @return TextColumn
@@ -590,6 +588,25 @@ trait Table
             ->badge();
     }
 
+    public static function showSupplierCredit(): TextColumn
+    {
+        return TextColumn::make('supplier_credit')
+            ->label('Supplier Credit')
+            ->size(TextColumnSize::ExtraSmall)
+            ->alignRight()
+            ->tooltip(fn(PaymentRequest $record): ?string => $record->supplier_summary_updated_at
+                ? sprintf(
+                    '⚠️ Please verify this sum with the Supplier Balance module. It merely reflects supplier\'s balance from all contracts as of %s.',
+                    $record->supplier_summary_updated_at->format('Y‑m‑d H:i')
+                )
+                : null
+            )
+            ->color(fn($record, $state): string => $state > 0 ? 'danger' : 'secondary')
+            ->formatStateUsing(fn($state, $record): string => sprintf('Supplier Balance:  %s%s', getCurrencySymbols($record->currency), number_format($state, 2)))
+            ->visible(fn($record, $state): bool => ($state) && $record->department_id == 6 && !in_array($record->status, ['completed', 'rejected', 'cancelled']))
+            ->getStateUsing(fn($record) => $record->supplier_credit);
+    }
+
     /**
      * @return TextEntry
      */
@@ -646,7 +663,6 @@ trait Table
             ->color('secondary')
             ->badge();
     }
-
 
     /**
      * @return TextEntry
@@ -868,5 +884,19 @@ trait Table
         return TextEntry::make('deadline')
             ->state(fn(?Model $record): string => self::showRemainingDays($record))
             ->badge();
+    }
+
+    private static function calculateRequestedAmountSum(QueryBuilder $query): string
+    {
+        $currencies = $query->select('currency')->distinct()->pluck('currency');
+
+        // If all currencies are the same, calculate the sum
+        if ($currencies->count() === 1) {
+            $sum = $query->sum('requested_amount');
+            return number_format($sum) . ' ' . $currencies->first();
+        }
+
+        // If multiple currencies, return a message
+        return 'Multiple currencies';
     }
 }

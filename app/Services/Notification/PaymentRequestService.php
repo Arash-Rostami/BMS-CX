@@ -3,34 +3,22 @@
 namespace App\Services\Notification;
 
 use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
-use App\Filament\Resources\Operational\PaymentRequestResource\Pages\CreatePaymentRequest;
-use App\Filament\Resources\Operational\PaymentRequestResource\Pages\EditPaymentRequest;
 use App\Models\User;
-use App\Services\Notification\BaseService;
 use App\Services\Notification\SMS\Operator;
 use App\Services\RetryableEmailService;
 
 
 class PaymentRequestService extends BaseService
 {
-    protected string $moduleName = 'paymentRequest';
-    protected string $resourceRouteName = 'payment-requests';
     protected const CX_DEPARTMENT_ID = 6;
     protected const MDR_POSITION = 'mdr';
     protected const ROLE_ACCOUNTANT = 'accountant';
     protected const ROLE_MANAGER = 'manager';
     protected const PAYMENT_CASH = 'cash';
-    protected const ALLOWED_STATUSES = ['allowed', 'approved'];
+    protected const ALLOWED_STATUSES = ['approved'];
     private const ALLOWED_CURRENCIES = ['EURO', 'USD'];
-
-
-    /**
-     * Override to display order relation information.
-     */
-    protected function getRecordDisplay($record): string
-    {
-        return Admin::getOrderRelation($record);
-    }
+    protected string $moduleName = 'paymentRequest';
+    protected string $resourceRouteName = 'payment-requests';
 
     /**
      * Notify accountants (and managers if applicable) about the payment request.
@@ -95,11 +83,10 @@ class PaymentRequestService extends BaseService
         return $accountants;
     }
 
-    protected function hasBaseConditions($status, $record): bool
+    protected function sendSMS($record, mixed $type, Operator $operator, mixed $accountants, $status = false): void
     {
-        return $status
-            && in_array($record['status'], self::ALLOWED_STATUSES)
-            && strtolower($record['extra']['paymentMethod'] ?? '') != self::PAYMENT_CASH;
+        $message = $status ? $this->mapModelToSMSClass($record, $type, $status) : $this->mapModelToSMSClass($record, $type);
+        $operator->send($accountants, $message->print());
     }
 
     protected function isForCx($status, $record): bool
@@ -107,21 +94,31 @@ class PaymentRequestService extends BaseService
         return $this->hasBaseConditions($status, $record) && $record['department_id'] == self::CX_DEPARTMENT_ID;
     }
 
-    protected function isNonRial($status, $record): bool
+    protected function hasBaseConditions($status, $record): bool
     {
-        return $this->hasBaseConditions($status, $record) && in_array($record['currency'], self::ALLOWED_CURRENCIES);
+        return $status
+            && in_array($record['status'], self::ALLOWED_STATUSES)
+            && strtolower($record['extra']['paymentMethod'] ?? '') != self::PAYMENT_CASH
+            && in_array($record['currency'], self::ALLOWED_CURRENCIES);
     }
 
-    protected function sendSMS($record, mixed $type, Operator $operator, mixed $accountants, $status = false): void
+    protected function isNonRial($status, $record): bool
     {
-        $message = $status ? $this->mapModelToSMSClass($record, $type, $status) : $this->mapModelToSMSClass($record, $type);
-        $operator->send($accountants, $message->print());
+        return $this->hasBaseConditions($status, $record);
     }
-    
+
     protected function sendEmail($record, mixed $status): void
     {
         $CxRecipients = User::getPartnersWithPosition();
         $arguments = [$CxRecipients, $this->mapModelToNotificationClass($record, 'partner', $status)];
         RetryableEmailService::dispatchEmail(get_class($record), ...$arguments);
+    }
+
+    /**
+     * Override to display order relation information.
+     */
+    protected function getRecordDisplay($record): string
+    {
+        return Admin::getOrderRelation($record);
     }
 }

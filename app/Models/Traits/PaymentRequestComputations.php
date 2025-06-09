@@ -10,33 +10,6 @@ use Illuminate\Support\Facades\DB;
 
 trait PaymentRequestComputations
 {
-    public function scopeAuthorizedForUser($query, User $user)
-    {
-        $department = $user->info['department'] ?? 0;
-        $position = $user->info['position'] ?? null;
-
-        if ($user->role == 'accountant' && $position == 'jnr') {
-            return $query->where(function ($subQuery) use ($department) {
-                $subQuery->where('department_id', 6)
-                    ->orWhere('cost_center', 6)
-                    ->orWhere('department_id', $department)
-                    ->orWhere('cost_center', $department);
-            });
-        }
-
-        if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
-            return $query;
-        }
-
-        if ($position == 'jnr') {
-            return $query->where('user_id', $user->id);
-        }
-
-        return $query->where(function ($subQuery) use ($department) {
-            $subQuery->whereIn('department_id', [$department, 0])
-                ->orWhereIn('cost_center', [$department, 0]);
-        });
-    }
 
     public static function searchBeneficiaries($query, $search): void
     {
@@ -63,11 +36,6 @@ trait PaymentRequestComputations
             ->get(['requested_amount', 'total_amount', 'proforma_invoice_number']);
     }
 
-    public static function showAmongAllReasons($reason)
-    {
-        return Allocation::find($reason)->reason;
-    }
-
     public static function showApproved($orderId)
     {
         $cacheKey = 'approved_payment_requests_' . $orderId;
@@ -92,7 +60,6 @@ trait PaymentRequestComputations
         return $query->get()->mapWithKeys(fn($paymentRequest) => [$paymentRequest->id => $paymentRequest->getCustomizedDisplayName()])->toArray();
     }
 
-
     public function getCustomizedDisplayName(): string
     {
         $proformaInvoiceNo = $this->proforma_invoice_number ?? self::showAmongAllReasons($this->reason_for_payment);
@@ -104,6 +71,11 @@ trait PaymentRequestComputations
             $formattedDate,
             $proformaInvoiceNo,
         );
+    }
+
+    public static function showAmongAllReasons($reason)
+    {
+        return Allocation::find($reason)->reason;
     }
 
     public static function getMadeByOptions(): array
@@ -118,11 +90,6 @@ trait PaymentRequestComputations
                 ->pluck('made_by', 'made_by')
                 ->toArray();
         });
-    }
-
-    public function getRemainingAmountAttribute()
-    {
-        return $this->total_amount - $this->requested_amount;
     }
 
     public static function getStatusCounts()
@@ -203,5 +170,50 @@ trait PaymentRequestComputations
 
         $nextSequentialId = $maxSequentialId + 1;
         return $prefix . sprintf('%05d', $nextSequentialId);
+    }
+
+    public function scopeAuthorizedForUser($query, User $user)
+    {
+        $department = $user->info['department'] ?? 0;
+        $position = $user->info['position'] ?? null;
+
+        if ($user->role == 'accountant' && $position == 'jnr') {
+            return $query->where(function ($subQuery) use ($department) {
+                $subQuery->where('department_id', 6)
+                    ->orWhere('cost_center', 6)
+                    ->orWhere('department_id', $department)
+                    ->orWhere('cost_center', $department);
+            });
+        }
+
+        if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
+            return $query;
+        }
+
+        if ($position == 'jnr') {
+            return $query->where('user_id', $user->id);
+        }
+
+        return $query->where(function ($subQuery) use ($department) {
+            $subQuery->whereIn('department_id', [$department, 0])
+                ->orWhereIn('cost_center', [$department, 0]);
+        });
+    }
+
+    public function getSupplierCreditAttribute(): ?float
+    {
+        return $this->supplierSummaries()->sum('diff');
+    }
+
+    public function getSupplierSummaryUpdatedAtAttribute()
+    {
+        return $this->supplierSummaries()
+            ->latest('updated_at')
+            ->value('updated_at');
+    }
+
+    public function getRemainingAmountAttribute()
+    {
+        return $this->total_amount - $this->requested_amount;
     }
 }
