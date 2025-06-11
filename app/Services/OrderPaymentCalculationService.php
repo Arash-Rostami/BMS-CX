@@ -45,7 +45,6 @@ class OrderPaymentCalculationService
             'allOrders' => $get('orderDetail.extra.allOrders') ?? false,
         ];
 
-
         self::processOrders($record, $get, $details, $set);
     }
 

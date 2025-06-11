@@ -2,8 +2,6 @@
 
 namespace App\Services\Traits;
 
-use App\Models\Order;
-use App\Models\PaymentRequest;
 use App\Models\ProformaInvoice;
 
 trait Project
@@ -30,7 +28,6 @@ trait Project
         $details = self::computePaymentRequestDetails($paymentRequests, $details);
 
 
-
 //       Getting total records of Pro forma Invoices sharing similar payment requests optimally instead of => $proformaInvoices = ProformaInvoice::fetchApprovedProformas($details['allProformaNumber']);
         $proformaInvoices = ProformaInvoice::fetchActiveApprovedProformas($paymentRequests);
         if ($proformaInvoices->isEmpty()) {
@@ -47,7 +44,7 @@ trait Project
             return;
         }
 
-        $details['initialQuantity'] = $record->proformaInvoice?->quantity;
+        $details['initialQuantity'] = (float)$record->proformaInvoice?->quantity;
         if ($details['initialQuantity'] == 0) {
             self::addError("Initial quantity is missing. Please ensure value is set for calculation.");
             return;
@@ -88,6 +85,7 @@ trait Project
             'total' => 'total',
             'availableQuantity' => 'payable_quantity'
         ];
+
         self::setOrderDetails($set, $details, $keys);
     }
 
