@@ -222,6 +222,21 @@
                             </div>
                         </div>
                     @endif
+                    <h5 class="text-xl font-semibold col-span-full mt-6 divider-attachment">Payment Request Attachment(S):</h5>
+                    @foreach ( $paymentRequest->attachments as $attachment)
+                        <div class="flex items-center justify-between p-2 rounded border status-badge approved ">
+                            <div class="flex items-center gap-2">
+                                <span class="material-icons-outlined">attachment</span>
+                                @if ($attachment && $attachment->file_path)
+                                    <a href="{{ asset($attachment->file_path) }}" target="_blank" class="underline">
+                                        <span class="text-lg font-medium">{{ $attachment->name }}</span>
+                                    </a>
+                                @else
+                                    <span class="text-lg font-medium">No Doc Uploaded Yet!</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
                     <h5 class="text-xl font-semibold col-span-full mt-6 divider-attachment">Transfer Receipt(s):</h5>
                     @php
                         $attachments = !isset($paymentRequest->order_id)

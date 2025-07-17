@@ -122,11 +122,12 @@ trait Table
             ->searchable(query: function (Builder $query, string $search): Builder {
                 return $query->where(function ($query) use ($search) {
                     $search = strtolower($search);
-                    return $query
-//                        ->whereRaw("DATE_FORMAT(created_at, '%y') = ?", [substr($search, 3, 2)])
-//                        ->whereRaw("id = ?", [ltrim(substr($search, 5), '0')])
-                        ->orWhereRaw("reference_number LIKE ?", ['%' . $search . '%']);
-
+                    return $query->where(fn($q) => $q
+                        ->where('reference_number', 'like', "%{$search}%")
+                        ->orWhereRelation('order', 'invoice_number', 'like', "%{$search}%")
+                        ->orWhereRelation('order.logistic', 'booking_number', 'like', "%{$search}%")
+                        ->orWhereRelation('order.doc', 'BL_number', 'like', "%{$search}%")
+                    );
                 });
             });
     }
@@ -192,6 +193,7 @@ trait Table
             })
             ->color('secondary')
             ->badge()
+            ->copyable()
             ->grow(false)
             ->searchable(query: function ($query, $search) {
                 $query->where(function ($query) use ($search) {
@@ -606,6 +608,7 @@ trait Table
             ->visible(fn($record, $state): bool => ($state) && $record->department_id == 6 && !in_array($record->status, ['completed', 'rejected', 'cancelled']))
             ->getStateUsing(fn($record) => $record->supplier_credit);
     }
+
 
     /**
      * @return TextEntry

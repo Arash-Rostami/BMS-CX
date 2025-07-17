@@ -5,28 +5,18 @@ namespace App\Filament\Resources\Operational\OrderResource\Pages;
 use App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents\Filter;
 use App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents\Form;
 use App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents\Table;
-use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\CreateProformaInvoice;
-use App\Models\Attachment;
 use App\Models\Name;
 use App\Models\Order;
 use App\Models\PortOfDelivery;
 use App\Models\ProformaInvoice;
-use App\Notifications\FilamentNotification;
-use App\Services\AttachmentDeletionService;
 use App\Services\ColorTheme;
+use App\Services\DeliveryDocumentService;
 use App\Services\InfoExtractor;
 use App\Services\Notification\OrderService;
 use App\Services\ProjectNumberGenerator;
-use Archilex\ToggleIconColumn\Columns\ToggleIconColumn;
-use Carbon\Carbon;
-use Filament\Forms\Components\Actions\Action;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\Alignment;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -41,28 +31,28 @@ class Admin
     use Form, Table, Filter;
 
     public static array $statusTexts = [
-        'processing'          => 'Processing',
-        'closed'              => 'Closed',
-        'cancelled'           => 'Cancelled',
-        'accounting_review'   => 'Under Accounting Review',
+        'processing' => 'Processing',
+        'closed' => 'Closed',
+        'cancelled' => 'Cancelled',
+        'accounting_review' => 'Under Accounting Review',
         'accounting_approved' => 'Accounting Approved',
         'accounting_rejected' => 'Accounting Rejected',
     ];
 
     public static array $statusIcons = [
-        'processing'          => 'heroicon-s-arrow-path-rounded-square',
-        'closed'              => 'heroicon-s-check-circle',
-        'cancelled'           => 'heroicon-s-no-symbol',
-        'accounting_review'   => 'heroicon-s-eye',
+        'processing' => 'heroicon-s-arrow-path-rounded-square',
+        'closed' => 'heroicon-s-check-circle',
+        'cancelled' => 'heroicon-s-no-symbol',
+        'accounting_review' => 'heroicon-s-eye',
         'accounting_approved' => 'heroicon-s-check-badge',
         'accounting_rejected' => 'heroicon-s-x-circle',
     ];
 
     public static array $statusColors = [
-        'processing'          => 'warning',
-        'closed'              => 'success',
-        'cancelled'           => 'danger',
-        'accounting_review'   => 'info',
+        'processing' => 'warning',
+        'closed' => 'success',
+        'cancelled' => 'danger',
+        'accounting_review' => 'info',
         'accounting_approved' => 'success',
         'accounting_rejected' => 'danger',
     ];
@@ -80,24 +70,7 @@ class Admin
         'TELEX RELEASE' => 'Telex Release'
     ];
 
-    public static function getDynamicDocuments()
-    {
-        try {
-            $documentsFromDatabase = Name::where('module', 'Order')
-                ->orderBy('title')
-                ->pluck('title')
-                ->toArray();
-
-            $documents = [];
-            foreach ($documentsFromDatabase as $title) {
-                $documents[strtoupper($title)] = Str::ucfirst($title);
-            }
-
-            return $documents;
-        } catch (\Exception $e) {
-            return self::$documents;
-        }
-    }
+    private static array $requestCache = [];
 
 
     public static function nameUploadedFile(): \Closure
@@ -108,68 +81,49 @@ class Admin
             // File extension
             $extension = $file->getClientOriginalExtension();
 
-            // Unique identifier
-            $timestamp = Carbon::now()->format('YmdHis');
-            $randomString = Str::random(5);
-
-            // New filename with extension
-            $newFileName = "O-{$number}-{$timestamp}-{$randomString}-{$name}";
+            // New filename with extension & unique identifier
+            $newFileName = sprintf('O-%s-%s-%s-%s', $number, now()->format('YmdHis'), Str::random(5), $name);
 
             // Sanitizing the file name
             return Str::slug($newFileName, '-') . ".{$extension}";
         };
     }
 
-
-    private static function updateForm(?string $state, Set $set): void
+    public static function updatePortData(mixed $proformaInvoice, mixed $replica): void
     {
-        if ($state) {
-            $proformaInvoice = ProformaInvoice::findOrFail($state);
-            $set('proforma_number', optional($proformaInvoice)->proforma_number ?? '');
-            $set('proforma_date', optional($proformaInvoice)->proforma_date ?? '');
-            $set('orderDetail.extra.percentage', optional($proformaInvoice)->percentage ?? '');
-            $set('category_id', $proformaInvoice->category_id ?? '');
-            $set('product_id', $proformaInvoice->product_id ?? '');
-            $set('grade_id', $proformaInvoice->grade_id ?? '');
-            $set('party.buyer_id', $proformaInvoice->buyer_id ?? '');
-            $set('party.supplier_id', $proformaInvoice->supplier_id ?? '');
-            $set('orderDetail.buying_price', $proformaInvoice->price ?? '');
-            $set('orderDetail.buying_quantity', $proformaInvoice->quantity ?? '');
-            $set('purchase_status_id', '1');
-            $set('order_status', 'processing');
-            $set('invoice_number',
-                optional($proformaInvoice)->contract_number
-                ?? ProjectNumberGenerator::generate());
+        [$matchedPortData, $portOfDeliveryId] = self::extractPortData($proformaInvoice, (string)$replica->part);
+        if ($matchedPortData && ($matchedPortData['partNumber'] ?? null) == $replica->part) {
+            $replica->orderDetail()->update(['provisional_quantity' => $matchedPortData['quantity'] ?? null]);
+            $replica->logistic()->update(['port_of_delivery_id' => $portOfDeliveryId]);
         }
     }
 
-    public static function send(Model $record): void
+    public static function extractPortData(ProformaInvoice $pi, string $state = '1'): array
     {
-        $service = new OrderService();
-        $service->notifyAgents($record, 'delete');
+        $data = InfoExtractor::getPortInfo($pi, $state);
+        $city = $data['city'] ?? '';
+
+        $portId = $city !== ''
+            ? PortOfDelivery::where('name', $city)->value('id')
+            : null;
+
+        return [$data, $portId];
     }
 
     public static function updateFormBasedOnPreviousRecords(Get $get, Set $set, ?string $state): ?int
     {
         $id = $get('proforma_invoice_id');
+        if (!$id || !$state) return null;
 
-        if (!$id || !$state) {
-            return null;
-        }
 
         $proformaInvoice = ProformaInvoice::find($id);
+        if (!$proformaInvoice) return null;
 
 
-        if (!$proformaInvoice) {
-            return null;
-        }
-
-        $matchedPortData = InfoExtractor::getPortInfo($proformaInvoice, $state);
+        [$matchedPortData, $portOfDeliveryId] = self::extractPortData($proformaInvoice, $state);
 
         if ($matchedPortData) {
-            $portOfDeliveryId = PortOfDelivery::where('name', $matchedPortData['city'])->value('id');
-
-            $set('logistic.port_of_delivery_id', $portOfDeliveryId ?? null);
+            $set('logistic.port_of_delivery_id', $portOfDeliveryId);
             $set('orderDetail.provisional_quantity', $matchedPortData['quantity'] ?? '');
         }
 
@@ -179,20 +133,19 @@ class Admin
             return null;
         }
 
-
-        $projectNumbers = $orders->map(function ($order) {
-            return $order->invoice_number;
-        })->filter()->unique();
-
-        $message = $projectNumbers->count() === 1
-            ? $projectNumbers->first()
-            : "🔴 Multiple Project Numbers: " . $projectNumbers->join(', ');
-
-        $set('invoice_number', $message);
+        $orders
+            ->pluck('invoice_number')
+            ->filter()
+            ->unique()
+            ->whenNotEmpty(function ($projectNumbers) use ($set) {
+                $message = $projectNumbers->count() === 1
+                    ? $projectNumbers->first()
+                    : "🔴 Multiple Project Numbers: {$projectNumbers->join(', ')}";
+                $set('invoice_number', $message);
+            });
 
         return $id;
     }
-
 
     public static function showAllDocs()
     {
@@ -200,12 +153,10 @@ class Admin
         foreach (self::getDynamicDocuments() as $key => $label) {
             $labelTrimmed = slugify($label);
 
-            $columns[] = TextColumn::make("extra.docs_received.$key")
+            $columns[$labelTrimmed] = TextColumn::make("extra.docs.$key")
                 ->label($label)
                 ->grow(false)
-                ->state(function () use ($label) {
-                    return $label;
-                })
+                ->state(fn() => $label)
                 ->color(fn() => ColorTheme::White)
                 ->extraAttributes(fn($record) => self::getExtraAttributes($record, $labelTrimmed))
                 ->tooltip(fn($record) => self::getTooltip($record, $labelTrimmed))
@@ -215,13 +166,80 @@ class Admin
         return $columns;
     }
 
-    public static function formatPaySlip(Model $record): string
+    public static function getDynamicDocuments(): array
     {
-        if (!$record->orderDetail) {
-            return 'N/A';
+        return Cache::remember('dynamic_order_documents', 3600, function () {
+            try {
+                $documentsFromDatabase = Name::where('module', 'Order')->orderBy('title')->pluck('title');
+                $documents = [];
+                foreach ($documentsFromDatabase as $title) {
+                    $documents[strtoupper($title)] = Str::ucfirst($title);
+                }
+                return $documents;
+            } catch (\Exception $e) {
+                return self::$documents;
+            }
+        });
+    }
+
+    private static function getExtraAttributes($record, $labelTrimmed)
+    {
+        $deliveryTermName = $record->logistic?->deliveryTerm?->name;
+
+        if ($deliveryTermName) {
+            $deliveryTermMap = DeliveryDocumentService::getForTerm(trim($deliveryTermName));
+            $shouldBeShown = isset($deliveryTermMap[$labelTrimmed]) && $deliveryTermMap[$labelTrimmed] === true;
+
+            if (!$shouldBeShown) {
+                return ['style' => 'display:none;'];
+            }
         }
 
+        $hasAttachment = self::hasRelevantAttachment($labelTrimmed, $record);
+        $color = $hasAttachment ? ColorTheme::MidnightTeal[500] : ColorTheme::DarkMaroon[500];
+
+        return [
+            'style' => "display:inline-flex;align-items:center;justify-content:center;padding:.25rem .5rem;margin:0 .25rem .25rem 0;gap:.25rem;min-width:3rem;font-size:.75rem;border:2px solid rgb({$color});background:rgb({$color});border-radius:.375rem;box-sizing:border-box;",
+            'title' => $hasAttachment ? 'Has Attachment' : 'No Attachment',
+        ];
+    }
+
+    public static function hasRelevantAttachment($title, $order)
+    {
+        $order->loadMissing([
+            'attachments',
+            'proformaInvoice.attachments'
+        ]);
+
+        $cacheKey = "lookup_{$order->id}_{$title}";
+        if (array_key_exists($cacheKey, self::$requestCache)) {
+            return self::$requestCache[$cacheKey];
+        }
+
+        $found = $order->attachments
+            ->concat(optional($order->proformaInvoice)->attachments ?? collect())
+            ->contains(function ($attachment) use ($title) {
+                $haystack = $attachment->name ?: $attachment->file_path;
+                return levenshtein($title, $haystack) === 0;
+            });
+
+        self::$requestCache[$cacheKey] = $found;
+        return $found;
+    }
+
+    private static function getTooltip($record, $labelTrimmed)
+    {
+        return self::hasRelevantAttachment($labelTrimmed, $record)
+            ? strtoupper($labelTrimmed) . ' Attached'
+            : strtoupper($labelTrimmed) . ' Not Given';
+    }
+
+    public static function formatPaySlip(Model $record): string
+    {
         $extra = $record->orderDetail;
+        if (!$extra) return 'N/A';
+
+
         return sprintf(
             '<div class="percentage-display">
                     <span class="currency">%s</span>:
@@ -235,53 +253,114 @@ class Admin
         );
     }
 
-    public static function hasRelevantAttachment($title, $order)
+    public static function isPaymentCalculated($record): bool
     {
-//        $cacheKey = 'attachment_title_containing_part_' . $title . '_' . $order->id;
+        $detail = optional($record->orderDetail);
+        $provisional = $detail->provisional_total;
+        $final = $detail->final_total;
 
-//        return Cache::remember($cacheKey, 120, function () use ($title, $order) {
-        return $order->attachments->contains(function ($attachment) use ($title) {
-            $haystack = $attachment->name ?: $attachment->file_path;
-
-            $distance = levenshtein($title, $haystack);
-
-            return $distance === 0;
-        });
-//        });
+        return ($provisional !== null && $provisional != 0.0) || ($final !== null && $final != 0.0);
     }
 
 
-    private static function getExtraAttributes($record, $labelTrimmed)
+    public static function increasePart($replica)
     {
-        $hasAttachment = self::hasRelevantAttachment($labelTrimmed, $record);
-        $borderColor = $hasAttachment ? ColorTheme::MidnightTeal[500] : ColorTheme::DarkMaroon[500];
-        $bgColor = $hasAttachment ? ColorTheme::MidnightTeal[500] : ColorTheme::DarkMaroon[500];
+        $highestPart = Order::where('proforma_invoice_id', $replica->proforma_invoice_id)->max('part');
+        $replica->part = ($highestPart ?? 0) + 1;
+        $replica->user_id = auth()->id();
+    }
 
-        return [
-            'style' => "
-            padding: 2px 4px;
-            border-radius: 5px;
-            background-color:  rgb({$bgColor});
-            border: 2px solid rgb({$borderColor});
-            display: inline-flex;
-            font-size: 12px;
-            align-items: center;
-            justify-content: center;
-            min-width: 50px;
-        ", 'title' => $hasAttachment ? 'Has Attachment' : 'No Attachment',
+    public static function replicateRelatedModels(Model $replica): void
+    {
+        $relationships = [
+            'orderDetail' => 'order_detail_id',
+            'party' => 'party_id',
+            'logistic' => 'logistic_id',
+            'doc' => 'doc_id',
         ];
+
+        array_map(function ($idField, $relation) use ($replica) {
+            if ($replica->$idField) {
+                $relatedModel = $replica->$relation->replicate();
+                $relatedModel->save();
+                $replica->$idField = $relatedModel->id;
+                if ($relation === 'orderDetail') {
+                    self::updateAutoCompute($relatedModel);
+                }
+            }
+        }, array_values($relationships), array_keys($relationships));
+
+        $replica->save();
     }
 
-    private static function getDefaultValue($record, $labelTrimmed)
+
+    public static function updateAutoCompute(Model $replica): void
     {
-        return self::hasRelevantAttachment($labelTrimmed, $record);
+        $replica->fill([
+            'payment' => null,
+            'remaining' => null,
+            'total' => null,
+            'initial_payment' => null,
+            'initial_total' => null,
+            'provisional_total' => null,
+            'final_total' => null,
+            'payable_quantity' => null,
+        ]);
+
+        $existingExtra = is_array($replica->extra)
+            ? $replica->extra
+            : (json_decode($replica->extra ?? '[]', true) ?? []);
+
+        $replica->extra = array_merge($existingExtra, [
+            'manualComputation' => false,
+            'lastOrder' => false,
+            'allOrders' => false,
+        ]);
+
+        $replica->save();
     }
 
-    private static function getTooltip($record, $labelTrimmed)
+    public static function syncOrder(Model $replica): void
     {
-        return self::hasRelevantAttachment($labelTrimmed, $record)
-            ? strtoupper($labelTrimmed) . ' Attached'
-            : strtoupper($labelTrimmed) . ' Not Given';
+        persistReferenceNumber($replica, 'O');
+        (new OrderService())->notifyAgents($replica);
+    }
+
+    public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
+    {
+        if ($records->isEmpty()) return;
+
+        $records->loadMissing('paymentRequests');
+
+        [$recordsNotDeleted, $recordsToDelete] = $records->partition(fn($record) => $record->paymentRequests->isNotEmpty());
+
+        // Delete the records that have no paymentRequests
+        if ($recordsToDelete->isNotEmpty()) {
+            $recordsToDelete->each(function (Model $record) {
+                $record->delete();
+                self::send($record);
+            });
+        }
+
+        if ($recordsNotDeleted->isNotEmpty()) {
+            $recordNames = $recordsNotDeleted->pluck('reference_number')->join(', ');
+            Notification::make()
+                ->title('Some records were not deleted')
+                ->body("The following records could not be deleted because they have payment requests: $recordNames.")
+                ->warning()
+                ->persistent()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('Records deleted successfully')
+                ->success()
+                ->send();
+        }
+    }
+
+    public static function send(Model $record): void
+    {
+        (new OrderService())->notifyAgents($record, 'delete');
     }
 
 
@@ -329,121 +408,25 @@ class Admin
         return null;
     }
 
-
-    public static function isPaymentCalculated($record): bool
+    private static function updateForm(?string $state, Set $set): void
     {
-        return (optional($record->orderDetail)->provisional_total != 0.0 &&
-                optional($record->orderDetail)->provisional_total != null)
-            ||
-            (optional($record->orderDetail)->final_total != 0.0 &&
-                optional($record->orderDetail)->final_total != null);
-    }
+        if (!$state) return;
 
-    public static function increasePart($replica)
-    {
-        $highestPart = Order::where('proforma_invoice_id', $replica->proforma_invoice_id)
-            ->max('part');
+        $pi = ProformaInvoice::find($state);
+        if (!$pi) return;
 
-        $replica->part = $highestPart + 1;
-        $replica->user_id = auth()->id();
-    }
-
-    public static function replicateRelatedModels(Model $replica): void
-    {
-        $relationships = [
-            'orderDetail' => 'order_detail_id',
-            'party' => 'party_id',
-            'logistic' => 'logistic_id',
-            'doc' => 'doc_id',
-        ];
-
-        array_map(function ($idField, $relation) use ($replica) {
-            if ($replica->$idField) {
-                $relatedModel = $replica->$relation->replicate();
-                $relatedModel->save();
-                $replica->$idField = $relatedModel->id;
-                if ($relation === 'orderDetail') {
-                    self::updateAutoCompute($relatedModel);
-                }
-            }
-        }, array_values($relationships), array_keys($relationships));
-
-
-        $replica->save();
-    }
-
-
-    public static function syncOrder(Model $replica): void
-    {
-        persistReferenceNumber($replica, 'O');
-        $service = new OrderService();
-        $service->notifyAgents($replica);
-    }
-
-    public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
-    {
-        $recordsToDelete = $records->filter(fn($record) => $record->paymentRequests->isEmpty());
-        $recordsNotDeleted = $records->filter(fn($record) => $record->paymentRequests->isNotEmpty());
-
-        // Delete the records that have no paymentRequests
-        $recordsToDelete->each->delete();
-        $recordsToDelete->each(fn(Model $selectedRecord) => Admin::send($selectedRecord));
-
-        if ($recordsNotDeleted->isNotEmpty()) {
-            $recordNames = $recordsNotDeleted->pluck('reference_number')->join(', ');
-            Notification::make()
-                ->title('Some records were not deleted')
-                ->body("The following records could not be deleted because they have payment requests: $recordNames.")
-                ->warning()
-                ->persistent()
-                ->send();
-        } else {
-            Notification::make()
-                ->title('Records deleted successfully')
-                ->success()
-                ->send();
-        }
-    }
-
-    public static function extractPortData(ProformaInvoice $proformaInvoice, $state = '1'): array
-    {
-        $matchedPortData = InfoExtractor::getPortInfo($proformaInvoice, $state);
-
-        if ($matchedPortData && $matchedPortData['city']) {
-            $portOfDeliveryId = PortOfDelivery::where('name', $matchedPortData['city'])->value('id');
-        }
-        return [$matchedPortData, $portOfDeliveryId ?? null];
-    }
-
-    public static function updatePortData(mixed $proformaInvoice, mixed $replica): void
-    {
-        list($matchedPortData, $portOfDeliveryId) = Admin::extractPortData($proformaInvoice, (string)$replica->part);
-        if ($matchedPortData && array_key_exists('partNumber', $matchedPortData) && $matchedPortData['partNumber'] == $replica->part) {
-            $replica->orderDetail()->update(['provisional_quantity' => $matchedPortData['quantity'] ?? null]);
-            $replica->logistic()->update(['port_of_delivery_id' => $portOfDeliveryId]);
-        }
-    }
-
-    public static function updateAutoCompute(mixed $replica): void
-    {
-        $replica->payment = null;
-        $replica->remaining = null;
-        $replica->total = null;
-        $replica->initial_payment = null;
-        $replica->initial_total = null;
-        $replica->provisional_total = null;
-        $replica->final_total = null;
-        $replica->payable_quantity = null;
-
-
-        $existingExtra = is_array($replica->extra) ? $replica->extra : json_decode($replica->extra, true);
-        $updatedExtra = array_merge($existingExtra ?? [], [
-            'manualComputation' => false,
-            'lastOrder' => false,
-            'allOrders' => false,
-        ]);
-
-        $replica->extra = $updatedExtra;
-        $replica->save();
+        $set('proforma_number', $pi->proforma_number);
+        $set('proforma_date', $pi->proforma_date);
+        $set('orderDetail.extra.percentage', $pi->percentage);
+        $set('category_id', $pi->category_id);
+        $set('product_id', $pi->product_id);
+        $set('grade_id', $pi->grade_id);
+        $set('party.buyer_id', $pi->buyer_id);
+        $set('party.supplier_id', $pi->supplier_id);
+        $set('orderDetail.buying_price', $pi->price);
+        $set('orderDetail.buying_quantity', $pi->quantity);
+        $set('purchase_status_id', '1');
+        $set('order_status', 'processing');
+        $set('invoice_number', $pi->contract_number ?? ProjectNumberGenerator::generate());
     }
 }

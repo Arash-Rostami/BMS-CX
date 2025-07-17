@@ -65,20 +65,5 @@ class Dashboard extends BaseDashboard
 
         return $widgets;
     }
-
-//    protected function getActions(): array
-//    {
-//        return [
-//            Action::make('openUserDashboard')
-//            ->label('My Dashboard')
-//                ->button()
-//                ->modalContent(fn () => view('components.livewireComponent'))
-//                ->modalWidth(MaxWidth::Screen)
-//                ->modalHeading('Your Dashboard')
-//                ->slideOver()
-//
-//
-//        ];
-//    }
 }
 

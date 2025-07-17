@@ -3,102 +3,169 @@
 namespace App\Models\Traits;
 
 use App\Models\PaymentRequest;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Eloquent\Scope;
 
 
 trait OrderComputations
 {
     public static function aggregateOrderGroupTotals($record)
     {
+        $proformaInvoice = $record->proformaInvoice;
         $orders = $record->getRelatedOrdersByInvoiceNumber();
 
-        list($payment, $quantity) = self::getTotalPaymentRequestedAmountAndQuantity($orders);
-
-        list($paymentRequestBalance, $quantityBalance) = self::getPaymentRequestBalance($record, $orders);
-
-
-        $totalPaymentRequests = $orders->sum(fn($order) => $order->paymentRequests->count());
-
-        $totalPayments = $orders->sum(function ($order) {
-            return $order->paymentRequests->sum(fn($paymentRequest) => $paymentRequest->payments->count());
-        });
-
-        $totalOfOtherPaymentRequests = $orders->flatMap(fn($order) => $order->paymentRequests->filter(fn($paymentRequest) => !in_array($paymentRequest->type_of_payment, ['balance', 'full', 'advance'])))
-            ->groupBy(fn($paymentRequest) => $paymentRequest->currency)->map(fn($paymentsByCurrency) => $paymentsByCurrency->sum('requested_amount'));
-
-        $formattedTotalOfOtherPaymentRequests = $totalOfOtherPaymentRequests->map(
-            fn($amount, $currency) => getCurrencySymbols($currency) . number_format($amount, 2)
-        )->join(', ');
+        [$payment, $quantity] = self::getTotalPaymentRequestedAmountAndQuantity($orders);
+        $stageQuantities = self::calculateStageQuantities($orders);
+        $averageLeadTime = self::calculateAverageLeadTime($orders);
+        [$paymentRequestBalance, $quantityBalance] = self::getPaymentRequestBalance($proformaInvoice, $payment, $quantity);
+        $paymentRequestsData = self::calculatePaymentRequestsData($orders);
 
         return [
             'payment' => number_format($payment, 2),
             'quantity' => number_format($quantity, 2),
             'totalQuantity' => number_format(optional($record->proformaInvoice)->quantity ?? 0, 2) ?? 'Undefined',
+            'shippedQuantity' => number_format($stageQuantities['shipped'], 2),
+            'releasedQuantity' => number_format($stageQuantities['released'], 2),
+            'averageLeadTime' => $averageLeadTime,
             'totalPayment' => numberify(optional($record->proformaInvoice)->price ?? 1 * optional($record->proformaInvoice)->quantity) ?? 'Undefined',
             'shipmentPart' => optional($record->proformaInvoice)->part ?? 'Undefined',
             'daysPassed' => optional($record->proformaInvoice)->daysPassed ?? 'Undefined',
-            'totalPaymentRequests' => $totalPaymentRequests,
-            'totalPayments' => $totalPayments,
+            'totalPaymentRequests' => $paymentRequestsData['count'],
+            'totalPayments' => $paymentRequestsData['paymentsCount'],
             'quantityBalance' => $quantityBalance,
             'paymentRequestBalance' => $paymentRequestBalance,
-            'totalOfOtherPaymentRequests' => $formattedTotalOfOtherPaymentRequests
+            'totalOfOtherPaymentRequests' => $paymentRequestsData['otherFormatted']
         ];
     }
 
-    protected static function getTotalPaymentRequestedAmountAndQuantity($orders): array
+    public function getRelatedOrdersByInvoiceNumber()
     {
-        $payment = $orders->sum(function ($order) {
-            if ($order->orderDetail) {
-                return
-                    (float)($order->orderDetail->initial_payment ?? 0) +
-                    (float)($order->orderDetail->provisional_total ?? 0) +
-                    (float)($order->orderDetail->final_total ?? 0);
-            }
-            return 0;
-        });
+        $cacheKey = 'related_orders_' . $this->invoice_number ?? $this->proforma_invoice_id;
 
-        $quantity = $orders->sum(function ($order) {
-            if ($order->orderDetail) {
-                return (float)($order->orderDetail->final_quantity ?? $order->orderDetail->provisional_quantity ?? 0);
-            }
-            return 0;
+        return Cache::remember($cacheKey, 120, function () {
+            return static::with('orderDetail', 'purchaseStatus', 'doc')
+                ->where('invoice_number', $this->invoice_number)
+                ->where('proforma_invoice_id', $this->proforma_invoice_id)
+                ->whereNull('deleted_at')
+                ->get();
         });
-
-        return [$payment, $quantity];
     }
 
-    protected static function getPaymentRequestBalance($record, $orders): array
+    protected static function getTotalPaymentRequestedAmountAndQuantity(Collection $orders): array
     {
-        list($payment, $quantity) = self::getTotalPaymentRequestedAmountAndQuantity($orders);
+        $payment = $quantity = 0;
 
-        $expectedPayment = optional($record->proformaInvoice)->price * optional($record->proformaInvoice)->quantity ?? 0;
-        $expectedQuantity = optional($record->proformaInvoice)->quantity ?? 0;
+        foreach ($orders as $order) {
+            if (!$order->orderDetail) continue;
 
+            $payment += ($order->orderDetail->initial_payment ?? 0)
+                + ($order->orderDetail->provisional_total ?? 0)
+                + ($order->orderDetail->final_total ?? 0);
 
-        $paymentBalance = ($payment > $expectedPayment)
-            ? '🔺'
-            : ($payment < $expectedPayment ? '🔻' : '✅');
+            $quantity += $order->orderDetail->final_quantity
+                ?? $order->orderDetail->provisional_quantity
+                ?? 0;
+        }
 
-        $quantityBalance = ($quantity > $expectedQuantity)
-            ? '🔺'
-            : ($quantity < $expectedQuantity ? '🔻' : '✅');
-
-        return [$paymentBalance, $quantityBalance];
+        return [(float)$payment, (float)$quantity];
     }
 
+    protected static function calculateStageQuantities(Collection $orders): array
+    {
+        $shipped = $released = 0;
+
+        foreach ($orders as $order) {
+            if (!$order->purchaseStatus) continue;
+
+            $qty = $order->orderDetail->final_quantity
+                ?? $order->orderDetail->provisional_quantity
+                ?? 0;
+
+            $statusName = $order->purchaseStatus->name;
+
+            if (str_contains($statusName, 'Released')) {
+                $released += $qty;
+                $shipped += $qty;
+            } elseif (str_contains($statusName, 'Shipped')) {
+                $shipped += $qty;
+            }
+        }
+
+        return [
+            'shipped' => (float)$shipped,
+            'released' => (float)$released
+        ];
+    }
+
+
+    protected static function calculateAverageLeadTime(Collection $orders): int
+    {
+        $totalDays = 0;
+        $validOrdersCount = 0;
+
+        foreach ($orders as $order) {
+            if ($order->proforma_date && $order->doc?->BL_date) {
+                $proformaDate = Carbon::parse($order->proforma_date);
+                $blDate = Carbon::parse($order->doc->BL_date);
+
+                $totalDays += $blDate->diffInDays($proformaDate);
+                $validOrdersCount++;
+            }
+        }
+
+        if ($validOrdersCount === 0) {
+            return 0;
+        }
+
+        return (int)round($totalDays / $validOrdersCount);
+    }
+
+    protected static function getPaymentRequestBalance($proformaInvoice, float $payment, float $quantity): array
+    {
+        $expectedPayment = ($proformaInvoice->price ?? 0) * ($proformaInvoice->quantity ?? 0);
+        $expectedQuantity = $proformaInvoice->quantity ?? 0;
+
+        return [
+            $payment > $expectedPayment ? '🔺' : ($payment < $expectedPayment ? '🔻' : '✅'),
+            $quantity > $expectedQuantity ? '🔺' : ($quantity < $expectedQuantity ? '🔻' : '✅')
+        ];
+    }
+
+    protected static function calculatePaymentRequestsData(Collection $orders): array
+    {
+        $count = $payments_count = 0;
+        $otherRequests = [];
+
+        foreach ($orders as $order) {
+            $count += $order->paymentRequests->count();
+
+            foreach ($order->paymentRequests as $paymentRequest) {
+                $payments_count += $paymentRequest->payments->count();
+
+                if (!in_array($paymentRequest->type_of_payment, ['balance', 'full', 'advance'])) {
+                    $currency = $paymentRequest->currency;
+                    $otherRequests[$currency] = ($otherRequests[$currency] ?? 0) + $paymentRequest->requested_amount;
+                }
+            }
+        }
+
+        $formatted = collect($otherRequests)->map(
+            fn($amount, $currency) => getCurrencySymbols($currency) . number_format($amount, 2)
+        )->join(', ');
+
+        return [
+            'count' => $count,
+            'paymentsCount' => $payments_count,
+            'otherFormatted' => $formatted
+        ];
+    }
 
     public static function countOrdersByStatus($year)
     {
-        $cacheKey = 'orders_count_by_status_' . $year;
-
-        return Cache::remember($cacheKey, 300, function () use ($year) {
-            $query = static::query();
-
-            if ($year !== 'all') {
-                $query->whereYear('proforma_date', $year);
-            }
+        return Cache::remember("orders_count_by_status_{$year}", 300, function () use ($year) {
+            $query = static::when($year !== 'all', fn($q) => $q->whereYear('proforma_date', $year));
 
             return $query->selectRaw('order_status, COUNT(*) as total')
                 ->groupBy('order_status')
@@ -107,156 +174,139 @@ trait OrderComputations
         });
     }
 
-
     public static function countOrdersByMonth($year)
     {
-        $cacheKey = 'orders_count_by_month_' . $year;
-
-        return Cache::remember($cacheKey, 300, function () use ($year) {
-            $query = static::query();
-
-            if ($year !== 'all') {
-                $query->whereYear('proforma_date', $year);
-            }
+        return Cache::remember("orders_count_by_month_{$year}", 300, function () use ($year) {
+            $query = static::when($year !== 'all', fn($q) => $q->whereYear('proforma_date', $year));
 
             return $query->selectRaw('MONTH(proforma_date) as month, COUNT(*) as count')
                 ->groupBy('month')
-                ->orderBy('month', 'asc')
-                ->get()
+                ->orderBy('month')
                 ->pluck('count', 'month');
         });
     }
 
     public static function countOrdersByBuyer($year)
     {
-        $cacheKey = 'orders_count_by_Buyer_' . $year;
+        return Cache::remember("orders_count_by_Buyer_{$year}", 300, function () use ($year) {
+            $query = static::with('party.buyer')
+                ->when($year !== 'all', fn($q) => $q->whereYear('proforma_date', $year));
 
-        return Cache::remember($cacheKey, 300, function () use ($year) {
-            $query = static::query();
-
-            if ($year !== 'all') {
-                $query->whereYear('proforma_date', $year);
-            }
-
-            return $query->with('party.buyer')
-                ->get()
-                ->groupBy(function ($order) {
-                    return $order->party && $order->party->buyer ? $order->party->buyer->name : 'Unknown';
-                })
-                ->mapWithKeys(function ($group, $key) {
-                    return [$key => count($group)];
-                });
+            return $query->get()
+                ->groupBy(fn($order) => $order->party->buyer->name ?? 'Unknown')
+                ->map->count();
         });
     }
 
     public static function countOrdersBySupplier($year)
     {
-        $cacheKey = 'orders_count_by_Supplier_' . $year;
+        return Cache::remember("orders_count_by_Supplier_{$year}", 300, function () use ($year) {
+            $query = static::with('party.supplier')
+                ->when($year !== 'all', fn($q) => $q->whereYear('proforma_date', $year));
 
-        return Cache::remember($cacheKey, 300, function () use ($year) {
-            $query = static::query();
-
-            if ($year !== 'all') {
-                $query->whereYear('proforma_date', $year);
-            }
-
-            return $query->with('party.supplier')
-                ->get()
-                ->groupBy(function ($order) {
-                    return $order->party && $order->party->supplier ? $order->party->supplier->name : 'Unknown';
-                })
-                ->mapWithKeys(function ($group, $key) {
-                    return [$key => count($group)];
-                });
+            return $query->get()
+                ->groupBy(fn($order) => $order?->party?->supplier?->name ?? 'Unknown')
+                ->map->count();
         });
     }
 
     public static function countOrdersByCategory($year)
     {
-        $cacheKey = 'orders_count_by_category_' . $year;
-
-        return Cache::remember($cacheKey, 300, function () use ($year) {
-            $query = static::query()->with('category');
-
-            if ($year !== 'all') {
-                $query->whereYear('proforma_date', $year);
-            }
-
-            return $query->get()
+        return Cache::remember("orders_count_by_category_{$year}", 300, function () use ($year) {
+            return static::with('category')
+                ->when($year !== 'all', fn($q) => $q->whereYear('proforma_date', $year))
+                ->get()
                 ->groupBy('category_id')
-                ->map(function ($orders) {
-                    $category = $orders->first()->category;
-                    return [
-                        'name' => $category ? $category->name : 'Unknown',
-                        'count' => $orders->count(),
-                    ];
-                });
+                ->map(fn($orders) => [
+                    'name' => $orders->first()?->category?->name ?? 'Unknown',
+                    'count' => $orders->count()
+                ]);
         });
     }
 
     public static function countOrdersByProduct($year)
     {
-        $cacheKey = 'orders_count_by_product_' . $year;
-
-        return Cache::remember($cacheKey, 300, function () use ($year) {
-            $query = static::query()->with('product');
-
-            if ($year !== 'all') {
-                $query->whereYear('proforma_date', $year);
-            }
-
-            return $query->get()
+        return Cache::remember("orders_count_by_product_{$year}", 300, function () use ($year) {
+            return static::with('product')
+                ->when($year !== 'all', fn($q) => $q->whereYear('proforma_date', $year))
+                ->get()
                 ->groupBy('product_id')
-                ->map(function ($orders) {
-                    $product = $orders->first()->product;
-                    return [
-                        'name' => $product ? $product->name : 'Unknown',
-                        'count' => $orders->count(),
-                    ];
-                });
+                ->map(fn($orders) => [
+                    'name' => $orders->first()?->product?->name ?? 'Unknown',
+                    'count' => $orders->count(),
+                ]);
         });
     }
 
-    public static function getOrdersCached()
+    public static function getOrdersCached(): array
     {
-        $key = 'orders_list';
-
-        if (Cache::has($key)) {
-            $orders = Cache::get($key);
-        } else {
-            $orders = self::pluck('reference_number', 'id')->toArray();
-            Cache::put($key, $orders, 5);
-        }
-
-        return $orders;
-    }
-
-    public function getInvoiceNumberWithPartAttribute()
-    {
-        $firstIdentifier = $this->logistic->booking_number ?? 'N/A';
-        $secondIdentifier = $this->reference_number ?? 'N/A';
-
-        return "Booking# {$firstIdentifier} 💢Ref: {$secondIdentifier}";
-    }
-
-    public function getInvoiceNumberWithReferenceNumberAttribute()
-    {
-        $prjNum = $this->invoice_number;
-        $refNum = $this->reference_number ?? 'No Ref. No.';
-
-        return "{$prjNum} (Ref: {$refNum})";
+        return Cache::remember('orders_list', 300, function () {
+            return static::pluck('reference_number', 'id')->toArray();
+        });
     }
 
     public static function getStatusCounts()
     {
-        return static::select('purchase_status_id')
-            ->selectRaw('count(*) as count')
-            ->groupBy('purchase_status_id')
-            ->get()
-            ->keyBy('purchase_status_id')
-            ->map(fn($item) => $item->count);
+        return static::groupBy('purchase_status_id')
+            ->selectRaw('purchase_status_id, count(*) as count')
+            ->pluck('count', 'purchase_status_id');
     }
 
+    public static function findByProformaInvoiceId($proformaInvoiceId)
+    {
+        return static::where('proforma_invoice_id', $proformaInvoiceId)
+            ->whereNull('deleted_at')
+            ->get();
+    }
+
+    public static function findByProjectNumber($proformaInvoiceId)
+    {
+        return static::where('invoice_number', $proformaInvoiceId)
+            ->whereNull('deleted_at')
+            ->get();
+    }
+
+    public static function makeOrderNumber($post): string
+    {
+        return implode('', [
+            'C', $post->category_id,
+            '-P', $post->product_id,
+            '-PR', $post->proforma_number,
+            '-PA', $post->party_id,
+            '-OD', $post->order_detail_id,
+            '-L', $post->logistic_id,
+            '-D', $post->doc_id
+        ]);
+    }
+
+    public static function getTabCounts(): array
+    {
+        $userId = auth()->id();
+
+        return Cache::remember("order_tab_counts_{$userId}", 60, function () {
+            return static::selectRaw('
+                COUNT(*) as total,
+                COUNT(CASE WHEN order_status = "accounting_review" THEN 1 END) as review_count,
+                COUNT(CASE WHEN order_status = "accounting_approved" THEN 1 END) as approved_count,
+                COUNT(CASE WHEN order_status = "accounting_rejected" THEN 1 END) as rejected_count,
+                COUNT(CASE WHEN order_status = "closed" THEN 1 END) as closed_count
+            ')->first()->toArray();
+        });
+    }
+
+    public function getInvoiceNumberWithPartAttribute(): string
+    {
+        $booking = $this->logistic->booking_number ?? 'N/A';
+        $ref = $this->reference_number ?? 'N/A';
+        return "Booking# {$booking} 💢Ref: {$ref}";
+    }
+
+    public function getInvoiceNumberWithReferenceNumberAttribute(): string
+    {
+        $prj = $this->invoice_number;
+        $ref = $this->reference_number ?? 'No Ref. No.';
+        return "{$prj} (Ref: {$ref})";
+    }
 
     public function getAllPaymentRequests()
     {
@@ -268,65 +318,6 @@ trait OrderComputations
                     ->whereNull('deleted_at')
                     ->whereNull('order_id');
             });
-    }
-
-    public function getRelatedOrdersByInvoiceNumber()
-    {
-        $cacheKey = 'related_orders_' . $this->invoice_number ?? $this->proforma_invoice_id;
-
-        return Cache::remember($cacheKey, 120, function () {
-            return $this->query()
-                ->with('orderDetail')
-                ->where('invoice_number', $this->invoice_number)
-                ->where('proforma_invoice_id', $this->proforma_invoice_id)
-                ->whereNull('deleted_at')
-                ->get();
-        });
-    }
-
-
-    public static function findByProformaInvoiceId($proformaInvoiceId)
-    {
-        return self::where('proforma_invoice_id', $proformaInvoiceId)
-            ->whereNull('deleted_at')
-            ->get();
-    }
-
-    public static function findByProjectNumber($proformaInvoiceId)
-    {
-        return self::where('invoice_number', $proformaInvoiceId)
-            ->whereNull('deleted_at')
-            ->get();
-    }
-
-    public static function makeOrderNumber($post): string
-    {
-        $category = "C" . $post->category_id;
-        $product = "-P" . $post->product_id;
-        $proforma = "-PR" . $post->proforma_number;
-        $party = "-PA" . $post->party_id;
-        $orderDetail = "-OD" . $post->order_detail_id;
-        $logistic = "-L" . $post->logistic_id;
-        $doc = "-D" . $post->doc_id;
-
-        return $category . $product . $proforma . $party . $orderDetail . $logistic . $doc;
-    }
-
-    public static function getTabCounts(): array
-    {
-        $userId = auth()->id();
-
-        return Cache::remember("order_tab_counts_{$userId}", 60, function () {
-            return self::select(
-                DB::raw('COUNT(*) as total'),
-                DB::raw("COUNT(CASE WHEN order_status = 'accounting_review' THEN 1 END) as review_count"),
-                DB::raw("COUNT(CASE WHEN order_status = 'accounting_approved' THEN 1 END) as approved_count"),
-                DB::raw("COUNT(CASE WHEN order_status = 'accounting_rejected' THEN 1 END) as rejected_count"),
-                DB::raw("COUNT(CASE WHEN order_status = 'closed' THEN 1 END) as closed_count")
-            )
-                ->first()
-                ->toArray();
-        });
     }
 
     public function hasCompletedBalancePayment()

@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
+use Carbon\Carbon;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
@@ -38,6 +39,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\View\View;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+use pxlrbt\FilamentExcel\Columns\Column;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class ListPayments extends ListRecords
 {
@@ -346,13 +349,21 @@ class ListPayments extends ListRecords
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->action(function (Collection $selectedRecords) {
-                            $selectedRecords->each->delete();
-                            $selectedRecords->each(
-                                fn(Model $selectedRecord) => Admin::send($selectedRecord)
-                            );
+                            $selectedRecords->each(function (Model $record) {
+                                $record->delete();
+                                Admin::send($record);
+                            });
                         }),
                     RestoreBulkAction::make(),
-                    ExportBulkAction::make(),
+                    ExportBulkAction::make()->exports([
+                        ExcelExport::make()
+                            ->fromTable()
+                            ->withColumns([
+                                Column::make('reference_number')->heading('ID'),
+                                Column::make('date')
+                                    ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y')),
+                            ])
+                    ]),
                     PrintBulkAction::make(),
                 ])
             ])

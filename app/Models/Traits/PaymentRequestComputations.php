@@ -177,6 +177,14 @@ trait PaymentRequestComputations
         $department = $user->info['department'] ?? 0;
         $position = $user->info['position'] ?? null;
 
+
+        if ($user->role === 'partner') {
+            return $query->whereIn('currency', ['USD', 'EURO'])
+                ->whereNotNull('account_number')
+                ->where('extra->paymentMethod', '<>', 'cash');
+        }
+
+
         if ($user->role == 'accountant' && $position == 'jnr') {
             return $query->where(function ($subQuery) use ($department) {
                 $subQuery->where('department_id', 6)

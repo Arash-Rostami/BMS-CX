@@ -6,70 +6,13 @@ use App\Models\Balance;
 use App\Models\User;
 use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Eloquent\Builder;
 
 
 trait BalanceComputations
 {
-
-    /***** Accessors *****/
-
-    public function getRecipientNameAttribute()
-    {
-        return match ($this->category) {
-            'payees' => $this->payee->name ?? 'N/A',
-            'beneficiaries' => $this->beneficiary->name ?? 'N/A',
-            'suppliers' => $this->supplier->name ?? 'N/A',
-            'contractors' => $this->contractor->name ?? 'N/A',
-            default => 'Unknown Recipient'
-        };
-    }
-
-    public function getTotalAttribute()
-    {
-        return $this->base + $this->payment;
-    }
-
-    /***** Local Scopes *****/
-
-    public function scopeFilterByUserDepartment(Builder $query, $user): Builder
-    {
-        $departmentId = $user->info['department'] ?? 0;
-        $position = $user->info['position'] ?? null;
-
-        if ($user->role == 'accountant' && $position == 'jnr') {
-            return $query->whereIn('department_id', [6, $departmentId]);
-        }
-
-        if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
-            return $query;
-        }
-
-        if ($position == 'jnr') {
-            return $this->fetchAllUsersPaymentRequest($query, $user);
-        }
-
-        return $query->whereIn('department_id', [$departmentId, 0]);
-    }
-
-
-    protected function fetchAllUsersPaymentRequest(Builder $query, $user): Builder
-    {
-        return $query->whereExists(function ($exists) use ($user) {
-            $exists->select(DB::raw(1))
-                ->from('payments')
-                ->join('payment_payment_request', 'payments.id', '=', 'payment_payment_request.payment_id')
-                ->join('payment_requests', 'payment_payment_request.payment_request_id', '=', 'payment_requests.id')
-                ->where('payment_requests.user_id', $user->id)
-                ->whereNull('payment_requests.deleted_at')
-                ->whereNull('payments.deleted_at')
-                ->whereColumn('balances.currency', 'payments.currency')
-                ->whereColumn('balances.payment', 'payments.amount')
-                ->whereRaw('ABS(TIMESTAMPDIFF(SECOND, balances.created_at, payments.created_at)) <= 1');
-        });
-    }
 
     /***** Helpers *****/
     public static function getTabCounts(): array
@@ -184,5 +127,80 @@ trait BalanceComputations
                 ])
                 ->sendToDatabase($user);
         }
+    }
+
+    /***** Accessors *****/
+
+    public function getRecipientNameAttribute()
+    {
+        return match ($this->category) {
+            'payees' => $this->payee->name ?? 'N/A',
+            'beneficiaries' => $this->beneficiary->name ?? 'N/A',
+            'suppliers' => $this->supplier->name ?? 'N/A',
+            'contractors' => $this->contractor->name ?? 'N/A',
+            default => 'Unknown Recipient'
+        };
+    }
+
+    public function getTotalAttribute()
+    {
+        return $this->base + $this->payment;
+    }
+
+    /***** Local Scopes *****/
+
+    public function scopeFilterByUserDepartment(Builder $query, $user): Builder
+    {
+        $departmentId = $user->info['department'] ?? 0;
+        $position = $user->info['position'] ?? null;
+
+
+        if ($user->role === 'partner') {
+            return $query
+                ->whereIn('currency', ['USD', 'EURO'])
+                ->whereExists(function ($exists) {
+                    $exists->select(DB::raw(1))
+                        ->from('payments')
+                        ->join('payment_payment_request', 'payments.id', '=', 'payment_payment_request.payment_id')
+                        ->join('payment_requests', 'payment_payment_request.payment_request_id', '=', 'payment_requests.id')
+                        ->whereColumn('balances.currency', 'payments.currency')
+                        ->whereColumn('balances.payment', 'payments.amount')
+                        ->whereRaw('ABS(TIMESTAMPDIFF(SECOND, balances.created_at, payments.created_at)) <= 1')
+                        ->whereNotNull('payment_requests.account_number')
+                        ->where('payment_requests.extra->paymentMethod', '<>', 'cash')
+                        ->whereNull('payments.deleted_at')
+                        ->whereNull('payment_requests.deleted_at');
+                });
+        }
+
+        if ($user->role == 'accountant' && $position == 'jnr') {
+            return $query->whereIn('department_id', [6, $departmentId]);
+        }
+
+        if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
+            return $query;
+        }
+
+        if ($position == 'jnr') {
+            return $this->fetchAllUsersPaymentRequest($query, $user);
+        }
+
+        return $query->whereIn('department_id', [$departmentId, 0]);
+    }
+
+    protected function fetchAllUsersPaymentRequest(Builder $query, $user): Builder
+    {
+        return $query->whereExists(function ($exists) use ($user) {
+            $exists->select(DB::raw(1))
+                ->from('payments')
+                ->join('payment_payment_request', 'payments.id', '=', 'payment_payment_request.payment_id')
+                ->join('payment_requests', 'payment_payment_request.payment_request_id', '=', 'payment_requests.id')
+                ->where('payment_requests.user_id', $user->id)
+                ->whereNull('payment_requests.deleted_at')
+                ->whereNull('payments.deleted_at')
+                ->whereColumn('balances.currency', 'payments.currency')
+                ->whereColumn('balances.payment', 'payments.amount')
+                ->whereRaw('ABS(TIMESTAMPDIFF(SECOND, balances.created_at, payments.created_at)) <= 1');
+        });
     }
 }

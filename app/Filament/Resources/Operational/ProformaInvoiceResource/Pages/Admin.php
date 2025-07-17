@@ -6,14 +6,7 @@ namespace App\Filament\Resources\Operational\ProformaInvoiceResource\Pages;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\AdminComponents\Filter;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\AdminComponents\Form;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\AdminComponents\Table;
-use App\Models\Attachment;
-use App\Models\PaymentRequest;
-use App\Notifications\FilamentNotification;
-use App\Services\AttachmentDeletionService;
 use App\Services\Notification\ProformaInvoiceService;
-use Carbon\Carbon;
-use Filament\Forms\Components\Actions\Action;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection;
@@ -59,14 +52,6 @@ class Admin
         'fulfilled' => '🏁 Completed',
     ];
 
-
-    public static function send(Model $record)
-    {
-        $service = new ProformaInvoiceService();
-        $service->notifyAgents($record, 'delete');
-    }
-
-
     public static function nameUploadedFile(): \Closure
     {
         return function (TemporaryUploadedFile $file, Get $get, ?Model $record, Livewire $livewire): string {
@@ -75,12 +60,8 @@ class Admin
             // File extension
             $extension = $file->getClientOriginalExtension();
 
-            // Unique identifier
-            $timestamp = Carbon::now()->format('YmdHis');
-            $randomString = Str::random(5);
-
             // New filename with extension
-            $newFileName = "PI-{$number}-{$timestamp}-{$randomString}-{$name}";
+            $newFileName = sprintf('PI-%s-%s-%s-%s', $number, now()->format('YmdHis'), Str::random(5), $name);
 
             // Sanitizing the file name
             return Str::slug($newFileName, '-') . ".{$extension}";
@@ -101,20 +82,27 @@ class Admin
     public static function syncProformaInvoice(Model $replica): void
     {
         persistReferenceNumber($replica, 'PI');
-        $service = new ProformaInvoiceService();
-        $service->notifyAgents($replica);
+        (new ProformaInvoiceService())->notifyAgents($replica);
     }
 
     public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
     {
+        if ($records->isEmpty()) return;
+        $records->loadMissing(['activeApprovedPaymentRequests', 'activeOrders']);
+
+
         $recordsToDelete = $records->filter(function ($record) {
             return $record->activeApprovedPaymentRequests->isEmpty() && $record->activeOrders->isEmpty();
         });
         $recordsNotDeleted = $records->diff($recordsToDelete);
 
         // Delete the records that have no paymentRequests
-        $recordsToDelete->each->delete();
-        $recordsToDelete->each(fn(Model $selectedRecord) => Admin::send($selectedRecord));
+        if ($recordsToDelete->isNotEmpty()) {
+            $recordsToDelete->each(function (Model $record) {
+                $record->delete();
+                self::send($record);
+            });
+        }
 
         if ($recordsNotDeleted->isNotEmpty()) {
             $recordReferences = $recordsNotDeleted->pluck('reference_number')->join(', ');
@@ -129,5 +117,10 @@ class Admin
                 ->success()
                 ->send();
         }
+    }
+
+    public static function send(Model $record)
+    {
+        (new ProformaInvoiceService())->notifyAgents($record, 'delete');
     }
 }

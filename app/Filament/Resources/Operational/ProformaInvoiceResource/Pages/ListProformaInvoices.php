@@ -2,13 +2,12 @@
 
 namespace App\Filament\Resources\Operational\ProformaInvoiceResource\Pages;
 
-use App\Filament\deprecated\OrderRequestResource;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\ProformaInvoiceResource;
 use App\Models\ProformaInvoice;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
-use niklasravnsborg\LaravelPdf\Facades\Pdf;
+use Carbon\Carbon;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Resources\Components\Tab;
@@ -30,14 +29,16 @@ use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Enums\FiltersLayout;
-use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Filament\Tables\View\TablesRenderHook;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\View\View;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+use pxlrbt\FilamentExcel\Columns\Column;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 //use Filament\Tables\Actions\ExportBulkAction;
 
@@ -57,6 +58,10 @@ class ListProformaInvoices extends ListRecords
         'updateActiveTab'
     ];
 
+    protected static function getOriginalTable()
+    {
+        return static::getResource()::getEloquentQuery();
+    }
 
     public function mount(): void
     {
@@ -70,15 +75,6 @@ class ListProformaInvoices extends ListRecords
     {
         $this->activeTab = $scope;
         $this->dispatch('refreshTabFilters');
-    }
-
-    private function registerTableRenderHook()
-    {
-        FilamentView::registerRenderHook(
-            TablesRenderHook::HEADER_BEFORE,
-            fn(): View => view('filament.resources.proforma-invoice-resource.table-tabs', ['activeTab' => $this->activeTab]),
-            scopes: ListProformaInvoices::class,
-        );
     }
 
     public function toggleTabs()
@@ -176,113 +172,14 @@ class ListProformaInvoices extends ListRecords
         return $tabs;
     }
 
-    public function getInvisibleTableHeaderActions(): array
+    private function registerTableRenderHook()
     {
-        $design = isModernDesign();
-
-        $actions = [
-            Action::make('Refresh Sorting')
-                ->label('Reset')
-                ->tooltip('Reset Column Orders')
-                ->color('primary')
-                ->icon('heroicon-m-receipt-refund')
-                ->action('clearTableSort'),
-
-            Action::make('Move Actions to Start')
-                ->action('moveActionsToStart')
-                ->color('primary')
-                ->icon('heroicon-o-arrows-right-left')
-                ->iconPosition(IconPosition::After)
-                ->label('S')
-                ->tooltip('Move Actions to Start')
-                ->visible(!$this->showActionsAhead && !$design),
-
-            Action::make('Reset Actions to End')
-                ->action('resetActionsToEnd')
-                ->color('secondary')
-                ->icon('heroicon-o-arrows-right-left')
-                ->iconPosition(IconPosition::Before)
-                ->label('E')
-                ->tooltip('Reset Actions to End')
-                ->visible($this->showActionsAhead && !$design),
-
-            Action::make('Scroll Left')
-                ->label('Scroll')
-                ->tooltip('Scroll Left')
-                ->color('primary')
-                ->icon('heroicon-o-arrow-left-on-rectangle')
-                ->iconPosition(IconPosition::Before)
-                ->action('scrollLeft'),
-
-            Action::make('Scroll Right')
-                ->label('Scroll')
-                ->tooltip('Scroll Right')
-                ->color('primary')
-                ->icon('heroicon-o-arrow-right-end-on-rectangle')
-                ->iconPosition(IconPosition::After)
-                ->action('scrollRight'),
-
-            Action::make('Full Screen')
-                ->label('Go')
-                ->tooltip('Go Fullscreen')
-                ->color('primary')
-                ->icon('heroicon-s-arrows-pointing-out')
-                ->action('toggleFullScreen'),
-        ];
-
-//        if ($design) {
-//            return [ActionGroup::make($actions)];
-//        }
-
-        return $actions;
+        FilamentView::registerRenderHook(
+            TablesRenderHook::HEADER_BEFORE,
+            fn(): View => view('filament.resources.proforma-invoice-resource.table-tabs', ['activeTab' => $this->activeTab]),
+            scopes: ListProformaInvoices::class,
+        );
     }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\CreateAction::make()
-                ->label('New')
-                ->icon('heroicon-o-sparkles'),
-            ActionGroup::make(array_merge(
-                [
-                    Actions\Action::make('Toggle Tabs')
-                        ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
-                        ->tooltip('Toggle Filter Shortcuts')
-                        ->color($this->showTabs ? 'secondary' : 'primary')
-                        ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
-                        ->action('toggleTabs'),
-                    PrintAction::make(),
-                    ExcelImportAction::make()->color("success"),
-                ],
-                $this->getInvisibleTableHeaderActions() ?? []
-            ))
-        ];
-    }
-
-
-    protected static function getOriginalTable()
-    {
-        return static::getResource()::getEloquentQuery();
-    }
-
-    protected function getTableQuery(): ?Builder
-    {
-        $query = ProformaInvoice::query();
-
-        $categoryTabs = [
-            'Mineral' => 1,
-            'Polymers' => 2,
-            'Chemicals' => 3,
-            'Petro' => 4,
-        ];
-
-        if (array_key_exists($this->activeTab, $categoryTabs)) {
-            $query->where('category_id', $categoryTabs[$this->activeTab]);
-        }
-
-        return $query;
-    }
-
 
     public function table(Table $table): Table
     {
@@ -365,9 +262,15 @@ class ListProformaInvoices extends ListRecords
                         ->action(fn(Collection $records) => Admin::separateRecordsIntoDeletableAndNonDeletable($records))
                         ->deselectRecordsAfterCompletion(),
                     RestoreBulkAction::make(),
-                    ExportBulkAction::make(),
-//                    ExportBulkAction::make()
-//                    ->chunkSize(250),
+                    ExportBulkAction::make()->exports([
+                        ExcelExport::make()
+                            ->fromTable()
+                            ->withColumns([
+                                Column::make('reference_number')->heading('ID'),
+                                Column::make('proforma_date')
+                                    ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y')),
+                            ])
+                    ]),
                     PrintBulkAction::make(),
                 ])
             ])
@@ -440,5 +343,106 @@ class ListProformaInvoices extends ListRecords
                 Admin::showAssignedTo(),
                 Admin::showTimeStamp(),
             ])->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make()
+                ->label('New')
+                ->icon('heroicon-o-sparkles'),
+            ActionGroup::make(array_merge(
+                [
+                    Actions\Action::make('Toggle Tabs')
+                        ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
+                        ->tooltip('Toggle Filter Shortcuts')
+                        ->color($this->showTabs ? 'secondary' : 'primary')
+                        ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
+                        ->action('toggleTabs'),
+                    PrintAction::make(),
+                    ExcelImportAction::make()->color("success"),
+                ],
+                $this->getInvisibleTableHeaderActions() ?? []
+            ))
+        ];
+    }
+
+    public function getInvisibleTableHeaderActions(): array
+    {
+        $design = isModernDesign();
+
+        $actions = [
+            Action::make('Refresh Sorting')
+                ->label('Reset')
+                ->tooltip('Reset Column Orders')
+                ->color('primary')
+                ->icon('heroicon-m-receipt-refund')
+                ->action('clearTableSort'),
+
+            Action::make('Move Actions to Start')
+                ->action('moveActionsToStart')
+                ->color('primary')
+                ->icon('heroicon-o-arrows-right-left')
+                ->iconPosition(IconPosition::After)
+                ->label('S')
+                ->tooltip('Move Actions to Start')
+                ->visible(!$this->showActionsAhead && !$design),
+
+            Action::make('Reset Actions to End')
+                ->action('resetActionsToEnd')
+                ->color('secondary')
+                ->icon('heroicon-o-arrows-right-left')
+                ->iconPosition(IconPosition::Before)
+                ->label('E')
+                ->tooltip('Reset Actions to End')
+                ->visible($this->showActionsAhead && !$design),
+
+            Action::make('Scroll Left')
+                ->label('Scroll')
+                ->tooltip('Scroll Left')
+                ->color('primary')
+                ->icon('heroicon-o-arrow-left-on-rectangle')
+                ->iconPosition(IconPosition::Before)
+                ->action('scrollLeft'),
+
+            Action::make('Scroll Right')
+                ->label('Scroll')
+                ->tooltip('Scroll Right')
+                ->color('primary')
+                ->icon('heroicon-o-arrow-right-end-on-rectangle')
+                ->iconPosition(IconPosition::After)
+                ->action('scrollRight'),
+
+            Action::make('Full Screen')
+                ->label('Go')
+                ->tooltip('Go Fullscreen')
+                ->color('primary')
+                ->icon('heroicon-s-arrows-pointing-out')
+                ->action('toggleFullScreen'),
+        ];
+
+//        if ($design) {
+//            return [ActionGroup::make($actions)];
+//        }
+
+        return $actions;
+    }
+
+    protected function getTableQuery(): ?Builder
+    {
+        $query = ProformaInvoice::query();
+
+        $categoryTabs = [
+            'Mineral' => 1,
+            'Polymers' => 2,
+            'Chemicals' => 3,
+            'Petro' => 4,
+        ];
+
+        if (array_key_exists($this->activeTab, $categoryTabs)) {
+            $query->where('category_id', $categoryTabs[$this->activeTab]);
+        }
+
+        return $query;
     }
 }

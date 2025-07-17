@@ -274,11 +274,11 @@ trait ProformaInvoiceComputations
         }
 
         // Generate unique cache key
-        $cacheKey = self::generateCacheKey('pi_total_quantity_with_bl_', $month, $category_id, $year);
+        $cacheKey = self::generateCacheKey('pi_total_quantity_with_bl_date_', $month, $category_id, $year);
 
         return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month) {
             $query = "
-            SELECT SUM(pi.quantity) AS total_quantity
+            SELECT SUM(DISTINCT COALESCE(pi.quantity, 0)) AS total_quantity
             FROM proforma_invoices pi
             INNER JOIN orders o ON pi.id = o.proforma_invoice_id
             INNER JOIN docs d ON o.doc_id = d.id

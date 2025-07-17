@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
+use Carbon\Carbon;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Resources\Components\Tab;
@@ -25,7 +26,6 @@ use Filament\Tables\Actions\ReplicateAction;
 use Filament\Tables\Actions\RestoreAction;
 use Filament\Tables\Actions\RestoreBulkAction;
 use Filament\Tables\Actions\ViewAction;
-use Illuminate\View\View;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Enums\ActionsPosition;
@@ -35,25 +35,26 @@ use Filament\Tables\View\TablesRenderHook;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+use Illuminate\View\View;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
+use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+use pxlrbt\FilamentExcel\Columns\Column;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 
 class ListOrders extends ListRecords
 {
+    protected static string $resource = OrderResource::class;
     public $shipmentStatusFilter;
-
     public bool $showTabs;
     public ?string $activeTab = '';
-
-
+    public bool $showActionsAhead = true;
     protected $listeners = ['setShipmentStatusFilter', 'refreshPage' => '$refresh', 'updateActiveTab'];
 
-
-    protected static string $resource = OrderResource::class;
-
-    public bool $showActionsAhead = true;
+    private static function getOriginalTable()
+    {
+        return static::getResource()::getEloquentQuery();
+    }
 
     public function mount(): void
     {
@@ -68,16 +69,6 @@ class ListOrders extends ListRecords
         $this->activeTab = $scope;
         $this->dispatch('refreshTabFilters');
     }
-
-    private function registerTableRenderHook()
-    {
-        FilamentView::registerRenderHook(
-            TablesRenderHook::HEADER_BEFORE,
-            fn(): View => view('filament.resources.order-resource.table-tabs', ['activeTab' => $this->activeTab]),
-            scopes: ListOrders::class,
-        );
-    }
-
 
     public function toggleTabs()
     {
@@ -161,6 +152,261 @@ class ListOrders extends ListRecords
         ];
     }
 
+    private function registerTableRenderHook()
+    {
+        FilamentView::registerRenderHook(
+            TablesRenderHook::HEADER_BEFORE,
+            fn(): View => view('filament.resources.order-resource.table-tabs', ['activeTab' => $this->activeTab]),
+            scopes: ListOrders::class,
+        );
+    }
+
+    public function table(Table $table): Table
+    {
+        $table = $this->configureCommonTableSettings($table);
+
+        return (getTableDesign() != 'classic')
+            ? $this->getModernLayout($table)
+            : $this->getClassicLayout($table);
+    }
+
+    public function configureCommonTableSettings(Table $table): Table
+    {
+        return $table
+            ->emptyStateIcon('heroicon-o-bookmark')
+            ->emptyStateDescription('Once you create your first record, it will appear here.')
+            ->searchDebounce('1000ms')
+            ->paginated([20, 30, 40])
+            ->groupingSettingsInDropdownOnDesktop()
+            ->recordClasses(fn(Model $record) => isShadeSelected('order-table'))
+            ->filters([
+                Admin::filterSoftDeletes(),
+                Admin::filterBasedOnQuery()
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormWidth(MaxWidth::FiveExtraLarge)
+            ->filtersFormColumns(6)
+            ->filtersTriggerAction(fn(TableAction $action) => $action->button()->label('')->tooltip('Filter records'))
+            ->headerActions($this->getTableHeaderActions())
+            ->recordUrl(fn(Model $record): string => OrderResource::getUrl(isUserPartner() ? 'view' : 'edit', ['record' => $record]))
+            ->actions([
+                ActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    ReplicateAction::make()
+                        ->authorize('create')
+                        ->color('info')
+                        ->modalWidth(MaxWidth::Medium)
+                        ->modalIcon('heroicon-o-clipboard-document-list')
+//                        ->record(fn(Model $record) => $record)
+                        ->visible(fn($record) => Admin::isPaymentCalculated($record))
+                        ->beforeReplicaSaved(function (Model $replica) {
+                            Admin::increasePart($replica);
+                            Admin::replicateRelatedModels($replica);
+                        })
+                        ->after(fn(Model $replica) => Admin::syncOrder($replica))
+                        ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.orders.edit', ['record' => $replica->id,])),
+                    DeleteAction::make()
+                        ->successNotification(fn(Model $record) => Admin::send($record))
+                        ->hidden(fn(?Model $record) => $record ? $record->paymentRequests->isNotEmpty() : false),
+                    RestoreAction::make(),
+                    Action::make('pdf')
+                        ->label('PDF')
+                        ->color('success')
+                        ->icon('heroicon-c-inbox-arrow-down')
+                        ->action(function (Model $record) {
+                            return response()->streamDownload(function () use ($record) {
+                                echo Pdf::loadView('filament.pdfs.paymentRequest', ['record' => $record])->output();
+                            }, 'BMS-' . $record->reference_number . '.pdf');
+                        }),
+                    Action::make('createPaymentRequest')
+                        ->authorize('create')
+                        ->label('Smart Payment')
+                        ->url(fn($record) => route('filament.admin.resources.payment-requests.create', ['id' => $record->id, 'module' => 'order']))
+                        ->icon('heroicon-o-credit-card')
+                        ->color('warning')
+                        ->openUrlInNewTab(),
+                ])
+            ], position: $this->showActionsAhead ? ActionsPosition::BeforeCells : ActionsPosition::AfterCells)
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->action(fn(Collection $records) => Admin::separateRecordsIntoDeletableAndNonDeletable($records))
+                        ->deselectRecordsAfterCompletion(),
+                    RestoreBulkAction::make(),
+                    ExportBulkAction::make()->exports([
+                        ExcelExport::make()
+                            ->fromTable()
+                            ->except(array_map(fn($key) => "extra.docs_received.$key", array_keys(Admin::getDynamicDocuments())))
+                            ->withColumns([
+                                Column::make('reference_number')->heading('ID'),
+                                Column::make('doc.BL_date')
+                                    ->heading('BL Date')
+                                    ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y')),
+                                Column::make('doc.declaration_date')
+                                    ->heading('Declaration Date')
+                                    ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y')),
+                                Column::make('proforma_date')
+                                    ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y')),
+                                Column::make('logistic.extra.loading_startline')
+                                    ->heading('Loading Start Date')
+                                    ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y')),
+                                Column::make('logistic.loading_deadline')
+                                    ->heading('Loading Deadline')
+                                    ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y')),
+                                Column::make('logistic.extra.etd')
+                                    ->heading('ETD')
+                                    ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y')),
+                                Column::make('logistic.extra.eta')
+                                    ->heading('ETA')
+                                    ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y')),
+                            ])
+                    ]),
+                    PrintBulkAction::make(),
+                ])
+            ])
+            ->defaultSort('id', 'desc')
+            ->poll('240s')
+            ->groups([
+                Admin::groupByBuyer(),
+                Admin::groupByCategory(),
+                Admin::groupByCurrency(),
+                Admin::groupByDeliveryTerm(),
+                Admin::groupByInvoiceNumber(),
+                Admin::groupByPackaging(),
+                Admin::groupByPart(),
+                Admin::groupByProduct(),
+                Admin::groupByGrade(),
+                Admin::groupByProformaNumber(),
+                Admin::groupByShippingLine(),
+                Admin::groupByStage(),
+                Admin::groupByStatus(),
+                Admin::groupBySupplier(),
+                Admin::groupByTags(),
+            ]);
+    }
+
+    public function getModernLayout(Table $table): Table
+    {
+        $docChunks = array_chunk(Admin::showAllDocs(), 10);
+        $splitDocs = array_map(
+            fn($chunk) => Split::make($chunk)->columnSpanFull(),
+            $docChunks
+        );
+
+        return $table->columns([
+            Stack::make([
+                Split::make([
+                    Admin::showReferenceNumber(),
+                    Admin::showProformaNumber(),
+                    Admin::showOrderPart(),
+                    Admin::showSupplier(),
+                    Admin::showAllPayments(),
+                ]),
+            ])->space(0),
+
+            Split::make([
+                Stack::make([
+                    Split::make([
+                        Admin::showPurchaseStatus(),
+                        Admin::showBookingNumber(),
+                        Admin::showBLNumber(),
+                        Admin::showPortOfDelivery(),
+                        Admin::showPaymentRequests(),
+                        Admin::showPayments(),
+                    ])->columnSpanFull(),
+
+                    Stack::make($splitDocs)
+                        ->space(1),
+                ])->space(3),
+            ])->collapsible(),
+
+            Split::make([
+                Admin::showProjectNumber(),
+            ]),
+        ]);
+    }
+
+
+    public function getClassicLayout(Table $table): Table
+    {
+        $showAllDocs = Admin::showAllDocs();
+        return $table
+            ->columns([
+                Admin::showReferenceNumber(),
+                Admin::showOrderStatus(),
+                Admin::showPurchaseStatus(),
+                Admin::showProjectNumber(),
+                Admin::showSupplier(),
+                Admin::showProformaNumber(),
+                Admin::showProformaDate(),
+                Admin::showProduct(),
+                Admin::showGrade(),
+                Admin::showOrderPart(),
+                Admin::showQuantities(),
+                Admin::showProvisionalQuantity(),
+                Admin::showFinalQuantity(),
+                Admin::showAllPayments(),
+                Admin::showProvisionalPrice(),
+                Admin::showFinalPrice(),
+                Admin::showPortOfDelivery(),
+                Admin::showLeadTime(),
+                Admin::showBookingNumber(),
+                Admin::showBLNumber(),
+                Admin::showBLDate(),
+                Admin::showVoyageNumber(),
+                Admin::showGrossWeight(),
+                Admin::showNetWeight(),
+                Admin::showCategory(),
+                Admin::showBuyer(),
+                Admin::showDeliveryTerm(),
+                Admin::showPackaging(),
+                Admin::showShippingLine(),
+                Admin::showLoadingStartline(),
+                Admin::showLoadingDeadline(),
+                Admin::showEtd(),
+                Admin::showEta(),
+                Admin::showFCL(),
+                Admin::showFCLType(),
+                Admin::showNumberOfContainers(),
+                Admin::showOceanFreight(),
+                Admin::showTHC(),
+                Admin::showFreeTimePOD(),
+                Admin::showDeclarationNumber(),
+                Admin::showDeclarationDate(),
+                Admin::showBLNumberLegTwo(),
+                Admin::showBLDateLegTwo(),
+                Admin::showVoyageNumberLegTwo(),
+                Admin::showOrderNumber(),
+                Admin::showChangeOfDestination(),
+                ...$showAllDocs,
+                Admin::showCreator(),
+                TableObserver::showMissingDataWithRel(-12),
+            ]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make()
+                ->label('New')
+                ->icon('heroicon-o-sparkles'),
+
+            ActionGroup::make(array_merge(
+                [
+                    Actions\Action::make('Toggle Tabs')
+                        ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
+                        ->tooltip('Toggle Filter Shortcuts')
+                        ->color($this->showTabs ? 'secondary' : 'primary')
+                        ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
+                        ->action('toggleTabs'),
+                    PrintAction::make(),
+                    ExcelImportAction::make()
+                        ->color("success"),
+                ],
+                $this->getInvisibleTableHeaderActions() ?? []
+            ))
+        ];
+    }
 
     public function getInvisibleTableHeaderActions(): array
     {
@@ -223,38 +469,6 @@ class ListOrders extends ListRecords
         return $actions;
     }
 
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\CreateAction::make()
-                ->label('New')
-                ->icon('heroicon-o-sparkles'),
-
-            ActionGroup::make(array_merge(
-                [
-                    Actions\Action::make('Toggle Tabs')
-                        ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
-                        ->tooltip('Toggle Filter Shortcuts')
-                        ->color($this->showTabs ? 'secondary' : 'primary')
-                        ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
-                        ->action('toggleTabs'),
-                    PrintAction::make(),
-                    ExcelImportAction::make()
-                        ->color("success"),
-                ],
-                $this->getInvisibleTableHeaderActions() ?? []
-            ))
-        ];
-    }
-
-
-    private static function getOriginalTable()
-    {
-        return static::getResource()::getEloquentQuery();
-    }
-
-
     protected function getTableQuery(): ?Builder
     {
         $query = Order::query();
@@ -264,196 +478,5 @@ class ListOrders extends ListRecords
         }
 
         return $query;
-    }
-
-
-    public function table(Table $table): Table
-    {
-        $table = $this->configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? $this->getModernLayout($table)
-            : $this->getClassicLayout($table);
-    }
-
-    public function configureCommonTableSettings(Table $table): Table
-    {
-        return $table
-//            ->defaultGroup('invoice_number')
-            ->emptyStateIcon('heroicon-o-bookmark')
-            ->emptyStateDescription('Once you create your first record, it will appear here.')
-            ->searchDebounce('1000ms')
-            ->paginated([20, 30, 40])
-            ->groupingSettingsInDropdownOnDesktop()
-            ->recordClasses(fn(Model $record) => isShadeSelected('order-table'))
-            ->filters([
-                Admin::filterSoftDeletes(),
-                Admin::filterBasedOnQuery()
-//                Admin::filterOrderStatus(), Admin::filterCreatedAt(),
-            ], layout: FiltersLayout::Modal)
-            ->filtersFormWidth(MaxWidth::FiveExtraLarge)
-            ->filtersFormColumns(6)
-            ->filtersTriggerAction(fn(TableAction $action) => $action->button()->label('')->tooltip('Filter records'))
-            ->headerActions($this->getTableHeaderActions())
-            ->recordUrl(fn(Model $record): string => OrderResource::getUrl(isUserPartner() ? 'view' : 'edit', ['record' => $record]))
-            ->actions([
-                ActionGroup::make([
-                    ViewAction::make(),
-                    EditAction::make(),
-                    ReplicateAction::make()
-                        ->authorize('create')
-                        ->color('info')
-                        ->modalWidth(MaxWidth::Medium)
-                        ->modalIcon('heroicon-o-clipboard-document-list')
-//                        ->record(fn(Model $record) => $record)
-                        ->visible(fn($record) => Admin::isPaymentCalculated($record))
-                        ->beforeReplicaSaved(function (Model $replica) {
-                            Admin::increasePart($replica);
-                            Admin::replicateRelatedModels($replica);
-                        })
-                        ->after(fn(Model $replica) => Admin::syncOrder($replica))
-                        ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.orders.edit', ['record' => $replica->id,])),
-                    DeleteAction::make()
-                        ->successNotification(fn(Model $record) => Admin::send($record))
-                        ->hidden(fn(?Model $record) => $record ? $record->paymentRequests->isNotEmpty() : false),
-                    RestoreAction::make(),
-                    Action::make('pdf')
-                        ->label('PDF')
-                        ->color('success')
-                        ->icon('heroicon-c-inbox-arrow-down')
-                        ->action(function (Model $record) {
-                            return response()->streamDownload(function () use ($record) {
-                                echo Pdf::loadView('filament.pdfs.paymentRequest', ['record' => $record])->output();
-                            }, 'BMS-' . $record->reference_number . '.pdf');
-                        }),
-                    Action::make('createPaymentRequest')
-                        ->authorize('create')
-                        ->label('Smart Payment')
-                        ->url(fn($record) => route('filament.admin.resources.payment-requests.create', ['id' => $record->id, 'module' => 'order']))
-                        ->icon('heroicon-o-credit-card')
-                        ->color('warning')
-                        ->openUrlInNewTab(),
-                ])
-            ], position: $this->showActionsAhead ? ActionsPosition::BeforeCells : ActionsPosition::AfterCells)
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->action(fn(Collection $records) => Admin::separateRecordsIntoDeletableAndNonDeletable($records))
-                        ->deselectRecordsAfterCompletion(),
-                    RestoreBulkAction::make(),
-                    ExportBulkAction::make(),
-                    PrintBulkAction::make(),
-                ])
-            ])
-            ->defaultSort('id', 'desc')
-//            ->deferLoading()
-            ->poll('240s')
-            ->groups([
-                Admin::groupByBuyer(),
-                Admin::groupByCategory(),
-                Admin::groupByCurrency(),
-                Admin::groupByDeliveryTerm(),
-                Admin::groupByInvoiceNumber(),
-                Admin::groupByPackaging(),
-                Admin::groupByPart(),
-                Admin::groupByProduct(),
-                Admin::groupByGrade(),
-                Admin::groupByProformaNumber(),
-                Admin::groupByShippingLine(),
-                Admin::groupByStage(),
-                Admin::groupByStatus(),
-                Admin::groupBySupplier(),
-                Admin::groupByTags(),
-            ]);
-    }
-
-
-    public function getModernLayout(Table $table): Table
-    {
-        $docChunks = array_chunk(Admin::showAllDocs(), 10);
-        $splitDocs = [];
-        foreach ($docChunks as $chunk) {
-            $splitDocs[] = Split::make($chunk)->columnSpanFull(true);
-        }
-
-        return $table->columns([
-            Stack::make([
-                Split::make([
-                    Admin::showReferenceNumber(),
-                    Admin::showProformaNumber(),
-                    Admin::showOrderPart(),
-                    Admin::showSupplier(),
-                    Admin::showAllPayments(),
-                ]),
-            ])->space(3),
-            Split::make([
-                Stack::make([
-                    Split::make([
-                        Admin::showBookingNumber(),
-                        Admin::showBLNumber(),
-                        Admin::showPortOfDelivery(),
-                        Admin::showPaymentRequests(),
-                        Admin::showPayments(),
-                    ])->columnSpanFull(true),
-                    Stack::make($splitDocs),
-                ]),
-            ])->collapsible(),
-            Split::make([
-                Admin::showProjectNumber(),
-            ]),
-        ]);
-    }
-
-
-    public function getClassicLayout(Table $table): Table
-    {
-        $showAllDocs = Admin::showAllDocs();
-        return $table
-            ->columns([
-                Admin::showReferenceNumber(),
-                Admin::showOrderStatus(),
-                Admin::showProjectNumber(),
-                Admin::showSupplier(),
-                Admin::showProformaNumber(),
-                Admin::showProformaDate(),
-                Admin::showProduct(),
-                Admin::showGrade(),
-                Admin::showOrderPart(),
-                Admin::showQuantities(),
-                Admin::showAllPayments(),
-                Admin::showPortOfDelivery(),
-                Admin::showBookingNumber(),
-                Admin::showBLNumber(),
-                Admin::showBLDate(),
-                Admin::showVoyageNumber(),
-                Admin::showGrossWeight(),
-                Admin::showNetWeight(),
-                Admin::showPurchaseStatus(),
-                Admin::showCategory(),
-                Admin::showBuyer(),
-                Admin::showDeliveryTerm(),
-                Admin::showPackaging(),
-                Admin::showShippingLine(),
-                Admin::showLoadingStartline(),
-                Admin::showLoadingDeadline(),
-                Admin::showEtd(),
-                Admin::showEta(),
-                Admin::showFCL(),
-                Admin::showFCLType(),
-                Admin::showNumberOfContainers(),
-                Admin::showOceanFreight(),
-                Admin::showTHC(),
-                Admin::showFreeTimePOD(),
-                Admin::showDeclarationNumber(),
-                Admin::showDeclarationDate(),
-                Admin::showBLNumberLegTwo(),
-                Admin::showBLDateLegTwo(),
-                Admin::showVoyageNumberLegTwo(),
-                Admin::showOrderNumber(),
-                Admin::showChangeOfDestination(),
-                ...$showAllDocs,
-                Admin::showCreator(),
-                TableObserver::showMissingDataWithRel(-12),
-            ]);
     }
 }

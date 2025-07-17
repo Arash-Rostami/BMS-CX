@@ -2,20 +2,17 @@
 
 namespace App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents;
 
-use App\Models\Order;
 use Carbon\Carbon;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\IconPosition;
 use Filament\Tables\Columns\Summarizers\Count;
-use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Filament\Tables\Columns\ToggleColumn;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Query\Builder as SummaryBuilder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Query\Builder as SummaryBuilder;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
@@ -96,8 +93,9 @@ trait Table
             ->numeric()
             ->badge()
             ->alignRight()
-            ->toggleable(isToggledHiddenByDefault: true)
+            ->toggleable()
             ->searchable()
+            ->grow(false)
             ->color(getTableDesign() === 'modern' ? '' : 'secondary')
             ->sortable();
     }
@@ -355,6 +353,39 @@ trait Table
             ->badge();
     }
 
+    /**
+     * @return TextColumn
+     */
+    public static function showProvisionalQuantity(): TextColumn
+    {
+        return TextColumn::make('provisional_quantity')
+            ->label('Provisional Quant.')
+            ->state(function (Model $record): string {
+                return sprintf(
+                    "%s",
+                    numberify($record->orderDetail->provisional_quantity ?? 0)
+                );
+            })
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->color('info')
+            ->badge();
+    }
+
+    public static function showFinalQuantity(): TextColumn
+    {
+        return TextColumn::make('final_quantity')
+            ->label('Final Quant.')
+            ->state(function (Model $record): string {
+                return sprintf(
+                    "%s",
+                    numberify($record->orderDetail->final_quantity ?? 0)
+                );
+            })
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->color('info')
+            ->badge();
+    }
+
     public
     static function showAllPayments(): TextColumn
     {
@@ -373,6 +404,40 @@ trait Table
             })
             ->grow(false)
             ->summarize(Summarizer::make()->label('💰 Initial | Provisional | Final')->using(fn(SummaryBuilder $query) => self::calculateSummaries('payment', $query)))
+            ->badge();
+    }
+
+    public
+    static function showProvisionalPrice(): TextColumn
+    {
+        return TextColumn::make('provisional_price')
+            ->label('Provisional Price')
+            ->toggleable()
+            ->color('info')
+            ->state(function (Model $record): string {
+                return sprintf(
+                    "%s",
+                    numberify($record->orderDetail->provisional_price ?? 0)
+                );
+            })
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->badge();
+    }
+
+    public
+    static function showFinalPrice(): TextColumn
+    {
+        return TextColumn::make('final_price')
+            ->label('Final Price')
+            ->toggleable()
+            ->color('info')
+            ->state(function (Model $record): string {
+                return sprintf(
+                    "%s",
+                    numberify($record->orderDetail->final_price ?? 0)
+                );
+            })
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 
@@ -457,6 +522,7 @@ trait Table
         return TextColumn::make('logistic.portOfDelivery.name')
             ->label('Port of Delivery')
             ->color('secondary')
+            ->grow(false)
             ->searchable()
             ->toggleable()
             ->sortable()
@@ -710,7 +776,7 @@ trait Table
             ->label('BL Number')
             ->color('secondary')
             ->formatStateUsing(fn($state) => isModernDesign() ? 'BL: ' . $state : $state)
-            ->badge()
+            ->grow(false)
             ->badge()
             ->toggleable()
             ->searchable(isIndividual: Str::contains(request()->fullUrl(), 'orders'))
@@ -775,5 +841,20 @@ trait Table
             ->label('BL Date ii')
             ->toggleable(isToggledHiddenByDefault: true)
             ->date();
+    }
+
+    public static function showLeadTime(): TextColumn
+    {
+        return TextColumn::make('lead_time')
+            ->label('Lead Time')
+            ->badge()
+            ->state(fn($record): string => ($record->proforma_date && $record->doc?->BL_date)
+                ? (string)Carbon::parse($record->doc->BL_date)
+                    ->diffInDays($record->proforma_date)
+                : 'N/A'
+            )
+            ->tooltip('days')
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->sortable();
     }
 }

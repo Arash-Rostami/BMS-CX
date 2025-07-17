@@ -38,7 +38,7 @@ class SalesTargetChart extends ChartWidget
         $query = "
             SELECT
                 c.name AS category_name,
-                SUM(COALESCE(
+                SUM(DISTINCT COALESCE(
                     CASE
                         WHEN YEAR(d.BL_date) = ? THEN pi.quantity
                         ELSE 0

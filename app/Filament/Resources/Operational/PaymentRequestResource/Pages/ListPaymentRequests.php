@@ -8,12 +8,13 @@ use App\Models\PaymentRequest;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
+use Carbon\Carbon;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
+use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Support\Facades\FilamentView;
@@ -37,9 +38,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\View\View;
-use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
-
+use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+use pxlrbt\FilamentExcel\Columns\Column;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 
 class ListPaymentRequests extends ListRecords
@@ -80,32 +82,16 @@ class ListPaymentRequests extends ListRecords
         $this->resetPage();
     }
 
-    private function registerTableRenderHook(): void
-    {
-        FilamentView::registerRenderHook(
-            TablesRenderHook::HEADER_BEFORE,
-            fn(): View => view('filament.resources.payment-request-resource.table-tabs', ['activeTab' => $this->activeTab]),
-            scopes: self::class,
-        );
-    }
-
-
     public function toggleTabs()
     {
         $this->showTabs = !$this->showTabs;
         $this->dispatch('refreshPage');
     }
 
-
     public function setStatusFilter($filter)
     {
         $this->statusFilter = $filter === 'total' ? null : $filter;
         $this->resetPage();
-    }
-
-    private static function getOriginalTable()
-    {
-        return static::getResource()::getEloquentQuery();
     }
 
     public function toggleExtendedColumns()
@@ -146,7 +132,6 @@ class ListPaymentRequests extends ListRecords
     {
         $this->dispatch('clearTableSort');
     }
-
 
     public function getTabs(): array
     {
@@ -193,125 +178,14 @@ class ListPaymentRequests extends ListRecords
         return $tabs;
     }
 
-
-    public function getInvisibleTableHeaderActions(): array
+    private function registerTableRenderHook(): void
     {
-        $cxDep = (auth()->user()->info['department'] == 6) || isModernDesign();
-        $design = getTableDesign() == 'modern';
-
-        $actions = [
-            Action::make('Refresh Sorting')
-                ->label('Reset')
-                ->tooltip('Reset Column Orders')
-                ->color('primary')
-                ->icon('heroicon-m-receipt-refund')
-                ->action('clearTableSort'),
-
-            Action::make('Toggle Extended Info')
-                ->action('toggleExtendedColumns')
-                ->color(fn() => $this->showExtendedColumns ? 'secondary' : 'primary')
-                ->icon(fn() => $this->showExtendedColumns ? 'heroicon-c-eye-slash' : 'heroicon-o-eye')
-                ->label('Details')
-                ->tooltip(fn() => $this->showExtendedColumns ? 'Hide Extended Details' : 'Show Extended Details')
-                ->visible(!$cxDep),
-
-            Action::make('Move Actions to Start')
-                ->action('moveActionsToStart')
-                ->color('primary')
-                ->icon('heroicon-o-arrows-right-left')
-                ->iconPosition(IconPosition::After)
-                ->label('S')
-                ->tooltip('Move Actions to Start')
-                ->visible(!$this->showActionsAhead && !$design),
-
-            Action::make('Reset Actions to End')
-                ->action('resetActionsToEnd')
-                ->color('secondary')
-                ->icon('heroicon-o-arrows-right-left')
-                ->iconPosition(IconPosition::Before)
-                ->label('E')
-                ->tooltip('Reset Actions to End')
-                ->visible($this->showActionsAhead && !$design),
-
-            Action::make('Scroll Left')
-                ->label('Scroll')
-                ->tooltip('Scroll Left')
-                ->color('primary')
-                ->icon('heroicon-o-arrow-left-on-rectangle')
-                ->iconPosition(IconPosition::Before)
-                ->action('scrollLeft'),
-
-            Action::make('Scroll Right')
-                ->label('Scroll')
-                ->tooltip('Scroll Right')
-                ->color('primary')
-                ->icon('heroicon-o-arrow-right-end-on-rectangle')
-                ->iconPosition(IconPosition::After)
-                ->action('scrollRight'),
-
-            Action::make('Full Screen')
-                ->label('Go')
-                ->tooltip('Go Fullscreen')
-                ->color('primary')
-                ->icon('heroicon-s-arrows-pointing-out')
-                ->action('toggleFullScreen'),
-        ];
-
-//        if ($design) {
-//            return [ActionGroup::make($actions)];
-//        }
-
-        return $actions;
+        FilamentView::registerRenderHook(
+            TablesRenderHook::HEADER_BEFORE,
+            fn(): View => view('filament.resources.payment-request-resource.table-tabs', ['activeTab' => $this->activeTab]),
+            scopes: self::class,
+        );
     }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('New')
-                ->url(fn() => static::getResource()::getUrl('create'))
-                ->icon('heroicon-o-sparkles'),
-            ActionGroup::make(array_merge(
-                    [
-                        Actions\Action::make('Toggle Tabs')
-                            ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
-                            ->tooltip('Toggle Filter Shortcuts')
-                            ->color($this->showTabs ? 'secondary' : 'primary')
-                            ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
-                            ->action('toggleTabs'),
-                        PrintAction::make(),
-                        ExcelImportAction::make()
-                            ->color("success"),
-                    ],
-                    $this->getInvisibleTableHeaderActions() ?? []
-                )
-            )
-        ];
-    }
-
-
-    protected function getTableQuery(): Builder
-    {
-        $query = self::getOriginalTable();
-
-        if ($this->activeTab) {
-            $statusTabs = ['pending', 'processing', 'allowed', 'approved', 'rejected', 'completed'];
-            $currencyTabs = ['Rial', 'USD'];
-
-            $column = 'type_of_payment';
-
-            if (in_array($this->activeTab, $statusTabs)) {
-                $column = 'status';
-            } elseif (in_array($this->activeTab, $currencyTabs)) {
-                $column = 'currency';
-            }
-
-            $query->where($column, $this->activeTab);
-        }
-
-        return $query;
-    }
-
 
     public function table(Table $table): Table
     {
@@ -417,7 +291,16 @@ class ListPaymentRequests extends ListRecords
                         ->action(fn(Collection $records) => Admin::separateRecordsIntoDeletableAndNonDeletable($records))
                         ->deselectRecordsAfterCompletion(),
                     RestoreBulkAction::make(),
-                    ExportBulkAction::make(),
+                    ExportBulkAction::make()->exports([
+                        ExcelExport::make()
+                            ->fromTable()
+                            ->withColumns([
+                                Column::make('reference_number')->heading('ID'),
+                                Column::make('status')->heading('Status'),
+                                Column::make('deadline')
+                                    ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y')),
+                            ])
+                    ]),
                     PrintBulkAction::make(),
                 ])
             ])
@@ -468,7 +351,6 @@ class ListPaymentRequests extends ListRecords
             ]);
     }
 
-
     public function getClassicLayout(Table $table)
     {
         $cxDep = (auth()->user()->info['department'] ?? 6) == 6;
@@ -513,5 +395,127 @@ class ListPaymentRequests extends ListRecords
         array_splice($columns, 15, 0, $extendedColumnsExtra);
 
         return $table->columns($columns)->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('New')
+                ->url(fn() => static::getResource()::getUrl('create'))
+                ->icon('heroicon-o-sparkles'),
+            ActionGroup::make(array_merge(
+                    [
+                        Actions\Action::make('Toggle Tabs')
+                            ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
+                            ->tooltip('Toggle Filter Shortcuts')
+                            ->color($this->showTabs ? 'secondary' : 'primary')
+                            ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
+                            ->action('toggleTabs'),
+                        PrintAction::make(),
+                        ExcelImportAction::make()
+                            ->color("success"),
+                    ],
+                    $this->getInvisibleTableHeaderActions() ?? []
+                )
+            )
+        ];
+    }
+
+    public function getInvisibleTableHeaderActions(): array
+    {
+        $cxDep = (auth()->user()->info['department'] == 6) || isModernDesign();
+        $design = getTableDesign() == 'modern';
+
+        $actions = [
+            Action::make('Refresh Sorting')
+                ->label('Reset')
+                ->tooltip('Reset Column Orders')
+                ->color('primary')
+                ->icon('heroicon-m-receipt-refund')
+                ->action('clearTableSort'),
+
+            Action::make('Toggle Extended Info')
+                ->action('toggleExtendedColumns')
+                ->color(fn() => $this->showExtendedColumns ? 'secondary' : 'primary')
+                ->icon(fn() => $this->showExtendedColumns ? 'heroicon-c-eye-slash' : 'heroicon-o-eye')
+                ->label('Details')
+                ->tooltip(fn() => $this->showExtendedColumns ? 'Hide Extended Details' : 'Show Extended Details')
+                ->visible(!$cxDep),
+
+            Action::make('Move Actions to Start')
+                ->action('moveActionsToStart')
+                ->color('primary')
+                ->icon('heroicon-o-arrows-right-left')
+                ->iconPosition(IconPosition::After)
+                ->label('S')
+                ->tooltip('Move Actions to Start')
+                ->visible(!$this->showActionsAhead && !$design),
+
+            Action::make('Reset Actions to End')
+                ->action('resetActionsToEnd')
+                ->color('secondary')
+                ->icon('heroicon-o-arrows-right-left')
+                ->iconPosition(IconPosition::Before)
+                ->label('E')
+                ->tooltip('Reset Actions to End')
+                ->visible($this->showActionsAhead && !$design),
+
+            Action::make('Scroll Left')
+                ->label('Scroll')
+                ->tooltip('Scroll Left')
+                ->color('primary')
+                ->icon('heroicon-o-arrow-left-on-rectangle')
+                ->iconPosition(IconPosition::Before)
+                ->action('scrollLeft'),
+
+            Action::make('Scroll Right')
+                ->label('Scroll')
+                ->tooltip('Scroll Right')
+                ->color('primary')
+                ->icon('heroicon-o-arrow-right-end-on-rectangle')
+                ->iconPosition(IconPosition::After)
+                ->action('scrollRight'),
+
+            Action::make('Full Screen')
+                ->label('Go')
+                ->tooltip('Go Fullscreen')
+                ->color('primary')
+                ->icon('heroicon-s-arrows-pointing-out')
+                ->action('toggleFullScreen'),
+        ];
+
+//        if ($design) {
+//            return [ActionGroup::make($actions)];
+//        }
+
+        return $actions;
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        $query = self::getOriginalTable();
+
+        if ($this->activeTab) {
+            $statusTabs = ['pending', 'processing', 'allowed', 'approved', 'rejected', 'completed'];
+            $currencyTabs = ['Rial', 'USD'];
+
+            $column = 'type_of_payment';
+
+            if (in_array($this->activeTab, $statusTabs)) {
+                $column = 'status';
+            } elseif (in_array($this->activeTab, $currencyTabs)) {
+                $column = 'currency';
+            }
+
+            $query->where($column, $this->activeTab);
+        }
+
+        return $query;
+    }
+
+    private static function getOriginalTable()
+    {
+        return static::getResource()::getEloquentQuery();
     }
 }

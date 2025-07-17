@@ -56,6 +56,7 @@ trait Form
             ->live()
             ->inlineLabel(false)
             ->default('pending')
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->disableOptionWhen(fn(string $value, Model $record): bool => PaymentRequestPolicy::updateStatus($value, $record))
             ->label(fn() => new HtmlString('<span class="grayscale">🛑 </span><span class="text-primary-500 font-normal">Status</span>'));
     }
@@ -77,6 +78,7 @@ trait Form
 //            ->disabled(function () {
 //                return isset(auth()->user()->info['department']) && auth()->user()->info['department'] !== '';
 //            })
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->required()
             ->label(fn() => new HtmlString('<span class="grayscale">🏟️ </span><span class="text-primary-500 font-normal">Department</span>'));
     }
@@ -94,6 +96,7 @@ trait Form
             ->disabled(fn(Get $get) => $get('department_id') == 6)
             ->default(auth()->user()->info['department'] ?? '')
             ->hidden(fn(Get $get) => $get('department_id') == 6)
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">↗️  </span><span class="text-primary-500 font-normal">Cost Center</span>'));
     }
 
@@ -116,6 +119,7 @@ trait Form
             ->disabled(fn(Get $get) => $get('department_id') == 6)
             ->hidden(fn(Get $get) => $get('department_id') == 6)
             ->required()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">🎯</span><span class="text-primary-500 font-normal">Reason for Allocation</span>'));
     }
 
@@ -127,6 +131,7 @@ trait Form
         return Select::make('reason_for_payment')
             ->options(Allocation::reasonsForDepartment('cx'))
             ->live()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->required(fn(Get $get) => $get('department_id') == 6)
             ->label(fn() => new HtmlString('<span class="grayscale">⭕  </span><span class="text-primary-500 font-normal">Allocation for</span>'));
     }
@@ -143,6 +148,7 @@ trait Form
             ->disableAllToolbarButtons()
             ->hidden(fn(Get $get): bool => $get('reason_for_payment') != 26)
             ->columnSpanFull()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->placeholder('Please specify the purpose of payment request');
     }
 
@@ -154,6 +160,7 @@ trait Form
         return MarkdownEditor::make('description')
             ->label(fn() => new HtmlString('<span class="grayscale">ℹ️ </span><span class="text-primary-500 font-normal">Notes</span>'))
             ->maxLength(65535)
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->disableAllToolbarButtons()
             ->placeholder('optional')
             ->columnSpanFull();
@@ -213,6 +220,7 @@ trait Form
                     };
                 },
             ])
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->hint(fn(Get $get) => is_numeric($get('requested_amount')) ? showDelimiter($get('requested_amount'), $get('currency')) : $get('requested_amount'));
     }
 
@@ -233,6 +241,7 @@ trait Form
             ->required(fn(Get $get) => $get('currency') != 'Rial' && $get('department_id') != 8)
             ->visible(fn(Get $get) => in_array($get('type_of_payment'), ['partial', 'advance', 'balance']))
             ->placeholder('Inclusive of the payable amount')
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->hint(fn(Get $get) => is_numeric($get('total_amount')) ? showDelimiter($get('total_amount'), $get('currency')) : $get('total_amount'));
     }
 
@@ -249,6 +258,7 @@ trait Form
             })
             ->afterStateUpdated(fn($state, Set $set) => ($state != 'Rial') ? $set('extra.paymentMethod', 'bank_account') : $set('extra.paymentMethod', ''))
             ->required()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">💱  </span><span class="text-primary-500 font-normal">Currency</span>'));
     }
 
@@ -266,6 +276,7 @@ trait Form
                 'after_or_equal' => '🚫 The deadline cannot be in the past. Please select today or a future date.',
             ])
             ->closeOnDateSelection()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->minDate(fn($operation, Get $get) => $operation == 'create' ? now()->subDays(1) : null)
             ->native(false);
     }
@@ -280,6 +291,7 @@ trait Form
             ->options(fn(Get $get) => $get('type_of_payment') == 'advance' ? ['supplier' => 'Supplier'] : ['supplier' => 'Supplier', 'contractor' => 'Contractor'])
             ->live()
             ->columnSpan(1)
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->default('supplier')
             ->required(fn(Get $get) => $get('department_id') == 6);
     }
@@ -310,6 +322,7 @@ trait Form
                     $livewire->dispatch('triggerNext');
                 }
             })
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->required();
     }
 
@@ -322,6 +335,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">📑️ </span><span class="text-primary-500 font-normal">Case/Contract No.</span>'))
             ->placeholder('Optional for tracking')
             ->tooltip('Add a Case/Project number for improved searchability and more detailed payment notifications within BMS.')
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->columnSpan(1);
     }
 
@@ -338,6 +352,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"> 🤝</span><span class="text-primary-500 font-normal">Supplier</span>'))
             ->relationship('supplier', 'name')
             ->searchable()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->createOptionForm([
                 TextInput::make('name')
                     ->required()
@@ -368,6 +383,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">🤝 </span><span class="text-primary-500 font-normal">Contractor</span>'))
             ->relationship('contractor', 'name')
             ->searchable()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->createOptionForm([
                 TextInput::make('name')
                     ->required()
@@ -399,6 +415,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"> 🤝</span><span class="text-primary-500 font-normal">Beneficiary</span>'))
             ->searchable()
             ->live()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->afterStateUpdated(function ($state, Set $set) {
                 $value = $state ? Beneficiary::find($state)?->name : null;
                 $set('recipient_name', $value);
@@ -427,6 +444,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">✒️ </span><span class="text-primary-500 font-normal">Recipient</span>'))
             ->placeholder('If same, enter the beneficiary\'s name again')
             ->required()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->maxLength(255);
     }
 
@@ -439,6 +457,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"> 📍</span><span class="text-primary-500 font-normal">Recipient Address</span>'))
             ->maxLength(65535)
             ->disableAllToolbarButtons()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->placeholder('optional');
     }
 
@@ -452,6 +471,7 @@ trait Form
             ->placeholder('')
             ->required()
             ->maxLength(255)
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->reactive();
     }
 
@@ -464,6 +484,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">📍</span><span class="text-primary-500 font-normal">Bank Address</span>'))
             ->maxLength(65535)
             ->disableAllToolbarButtons()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->placeholder('optional');
     }
 
@@ -489,6 +510,7 @@ trait Form
             })
             ->reactive()
             ->required()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->afterStateUpdated(fn($state, Set $set, Get $get) => self::fetchBankAccountDetails($get, $state, $set));
     }
 
@@ -504,6 +526,7 @@ trait Form
             ->validationMessages([
                 'regex' => '🚫 The SHEBA number must be exactly 24 digits long and contain only digits.',
             ])
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->visible(fn($get) => $get('extra.paymentMethod') === 'sheba');
     }
 
@@ -531,6 +554,7 @@ trait Form
                 'max' => '🚫 The card number must be exactly 16 digits long, exclusive of dashes.',
             ])
             ->reactive()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->visible(fn($get) => $get('extra.paymentMethod') === 'card_transfer');
     }
 
@@ -544,6 +568,7 @@ trait Form
             ->placeholder('Enter bank account number')
             ->formatStateUsing(fn($state, $operation, $record) => ($operation !== 'create' && $record) ? $record->account_number : null)
             ->columnSpanFull()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->visible(fn($get) => $get('extra.paymentMethod') === 'bank_account');
     }
 
@@ -556,6 +581,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">Swift</span>'))
             ->placeholder('optional')
             ->visible(fn(Get $get) => $get('currency') != 'Rial')
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->maxLength(255);
     }
 
@@ -568,6 +594,7 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">IBAN</span>'))
             ->placeholder('optional')
             ->visible(fn(Get $get) => $get('currency') != 'Rial')
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->maxLength(255);
     }
 
@@ -581,6 +608,7 @@ trait Form
             ->placeholder('')
             ->placeholder('optional')
             ->visible(fn(Get $get) => $get('currency') != 'Rial')
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->maxLength(255);
     }
 
@@ -595,6 +623,7 @@ trait Form
             ->numeric()
             ->visible(fn(Get $get) => $get('currency') != 'Rial')
             ->placeholder('optional')
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->maxLength(255);
     }
 
@@ -613,6 +642,7 @@ trait Form
             })
             ->visible(fn(Get $get) => $get('type_of_payment') != 'advance')
             ->columnSpan(2)
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">🛒 </span><span class="text-primary-500 font-normal">Pro forma Invoice</span>'));
     }
 
@@ -639,6 +669,7 @@ trait Form
                 $set('requested_amount', $details['requested']);
                 $set('hidden_proforma_number', trim($details['number']));
             })
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->live()
             ->getOptionLabelFromRecordUsing(fn(Model $record) => $record->showSearchResult())
             ->searchingMessage('⌕')
@@ -673,6 +704,7 @@ trait Form
             ->afterStateUpdated(fn($state, Set $set) => ($state != 1) ? $set('type_of_payment', 'balance') : $set('type_of_payment', 'advance'))
             ->hidden(fn(Get $get) => $get('department_id') != 6)
             ->live()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->columnSpan(1)
             ->required(fn($get) => $get('type_of_payment') != 'advance');
     }
@@ -692,6 +724,7 @@ trait Form
             ->visible(fn(Get $get) => $get('extra.collectivePayment') == 0 && $get('type_of_payment') != 'advance')
             ->disabled(fn($operation) => $operation == 'edit')
             ->live()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">🔢 </span><span class="text-primary-500 font-normal">Order Detail</span>'))
             ->validationMessages([
                 'required_if' => 'This field is required when the payment scope is based on the part.'
@@ -713,6 +746,7 @@ trait Form
                     $set('requested_amount', $details['requested']);
                 }
             })
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->live()
             ->label(fn() => new HtmlString('<span class="grayscale">🔢 </span><span class="text-primary-500 font-normal">Order</span>'))
             ->columnSpan(2)
@@ -733,6 +767,7 @@ trait Form
             ->offIcon('heroicon-o-no-symbol')
             ->offColor('gray')
             ->columnSpan(2)
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->live();
     }
 
@@ -748,6 +783,7 @@ trait Form
                 'order' => 'Order',
             ])
             ->live()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->required()
             ->columnSpan(1);
     }
@@ -777,6 +813,7 @@ trait Form
             )
             ->live()
             ->required()
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->columnSpan(1)
             ->searchable();
     }
@@ -927,5 +964,10 @@ trait Form
     {
         return Hidden::make('record_type')
             ->default('payment_request');
+    }
+
+    protected static function isEditingDisabled($operation = null): bool
+    {
+        return $operation === 'edit' && auth()->user()->role == 'partner';
     }
 }

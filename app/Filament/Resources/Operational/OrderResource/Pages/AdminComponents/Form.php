@@ -9,19 +9,17 @@ use App\Models\Order;
 use App\Models\Packaging;
 use App\Models\PortOfDelivery;
 use App\Models\ProformaInvoice;
+use App\Models\PurchaseStatus;
 use App\Models\ShippingLine;
 use App\Models\Supplier;
-use App\Models\Tag;
 use App\Rules\EnglishAlphabet;
 use App\Rules\NoMultipleProjectNumbers;
 use App\Rules\UniqueTitleInOrder;
 use Filament\Forms\Components\Actions\Action;
-use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Livewire;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -33,8 +31,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Wallo\FilamentSelectify\Components\ToggleButton;
-use Livewire\Component as FormLivewire;
-use function PHPUnit\Framework\isEmpty;
 
 
 trait Form
@@ -223,8 +219,12 @@ trait Form
     {
         return Select::make('purchase_status_id')
             ->label(fn() => new HtmlString('<span class="grayscale">🚢 </span><span class="text-primary-500 font-normal">Shipment</span>'))
-            ->relationship('purchaseStatus', 'name')
-            ->live()
+            ->options(
+                PurchaseStatus::ordered()
+                    ->pluck('name', 'id')
+                    ->toArray()
+            )
+            ->searchable()
             ->required();
     }
 

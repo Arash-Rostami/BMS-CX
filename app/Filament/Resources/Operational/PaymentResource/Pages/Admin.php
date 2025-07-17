@@ -7,19 +7,19 @@ use App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents\For
 use App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents\Table;
 use App\Models\PaymentRequest;
 use App\Models\SupplierSummary;
-use Filament\Notifications\Actions\Action as NotificationAction;
 use App\Services\Notification\PaymentService;
 use Carbon\Carbon;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Component as Livewire;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Illuminate\Database\Eloquent\Builder as QueryBuilder;
-use Illuminate\Support\Collection;
 
 
 class Admin
@@ -34,7 +34,6 @@ class Admin
     {
         return function (TemporaryUploadedFile $file, Get $get, ?Model $record, Livewire $livewire): string {
             $name = $get('name') ?? $record->name;
-
             $paymentRequest = isset($livewire->data['paymentRequests']['id'])
                 ? (is_array($livewire->data['paymentRequests']['id'])
                     ? implode("-", $livewire->data['paymentRequests']['id'])
@@ -44,12 +43,8 @@ class Admin
             // File extension
             $extension = $file->getClientOriginalExtension();
 
-            // Unique identifier
-            $timestamp = Carbon::now()->format('YmdHis');
-            $randomString = Str::random(5);
-
             // New filename with extension
-            $newFileName = "P-{$paymentRequest}-{$timestamp}-{$randomString}-{$name}";
+            $newFileName = sprintf('P-%s-%s-%s-%s', $paymentRequest, now()->format('YmdHis'), Str::random(5), $name);
 
             // Sanitizing the file name
             return Str::slug($newFileName, '-') . ".{$extension}";
@@ -63,9 +58,7 @@ class Admin
 
         $record['records'] = $records;
 
-        $service = new PaymentService();
-
-        $service->notifyAccountants($record, 'delete');
+        (new PaymentService())->notifyAccountants($record, 'delete');
     }
 
 

@@ -2,11 +2,19 @@
 
 namespace App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents;
 
+use App\Models\Buyer;
+use App\Models\Category;
+use App\Models\Grade;
 use App\Models\Order;
+use App\Models\PortOfDelivery;
+use App\Models\Product;
+use App\Models\PurchaseStatus;
+use App\Models\Supplier;
 use App\Models\Tag;
 use App\Services\Traits\Calculator;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\Filter as FilamentFilter;
 use Filament\Tables\Filters\QueryBuilder;
 use Filament\Tables\Filters\QueryBuilder\Constraints\Constraint;
 use Filament\Tables\Filters\QueryBuilder\Constraints\DateConstraint;
@@ -19,8 +27,6 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Grouping\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Filament\Tables\Filters\Filter as FilamentFilter;
-use Illuminate\Support\Facades\Log;
 
 
 trait Filter
@@ -110,11 +116,50 @@ trait Filter
     public static function filterBasedOnQuery(): QueryBuilder
     {
         return QueryBuilder::make()
-            ->constraintPickerWidth('2xl')
             ->constraints([
                 SelectConstraint::make('order_status')
+                    ->label('Status')
+                    ->icon('heroicon-o-flag')
                     ->multiple()
                     ->options(self::$statusTexts),
+                SelectConstraint::make('purchaseStatus.id')
+                    ->label('Stage')
+                    ->icon('heroicon-o-clipboard-document-list')
+                    ->multiple()
+                    ->options(fn() => PurchaseStatus::ordered()->pluck('name', 'id')),
+                SelectConstraint::make('party.supplier.id')
+                    ->label('Supplier')
+                    ->icon('heroicon-o-arrow-up-on-square-stack')
+                    ->options(fn() => Supplier::orderBy('name')->pluck('name', 'id'))
+                    ->multiple(),
+                SelectConstraint::make('party.buyer.id')
+                    ->label('Buyer')
+                    ->icon('heroicon-o-arrow-down-on-square-stack')
+                    ->options(fn() => Buyer::orderBy('name')->pluck('name', 'id'))
+                    ->multiple(),
+                SelectConstraint::make('category_id')
+                    ->label('Category')
+                    ->icon('heroicon-o-rectangle-stack')
+                    ->options(fn() => Category::orderBy('name')->pluck('name', 'id'))
+                    ->multiple(),
+                SelectConstraint::make('product_id')
+                    ->label('Product')
+                    ->icon('heroicon-o-squares-2x2')
+                    ->options(fn() => Product::orderBy('name')->pluck('name', 'id'))
+                    ->multiple(),
+                SelectConstraint::make('grade_id')
+                    ->label('Grade')
+                    ->icon('heroicon-m-ellipsis-horizontal-circle')
+                    ->options(fn() => Grade::orderBy('name')->pluck('name', 'id'))
+                    ->multiple(),
+                SelectConstraint::make('logistic.portOfDelivery.id')
+                    ->label('Port of Delivery')
+                    ->icon('heroicon-o-truck')
+                    ->options(fn() => PortOfDelivery::orderBy('name')->pluck('name', 'id'))
+                    ->multiple(),
+                TextConstraint::make('proforma_number')
+                    ->label('Proforma Number')
+                    ->icon('heroicon-s-paper-clip'),
                 TextConstraint::make('invoice_number')
                     ->label('Contract Number'),
                 NumberConstraint::make('orderDetail.buying_price')
@@ -137,9 +182,12 @@ trait Filter
                 DateConstraint::make('proforma_date')
                     ->label('Proforma Date')
                     ->icon('heroicon-o-calendar'),
-                DateConstraint::make('created_at')
-                    ->label('Creation Time')
-                    ->icon('heroicon-o-clock'),
+                DateConstraint::make('doc.bl_date')
+                    ->label('BL Date')
+                    ->icon('heroicon-o-calendar'),
+                DateConstraint::make('doc.declaration_date')
+                    ->label('Declaration Date')
+                    ->icon('heroicon-o-calendar'),
                 DateConstraint::make('logistic.extra->loading_startline')
                     ->icon('heroicon-m-calendar')
                     ->label('Loading Start Date'),
@@ -153,6 +201,9 @@ trait Filter
                 DateConstraint::make('logistic.extra->eta')
                     ->icon('heroicon-m-map')
                     ->label('ETA'),
+                DateConstraint::make('created_at')
+                    ->label('Creation Time')
+                    ->icon('heroicon-o-clock'),
                 Constraint::make('id')
                     ->label('With Payment')
                     ->icon('heroicon-o-exclamation-circle')
@@ -166,7 +217,8 @@ trait Filter
                             )),
                     ]),
             ])
-            ->constraintPickerColumns(3);
+            ->constraintPickerWidth('5xl')
+            ->constraintPickerColumns(5);
     }
 
     // GROUP_BY FILTER/SORTING
@@ -204,23 +256,25 @@ trait Filter
 
     public static function groupByInvoiceNumber(): Group
     {
-        return Group::make('invoice_number')->label('Project No')->collapsible()
+        return Group::make('invoice_number')->label('Project/Contract No')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record) => $record->invoice_number ?? 'N/A')
-            ->getKeyFromRecordUsing(fn(Model $record) => $record->invoice_number != null ? $record->invoice_number : $record->proforma_number)
+            ->getKeyFromRecordUsing(fn(Model $record) => $record->invoice_number ?? $record->proforma_number)
             ->getDescriptionFromRecordUsing(function (Model $record) {
-                $orders['paymentRequestCount'] = count($record->paymentRequests) ?? 0;
+//                $orders['paymentRequestCount'] = count($record->paymentRequests) ?? 0;
                 $orders = Order::aggregateOrderGroupTotals($record);
                 return sprintf(
-                    " 🔶 Tot Quant: %s%s 🔶 Tot Pay Rqsts: %s%s 🔶  Misc Pay Rqsts: %s 🔶 Pay Rqst Cnt: %s 🔶 Pays Cnt: %s 🔶 Ship Prt: %s 🔶 Dys Elpsd: %s",
+                    "Rlsd Qty: %s ✦ Shpd Qty: %s ✦ Tot Qty: %s%s ✦ Tot Pay Rqsts: %s%s ✦ Misc Pay Rqsts: %s ✦ Pay Rqst Cnt: %s ✦ Pays Cnt: %s ✦ Ship Prt: %s ✦ Avg Ld Tm: %s days ✦ Dys Elpsd: %s",
+                    $orders['releasedQuantity'],
+                    $orders['shippedQuantity'],
                     $orders['quantity'],
                     $orders['quantityBalance'],
                     $orders['payment'],
                     $orders['paymentRequestBalance'],
                     $orders['totalOfOtherPaymentRequests'],
-//                    $orders['totalPayment'],
                     $orders['totalPaymentRequests'],
                     $orders['totalPayments'],
                     $orders['shipmentPart'],
+                    $orders['averageLeadTime'],
                     $orders['daysPassed'],
                 );
             });
