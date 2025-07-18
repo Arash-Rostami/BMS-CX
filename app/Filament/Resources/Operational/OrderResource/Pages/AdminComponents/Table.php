@@ -166,6 +166,21 @@ trait Table
             ->sortable();
     }
 
+
+    /**
+     * @return TextColumn
+     */
+    public static function showTimeStamp(): TextColumn
+    {
+        return TextColumn::make('created_at')
+            ->label('Creation Time')
+            ->icon('heroicon-s-calendar-days')
+            ->dateTime()
+            ->sortable()
+            ->alignRight()
+            ->toggleable(isToggledHiddenByDefault: true);
+    }
+
     /**
      * @return TextColumn
      */

@@ -14,8 +14,6 @@ use App\Services\Notification\SMS\PaymentMessage;
 use App\Services\Notification\SMS\PaymentRequestMessage;
 use App\Services\Notification\SMS\ProformaInvoiceMessage;
 use App\Services\RetryableEmailService;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 
 abstract class BaseService
 {
@@ -101,7 +99,6 @@ abstract class BaseService
         }
     }
 
-
     /**
      * Map notification type to activity preference key.
      */
@@ -146,10 +143,6 @@ abstract class BaseService
      */
     protected function fetchSubscribedUsers($record)
     {
-//        $cacheKey = 'subscribed_users:' . get_class($record) . ':' . $record->id;
-//
-//        return Cache::remember($cacheKey, now()->addMinutes(30), function () use ($record) {
-
         $subscriptions = NotificationSubscription::where('notifiable_type', get_class($record))
             ->whereIn('notifiable_id', [0])
             ->get();
@@ -168,9 +161,6 @@ abstract class BaseService
                 ||
                 in_array($user->department, $recordCostCenters);
         })->unique('id');
-
-
-//        });
     }
 
     /**

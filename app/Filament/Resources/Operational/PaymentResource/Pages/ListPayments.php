@@ -432,7 +432,7 @@ class ListPayments extends ListRecords
                 Admin::showTransactionID(),
                 Admin::showDate(),
                 Admin::showCreator(),
-                TableObserver::showMissingData(-3),
+                TableObserver::showMissingData(0,1),
                 Admin::showTimeStamp()
             ])->striped();
     }

@@ -379,8 +379,10 @@ class ListOrders extends ListRecords
                 Admin::showOrderNumber(),
                 Admin::showChangeOfDestination(),
                 ...$showAllDocs,
+                TableObserver::showMissingDataWithRel(-6),
+                TableObserver::showCompletionPercentage(true, 6),
                 Admin::showCreator(),
-                TableObserver::showMissingDataWithRel(-12),
+                Admin::showTimeStamp()
             ]);
     }
 

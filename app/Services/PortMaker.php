@@ -6,59 +6,60 @@ use Illuminate\Support\Facades\Cache;
 
 class PortMaker
 {
-    protected static array $iranianPorts = [
-        "Bandar Abbas",
-        "Khorramshahr",
+    protected const IRANIAN_PORTS = [
         "Abadan",
+        "Assaluyeh",
+        "Bandar Abbas",
+        "Bahonar",
         "Chabahar",
         "Imam Khomeini",
-        "Assaluyeh",
-        "Shahid Rajaee",
-        "Bahonar",
+        "Isfahan",
+        "Khorramshahr",
         "Lengeh",
-        "Tehran",
-        "Isfahan"
+        "Shahid Rajaee",
+        "Tehran"
     ];
 
-    protected static array $chinesePorts = [
+    protected const CHINESE_PORTS = [
+        "Dalian",
+        "Fuzhou",
+        "Guangzhou",
+        "Hong Kong",
+        "Jiangyin",
+        "Lianyungang",
+        "Nantong",
+        "Ningbo-Zhoushan",
+        "Qingdao",
+        "Quanzhou",
+        "Rizhao",
         "Shanghai",
         "Shenzhen",
-        "Ningbo-Zhoushan",
-        "Guangzhou",
-        "Qingdao",
-        "Tianjin",
-        "Dalian",
-        "Xiamen",
-        "Hong Kong",
         "Suzhou",
-        "Lianyungang",
-        "Rizhao",
-        "Nantong",
-        "Zhoushan",
-        "Quanzhou",
+        "Taicang",
         "Tangshan",
-        "Fuzhou",
-        "Yantai",
-        "Jiangyin",
+        "Tianjin",
         "Weihai",
-        "Taicang"
+        "Xiamen",
+        "Yantai",
+        "Zhoushan"
     ];
 
     public static function getIranianPorts(): array
     {
-        return Cache::remember('iranian_ports', 600, function () {
-            $sortedPorts = self::$iranianPorts;
-            sort($sortedPorts);
-            return $sortedPorts;
-        });
+        return self::getCachedPorts('iranian_ports', self::IRANIAN_PORTS);
     }
 
     public static function getChinesePorts(): array
     {
-        return Cache::remember('chinese_ports', 600, function () {
-            $sortedPorts = self::$chinesePorts;
-            sort($sortedPorts);
-            return $sortedPorts;
+        return self::getCachedPorts('chinese_ports', self::CHINESE_PORTS);
+    }
+
+    protected static function getCachedPorts(string $cacheKey, array $ports): array
+    {
+        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($ports) {
+            $sorted = $ports;
+            sort($sorted);
+            return $sorted;
         });
     }
 }

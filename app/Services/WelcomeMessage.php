@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Arr;
+
 class WelcomeMessage
 {
     private array $messages = [
@@ -142,7 +144,6 @@ class WelcomeMessage
             default => 'default',
         };
 
-        $messages = $this->messages[$period] ?? $this->messages['default'];
-        return $messages[array_rand($messages)];
+        return Arr::random($this->messages[$period] ?? $this->messages['default']);
     }
 }

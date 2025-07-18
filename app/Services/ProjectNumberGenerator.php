@@ -2,48 +2,55 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
+use App\Models\Order;
+use App\Models\ProformaInvoice;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Request;
-use Illuminate\Support\Str;
 
 class ProjectNumberGenerator
 {
-    protected static array $modelMap = [
-        'proforma-invoices' => ['model' => 'ProformaInvoice', 'prefix' => 'CT', 'field' => 'contract_number'],
-        'orders' => ['model' => 'Order', 'prefix' => 'PN', 'field' => 'invoice_number'],
+    protected static array $map = [
+        'proforma-invoices' =>
+            ['model' => ProformaInvoice::class, 'prefix' => 'CT', 'field' => 'contract_number'],
+        'orders' =>
+            ['model' => Order::class, 'prefix' => 'PN', 'field' => 'invoice_number'],
     ];
 
     public static function generate(): string
     {
-        $now = Carbon::now();
-        $baseNumber = $now->format('y') . $now->format('md');
+        $dateCode = now()->format('ymd');
+        $segment = Request::segment(1);
+        $data = static::$map[$segment] ?? null;
 
-        $modelData = self::getModelDataFromUrl(Request::url());
-        if (!$modelData) {
-            return "ERROR-{$baseNumber}-URL";
+        if (!$data) {
+            return "ERROR-{$dateCode}-URL";
         }
 
-        $modelClass = "App\\Models\\{$modelData['model']}";
+        [$modelClass, $prefix, $field] = [
+            $data['model'],
+            $data['prefix'],
+            $data['field'],
+        ];
+
         if (!class_exists($modelClass)) {
-            return "ERROR-{$baseNumber}-MODEL";
+            return "ERROR-{$dateCode}-MODEL";
         }
 
-        $generatedNumber = "{$modelData['prefix']}-{$baseNumber}";
-        $existingCount = DB::table((new $modelClass)->getTable())
-            ->whereRaw("{$modelData['field']} LIKE ?", ["{$generatedNumber}%"])
-            ->count();
+        $base = "{$prefix}-{$dateCode}";
+        $table = (new $modelClass)->getTable();
 
-        return $existingCount > 0 ? "{$generatedNumber}-" . ($existingCount + 1) : $generatedNumber;
-    }
+        $last = DB::table($table)
+            ->where($field, 'like', "{$base}%")
+            ->orderByDesc($field)
+            ->value($field);
 
-    private static function getModelDataFromUrl(string $url): ?array
-    {
-        foreach (self::$modelMap as $key => $data) {
-            if (Str::contains($url, $key)) {
-                return $data;
-            }
+        if (!$last) {
+            return $base;
         }
-        return null;
+
+        $parts = explode('-', $last);
+        $seq = (count($parts) < 3) ? 1 : intval(end($parts)) + 1;
+
+        return "{$base}-{$seq}";
     }
 }

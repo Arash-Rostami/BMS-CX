@@ -31,83 +31,77 @@ class AttachmentDeletionService
 
     public static function validateAttachmentExists(Repeater $component, $item, $operation, Action $action, $record)
     {
-        $itemData = $component->getItemState($item);
 
-        if ($operation != 'edit' || $itemData['file_path'] == null) {
-            return new HtmlString("<span>Of course, no file found!</span>");
-        }
+        $data = $component->getItemState($item);
 
         if ($operation != 'edit') {
-            return new HtmlString("<span>Attachment not found.</span>");
+            return new HtmlString('<span>Attachment not found.</span>');
         }
 
-        $attachment = Attachment::find($itemData['id']);
+        if (empty($data['file_path'])) {
+            return new HtmlString('<span>Of course, no file found!</span>');
+        }
+
+        $attachment = Attachment::find($data['id']);
 
         if (!$attachment) {
-            return new HtmlString("<span>Attachment not found.</span>");
+            return new HtmlString('<span>Attachment not found.</span>');
         }
 
-        $attachmentService = new AttachmentDeletionService($attachment, $record);
-
-        return $attachmentService->generateDeletionConfirmationMessage();
-    }
-
-    public static function removeAttachment(Repeater $component, $item): void
-    {
-        $allItems = $component->getState();
-
-        $itemIdToRemove = $item;
-
-        if (!isset($allItems[$itemIdToRemove])) return;
-
-        $attachment = Attachment::find($allItems[$itemIdToRemove]['id']);
-
-        if ($attachment) {
-            $attachment->delete();
-        }
-
-        unset($allItems[$itemIdToRemove]);
-        $component->state(array_values($allItems));
+        return (new AttachmentDeletionService($attachment, $record))
+            ->generateDeletionConfirmationMessage();
     }
 
     public function generateDeletionConfirmationMessage()
     {
-        $allReferenceNumbers = [];
+        $refs = [];
         $relations = ['proformaInvoice', 'order', 'paymentRequest'];
+        $related = Attachment::getRelatedRecords($this->attachment, $relations);
+        $refs = $this->collectRelatedReferenceNumbers($relations, $related, $refs);
 
-        $relatedAttachments = Attachment::getRelatedRecords($this->attachment, $relations);
-
-        $allReferenceNumbers = $this->collectRelatedReferenceNumbers($relations, $relatedAttachments, $allReferenceNumbers);
-
-        if (!empty($allReferenceNumbers)) {
-            $fullMessage = implode('<br><br>', $allReferenceNumbers);
-            $fullMessage .= "<br><br>Are you still sure you'd like to delete it?";
-            return new HtmlString($fullMessage);
+        if (!empty($refs)) {
+            $message = implode('<br><br>', $refs) . '<br><br>Are you still sure you\'d like to delete it?';
+        } else {
+            $message = 'Are you sure you\'d like to delete this attachment?';
         }
 
-        return "Are you sure you'd like to delete this attachment?";
+        return new HtmlString($message);
     }
 
-    protected function collectRelatedReferenceNumbers(array $relations, \Illuminate\Database\Eloquent\Collection|array|\Illuminate\Support\Collection $relatedAttachments, array $allReferenceNumbers): array
+    protected function collectRelatedReferenceNumbers($relations, $relatedAttachments, $allReferenceNumbers = [])
     {
+        $attachments = collect($relatedAttachments);
+
         foreach ($relations as $relation) {
-
             $mapping = $this->relationMappings[$relation];
-            $this->relatedReferenceNumbers = [];
 
-            foreach ($relatedAttachments as $relatedAttachment) {
-                if ($relatedAttachment->$relation) {
-                    $this->relatedReferenceNumbers[] = $relatedAttachment->$relation->reference_number;
-                }
-            }
+            $numbers = $attachments
+                ->pluck("{$relation}.reference_number")
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
 
-            $uniqueReferenceNumbers = array_unique($this->relatedReferenceNumbers);
-
-            if (!empty($uniqueReferenceNumbers)) {
-                $referenceNumbersList = implode(', ', $uniqueReferenceNumbers);
-                $allReferenceNumbers[] = "This attachment is used in the following {$mapping['entity_name']}(s):<br>{$referenceNumbersList}.";
+            if (!empty($numbers)) {
+                $list = implode(', ', $numbers);
+                $allReferenceNumbers[] = "This attachment is used in the following {$mapping['entity_name']}(s):<br>{$list}.";
             }
         }
+
         return $allReferenceNumbers;
+    }
+
+    public static function removeAttachment(Repeater $component, $index): void
+    {
+        $items = $component->getState();
+
+        if (!isset($items[$index])) {
+            return;
+        }
+
+        Attachment::find($items[$index]['id'])?->delete();
+
+        unset($items[$index]);
+        $component->state(array_values($items));
     }
 }

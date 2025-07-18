@@ -3,17 +3,12 @@
 use App\Services\Traits\BpCredentials;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
+use Illuminate\Support\Str;
+
 
 function capitalizeFirstLetters(string $text): string
 {
-    $words = explode(' ', strtolower($text));
-    $processedWords = [];
-
-    foreach ($words as $word) {
-        $processedWords[] = ucfirst($word);
-    }
-
-    return implode(' ', $processedWords);
+    return ucwords(strtolower($text));
 }
 
 function configureIfAppIsOnline()
@@ -23,30 +18,38 @@ function configureIfAppIsOnline()
 
 function formatNumber(int $number)
 {
-    if ($number < 1000) {
-        return (string)Number::format($number, 0);
+    if ($number < 1_000) {
+        return Number::format($number, 0);
     }
 
-    if ($number < 1000000) {
-        return Number::format($number / 1000, 2) . 'k';
-    }
+    $suffixes = [
+        1_000_000 => 'm',
+        1_000 => 'k',
+    ];
 
-    return Number::format($number / 1000000, 2) . 'm';
+    foreach ($suffixes as $limit => $suffix) {
+        if ($number >= $limit) {
+            return Number::format($number / $limit, 2) . $suffix;
+        }
+    }
 }
 
 function formatCurrency($amount): string
 {
-    if ($amount >= 1_000_000_000_000) {
-        return round($amount / 1_000_000_000_000, 2) . 'T';
-    } elseif ($amount >= 1_000_000_000) {
-        return round($amount / 1_000_000_000, 2) . 'B';
-    } elseif ($amount >= 1_000_000) {
-        return round($amount / 1_000_000, 2) . 'M';
-    } elseif ($amount >= 1_000) {
-        return round($amount / 1_000, 2) . 'K';
+    $units = [
+        1_000_000_000_000 => 'T',
+        1_000_000_000 => 'B',
+        1_000_000 => 'M',
+        1_000 => 'K',
+    ];
+
+    foreach ($units as $divisor => $suffix) {
+        if ($amount >= $divisor) {
+            return round($amount / $divisor, 2) . $suffix;
+        }
     }
 
-    return number_format($amount, 2);
+    return number_format($amount, 2, '.', ',');
 }
 
 function formatHTML(string $text, array $classes = [])
@@ -64,8 +67,8 @@ function getCurrencySymbols($currency)
         'Yuan' => '¥',
         'Dirham' => 'D',
         'Ruble' => '₽',
-        'Rial' => 'R'
-    ][$currency] ?? ['Rial'];
+        'Rial' => 'R',
+    ][$currency] ?? '﷼';
 }
 
 function getTableDesign()
@@ -190,14 +193,16 @@ function numberify($number)
     return number_format((float)$number, 2, '.', ',');
 }
 
-
-function persistReferenceNumber($record, $prefix): void
+function persistReferenceNumber($record, string $prefix): void
 {
-    $yearSuffix = date('y');
-    $recordIndex = $record->id;
-    $referenceNumber = sprintf('%s-%s%04d', $prefix, $yearSuffix, $recordIndex);
-    $record->reference_number = $referenceNumber;
-    $record->save();
+    $record->update([
+        'reference_number' => sprintf(
+            '%s-%s%04d',
+            $prefix,
+            date('y'),
+            $record->id
+        )
+    ]);
 }
 
 function showCurrencies()
@@ -218,21 +223,19 @@ function showCurrencyWithoutHTMLTags($record)
 }
 
 
-function showDelimiter($number, $currency = null)
+function showDelimiter(float|int $number, ?string $currency = null)
 {
-    $decimalPlaces = 0;
-    $numberString = strval($number);
+    $decimalPlaces = (int)str_contains((string)$number, '.')
+        ? strlen(explode('.', (string)$number)[1])
+        : 0;
 
-    $decimalPosition = strpos($numberString, '.');
-
-    if ($decimalPosition !== false) {
-        $decimalPlaces = strlen(substr($numberString, $decimalPosition + 1));
-    }
-
-    return $currency . ' ' . number_format($number, $decimalPlaces, '.', ',');
+    return trim(sprintf('%s %s',
+        $currency,
+        number_format($number, $decimalPlaces, '.', ',')
+    ));
 }
 
-function slugify($string)
+function slugify(string $text)
 {
-    return strtolower(str_replace(' ', '-', trim($string)));
+    return Str::slug($text);
 }

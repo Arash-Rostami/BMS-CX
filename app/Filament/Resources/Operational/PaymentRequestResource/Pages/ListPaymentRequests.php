@@ -370,7 +370,8 @@ class ListPaymentRequests extends ListRecords
             Admin::showDeadline(),
             Admin::showRequestMaker(),
             Admin::showStatusChanger(),
-            TableObserver::showMissingData(-5),
+            TableObserver::showMissingData(0,10),
+            Admin::showTimeStamp(),
         ];
 
         $extendedColumnsCx = [

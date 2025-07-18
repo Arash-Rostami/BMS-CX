@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Operational\ProformaInvoiceResource\Pages;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\ProformaInvoiceResource;
 use App\Models\ProformaInvoice;
+use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
 use Carbon\Carbon;
@@ -341,6 +342,7 @@ class ListProformaInvoices extends ListRecords
                 Admin::showContractName(),
                 Admin::showCreator(),
                 Admin::showAssignedTo(),
+                TableObserver::showMissingData(),
                 Admin::showTimeStamp(),
             ])->striped();
     }

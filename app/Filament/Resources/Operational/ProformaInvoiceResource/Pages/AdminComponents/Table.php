@@ -263,15 +263,16 @@ trait Table
     /**
      * @return TextColumn
      */
+
     public static function showTimeStamp(): TextColumn
     {
         return TextColumn::make('created_at')
-            ->label('Created at')
-            ->badge()
-            ->date()
-            ->color('secondary')
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->sortable();
+            ->label('Creation Time')
+            ->icon('heroicon-s-calendar-days')
+            ->dateTime()
+            ->sortable()
+            ->alignRight()
+            ->toggleable(isToggledHiddenByDefault: true);
     }
 
 

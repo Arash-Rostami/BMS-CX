@@ -6,12 +6,7 @@ use Illuminate\Database\Query\Builder;
 
 class BalanceSummarizer
 {
-    /**
-     * Summarize balances grouped by currency.
-     *
-     * @param Builder $query
-     * @return array
-     */
+
     public static function summarizeByCurrency(Builder $query): array
     {
         return $query
@@ -25,23 +20,22 @@ class BalanceSummarizer
             ->get()
             ->map(fn($row) => [
                 'currency' => $row->currency,
-                'base_sum' => (float) $row->base_sum,
-                'payment_sum' => (float) $row->payment_sum,
-                'total_sum' => (float) $row->total_sum,
+                'base_sum' => (float)$row->base_sum,
+                'payment_sum' => (float)$row->payment_sum,
+                'total_sum' => (float)$row->total_sum,
             ])
             ->toArray();
     }
-
 
     public static function formatSummaryOutput(array $summaries): string
     {
         return collect($summaries)
             ->map(function ($summary) {
-                $base = number_format((float) $summary['base_sum'], 1);
-                $payment = number_format((float) $summary['payment_sum'], 1);
-                $total = number_format((float) $summary['total_sum'], 1);
+                $base = number_format((float)$summary['base_sum'], 1);
+                $payment = number_format((float)$summary['payment_sum'], 1);
+                $total = number_format((float)$summary['total_sum'], 1);
 
-                if ((float) $summary['base_sum'] == 0) {
+                if ((float)$summary['base_sum'] == 0) {
                     return "{$summary['currency']}: $total";
                 }
                 return "{$summary['currency']} - Base: $base, Payment: $payment, Total: $total";

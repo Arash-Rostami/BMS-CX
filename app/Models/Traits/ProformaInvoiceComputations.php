@@ -41,7 +41,7 @@ trait ProformaInvoiceComputations
 
     public static function getDistinctProformaNumbers()
     {
-        return static::distinct('proforma_number')
+        return self::distinct('proforma_number')
             ->pluck('proforma_number')
             ->mapWithKeys(fn($item) => [$item => $item]);
     }

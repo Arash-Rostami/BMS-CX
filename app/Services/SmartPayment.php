@@ -2,62 +2,45 @@
 
 namespace App\Services;
 
-use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
 use App\Filament\Resources\Operational\PaymentResource\Pages\Admin as PaymentAdmin;
 use App\Models\PaymentRequest;
-use App\Models\ProformaInvoice;
 use Filament\Notifications\Notification;
 
 class SmartPayment
 {
 
-    /**
-     * Fill the payment request form based on the provided module and ID.
-     *
-     * @param array|null $id
-     * @param string|null $module
-     * @param \Filament\Forms\Form $form The form instance to fill.
-     */
-    public static function fillForm(?array $id, ?string $module, $form): void
+    public static function fillForm(?array $ids, ?string $module, $form): void
     {
-        if ($id) {
-            if ($module === 'proforma-invoice' || $module === 'payment-request') {
-                self::fillProformaInvoiceForm($id, $form);
-            }
-
+        if (!$ids || !in_array($module, ['proforma-invoice', 'payment-request'])) {
+            return;
         }
+
+        self::fillProformaInvoiceForm($ids, $form);
     }
 
-    /**
-     * Fill the form with Proforma Invoice details.
-     *
-     * @param array $id
-     * @param \Filament\Forms\Form $form
-     */
-    protected static function fillProformaInvoiceForm(array $id, $form): void
+    protected static function fillProformaInvoiceForm(array $ids, $form): void
     {
-        $paymentRequests = PaymentRequest::findMany($id);
+        $paymentRequests = PaymentRequest::findMany($ids);
 
-        if ($paymentRequests->isNotEmpty()) {
-            $currencies = $paymentRequests->pluck('currency')->unique();
+        if ($paymentRequests->isEmpty()) return;
 
-            if ($currencies->count() > 1) {
-                Notification::make()
-                    ->title('Currency Mismatch')
-                    ->body('Selected payment requests have different currencies. Please ensure they match before proceeding.')
-                    ->warning()
-                    ->send();
+        $currencies = $paymentRequests->pluck('currency')->unique();
 
-                return;
-            }
-
-            $form->fill([
-                'paymentRequests' => $paymentRequests->pluck('id')->toArray(),
-                'currency' => $currencies->first(),
-                'amount' => $paymentRequests->sum('requested_amount'),
-            ]);
-
-            PaymentAdmin::checkAndNotifyForSupplierCredit($paymentRequests);
+        if ($currencies->count() > 1) {
+            Notification::make()
+                ->title('Currency Mismatch')
+                ->body('Selected payment requests have different currencies. Please ensure they match before proceeding.')
+                ->warning()
+                ->send();
+            return;
         }
+
+        $form->fill([
+            'paymentRequests' => $paymentRequests->modelKeys(),
+            'currency' => $currencies->first(),
+            'amount' => $paymentRequests->sum('requested_amount'),
+        ]);
+
+        PaymentAdmin::checkAndNotifyForSupplierCredit($paymentRequests);
     }
 }
