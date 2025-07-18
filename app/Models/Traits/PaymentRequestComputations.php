@@ -13,15 +13,10 @@ trait PaymentRequestComputations
 
     public static function searchBeneficiaries($query, $search): void
     {
-        $query->whereHas('contractor', function ($contractorQuery) use ($search) {
-            $contractorQuery->where('name', 'like', '%' . $search . '%');
-        })
-            ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
-                $supplierQuery->where('name', 'like', '%' . $search . '%');
-            })
-            ->orWhereHas('beneficiary', function ($beneficiaryQuery) use ($search) {
-                $beneficiaryQuery->where('name', 'like', '%' . $search . '%');
-            });
+        $query->where(fn($q) => $q->whereHas('contractor', fn($c) => $c->where('name', 'like', "%{$search}%"))
+            ->orWhereHas('supplier', fn($s) => $s->where('name', 'like', "%{$search}%"))
+            ->orWhereHas('beneficiary', fn($b) => $b->where('name', 'like', "%{$search}%"))
+        );
     }
 
     public static function fetchPaymentDetails($proformaInvoiceNumber)
@@ -44,20 +39,18 @@ trait PaymentRequestComputations
             return self::whereNotIn('status', ['cancelled', 'rejected', 'completed'])
                 ->where('order_id', $orderId)
                 ->pluck('type_of_payment', 'id')
-                ->map(function ($type) {
-                    return self::$typesOfPayment[$type] ?? $type;
-                });
+                ->map(fn($type) => self::$typesOfPayment[$type] ?? $type);
         });
     }
 
     public static function getAllPaymentRequests($operation)
     {
-        $query = self::orderBy('deadline', 'asc');
-
-        if ($operation == 'create') {
-            $query->whereIn('status', ['processing', 'approved', 'allowed']);
-        }
-        return $query->get()->mapWithKeys(fn($paymentRequest) => [$paymentRequest->id => $paymentRequest->getCustomizedDisplayName()])->toArray();
+        return self::orderBy('deadline')
+            ->when($operation === 'create', fn($q) => $q->whereIn('status', ['processing', 'approved', 'allowed']))
+            ->get()
+            ->keyBy('id')
+            ->map->getCustomizedDisplayName()
+            ->toArray();
     }
 
     public function getCustomizedDisplayName(): string
@@ -66,7 +59,7 @@ trait PaymentRequestComputations
         $formattedDate = optional($this->deadline)->format('Y-m-d') ?? 'No Deadline';
 
         return sprintf(
-            "Ref: %s  ┆ 📅  %s 💢  %s ",
+            'Ref: %s  ┆ 📅  %s 💢  %s ',
             $this->reference_number,
             $formattedDate,
             $proformaInvoiceNo,
@@ -75,7 +68,7 @@ trait PaymentRequestComputations
 
     public static function showAmongAllReasons($reason)
     {
-        return Allocation::find($reason)->reason;
+        return Allocation::find($reason)?->reason;
     }
 
     public static function getMadeByOptions(): array
@@ -184,7 +177,6 @@ trait PaymentRequestComputations
                 ->where('extra->paymentMethod', '<>', 'cash');
         }
 
-
         if ($user->role == 'accountant' && $position == 'jnr') {
             return $query->where(function ($subQuery) use ($department) {
                 $subQuery->where('department_id', 6)
@@ -208,20 +200,20 @@ trait PaymentRequestComputations
         });
     }
 
-    public function getSupplierCreditAttribute(): ?float
+    public function getSupplierCreditAttribute()
     {
-        return $this->supplierSummaries()->sum('diff');
+        return $this->supplierSummaries()?->sum('diff') ?: 0;
     }
 
     public function getSupplierSummaryUpdatedAtAttribute()
     {
-        return $this->supplierSummaries()
-            ->latest('updated_at')
-            ->value('updated_at');
+        return $this->supplierSummaries()?->latest('updated_at')->value('updated_at');
     }
 
     public function getRemainingAmountAttribute()
     {
-        return $this->total_amount - $this->requested_amount;
+        $total = $this->total_amount ?? 0;
+        $requested = $this->requested_amount ?? 0;
+        return $total - $requested;
     }
 }

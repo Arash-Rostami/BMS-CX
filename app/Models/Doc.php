@@ -43,6 +43,11 @@ class Doc extends Model
         });
     }
 
+    public function order()
+    {
+        return $this->hasOne(Order::class);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

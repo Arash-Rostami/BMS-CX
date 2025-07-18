@@ -95,4 +95,12 @@ class Logistic extends Model
     {
         return $this->belongsTo(DeliveryTerm::class);
     }
+
+    /**
+     * Get the order associated with the logistic.
+     */
+    public function order()
+    {
+        return $this->hasOne(Order::class, 'logistic_id');
+    }
 }

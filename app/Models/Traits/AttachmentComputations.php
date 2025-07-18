@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Models\Traits;
 
 use App\Models\Attachment;
@@ -7,7 +8,7 @@ use Illuminate\Support\HtmlString;
 
 trait AttachmentComputations
 {
-    public function getCreatedAtBy()
+    public function getCreatedAtBy(): HtmlString
     {
         $creator = optional($this->user)->fullName;
         $time = $this->created_at->format('F d, Y');;
@@ -18,7 +19,8 @@ trait AttachmentComputations
 
     public function isUsedElsewhere(): bool
     {
-        return $this->where('file_path', $this->file_path)
+        return self::query()
+            ->where('file_path', $this->file_path)
             ->where('name', $this->name)
             ->where('id', '!=', $this->id)
             ->whereNull('deleted_at')
@@ -32,9 +34,7 @@ trait AttachmentComputations
         }
 
         return self::query()
-            ->when($attachment->file_path, function ($query) use ($attachment) {
-                $query->where('file_path', $attachment->file_path);
-            })
+            ->when($attachment->file_path, fn($query) => $query->where('file_path', $attachment->file_path))
             ->with($relations)
             ->get();
     }

@@ -6,110 +6,44 @@ use Illuminate\Support\Facades\Cache;
 
 trait OrderDetailComputations
 {
-    public function isLastOrderTaken()
+
+    public static function fetchChartDataByCategory(string|int $year = 'all')
     {
-        if (!$this->relationLoaded('order')) {
-            $this->load('order.proformaInvoice.orders');
-        }
-
-        $relatedOrders = $this->order->proformaInvoice->orders ?? [];
-
-        $otherOrders = collect($relatedOrders)->filter(function ($order) {
-            return $order->id !== $this->order->id;
-        });
-
-        return $otherOrders->contains(function ($order) {
-            return data_get($order, 'orderDetail.extra.lastOrder', false) === true;
-        });
+        return self::fetchChartData($year, 'category', 'category_id');
     }
 
-    public function areALlOrdersTaken()
+    protected static function fetchChartData(string|int $year, $relation, $groupColumn)
     {
-        if (!$this->relationLoaded('order')) {
-            $this->load('order.proformaInvoice.orders');
-        }
+        $cacheKey = "orders_data_by_{$relation}_{$year}";
 
-        $relatedOrders = $this->order->proformaInvoice->orders ?? [];
-
-        $otherOrders = collect($relatedOrders)->filter(function ($order) {
-            return $order->id !== $this->order->id;
-        });
-
-        return $otherOrders->contains(function ($order) {
-            return data_get($order, 'orderDetail.extra.allOrders', false) === true;
-        });
+        return Cache::remember($cacheKey, 20,
+            fn() => self::baseQuery($year, ["order.{$relation}"])
+                ->get()
+                ->groupBy("order.{$groupColumn}")
+                ->pipe(fn($items) => self::mapQueryResultsWithSum($items, $relation))
+        );
     }
 
     protected static function baseQuery($year, array $with = [])
     {
-        $query = static::query()
-            ->with($with);
-
-        if ($year !== 'all') {
-            $query->whereHas('order', function ($q) use ($year) {
-                $q->whereYear('proforma_date', $year);
-            });
-        }
-
-        return $query;
+        return static::query()
+            ->with($with)
+            ->when($year !== 'all', fn($q) => $q->whereHas('order', fn($q2) => $q2->whereYear('proforma_date', $year)));
     }
 
-    public static function fetchChartDataByProduct($year = 'all')
+    protected static function mapQueryResultsWithSum($items, string $relationType)
     {
-        $cacheKey = 'orders_data_by_product_' . $year;
-
-        return Cache::remember($cacheKey, 20, function () use ($year) {
-            $items = self::baseQuery($year, ['order.product'])
-                ->get()
-                ->groupBy('order.product_id');
-
-            return self::mapQueryResultsWithSum($items, 'product');
-        });
-    }
-
-    public static function fetchChartDataByCategory($year = 'all')
-    {
-        $cacheKey = 'orders_data_by_category_' . $year;
-
-        return Cache::remember($cacheKey, 20, function () use ($year) {
-            $items = self::baseQuery($year, ['order.category'])
-                ->get()
-                ->groupBy('order.category_id');
-
-            return self::mapQueryResultsWithSum($items, 'category');
-        });
-    }
-
-    protected static function mapQueryResultsWithSum($items, $relationType)
-    {
-        return $items->map(function ($groupItems, $groupId) use ($relationType) {
-            $firstItem = $groupItems->first();
-            $relationName = optional(optional($firstItem->order)->{$relationType})->name ?? 'Unknown';
-
-            $totalQuantity = $groupItems->sum(fn($item) => self::getQuantity($item));
-            $totalPrice = $groupItems->sum(fn($item) => self::getTotalPrice($item));
-
-            return [
-                'name' => $relationName,
-                'totalPrice' => $totalPrice,
-                'totalQuantity' => $totalQuantity,
-            ];
-        });
+        return $items->map(fn($group, $key) => [
+            'name' => optional($group->first()->order->{$relationType})->name ?? 'Unknown',
+            'totalQuantity' => $group->sum(fn($item) => self::getQuantity($item)),
+            'totalPrice' => $group->sum(fn($item) => self::getTotalPrice($item)),
+        ]);
     }
 
     protected static function getQuantity($item)
     {
         return self::getValidQuantity($item, ['final_quantity', 'provisional_quantity', 'buying_quantity']);
     }
-
-    protected static function getTotalPrice($item)
-    {
-        $quantityFields = ['final_quantity', 'provisional_quantity', 'buying_quantity'];
-        $priceFields = ['final_price', 'provisional_price', 'buying_price'];
-
-        return self::getValidPrice($quantityFields, $priceFields, $item);
-    }
-
 
     private static function getValidQuantity($item, $fields)
     {
@@ -121,6 +55,13 @@ trait OrderDetailComputations
         return 0;
     }
 
+    protected static function getTotalPrice($item)
+    {
+        $quantityFields = ['final_quantity', 'provisional_quantity', 'buying_quantity'];
+        $priceFields = ['final_price', 'provisional_price', 'buying_price'];
+
+        return self::getValidPrice($quantityFields, $priceFields, $item);
+    }
 
     private static function getValidPrice(array $quantityFields, array $priceFields, $item): int|float
     {
@@ -139,15 +80,44 @@ trait OrderDetailComputations
         return isset($item->{$quantityField}) && $item->{$quantityField} > 0 && isset($item->{$priceField}) && $item->{$priceField} > 0;
     }
 
+    public static function fetchChartDataByProduct(string|int $year = 'all')
+    {
+        return self::fetchChartData($year, 'product', 'product_id');
+    }
+
+    public function isLastOrderTaken(): bool
+    {
+        return $this->checkOrderFlag('lastOrder');
+    }
+
+    protected function checkOrderFlag(string $key): bool
+    {
+        return $this->getOtherOrders()
+            ->contains(fn($order) => data_get($order, "orderDetail.extra.{$key}", false) === true);
+    }
+
+    protected function getOtherOrders()
+    {
+        $this->loadMissing('order.proformaInvoice.orders');
+
+        return collect($this->order
+            ->proformaInvoice
+            ->orders ?? [])
+            ->where('id', '!=', $this->order->id);
+    }
+
+    public function areAllOrdersTaken(): bool
+    {
+        return $this->checkOrderFlag('allOrders');
+    }
+
 
     public function hasApprovedRelatedRequests()
     {
-        if ($this->order && $this->order->paymentRequests && !$this->order->paymentRequests->isEmpty()) {
-            return $this->order->paymentRequests->contains(function ($paymentRequest) {
-                return in_array($paymentRequest->status, ['approved', 'allowed', 'processing', 'completed'])
-                    && $paymentRequest->currency == $this->order->currency;
-            });
-        }
-        return false;
+        return $this->order
+            && $this->order->paymentRequests
+            && $this->order->paymentRequests->contains(fn($pr) => in_array($pr->status, ['approved', 'allowed', 'processing', 'completed'])
+                && $pr->currency === $this->order->currency
+            );
     }
 }

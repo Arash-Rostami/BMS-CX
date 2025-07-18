@@ -3,44 +3,36 @@
 namespace App\Models\Traits;
 
 use Illuminate\Database\Eloquent\Builder;
-
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 trait NotificationComputations
 {
-
-    public function getDeletedAtAttribute()
+    protected function deletedAt(): Attribute
     {
-        if (is_null($this->attributes['deleted_at'])) {
-            return 'Uncleared';
-        }
-
-        return $this->attributes['deleted_at'];
+        return Attribute::make(
+            get: fn ($value) => $value ?? 'Uncleared',
+        );
     }
 
-    public function getCreatedAtAttribute()
+    protected function createdAt(): Attribute
     {
-        if (is_null($this->attributes['created_at'])) {
-            return 'Unsent';
-        }
-
-        return $this->attributes['created_at'];
+        return Attribute::make(
+            get: fn ($value) => $value ?? 'Unsent',
+        );
     }
 
-    public function getReadAtAttribute()
+    protected function readAt(): Attribute
     {
-        if (is_null($this->attributes['read_at'])) {
-            return 'Unread';
-        }
-
-        return $this->attributes['read_at'];
+        return Attribute::make(
+            get: fn ($value) => $value ?? 'Unread',
+        );
     }
 
     public function scopeFilterByUserRole(Builder $query, $user): Builder
     {
-        if ($user->role != 'admin') {
-            return $query->where('notifiable_id', $user->id);
-        }
-
-        return $query;
+        return $query->when(
+            $user->role != 'admin',
+            fn (Builder $q) => $q->where('notifiable_id', $user->id)
+        );
     }
 }

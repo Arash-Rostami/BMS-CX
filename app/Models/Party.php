@@ -11,6 +11,8 @@ class Party extends Model
     use HasFactory;
     use SoftDeletes;
 
+    public static bool $filamentDetection = false;
+    public static string $filamentName = 'PART';
     protected $fillable = [
         'user_id',
         'packaging_id',
@@ -18,13 +20,9 @@ class Party extends Model
         'supplier_id',
         'extra',
     ];
-
     protected $casts = [
         'extra' => 'json',
     ];
-
-    public static bool $filamentDetection = false;
-    public static string $filamentName = 'PART';
 
     protected static function booted()
     {
@@ -47,6 +45,14 @@ class Party extends Model
     public function buyer()
     {
         return $this->belongsTo(Buyer::class);
+    }
+
+    /**
+     * Get the order associated with the party.
+     */
+    public function order()
+    {
+        return $this->hasOne(Order::class);
     }
 
     /**

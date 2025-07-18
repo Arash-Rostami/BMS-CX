@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,13 +19,9 @@ class Grade extends Model
         });
     }
 
-    public static function scopeFilterCategory($query, $productId)
+    public function scopeFilterByProduct(Builder $query, array|int|null|string $productId = null): Builder
     {
-        if (!empty($productId)) {
-            return $query->where('product_id', $productId);
-        }
-
-        return $query;
+        return $query->when($productId, fn(Builder $q) => $q->whereIn('product_id', (array)$productId));
     }
 
     public function proformaInvoices()

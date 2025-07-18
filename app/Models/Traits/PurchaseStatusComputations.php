@@ -6,13 +6,15 @@ trait PurchaseStatusComputations
 {
     public function getEmoticonAttribute()
     {
-        return explode(' ', $this->name)[0] ?? '';
+        return strtok($this->name, ' ') ?: '';
     }
 
     public function getBareTitleAttribute()
     {
-        $parts = explode(' ', $this->name);
-        array_shift($parts);
-        return implode(' ', $parts);
+        if (($pos = strpos($this->name, ' ')) === false) {
+            return '';
+        }
+
+        return substr($this->name, $pos + 1);
     }
 }

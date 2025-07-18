@@ -97,7 +97,10 @@ trait BalanceComputations
     {
         $authorizedUsers = User::getUsersByRoles(['admin', 'manager']);
         $proposedBase = $balance->extra['proposed_base'] ?? 0;
-        $notificationBody = "The balance update for {$balance->recipient_name}, with a proposed credit of " . number_format($proposedBase, 2) . ", is awaiting your approval.";
+        $recipientName = $balance->recipient_name;
+        $formattedAmount = number_format($proposedBase, 2);
+
+        $notificationBody = "The balance update for {$recipientName}, with a proposed credit of {$formattedAmount}, is awaiting your approval.";
 
         foreach ($authorizedUsers as $user) {
             Notification::make()

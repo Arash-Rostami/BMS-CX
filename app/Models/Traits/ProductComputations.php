@@ -2,14 +2,12 @@
 
 namespace App\Models\Traits;
 
+use Illuminate\Database\Eloquent\Builder;
+
 trait ProductComputations
 {
-    public static function scopeFilterCategory($query, $categoryIds)
+    public function scopeFilterCategory(Builder $query, array|int|null|string $categoryIds): Builder
     {
-        if (!empty($categoryIds)) {
-            return $query->where('category_id', $categoryIds);
-        }
-
-        return $query;
+        return $query->when($categoryIds, fn(Builder $q) => $q->whereIn('category_id', (array)$categoryIds));
     }
 }

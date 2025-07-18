@@ -29,8 +29,7 @@ trait DepartmentCache
         $cacheKey = 'department_description_' . $code;
 
         return Cache::remember($cacheKey, 60, function () use ($code) {
-            $department = self::where('code', $code)->first();
-            return $department ? $department->description : null;
+            return optional(self::where('code', $code)->first())->description;
         });
     }
 
@@ -48,10 +47,9 @@ trait DepartmentCache
         $cacheKey = 'all_department_names';
 
         return Cache::remember($cacheKey, 60, function () {
-            return self::get()
-                ->sortBy('name')
-                ->partition(fn($item) => $item->id === 0)
-                ->flatMap(fn($items) => $items)
+            return self::query()
+                ->orderByRaw('CASE WHEN id = 0 THEN 0 ELSE 1 END, name ASC')
+                ->get(['id', 'name'])
                 ->pluck('name', 'id')
                 ->toArray();
         });
@@ -62,38 +60,25 @@ trait DepartmentCache
         $cacheKey = 'all_department_names';
 
         return Cache::remember($cacheKey, 60, function () {
-            return self::get()
-                ->sortBy('name')
-                ->map(function ($item) {
-                    $item->code = $item->id == 0 ? 'all' : $item->code;
-                    return $item;
-                })
-                ->partition(fn($item) => $item->id === 0)
-                ->flatMap(fn($items) => $items)
-                ->pluck('name', 'code')
+            return self::query()
+                ->orderByRaw('CASE WHEN id = 0 THEN 0 ELSE 1 END, name ASC')
+                ->get(['id', 'code', 'name'])
+                ->mapWithKeys(fn($item) => [($item->id == 0) ? 'all' : $item->code => $item->name])
                 ->toArray();
         });
     }
 
-    public static function getSimplifiedDepartments(): \Illuminate\Support\Collection
+    public static function getSimplifiedDepartments()
     {
-        return Cache::remember('simplified_departments', 60, function () {
-            return self::orderBy('name')->get()->map(function ($department) {
-                $simplifiedName = $department->name;
-
-                if (str_contains($simplifiedName, 'Commercial Import Operation')) {
-                    $simplifiedName = 'Import';
-                }
-                if (str_contains($simplifiedName, 'Commercial Export Operation')) {
-                    $simplifiedName = 'Export';
-                }
-                if (str_contains($simplifiedName, 'BAZORG (Sales Platform)')) {
-                    $simplifiedName = 'BAZORG';
-                }
-
-                $department->simplified_name = $simplifiedName;
-                return $department;
-            });
-        });
+        return Cache::remember('simplified_departments', 60,
+            fn() => self::orderBy('name')->get()->map(fn($dept) => tap($dept, function ($d) {
+                $d->simplified_name = match (true) {
+                    str_contains($d->name, 'Commercial Import Operation') => 'Import',
+                    str_contains($d->name, 'Commercial Export Operation') => 'Export',
+                    str_contains($d->name, 'BAZORG (Sales Platform)') => 'BAZORG',
+                    default => $d->name,
+                };
+            }))
+        );
     }
 }

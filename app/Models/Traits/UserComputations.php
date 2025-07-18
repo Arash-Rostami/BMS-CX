@@ -8,11 +8,14 @@ use Illuminate\Support\Facades\Cache;
 
 trait UserComputations
 {
+    private static array $allowedDomains = [
+        'persolco.com', 'time-gr.com', 'solsuntrading.com', 'admont.ae',
+        'persoreco.com', 'zhuoyuanenergy.cn', 'persol.cn', 'qq.com'
+    ];
+
     public function canAccessPanel(Panel $panel): bool
     {
-        $allowedDomains = ['persolco.com', 'time-gr.com', 'solsuntrading.com', 'admont.ae',
-            'persoreco.com', 'zhuoyuanenergy.cn', 'persol.cn', 'qq.com'];
-        return in_array(substr(strrchr($this->email, '@'), 1), $allowedDomains);
+        return in_array(substr(strrchr($this->email, '@'), 1), self::$allowedDomains);
     }
 
     public function getExtraValueAttribute($key)
@@ -27,13 +30,14 @@ trait UserComputations
 
     public function getFilamentName(): string
     {
-        return "{$this->first_name} {$this->last_name}";
+        return trim("{$this->first_name} {$this->last_name}");
     }
 
     public function getFullNameAttribute()
     {
         $middleName = $this->middle_name ? " {$this->middle_name} " : '';
-        return "{$this->first_name} {$middleName} {$this->last_name}";
+
+        return trim("{$this->first_name} {$middleName} {$this->last_name}");
     }
 
     public function scopeActive($query)

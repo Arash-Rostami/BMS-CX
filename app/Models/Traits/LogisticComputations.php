@@ -2,11 +2,44 @@
 
 namespace App\Models\Traits;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 trait LogisticComputations
 {
+
+    public static function countByPackagingType(int|string $year): Collection
+    {
+        $cacheKey = "logistic_packaging_counts_{$year}";
+
+        return Cache::remember($cacheKey, 300, function () use ($year) {
+            return self::query()
+                ->selectRaw(
+                    "coalesce(packagings.name, 'Unknown') as name, count(logistics.id) as total"
+                )
+                ->leftJoin(
+                    "packagings",
+                    "packagings.id",
+                    '=',
+                    "logistics.packaging_id"
+                )
+                ->leftJoin(
+                    "orders",
+                    "orders.logistic_id",
+                    '=',
+                    "logistics.id"
+                )
+                ->when(
+                    $year != 'all',
+                    fn(Builder $q) => $q->whereYear("orders.proforma_date", $year)
+                )
+                ->groupBy("coalesce(packagings.name, 'Unknown')")
+                ->get()
+                ->map(fn($item) => (array)$item);
+        });
+    }
 
     public function getLoadingStartlineAttribute()
     {
@@ -27,31 +60,5 @@ trait LogisticComputations
         return isset($this->extra['etd'])
             ? Carbon::parse($this->extra['etd'])
             : null;
-    }
-    
-    public static function countByPackagingType($year)
-    {
-        $cacheKey = 'orders_data_by_category_' . $year;
-
-        return Cache::remember($cacheKey, 300, function () use ($year) {
-            $query = self::query()
-                ->with('packaging')
-                ->selectRaw('packaging_id, count(*) as total')
-                ->groupBy('packaging_id');
-
-            if ($year !== 'all') {
-                $query->whereHas('order', function ($subQuery) use ($year) {
-                    $subQuery->whereYear('proforma_date', $year);
-                });
-            }
-
-            return $query->get()
-                ->map(function ($item) {
-                    return [
-                        'name' => $item->packaging ? $item->packaging->name : 'Unknown',
-                        'total' => $item->total
-                    ];
-                });
-        });
     }
 }

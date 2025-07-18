@@ -27,7 +27,7 @@ Route::get('/clear', function () {
     Artisan::call('optimize:clear');
     Artisan::call('filament:clear-cached-components');
 
-    return "All caches including Filament caches have been cleared successfully!";
+    return 'All caches including Filament caches have been cleared successfully!';
 });
 
 Route::get('/cache', function () {
@@ -37,9 +37,8 @@ Route::get('/cache', function () {
 
     Artisan::call('filament:cache-components');
 
-    return "All caches including Filament caches have been rebuilt successfully!";
+    return 'All caches including Filament caches have been rebuilt successfully!';
 });
-
 
 
 Route::middleware(['web', 'custom_auth'])->group(function () {
