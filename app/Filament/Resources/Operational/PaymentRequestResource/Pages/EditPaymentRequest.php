@@ -96,7 +96,7 @@ class EditPaymentRequest extends EditRecord
 
     protected function beforeSave()
     {
-        if ($this->record->payments->isNotEmpty()) {
+        if ($this->record->payments->isNotEmpty() && ! (auth()->user()?->hasRole('admin') ?? false)) {
             $this->haltProcess();
         }
 

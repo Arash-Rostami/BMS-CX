@@ -1,0 +1,66 @@
+# --- RATE LIMITING SECURITY  ---
+<IfModule mod_ratelimit.c>
+    # Set a limit of 20 requests per 5 seconds
+    SetEnvIf Request_URI ".*" ratelimit=20/5s
+    # Exempt common image/css/js files from the limit
+    SetEnvIf Request_URI "\.(gif|jpg|jpeg|png|css|js)$" !ratelimit
+    # Block the IP if the limit is exceeded
+    RewriteEngine On
+    RewriteCond %{ENV:rate-exceeded} 1
+    RewriteRule .* - [F,L]
+</IfModule>
+
+# --- CUSTOM 404 ERROR PAGE ---
+ErrorDocument 404 /404.html
+
+# --- FORCE HTTPS ---
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+<Files 403.shtml>
+order allow,deny
+allow from all
+</Files>
+
+# --- BLOCKED ATTACKER IPS ---
+deny from 40.69.37.59
+deny from 104.215.63.112
+deny from 52.230.122.249
+deny from 104.236.251.74
+
+# --- HOTLINK PROTECTION ---
+RewriteCond %{HTTP_REFERER} !^$
+RewriteCond %{HTTP_REFERER} !^http://communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://export.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://export.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://import.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://import.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://trade.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://trade.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.export.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.export.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.import.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.import.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.trade.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.trade.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://export.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://export.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://import.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://import.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://trade.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://trade.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.export.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.export.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.import.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.import.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.trade.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.trade.communitasker.io$      [NC]
+RewriteRule .*\.(jpg|jpeg|gif|png|bmp)$ - [F,NC]

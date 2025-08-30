@@ -1,14 +1,21 @@
 // show table minus of summary in red color
-window.addEventListener('DOMContentLoaded', function () {
-    if (!window.location.href.includes('orders')) return;
+window.addEventListener('DOMContentLoaded', () => {
+    if (!/orders|proforma-invoices/.test(location.href)) return;
 
-    setTimeout(() => {
-        document.querySelectorAll('.fi-ta-text-summary span').forEach(span => {
-            span.innerHTML = span.innerHTML.replace(/(-\d+(\.\d+)?)/g, '<span style="color: red;">$1</span>');
+    let interval = setInterval(() => {
+        if (!/orders|proforma-invoices/.test(location.href)) {
+            clearInterval(interval);
+            return;
+        }
+
+        document.querySelectorAll('.fi-ta-text-summary span').forEach(s => {
+            if (!s.querySelector('span[style="color:red"]')) {
+                s.innerHTML = s.textContent.replace(/-\d[\d,]*(\.\d+)?/g, m => `<span style="color:red">${m}</span>`);
+            }
         });
-    }, 2000);
-
+    }, 1000);
 });
+
 
 // overlay logic
 window.addEventListener('DOMContentLoaded', function () {

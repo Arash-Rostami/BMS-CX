@@ -47,7 +47,7 @@ class Dashboard extends BaseDashboard
 
     public function getWidgets(): array
     {
-        $selectedType = $this->filters['type'] ?? 'ac';
+        $selectedType = $this->filters['type'] ?? [];
 
         $widgets = [];
 

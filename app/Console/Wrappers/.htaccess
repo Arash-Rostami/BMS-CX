@@ -1,0 +1,124 @@
+# --- RATE LIMITING SECURITY ---
+<IfModule mod_ratelimit.c>
+    # Set a limit of 20 requests per 5 seconds
+    SetEnvIf Request_URI ".*" ratelimit=20/5s
+    # Exempt common image/css/js files from the limit
+    SetEnvIf Request_URI "\.(gif|jpg|jpeg|png|css|js)$" !ratelimit
+    # Block the IP if the limit is exceeded
+    RewriteEngine On
+    RewriteCond %{ENV:rate-exceeded} 1
+    RewriteRule .* - [F,L]
+</IfModule>
+
+# --- CUSTOM 404 ERROR PAGE ---
+ErrorDocument 404 /404.html
+# --- END OF CUSTOM CODE ---
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # --- NEW RULE TO BLOCK BOTS SCANNING FOR PHP FILES ---
+    RewriteCond %{REQUEST_URI} \.php$
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule .* - [R=404,L]
+    # --- END OF NEW RULE ---
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# BEGIN cPanel-generated php ini directives, do not edit
+# Manual editing of this file may result in unexpected behavior.
+# To make changes to this file, use the cPanel MultiPHP INI Editor (Home >> Software >> MultiPHP INI Editor)
+# For more information, read our documentation (https://go.cpanel.net/EA4ModifyINI)
+<IfModule php8_module>
+   php_flag display_errors Off
+   php_value max_execution_time 90
+   php_value max_input_time 60
+   php_value max_input_vars 10000
+   php_value memory_limit 256M
+   php_value post_max_size 50M
+   php_value session.gc_maxlifetime 1440
+   php_value session.save_path "/var/cpanel/php/sessions/ea-php82"
+   php_value upload_max_filesize 50M
+   php_flag zlib.output_compression Off
+</IfModule>
+<IfModule lsapi_module>
+   php_flag display_errors Off
+   php_value max_execution_time 90
+   php_value max_input_time 60
+   php_value max_input_vars 10000
+   php_value memory_limit 256M
+   php_value post_max_size 50M
+   php_value session.gc_maxlifetime 1440
+   php_value session.save_path "/var/cpanel/php/sessions/ea-php82"
+   php_value upload_max_filesize 50M
+   php_flag zlib.output_compression Off
+</IfModule>
+# END cPanel-generated php ini directives, do not edit
+
+# php -- BEGIN cPanel-generated handler, do not edit
+# Set the “ea-php82” package as the default “PHP” programming language.
+<IfModule mime_module>
+  AddHandler application/x-httpd-ea-php82 .php .php8 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit
+
+<Files 403.shtml>
+order allow,deny
+allow from all
+</Files>
+
+deny from 40.69.37.59
+deny from 104.215.63.112
+deny from 52.230.122.249
+
+RewriteCond %{HTTP_REFERER} !^$
+RewriteCond %{HTTP_REFERER} !^http://communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://export.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://export.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://import.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://import.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://trade.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://trade.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.export.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.export.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.import.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.import.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.trade.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^http://www.trade.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://export.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://export.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://import.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://import.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://trade.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://trade.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.export.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.export.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.import.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.import.communitasker.io$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.trade.communitasker.io/.*$      [NC]
+RewriteCond %{HTTP_REFERER} !^https://www.trade.communitasker.io$      [NC]
+RewriteRule .*\.(jpg|jpeg|gif|png|bmp)$ - [F,NC]

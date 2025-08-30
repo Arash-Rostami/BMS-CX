@@ -275,8 +275,7 @@ class ListProformaInvoices extends ListRecords
                     PrintBulkAction::make(),
                 ])
             ])
-            ->poll('120s')
-            ->paginated([20, 30, 40])
+            ->paginated([15, 30])
             ->groupingSettingsInDropdownOnDesktop()
             ->defaultSort('reference_number', 'desc')
             ->groups([
@@ -432,7 +431,22 @@ class ListProformaInvoices extends ListRecords
 
     protected function getTableQuery(): ?Builder
     {
-        $query = ProformaInvoice::query();
+        $query = ProformaInvoice::query()
+            ->with([
+                'attachments',
+                'buyer',
+                'category',
+                'grade',
+                'orders',
+                'activeOrders',
+                'paymentRequests',
+                'associatedPaymentRequests',
+                'activeApprovedPaymentRequests',
+                'product',
+                'supplier',
+                'user',
+            ]);
+
 
         $categoryTabs = [
             'Mineral' => 1,

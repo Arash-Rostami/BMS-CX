@@ -9,30 +9,46 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class RefreshAllSupplierSummaries implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * The chunk size for processing.
-     *
-     * @var int
-     */
-    public int $chunkSize = 50;
-
+    public int $chunkSize = 30;
 
     /**
      * Execute the job.
      */
     public function handle(SupplierSummaryService $service): void
     {
-        ProformaInvoice::select('id')
-            ->chunk($this->chunkSize, function ($slice) use ($service) {
-                foreach ($slice as $pi) {
-                    $service->rebuild($pi->id);
-                }
-                sleep(2);
-            });
+        try {
+            ProformaInvoice::select('id')->whereNull('deleted_at')->where('status', '!=', 'rejected')
+                ->chunkById($this->chunkSize, function ($slice) use ($service) {
+                    $proformaIds = $slice->pluck('id')->all();
+
+                    if (empty($proformaIds)) {
+                        return;
+                    }
+
+                    try {
+                        $service->rebuildMany($proformaIds);
+                    } catch (Throwable $e) {
+                        Log::error('Failed to rebuild supplier summary for batch.', [
+                            'proforma_ids' => $proformaIds,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                    }
+
+                    sleep(2);
+                });
+        } finally {
+
+            DB::disconnect('mysql');
+            gc_collect_cycles();
+        }
     }
 }

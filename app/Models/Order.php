@@ -39,32 +39,15 @@ class Order extends Model
 
     protected $table = 'orders';
 
+    public function associatedPaymentRequests()
+    {
+        return $this->proformaInvoice->associatedPaymentRequests();
+    }
 
     public function attachments()
     {
         return $this->hasMany(Attachment::class);
     }
-
-    protected static function booted()
-    {
-        static::creating(function ($order) {
-            $order->user_id = auth()->id();
-            $order->order_number = self::makeOrderNumber($order);
-        });
-
-        static::saving(function ($order) {
-            $order->attachments->each(function ($attachment) {
-                if (empty($attachment->file_path) || empty($attachment->name)) {
-                    $attachment->delete();
-                }
-            });
-        });
-
-        static::updating(function ($order) {
-            $order->order_number = self::makeOrderNumber($order);
-        });
-    }
-
 
     public function category()
     {
@@ -104,18 +87,15 @@ class Order extends Model
         return $this->belongsTo(OrderDetail::class, 'order_detail_id');
     }
 
-
-    public function proformaInvoice()
-    {
-        return $this->belongsTo(ProformaInvoice::class, 'proforma_invoice_id', 'id');
-    }
-
-
     public function party()
     {
         return $this->belongsTo(Party::class,);
     }
 
+    public function paymentRequests()
+    {
+        return $this->hasMany(PaymentRequest::class, 'order_id');
+    }
 
     public function payments()
     {
@@ -127,37 +107,52 @@ class Order extends Model
         );
     }
 
-    public function paymentRequests()
-    {
-        return $this->hasMany(PaymentRequest::class, 'order_id');
-    }
-
-    public function associatedPaymentRequests()
-    {
-        return $this->proformaInvoice->associatedPaymentRequests();
-    }
-
-
     public function product()
     {
         return $this->belongsTo(Product::class, 'product_id');
     }
 
+    public function proformaInvoice()
+    {
+        return $this->belongsTo(ProformaInvoice::class, 'proforma_invoice_id', 'id');
+    }
 
     public function purchaseStatus()
     {
         return $this->belongsTo(PurchaseStatus::class, 'purchase_status_id');
     }
 
-
     public function tags()
     {
         return $this->belongsToMany(Tag::class, 'order_tag', 'order_id', 'tag_id');
     }
 
-
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($order) {
+            $order->user_id = auth()->id();
+            $order->order_number = self::makeOrderNumber($order);
+        });
+
+        static::saving(function ($order) {
+            $order->attachments()
+                ->where(function ($q) {
+                    $q->whereNull('file_path')
+                        ->orWhere('file_path', '')
+                        ->orWhereNull('name')
+                        ->orWhere('name', '');
+                })
+                ->delete();
+        });
+
+
+        static::updating(function ($order) {
+            $order->order_number = self::makeOrderNumber($order);
+        });
     }
 }

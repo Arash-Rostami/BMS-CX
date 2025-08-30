@@ -29,6 +29,8 @@ class PaymentResource extends Resource
 
     protected static ?int $navigationSort = 5;
 
+    protected static ?string $pollingInterval = null;
+
     protected static ?string $recordTitleAttribute = 'reference_number';
 
 

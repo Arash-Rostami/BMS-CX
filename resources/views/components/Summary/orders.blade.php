@@ -1,39 +1,16 @@
 @if ($selectedProforma->orders->isNotEmpty())
-        <?php
-        $totalPayableQuantity = $selectedProforma->orders
-            ->filter(fn($order) => $order->orderDetail !== null)
-            ->sum(fn($order) => ($order->orderDetail->final_quantity ?? 0) > 0
-                ? $order->orderDetail->final_quantity
-                : $order->orderDetail->provisional_quantity);
-        $proformaQuantity = $selectedProforma->quantity;
-
-        $badgeText = '';
-        $badgeColor = '';
-        $difference = $totalPayableQuantity - $proformaQuantity;
-        if ($totalPayableQuantity > $proformaQuantity) {
-            $badgeText = 'Higher';
-            $badgeColor = 'bg-red-500 text-white';
-        } elseif ($totalPayableQuantity < $proformaQuantity) {
-            $badgeText = 'Lower';
-            $badgeColor = 'bg-green-500 text-white';
-        } else {
-            $badgeText = 'Equal';
-            $badgeColor = 'bg-gray-500 text-white';
-        }
-        $shippedQuantitySoFar = 0;
-        ?>
-
+    @php($shippedQuantitySoFar = 0)
         <!-- Header -->
     <h3 class="mb-3">
         <span class="material-icons-outlined order-icon text-sm insight">list_alt</span>
-        <span class="text-2xl font-semibold mb-4">Order(s)</span>
+        <span class="text-lg md:text-2xl font-semibold mb-4">Order(s)</span>
     </h3>
 
     @foreach ($selectedProforma->orders as $order)
         <!-- Accordion Container -->
         <div x-data="{ open: false }" class="border rounded-lg shadow-lg mb-2">
             <button @click="open = !open"
-                    class="w-full flex justify-between items-center my-dark-class px-4 py-3 text-left text-lg font-semibold rounded-xl">
+                    class="w-full flex justify-between items-center my-dark-class px-4 py-3 text-left text-md md:text-lg font-semibold rounded-xl">
                 <span title="part {{ $order->part ?? 'N/A' }}">No: {{ $order->reference_number ?? 'N/A' }} (🛒{{ $order->part ?? 'Undefined Part' }})</span> <span
                     class="material-icons-outlined" x-show="open">expand_less</span>
                 <span class="material-icons-outlined" x-show="!open">expand_more</span>
@@ -63,8 +40,7 @@
                     <div class="proforma-details-box">
                         <div class="font-medium"><span class="material-icons-outlined">info</span> Order Status:
                         </div>
-                        <pre><span class="status-badge settled">{{ $order->order_status ?? 'N/A' }}</span></pre>
-                    </div>
+                        <pre>{{ isset($order->order_status) ? ucfirst(str_replace('accounting_', '', $order->order_status)) : 'N/A' }}</pre>                    </div>
 
                     <div class="proforma-details-box">
                         <div class="font-medium"><span class="material-icons-outlined">person</span> Created by:</div>
@@ -146,12 +122,12 @@
                             <?php
                             $currentOrderQuantity = ($order->orderDetail->final_quantity ?? 0) > 0 ? $order->orderDetail->final_quantity : $order->orderDetail->provisional_quantity;
                             $shippedQuantitySoFar += $currentOrderQuantity;
-                            $remainingQuantityAfterThisOrder = $proformaQuantity - $shippedQuantitySoFar;
+                            $remainingQuantityAfterThisOrder = $selectedProforma->quantity - $shippedQuantitySoFar;
                             ?>
                         <div class="proforma-details-box">
                             <div class="font-medium"><span class="material-icons-outlined">inventory</span> Remaining (after this part):
                             </div>
-                            <pre>{{ number_format($remainingQuantityAfterThisOrder) }} mt</pre>
+                            <pre>{{ number_format($remainingQuantityAfterThisOrder) }} MT</pre>
                         </div>
                     @endif
                     @if ($order->logistic)
@@ -210,12 +186,12 @@
                         <div class="proforma-details-box">
                             <div class="font-medium"><span class="material-icons-outlined">scale</span> Gross Weight:
                             </div>
-                            <pre>{{ $order->logistic->gross_weight }} KG</pre>
+                            <pre>{{ $order->logistic->gross_weight }} MT</pre>
                         </div>
                         <div class="proforma-details-box">
                             <div class="font-medium"><span class="material-icons-outlined">equalizer</span> Net Weight:
                             </div>
-                            <pre>{{ $order->logistic->net_weight }} KG</pre>
+                            <pre>{{ $order->logistic->net_weight }} MT</pre>
                         </div>
                     @endif
                     @if ($order->doc)

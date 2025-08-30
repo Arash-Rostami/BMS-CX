@@ -11,22 +11,6 @@ class Kernel extends ConsoleKernel
 {
 
     /**
-     * Define the application's command schedule.
-     */
-    protected function schedule(Schedule $schedule): void
-    {
-        $schedule->job(new TelexReleaseNotificationJob)
-            ->at('10:00')
-            ->when(function () {
-                $dayOfWeek = now()->dayOfWeek;
-                return $dayOfWeek !== 4 && $dayOfWeek !== 5;
-            });
-
-        $schedule->job(new RefreshAllSupplierSummaries)
-            ->cron('0 6,12,18 * * *');
-    }
-
-    /**
      * Register the commands for the application.
      */
     protected function commands(): void
@@ -34,5 +18,20 @@ class Kernel extends ConsoleKernel
         $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
+    }
+
+    /**
+     * Define the application's command schedule.
+     */
+    protected function schedule(Schedule $schedule): void
+    {
+        $schedule->job(new TelexReleaseNotificationJob())
+            ->at('10:00')
+            ->when(fn() => !in_array(now()->dayOfWeek, [4, 5])) // not on Thu and Fri
+            ->withoutOverlapping();
+
+        $schedule->job(new RefreshAllSupplierSummaries())
+            ->cron('0 6,12,18 * * *')
+            ->withoutOverlapping();
     }
 }

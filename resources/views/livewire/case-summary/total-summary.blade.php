@@ -1,4 +1,6 @@
-<div class="main-container" x-data="{ activeTab: 'proforma-summary' }">
+<div class="main-container"
+     x-data="{ activeTab: 'proforma-summary' }"
+     @reset-active-tab.window="activeTab = 'proforma-summary'">
     <div class="w-full mb-5 flex justify-end">
         <button
             id="dark-mode-toggle"
@@ -28,13 +30,13 @@
                                         </span>
                                         <div class="text-gray-500">➟
                                             <span
-                                                title="Contract No.">{{ $option->contract_number ?? 'No CT No.' }}</span>
+                                                    title="Contract No.">{{ $option->contract_number ?? 'No CT No.' }}</span>
                                             <span class="mx-1"> ┆ </span>
                                             <span
-                                                title="Reference No.">{{ $option->reference_number ?? 'No Ref. No.' }}</span>
+                                                    title="Reference No.">{{ $option->reference_number ?? 'No Ref. No.' }}</span>
                                             <span class="mx-1"> ┆ </span>
                                             <span
-                                                title="Supplier Name">{{ $option->supplier->name ?? 'No Supplier' }}</span>
+                                                    title="Supplier Name">{{ $option->supplier->name ?? 'No Supplier' }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -69,7 +71,8 @@
         <!-- Tabs Navigation -->
         <ul class="nav nav-tabs flex border-b">
             <li class="nav-item">
-                <button @click="activeTab = 'proforma-summary'"
+                <button class="text-md md:text-lg font-semibold tracking-wide"
+                        @click="activeTab = 'proforma-summary'"
                         :class="activeTab === 'proforma-summary'
                     ? 'nav-link bg-blue-500 text-white'
                     : 'nav-link bg-gray-200'">
@@ -77,15 +80,16 @@
                 </button>
             </li>
             <li class="nav-item">
-                <button @click="activeTab = 'financial-summary'"
-                        :class="activeTab === 'financial-summary'
+                <button class="text-md md:text-lg font-semibold tracking-wide"
+                        @click="activeTab = 'financial-summary'; $wire.loadFinancialTab()" :class="activeTab === 'financial-summary'
                     ? 'nav-link bg-blue-500 text-white'
                     : 'nav-link bg-gray-200'">
                     Financial Summary
                 </button>
             </li>
             <li class="nav-item">
-                <button @click="activeTab = 'supplier-summary'"
+                <button class="text-md md:text-lg font-semibold tracking-wide"
+                        @click="activeTab = 'supplier-summary'; $wire.loadSupplierTab()"
                         :class="activeTab === 'supplier-summary'
                     ? 'nav-link bg-blue-500 text-white'
                     : 'nav-link bg-gray-200'">
@@ -99,7 +103,7 @@
     <!-- Tabs Content -->
     <div class="tab-content">
         <!-- Display Summary: Proforma Invoice | Order(s) | Payment(s) | Attachment(s) -->
-        <div x-show="activeTab === 'proforma-summary'" class="tab-pane p-4">
+        <div x-show="activeTab === 'proforma-summary'" class="tab-pane p-0">
             @if ($selectedProforma)
                 <div class="proforma-details-container">@include('components.Summary.business-insights')</div>
                 <div class="proforma-details-container">@include('components.Summary.proforma-invoice')</div>
@@ -113,27 +117,38 @@
         </div>
         @if ($selectedProforma)
             <!-- Display Summary: Financial Departments Concise Insight -->
-            <div x-show="activeTab === 'financial-summary'" class="tab-pane p-4">
-                <div class="livewire-financial-summary">
-                    @livewire(
-                    'case-summary.financial-summary',
-                    [ 'proformaId' => $selectedProforma->id],
-                    key("financial-summary-{$selectedProforma->id}")
-                    )
-                </div>
+            <div x-show="activeTab === 'financial-summary'" class="tab-pane p-0">
+                @if($loadFinancialSummary)
+                    <div class="livewire-financial-summary">
+                        @livewire(
+                        'case-summary.financial-summary',
+                        [ 'proformaInvoice' => $selectedProforma],
+                        key("financial-summary-{$selectedProforma->id}")
+                        )
+                    </div>
+                @else
+                    <div class="loader-placeholder">
+                        <div class="loader-gradient"></div>
+                    </div>
+                @endif
             </div>
             <!-- Display Summary: Supplier Balance -->
-            <div x-show="activeTab === 'supplier-summary'" class="tab-pane p-4">
-                <div class="livewire-supplier-summary">
-                    @livewire(
-                    'case-summary.supplier-summary',
-                    ['supplierId' => $selectedProforma->supplier_id ?? null],
-                    key("supplier-summary-{$selectedProforma->supplier_id}")
-                    )
-                </div>
+            <div x-show="activeTab === 'supplier-summary'" class="tab-pane p-0">
+                @if($loadSupplierSummary)
+                    <div class="livewire-supplier-summary">
+                        @livewire(
+                        'case-summary.supplier-summary',
+                        ['supplierId' => $selectedProforma->supplier_id ?? null],
+                        key("supplier-summary-{$selectedProforma->supplier_id}")
+                        )
+                    </div>
+                @else
+                    <div class="loader-placeholder">
+                        <div class="loader-gradient"></div>
+                    </div>
+                @endif
             </div>
         @endif
     </div>
-    @include('components.Summary.botPress')
 </div>
 

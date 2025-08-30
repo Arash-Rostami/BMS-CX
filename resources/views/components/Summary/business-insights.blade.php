@@ -1,8 +1,9 @@
 <!-- Accordion Container -->
 <div x-data="{ open: true }" class="border rounded-lg shadow-lg mb-4">
     <button @click="open = !open"
-            class="w-full flex justify-between items-center transition-colors px-4 py-3 text-left text-2xl font-semibold rounded-t-lg">
-        <span><span class="material-icons-outlined text-lg insight">insights</span> Financial Insights</span>
+            class="w-full flex justify-between items-center transition-colors px-4 py-3 text-left text-lg md:text-2xl font-semibold rounded-t-lg">
+        <span><span
+                class="material-icons-outlined text-lg md:text-2xl insight">insights</span> Financial Insights</span>
         <span class="material-icons-outlined" x-show="open">expand_less</span>
         <span class="material-icons-outlined" x-show="!open">expand_more</span>
     </button>

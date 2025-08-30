@@ -109,7 +109,7 @@ class PaymentRequestService extends BaseService
 
     protected function sendEmail($record, mixed $status): void
     {
-        $CxRecipients = User::getPartnersWithPosition();
+        $CxRecipients = User::getPartnersWithPosition('mdr');
         $arguments = [$CxRecipients, $this->mapModelToNotificationClass($record, 'partner', $status)];
         RetryableEmailService::dispatchEmail(get_class($record), ...$arguments);
     }

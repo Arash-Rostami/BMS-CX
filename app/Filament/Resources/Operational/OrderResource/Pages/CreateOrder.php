@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
-use App\Models\Attachment;
 use App\Services\AttachmentCreationService;
 use App\Services\Notification\OrderService;
 use App\Services\ProjectNumberGenerator;
@@ -32,9 +31,7 @@ class CreateOrder extends CreateRecord
     {
         persistReferenceNumber($this->record, 'O');
 
-        $service = new OrderService();
-
-        $service->notifyAgents($this->record);
+        (new OrderService())->notifyAgents($this->record);
 
         AttachmentCreationService::createFromExisting($this->record->id, 'order_id');
     }

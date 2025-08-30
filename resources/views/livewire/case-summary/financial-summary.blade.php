@@ -10,9 +10,7 @@
         </button>
     </div>
     <div class="mb-4">
-        <h3 class="font-bold">PI and Orders Details :</h3>
-    </div>
-    <div>
+        <h3 class="text-lg md:text-2xl font-semibold">PI and Orders Details :</h3>
         <div class="overflow-x-auto">
             <table class="table-auto w-full border-collapse">
                 <tbody>
@@ -194,9 +192,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="mb-4">
-            <h3 class="font-bold"> Payment Details :</h3>
-        </div>
+    </div>
+    <div class="mb-4">
+            <h3 class="text-lg md:text-2xl font-semibold"> Payment Details :</h3>
         <div>
             <div class="overflow-x-auto">
                 <table class="table-auto">

@@ -12,26 +12,26 @@ use App\Services\OrderPaymentCalculationService;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Fieldset;
-use Filament\Forms\Components\Hidden;
-use Filament\Support\Enums\Alignment;
-use Filament\Support\Enums\MaxWidth;
 use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\View as ComponentView;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Infolists\Infolist;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Resources\Pages\Page;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\View as ComponentView;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
-use Filament\Infolists\Infolist;
 
 
 class OrderResource extends Resource
@@ -45,10 +45,17 @@ class OrderResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
+    protected static ?string $pollingInterval = null;
+
     protected static ?string $recordTitleAttribute = 'reference_number';
 
 
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
+
+    public static function configureCommonTableSettings(Table $table): Table
+    {
+        return (new ListOrders())->configureCommonTableSettings($table);
+    }
 
     public static function form(Form $form): Form
     {
@@ -300,6 +307,7 @@ class OrderResource extends Resource
                             ->color('danger')
                             ->modalAlignment(Alignment::Center)
                             ->action(fn(array $arguments, Repeater $component) => AttachmentDeletionService::removeAttachment($component, $arguments['item']))
+                            ->after(fn($livewire) => $livewire->redirect(route('filament.admin.resources.orders.edit', ['record' => $livewire->getRecord()])))
                             ->modalContent(function (Action $action, array $arguments, Repeater $component, $operation, ?Model $record) {
                                 if (str_contains($arguments['item'], 'record')) {
                                     return AttachmentDeletionService::validateAttachmentExists($component, $arguments['item'], $operation, $action, $record);
@@ -331,20 +339,14 @@ class OrderResource extends Resource
             ])->columns(5);
     }
 
-    public static function table(Table $table): Table
+    public static function getAllDocs()
     {
-        return $table;
+        return Admin::showAllDocs();
     }
 
-    public static function shouldRegisterNavigation(): bool
+    public static function getClassicLayout(Table $table)
     {
-        return !isSimpleSidebar();
-    }
-
-
-    public static function refreshComponent()
-    {
-        return self::refreshComponent();
+        return (new ListOrders())->getClassicLayout($table);
     }
 
     public static function getEloquentQuery(): Builder
@@ -356,22 +358,24 @@ class OrderResource extends Resource
             ]);
     }
 
-    public static function getWidgets(): array
+    public static function getGlobalSearchResultTitle(Model $record): string
     {
-        return [
-            StatsOverview::class,
-        ];
+        return '🛒 ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
     }
 
-
-    public static function getRelations(): array
+    public static function getGlobalSearchResultUrl(Model $record): string
     {
-        return [
-            Operational\OrderResource\RelationManagers\ProformaInvoiceRelationManagers::class,
-//            Operational\OrderResource\RelationManagers\MainPaymentRequestsRelationManager::class,
-            Operational\OrderResource\RelationManagers\PaymentRequestsRelationManager::class,
-            Operational\OrderResource\RelationManagers\PaymentsRelationManager::class
-        ];
+        return OrderResource::getUrl('edit', ['record' => $record]);
+    }
+
+    public static function getModernLayout(Table $table): Table
+    {
+        return (new ListOrders())->getModernLayout($table);
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
     }
 
     public static function getPages(): array
@@ -382,11 +386,6 @@ class OrderResource extends Resource
             'view' => Operational\OrderResource\Pages\ViewOrder::route('/{record}'),
             'edit' => Operational\OrderResource\Pages\EditOrder::route('/{record}/edit'),
         ];
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
     }
 
     public static function getRecordSubNavigation(Page $page): array
@@ -403,20 +402,20 @@ class OrderResource extends Resource
         return $page->generateNavigationItems($navigationItems);
     }
 
-
-    public static function getAllDocs()
+    public static function getRelations(): array
     {
-        return Admin::showAllDocs();
+        return [
+            Operational\OrderResource\RelationManagers\ProformaInvoiceRelationManagers::class,
+            Operational\OrderResource\RelationManagers\PaymentRequestsRelationManager::class,
+            Operational\OrderResource\RelationManagers\PaymentsRelationManager::class
+        ];
     }
 
-    public static function getGlobalSearchResultUrl(Model $record): string
+    public static function getWidgets(): array
     {
-        return OrderResource::getUrl('edit', ['record' => $record]);
-    }
-
-    public static function getGlobalSearchResultTitle(Model $record): string
-    {
-        return '🛒 ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
+        return [
+            StatsOverview::class,
+        ];
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -424,18 +423,18 @@ class OrderResource extends Resource
         return (new ViewOrder())->infolist($infolist);
     }
 
-    public static function configureCommonTableSettings(Table $table): Table
+    public static function refreshComponent()
     {
-        return (new ListOrders())->configureCommonTableSettings($table);
+        return self::refreshComponent();
     }
 
-    public static function getModernLayout(Table $table): Table
+    public static function shouldRegisterNavigation(): bool
     {
-        return (new ListOrders())->getModernLayout($table);
+        return !isSimpleSidebar();
     }
 
-    public static function getClassicLayout(Table $table)
+    public static function table(Table $table): Table
     {
-        return (new ListOrders())->getClassicLayout($table);
+        return $table;
     }
 }

@@ -7,8 +7,6 @@ use App\Http\Controllers\ManagerialDashboard;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\UserController;
 use App\Livewire\CaseSummary\TotalSummary;
-use App\Models\ProformaInvoice;
-use App\Services\SupplierSummaryService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -19,7 +17,6 @@ Route::get('/clear', function () {
         abort(403, 'Unauthorized');
     }
 
-    Artisan::call('schedule:clear-cache');
     Artisan::call('cache:clear');
     Artisan::call('config:clear');
     Artisan::call('route:clear');
@@ -27,7 +24,17 @@ Route::get('/clear', function () {
     Artisan::call('optimize:clear');
     Artisan::call('filament:clear-cached-components');
 
-    return 'All caches including Filament caches have been cleared successfully!';
+    // Rebuild caches
+    Artisan::call('config:cache');
+    Artisan::call('route:cache');
+    Artisan::call('view:cache');
+    Artisan::call('filament:cache-components');
+    Artisan::call('queue:restart');
+
+    return response()->json([
+        'message' => 'All caches including Filament caches and queue workers have been cleared successfully!',
+        'timestamp' => now()->toDateTimeString()
+    ]);
 });
 
 Route::get('/cache', function () {
@@ -73,18 +80,16 @@ Route::middleware(['web', 'custom_auth'])->group(function () {
 });
 
 
-Route::get('/test-summary', function (SupplierSummaryService $service) {
-    ProformaInvoice::select('id')
-        ->chunk(50, function ($slice) use ($service) {
-            foreach ($slice as $pi) {
-                $service->rebuild($pi->id);
-            }
-            sleep(2);
-        });
-});
+//Route::get('/test-summary', function (SupplierSummaryService $service) {
+//    ProformaInvoice::select('id')
+//        ->chunk(50, function ($slice) use ($service) {
+//            foreach ($slice as $pi) {
+//                $service->rebuild($pi->id);
+//            }
+//            sleep(2);
+//        });
+//});
 
 Route::get('/quote-service/{token}', [QuoteController::class, 'authenticate'])->name('quote-service');
 
 Route::fallback(fn() => view('errors.404'));
-
-

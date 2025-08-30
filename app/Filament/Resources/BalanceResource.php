@@ -29,6 +29,8 @@ class BalanceResource extends Resource
 
     protected static ?int $navigationSort = 6;
 
+    protected static ?string $pollingInterval = null;
+
 
     public static function form(Form $form): Form
     {

@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
-use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\AttachmentCreationService;
 use App\Services\Notification\PaymentRequestService;
 use App\Services\SmartPaymentRequest;

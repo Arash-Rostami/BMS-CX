@@ -5,182 +5,158 @@ namespace App\Services;
 use App\Models\Order;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
+use SplObjectStorage;
+
 
 class TableObserver
 {
+    /**
+     * In-memory cache of [key=>[missing,total,filled]] per record
+     * @var SplObjectStorage<Model, array<string, array<string,int>>>|null
+     */
+    private static ?SplObjectStorage $statsCache = null;
 
-    protected static array $excludedAttributes = [
-        'user_id', 'extra', 'created_at', 'updated_at', 'deleted_at', 'id'
+    /**
+     * Attributes to exclude from counting
+     * @var array<string,bool>
+     */
+    private static array $excluded = [
+        'user_id'    => true,
+        'extra'      => true,
+        'created_at' => true,
+        'updated_at' => true,
+        'deleted_at' => true,
+        'id'         => true,
     ];
+
+    /**
+     * Cached fillable fields per class
+     * @var array<string, array<string>>
+     */
+    private static array $fillableCache = [];
+
+    /**
+     * Related names for Order
+     * @var array<string>
+     */
+    private const ORDER_RELATIONS = ['orderDetail', 'doc', 'logistic'];
 
     public static function showMissingData(int $initialCount = 0, ?int $adjustment = null): TextColumn
     {
         return self::makeMissingDataColumn($initialCount, false, $adjustment);
     }
+
     public static function showMissingDataWithRel(int $initialCount = 0, ?int $adjustment = null): TextColumn
     {
         return self::makeMissingDataColumn($initialCount, true, $adjustment);
     }
-    protected static function makeMissingDataColumn(int $initialCount, bool $includeRelations, ?int $adjustment = null): TextColumn
-    {
-        return TextColumn::make('missing_data')
-            ->label('Missing Info')
-            ->grow(false)
-            ->state(function (Model $record) use ($initialCount, $includeRelations, $adjustment) {
-                $missingCount = $initialCount + self::countMissingData($record, $includeRelations, $adjustment);
-                return $missingCount <= 0 ? 'Complete' : "{$missingCount} Missing";
-            })
-            ->icon('heroicon-s-puzzle-piece')
-            ->color(fn($state) => $state === 'Complete' ? 'success' : 'danger')
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->badge();
-    }
+
     public static function showCompletionPercentage(bool $includeRelations = true, ?int $adjustment = null): TextColumn
     {
         return TextColumn::make('completion_percentage')
             ->label('Completion')
             ->grow(false)
             ->state(function (Model $record) use ($includeRelations, $adjustment) {
-                [$filled, $total] = self::getCompletionStats($record, $includeRelations, $adjustment);
-                $percentage = $total > 0 ? round(($filled / $total) * 100) : 100;
-                return "{$percentage}%";
+                $stats = self::getCompletionStats($record, $includeRelations, $adjustment);
+                $percent = $stats['total'] > 0
+                    ? (int) round(($stats['filled'] / $stats['total']) * 100)
+                    : 100;
+                return "{$percent}%";
             })
             ->icon('heroicon-s-chart-bar')
-            ->color(function ($state) {
-                $percentage = (int)str_replace('%', '', $state);
-                return match (true) {
-                    $percentage >= 90 => 'success',
-                    $percentage >= 70 => 'warning',
-                    default => 'danger'
-                };
+            ->color(fn(string $state) => match (true) {
+                (int) rtrim($state, '%') >= 90 => 'success',
+                (int) rtrim($state, '%') >= 70 => 'warning',
+                default => 'danger',
             })
             ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 
-    /**
-     * Count missing data for a record
-     */
-    protected static function countMissingData(Model $record, bool $includeRelations = true, ?int $adjustment = null): int
+    protected static function makeMissingDataColumn(int $initialCount, bool $includeRelations, ?int $adjustment): TextColumn
     {
-        $count = 0;
-
-        // Count main model
-        $count += self::countMissingInModel($record);
-
-        // Apply  adjustment if specified
-        if ($adjustment !== null) {
-            $count = max(0, $count - $adjustment);
-        }
-
-        // Only Order gets related models when includeRelations is true
-        if ($includeRelations && $record instanceof Order) {
-            $count += self::countOrderRelatedMissing($record);
-        }
-
-        return $count;
+        return TextColumn::make('missing_data')
+            ->label('Missing Info')
+            ->grow(false)
+            ->state(function (Model $record) use ($initialCount, $includeRelations, $adjustment) {
+                $stats = self::getCompletionStats($record, $includeRelations, $adjustment);
+                $missing = max(0, $initialCount + $stats['missing']);
+                return $missing === 0 ? 'Complete' : "{$missing} Missing";
+            })
+            ->icon('heroicon-s-puzzle-piece')
+            ->color(fn(string $state) => $state === 'Complete' ? 'success' : 'danger')
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->badge();
     }
 
     /**
-     * Count missing attributes in a single model
+     * @return array<string,int> ['missing'=>..., 'total'=>..., 'filled'=>...]
      */
-    protected static function countMissingInModel(Model $model): int
+    protected static function getCompletionStats(Model $record, bool $includeRelations, ?int $adjustment): array
     {
-        $fillable = $model->getFillable();
-        $attributes = $model->getAttributes();
-        $count = 0;
+        if (self::$statsCache === null) {
+            self::$statsCache = new SplObjectStorage();
+        }
 
-        foreach ($fillable as $attribute) {
-            if (in_array($attribute, self::$excludedAttributes)) {
-                continue;
+        $key = (int) $includeRelations . ':' . ($adjustment ?? 'n');
+
+        // retrieve existing map for this record
+        if (self::$statsCache->contains($record)) {
+            $map = self::$statsCache->offsetGet($record);
+            if (isset($map[$key])) {
+                return $map[$key];
             }
+        } else {
+            $map = [];
+        }
 
-            $value = $attributes[$attribute] ?? null;
-
-            if (is_null($value) || $value === '' || $value === []) {
-                $count++;
+        // compute fresh
+        [$missing, $total] = self::calculateStats($record);
+        if ($adjustment !== null) {
+            $total   = max(0, $total - $adjustment);
+            $missing = max(0, $missing - $adjustment);
+        }
+        if ($includeRelations && $record instanceof Order) {
+            foreach (self::ORDER_RELATIONS as $rel) {
+                if ($model = $record->{$rel}) {
+                    [$m2, $t2] = self::calculateStats($model);
+                    $missing += $m2;
+                    $total   += $t2;
+                }
             }
         }
+        $filled = max(0, $total - $missing);
+        $stats  = ['missing' => $missing, 'total' => $total, 'filled' => $filled];
 
-        return $count;
+        // store back
+        $map[$key] = $stats;
+        self::$statsCache->offsetSet($record, $map);
+
+        return $stats;
     }
 
     /**
-     * Count missing data in Order related models (OrderDetail, Doc, Logistic)
+     * @return array<int,int> [missing, total]
      */
-    protected static function countOrderRelatedMissing(Order $order): int
+    private static function calculateStats(Model $model): array
     {
-        $count = 0;
-
-        // Count order details
-        if ($order->orderDetail) {
-            $count += self::countMissingInModel($order->orderDetail);
+        $class = get_class($model);
+        if (! isset(self::$fillableCache[$class])) {
+            self::$fillableCache[$class] = array_values(
+                array_diff(
+                    $model->getFillable(),
+                    array_keys(self::$excluded)
+                )
+            );
         }
-
-        // Count doc
-        if ($order->doc) {
-            $count += self::countMissingInModel($order->doc);
+        $attrs = self::$fillableCache[$class];
+        $missing = 0;
+        foreach ($attrs as $attr) {
+            $val = $model->getAttribute($attr);
+            if ($val === null || $val === '' || (is_array($val) && empty($val))) {
+                $missing++;
+            }
         }
-
-        // Count logistic
-        if ($order->logistic) {
-            $count += self::countMissingInModel($order->logistic);
-        }
-
-        return $count;
-    }
-
-    /**
-     * Get completion statistics [filled, total]
-     */
-    protected static function getCompletionStats(Model $record, bool $includeRelations, ?int $adjustment = null): array
-    {
-        $totalFields = self::countTotalFields($record, $includeRelations, $adjustment);
-        $missingFields = self::countMissingData($record, $includeRelations, $adjustment);
-        $filledFields = $totalFields - $missingFields;
-
-        return [$filledFields, $totalFields];
-    }
-
-    /**
-     * Count total fillable fields across all models
-     */
-    protected static function countTotalFields(Model $record, bool $includeRelations, ?int $adjustment = null): int
-    {
-        $count = count(array_diff($record->getFillable(), self::$excludedAttributes));
-
-        // Apply PaymentRequest adjustment to total fields if specified
-        if ($adjustment !== null) {
-            $count = max(0, $count - $adjustment);
-        }
-
-        // Only Order gets related model field counts
-        if ($includeRelations && $record instanceof Order) {
-            $count += self::countOrderTotalFields($record);
-        }
-
-        return $count;
-    }
-
-    /**
-     * Count total fields in Order related models (OrderDetail, Doc, Logistic)
-     */
-    protected static function countOrderTotalFields(Order $order): int
-    {
-        $count = 0;
-
-        if ($order->orderDetail) {
-            $count += count(array_diff($order->orderDetail->getFillable(), self::$excludedAttributes));
-        }
-
-        if ($order->doc) {
-            $count += count(array_diff($order->doc->getFillable(), self::$excludedAttributes));
-        }
-
-        if ($order->logistic) {
-            $count += count(array_diff($order->logistic->getFillable(), self::$excludedAttributes));
-        }
-
-        return $count;
+        return [$missing, count($attrs)];
     }
 }

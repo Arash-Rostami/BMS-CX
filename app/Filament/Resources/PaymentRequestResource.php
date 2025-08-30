@@ -2,17 +2,12 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
 use App\Filament\Resources\Operational\PaymentRequestResource\Pages\ListPaymentRequests;
 use App\Filament\Resources\Operational\PaymentRequestResource\Widgets\StatsOverview;
-use App\Models\Department;
 use App\Models\PaymentRequest;
 use App\Models\ProformaInvoice;
 use App\Services\AttachmentDeletionService;
-use App\Services\TableObserver;
-use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Grid;
@@ -20,14 +15,12 @@ use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\Tabs\Tab;
 use Filament\Infolists\Infolist;
-use Filament\Notifications\Notification;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\MaxWidth;
@@ -36,9 +29,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
-use Illuminate\Database\Eloquent\Collection;
-use Filament\Tables\Actions\Action as TableAction;
-use Livewire\Component as Livewire;
 
 
 class PaymentRequestResource extends Resource
@@ -55,22 +45,14 @@ class PaymentRequestResource extends Resource
 
     protected static ?int $navigationSort = 4;
 
+    protected static ?string $pollingInterval = null;
+
     protected static ?string $recordTitleAttribute = 'reference_number';
 
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
 
     protected $listeners = ['fillFormData'];
-
-
-    public function fillFormData(Form $form, $proformaInvoiceId)
-    {
-        $proformaInvoice = ProformaInvoice::find($proformaInvoiceId);
-
-        $form->fill([
-            'requested_amount' => $proformaInvoice->price,
-        ]);
-    }
 
     public static function form(Form $form): Form
     {
@@ -387,36 +369,57 @@ class PaymentRequestResource extends Resource
     {
         return $infolist
             ->schema([
-                Admin::viewReason(),
-                Admin::viewType(),
-                Admin::viewDepartment(),
-                Admin::viewCostCenter(),
-                Admin::viewBeneficiaryName(),
-                Admin::viewRecipientName(),
-                Admin::viewRequester(),
-                Admin::viewAmount(),
-                Admin::viewDeadline(),
-                Admin::viewStatus(),
-                Admin::viewOrder(),
-                Admin::viewBankName(),
-                Admin::viewAccountNumber(),
-                Admin::viewBeneficiaryAddress(),
-                Admin::viewBankAddress(),
-                Admin::viewSwiftCode(),
-                Admin::viewIBAN(),
-                Admin::viewIFSC(),
-                Admin::viewMICR(),
-                Admin::viewCreationTime(),
-                Admin::viewStatusChanger(),
-                Admin::viewDescription()
-            ])->columns(3);
+                Tabs::make('Tabs')
+                    ->tabs([
+                        Tabs\Tab::make('General')
+                            ->icon('heroicon-m-clipboard-document-list')
+                            ->columnSpanFull()
+                            ->schema([
+                                Admin::viewReason(),
+                                Admin::viewType(),
+                                Admin::viewRequester(),
+                                Admin::viewDepartment(),
+                                Admin::viewCostCenter(),
+                                Admin::viewStatus(),
+                                Admin::viewBeneficiaryName(),
+                                Admin::viewRecipientName(),
+                                Admin::viewAmount(),
+                                Admin::viewDeadline(),
+                                Admin::viewBankName(),
+                                Admin::viewAccountNumber(),
+                                Admin::viewBankAddress(),
+                                Admin::viewBeneficiaryAddress(),
+                                Admin::viewDescription()
+                            ])->columns(3),
+
+                        Tabs\Tab::make('Details')
+                            ->icon('heroicon-m-information-circle')
+                            ->columnSpanFull()
+                            ->schema([
+                                Admin::viewProformaNumber(),
+                                Admin::viewContractNumber(),
+                                Admin::viewPart(),
+                                Admin::viewBlNumber(),
+                                Admin::viewBookingNumber(),
+                                Admin::viewOrder(),
+                                Admin::viewSwiftCode(),
+                                Admin::viewIBAN(),
+                                Admin::viewIFSC(),
+                                Admin::viewMICR(),
+                                Admin::viewCreationTime(),
+                                Admin::viewStatusChanger(),
+                            ])->columns(3),
+                    ])
+                    ->activeTab(1)
+                    ->contained(false),
+            ])
+            ->columns(1);
     }
 
     public static function getWidgets(): array
     {
         return [StatsOverview::class];
     }
-
 
     public static function getEloquentQuery(): Builder
     {
@@ -449,6 +452,20 @@ class PaymentRequestResource extends Resource
         return !isSimpleSidebar();
     }
 
+    /**
+     * Get the navigation badge text.
+     *
+     * @return string|null
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $data = static::fetchBadgeData();
+
+        return $data['new'] > 0
+            ? "{$data['new']} New"
+            : (string)$data['total'];
+    }
+
     protected static function fetchBadgeData(): array
     {
         if (static::$badgeData !== null) {
@@ -469,20 +486,6 @@ class PaymentRequestResource extends Resource
         ];
 
         return static::$badgeData;
-    }
-
-    /**
-     * Get the navigation badge text.
-     *
-     * @return string|null
-     */
-    public static function getNavigationBadge(): ?string
-    {
-        $data = static::fetchBadgeData();
-
-        return $data['new'] > 0
-            ? "{$data['new']} New"
-            : (string)$data['total'];
     }
 
     /**
@@ -517,9 +520,17 @@ class PaymentRequestResource extends Resource
         return (new ListPaymentRequests())->getModernLayout($table);
     }
 
-
     public static function getClassicLayout(Table $table)
     {
         return (new ListPaymentRequests())->getClassicLayout($table);
+    }
+
+    public function fillFormData(Form $form, $proformaInvoiceId)
+    {
+        $proformaInvoice = ProformaInvoice::find($proformaInvoiceId);
+
+        $form->fill([
+            'requested_amount' => $proformaInvoice->price,
+        ]);
     }
 }

@@ -273,7 +273,15 @@ class ListPayments extends ListRecords
 
     protected function getTableQuery(): Builder
     {
-        $query = self::getOriginalTable();
+        $query = self::getOriginalTable()
+            ->with([
+                'attachments',
+                'order',
+                'paymentRequests',
+                'approvedPaymentRequests',
+                'reason',
+                'user',
+            ]);
 
         if ($this->activeTab !== '') {
 
@@ -367,9 +375,8 @@ class ListPayments extends ListRecords
                     PrintBulkAction::make(),
                 ])
             ])
-            ->paginated([20, 30, 40])
+            ->paginated([15, 30])
             ->defaultSort('created_at', 'desc')
-            ->poll('120s')
             ->groups([
                 Admin::filterByBalance(),
                 Admin::groupByBeneficiary(),

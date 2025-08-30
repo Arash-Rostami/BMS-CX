@@ -22,9 +22,11 @@ class NotificationResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-bell-alert';
 
     protected static ?string $navigationGroup = 'Operational Data';
-    public ?string $tableSortColumn = 'notifiable_id';
+
     protected static ?int $navigationSort = 11;
 
+    protected static ?string $pollingInterval = null;
+    public ?string $tableSortColumn = 'notifiable_id';
 
     public static function form(Form $form): Form
     {
@@ -36,32 +38,16 @@ class NotificationResource extends Resource
             ]);
     }
 
-
-    public static function table(Table $table): Table
-    {
-        $table = self::configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? self::getModernLayout($table)
-            : self::getClassicLayout($table);
-
-    }
-
-    private static function configureCommonTableSettings(Table $table): Table
+    public static function getClassicLayout(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn(Builder $query) => $query->filterByUserRole(auth()->user()))
-            ->groups([
-                Admin::groupByName(),
-                Admin::groupByType()
-            ])
-            ->paginated([10, 15, 20])
-            ->defaultGroup('user.first_name')
-            ->defaultSort('created_at', 'desc')
-            ->poll('5s')
-            ->filters([
-                Admin::filterByRecipient()
-            ]);
+            ->columns([
+                Admin::showRecipient(),
+                Admin::showMessage(),
+                Admin::showCreatedTime(),
+                Admin::showReadTime(),
+                Admin::showClearingTime(),
+            ])->striped();
     }
 
     public static function getEloquentQuery(): Builder
@@ -71,7 +57,6 @@ class NotificationResource extends Resource
                 SoftDeletingScope::class,
             ]);
     }
-
 
     public static function getModernLayout(Table $table): Table
     {
@@ -99,23 +84,36 @@ class NotificationResource extends Resource
             ]);
     }
 
-    public static function getClassicLayout(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Admin::showRecipient(),
-                Admin::showMessage(),
-                Admin::showCreatedTime(),
-                Admin::showReadTime(),
-                Admin::showClearingTime(),
-            ])->striped();
-    }
-
-
     public static function getPages(): array
     {
         return [
             'index' => Operational\NotificationResource\Pages\ManageNotifications::route('/'),
         ];
+    }
+
+    public static function table(Table $table): Table
+    {
+        $table = self::configureCommonTableSettings($table);
+
+        return (getTableDesign() != 'classic')
+            ? self::getModernLayout($table)
+            : self::getClassicLayout($table);
+
+    }
+
+    private static function configureCommonTableSettings(Table $table): Table
+    {
+        return $table
+            ->modifyQueryUsing(fn(Builder $query) => $query->filterByUserRole(auth()->user()))
+            ->groups([
+                Admin::groupByName(),
+                Admin::groupByType()
+            ])
+            ->paginated([10, 15, 20])
+            ->defaultGroup('user.first_name')
+            ->defaultSort('created_at', 'desc')
+            ->filters([
+                Admin::filterByRecipient()
+            ]);
     }
 }

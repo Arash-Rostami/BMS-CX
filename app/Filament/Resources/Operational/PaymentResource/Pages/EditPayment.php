@@ -57,12 +57,11 @@ class EditPayment extends EditRecord
 
     protected function afterSave(): void
     {
-        $records = $this->record->paymentRequests->map(fn($each) => $each->proforma_invoice_number ?? $each->reason->reason)->join(', ');
+        $records = $this->record->paymentRequests
+            ->map(fn($each) => $each->proforma_invoice_number ?? $each->reason->reason)->join(', ');
 
         $this->record['records'] = $records;
 
-        $service = new PaymentService();
-
-        $service->notifyAccountants($this->record, 'edit');
+        (new PaymentService)->notifyAccountants($this->record, 'edit');
     }
 }

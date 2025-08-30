@@ -12,44 +12,32 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FinancialSummary extends Component
 {
-    public ?int $proformaInvoiceId;
     public ?ProformaInvoice $proformaInvoice = null;
 
     protected $listeners = ['selectProforma' => 'mount'];
 
-    public function mount($proformaId = null)
+    public function exportPdf(): StreamedResponse
     {
-        $this->proformaInvoiceId = $proformaId;
-        $this->loadProforma($proformaId);
+        $data = [
+            'proformaInvoice' => $this->proformaInvoice,
+            'orderSummary' => $this->orderSummary(),
+            'paymentSummary' => $this->paymentSummary(),
+        ];
+
+        $filename = "BMS-financial-summary-" . trim($data['proformaInvoice']['contract_number'] ?? $this->proformaInvoiceId) . ".pdf";
+
+        return response()->streamDownload(function () use ($data) {
+            echo Pdf::loadView('filament.pdfs.financialSummary', $data)
+                ->setPaper('a4', 'landscape')
+                ->output();
+        }, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
     }
 
-    protected function loadProforma($id)
+    public function mount(ProformaInvoice $proformaInvoice)
     {
-        if (!$id) {
-            $this->proformaInvoice = null;
-            return;
-        }
-
-        $this->proformaInvoice = ProformaInvoice::with([
-            'buyer',
-            'supplier',
-            'category',
-            'product',
-            'grade',
-            'associatedPaymentRequests.payments.attachments',
-            'associatedPaymentRequests.payments.paymentRequests',
-            'associatedPaymentRequests.user',
-            'associatedPaymentRequests.payments.user',
-            'attachments',
-            'orders.orderDetail',
-            'orders.logistic.portOfDelivery',
-            'orders.doc',
-            'orders.paymentRequests.payments.attachments',
-            'orders.paymentRequests.user',
-            'orders.paymentRequests.payments.user',
-            'orders.attachments',
-            'orders.purchaseStatus'
-        ])->find($id);
+        $this->proformaInvoice = $proformaInvoice;
     }
 
     #[Computed]
@@ -133,6 +121,15 @@ class FinancialSummary extends Component
         ];
     }
 
+    public function render()
+    {
+        return view('livewire.case-summary.financial-summary', [
+            'proformaInvoice' => $this->proformaInvoice,
+            'orderSummary' => $this->orderSummary(),
+            'paymentSummary' => $this->paymentSummary(),
+        ]);
+    }
+
     protected function calculateDateDiff($date1, $date2)
     {
         if ($date1 && $date2) {
@@ -141,60 +138,14 @@ class FinancialSummary extends Component
         return null;
     }
 
-    private function calculateOtherAdvances(): float
+    protected function formatAttachments($attachments)
     {
-        if ($this->proformaInvoice->associatedPaymentRequests->isEmpty()) {
-            return 0;
-        }
-
-        return $this->proformaInvoice->associatedPaymentRequests
-            ->flatMap->payments
-            ->flatMap(fn($payment) => $payment->paymentRequests->filter(
-                fn($req) => trim($req->proforma_invoice_number) !== trim($this->proformaInvoice->proforma_number)
-            ))
-            ->sum('requested_amount') ?? 0;
-    }
-
-
-    private function calculatePaymentAmount($pmt, bool $isCollective, float $proformaWeight, float $otherAdvances): float
-    {
-        $paymentAmount = $pmt->amount;
-
-        if ($isCollective) {
-            $totalSum = $pmt->paymentRequests->sum('requested_amount');
-            $paymentAmount = $pmt->amount * ($proformaWeight / $totalSum);
-        }
-
-        return $paymentAmount - $otherAdvances;
-    }
-
-    private function processAdvancePayments(array &$rows, float $invoiceTotal, float $currentPaid): float
-    {
-        $additionalPaid = 0;
-        $otherAdvances = $this->calculateOtherAdvances();
-
-        foreach ($this->proformaInvoice->associatedPaymentRequests as $req) {
-            $isCollective = $req->associatedProformaInvoices?->count() > 1;
-            $proformaWeight = ($this->proformaInvoice->price ?? 0) * ($this->proformaInvoice->quantity ?? 0) * (($this->proformaInvoice->percentage ?? 0) / 100);
-
-            foreach ($req->payments as $pmt) {
-                $paymentAmount = $this->calculatePaymentAmount($pmt, $isCollective, $proformaWeight, $otherAdvances);
-                $additionalPaid += $paymentAmount;
-                $otherAdvances = 0;
-
-                $rows[] = $this->buildPaymentRow($pmt, $req, null, $paymentAmount, $invoiceTotal, $currentPaid + $additionalPaid, true);
-            }
-        }
-
-        return $additionalPaid;
-    }
-
-    private function updateTotals(array &$totals, $quantity, $initialPayment, $payment, $total): void
-    {
-        if (is_numeric($quantity)) $totals['quantity'] += $quantity;
-        if (is_numeric($initialPayment)) $totals['initial_payment'] += $initialPayment;
-        if (is_numeric($payment)) $totals['payment'] += $payment;
-        if (is_numeric($total)) $totals['sum'] += $total;
+        return $attachments->map(function ($attachment) {
+            return [
+                'url' => $attachment->file_path,
+                'name' => $attachment->name,
+            ];
+        })->sortBy('name')->values()->toArray();
     }
 
     protected function getOrderAttachments(Collection $attachments): array
@@ -215,39 +166,6 @@ class FinancialSummary extends Component
 
         return [$bl, $docs];
     }
-
-    private function processOrderPayments(array &$rows, float $invoiceTotal, float $currentPaid): float
-    {
-        $additionalPaid = 0;
-        $payments = $this->getOrderPayments();
-
-        foreach ($payments as $item) {
-            $additionalPaid += $item['pmt']->amount;
-            $rows[] = $this->buildPaymentRow(
-                $item['pmt'],
-                $item['req'],
-                $item['ord'],
-                $item['pmt']->amount,
-                $invoiceTotal,
-                $currentPaid + $additionalPaid,
-                false
-            );
-        }
-
-        return $additionalPaid;
-    }
-
-
-    protected function formatAttachments($attachments)
-    {
-        return $attachments->map(function ($attachment) {
-            return [
-                'url' => $attachment->file_path,
-                'name' => $attachment->name,
-            ];
-        })->sortBy('name')->values()->toArray();
-    }
-
 
     protected function getOrderPayments()
     {
@@ -304,32 +222,78 @@ class FinancialSummary extends Component
         return $base;
     }
 
-
-    public function exportPdf(): StreamedResponse
+    private function calculateOtherAdvances(): float
     {
-        $data = [
-            'proformaInvoice' => $this->proformaInvoice,
-            'orderSummary' => $this->orderSummary(),
-            'paymentSummary' => $this->paymentSummary(),
-        ];
+        if ($this->proformaInvoice->associatedPaymentRequests->isEmpty()) {
+            return 0;
+        }
 
-        $filename = "BMS-financial-summary-" . trim($data['proformaInvoice']['contract_number'] ?? $this->proformaInvoiceId) . ".pdf";
-
-        return response()->streamDownload(function () use ($data) {
-            echo Pdf::loadView('filament.pdfs.financialSummary', $data)
-                ->setPaper('a4', 'landscape')
-                ->output();
-        }, $filename, [
-            'Content-Type' => 'application/pdf',
-        ]);
+        return $this->proformaInvoice->associatedPaymentRequests
+            ->flatMap->payments
+            ->flatMap(fn($payment) => $payment->paymentRequests->filter(
+                fn($req) => trim($req->proforma_invoice_number) !== trim($this->proformaInvoice->proforma_number)
+            ))
+            ->sum('requested_amount') ?? 0;
     }
 
-    public function render()
+    private function calculatePaymentAmount($pmt, bool $isCollective, float $proformaWeight, float $otherAdvances): float
     {
-        return view('livewire.case-summary.financial-summary', [
-            'proformaInvoice' => $this->proformaInvoice,
-            'orderSummary' => $this->orderSummary(),
-            'paymentSummary' => $this->paymentSummary(),
-        ]);
+        $paymentAmount = $pmt->amount;
+
+        if ($isCollective) {
+            $totalSum = $pmt->paymentRequests->sum('requested_amount');
+            $paymentAmount = $pmt->amount * ($proformaWeight / $totalSum);
+        }
+
+        return $paymentAmount - $otherAdvances;
+    }
+
+    private function processAdvancePayments(array &$rows, float $invoiceTotal, float $currentPaid): float
+    {
+        $additionalPaid = 0;
+        $otherAdvances = $this->calculateOtherAdvances();
+
+        foreach ($this->proformaInvoice->associatedPaymentRequests as $req) {
+            $isCollective = $req->associatedProformaInvoices?->count() > 1;
+            $proformaWeight = ($this->proformaInvoice->price ?? 0) * ($this->proformaInvoice->quantity ?? 0) * (($this->proformaInvoice->percentage ?? 0) / 100);
+
+            foreach ($req->payments as $pmt) {
+                $paymentAmount = $this->calculatePaymentAmount($pmt, $isCollective, $proformaWeight, $otherAdvances);
+                $additionalPaid += $paymentAmount;
+                $otherAdvances = 0;
+
+                $rows[] = $this->buildPaymentRow($pmt, $req, null, $paymentAmount, $invoiceTotal, $currentPaid + $additionalPaid, true);
+            }
+        }
+
+        return $additionalPaid;
+    }
+
+    private function processOrderPayments(array &$rows, float $invoiceTotal, float $currentPaid): float
+    {
+        $additionalPaid = 0;
+        $payments = $this->getOrderPayments();
+
+        foreach ($payments as $item) {
+            $additionalPaid += $item['pmt']->amount;
+            $rows[] = $this->buildPaymentRow(
+                $item['pmt'],
+                $item['req'],
+                $item['ord'],
+                $item['pmt']->amount,
+                $invoiceTotal,
+                $currentPaid + $additionalPaid,
+                false
+            );
+        }
+
+        return $additionalPaid;
+    }
+    private function updateTotals(array &$totals, $quantity, $initialPayment, $payment, $total): void
+    {
+        if (is_numeric($quantity)) $totals['quantity'] += $quantity;
+        if (is_numeric($initialPayment)) $totals['initial_payment'] += $initialPayment;
+        if (is_numeric($payment)) $totals['payment'] += $payment;
+        if (is_numeric($total)) $totals['sum'] += $total;
     }
 }

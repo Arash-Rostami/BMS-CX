@@ -24,6 +24,8 @@ class NotificationSubscriptionResource extends Resource
 
     protected static ?int $navigationSort = 12;
 
+    protected static ?string $pollingInterval = null;
+
 
     public static function form(Forms\Form $form): Forms\Form
     {

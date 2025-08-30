@@ -94,7 +94,7 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->databaseNotifications()
-            ->databaseNotificationsPolling('10s')
+            ->databaseNotificationsPolling('60s')
             ->maxContentWidth(MaxWidth::Full)
             ->spa()
             ->brandName('BMS')
@@ -115,7 +115,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->sidebarCollapsibleOnDesktop()
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
-            ->globalSearchDebounce('750ms')
+            ->globalSearchDebounce('1000ms')
             ->breadcrumbs()
             ->userMenuItems([
                 MenuItem::make()

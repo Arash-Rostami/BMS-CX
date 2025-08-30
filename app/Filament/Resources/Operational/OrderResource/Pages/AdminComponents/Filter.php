@@ -33,86 +33,6 @@ trait Filter
 {
     use Calculator;
 
-    public static function filterOrderStatus(): SelectFilter
-    {
-        return SelectFilter::make('order_status')
-            ->label('Status')
-            ->options(self::$statusTexts);
-    }
-
-    public static function filterProforma()
-    {
-        return FilamentFilter::make('proforma_date')
-            ->form([
-                DatePicker::make('proforma_from')
-                    ->placeholder(fn($state): string => 'Dec 18, ' . now()->subYear()->format('Y')),
-                DatePicker::make('proforma_until')
-                    ->placeholder(fn($state): string => now()->format('M d, Y')),
-            ])
-            ->query(function (Builder $query, array $data): Builder {
-                return $query
-                    ->when(
-                        $data['proforma_from'],
-                        fn(Builder $query, $date): Builder => $query->whereDate('proforma_date', '>=', $date),
-                    )
-                    ->when(
-                        $data['proforma_until'],
-                        fn(Builder $query, $date): Builder => $query->whereDate('proforma_date', '<=', $date),
-                    );
-            })
-            ->indicateUsing(function (array $data): array {
-                $indicators = [];
-                if ($data['proforma_from'] ?? null) {
-                    $indicators['proforma_from'] = 'Proforma from ' . Carbon::parse($data['proforma_from'])->toFormattedDateString();
-                }
-                if ($data['proforma_until'] ?? null) {
-                    $indicators['proforma_until'] = 'Proforma until ' . Carbon::parse($data['proforma_until'])->toFormattedDateString();
-                }
-
-                return $indicators;
-            });
-    }
-
-    public static function filterCreatedAt()
-    {
-        return FilamentFilter::make('created_at')
-            ->form([
-                DatePicker::make('created_from')
-                    ->placeholder(fn($state): string => 'Dec 18, ' . now()->subYear()->format('Y')),
-                DatePicker::make('created_until')
-                    ->placeholder(fn($state): string => now()->format('M d, Y')),
-            ])
-            ->query(function (Builder $query, array $data): Builder {
-                return $query
-                    ->when(
-                        $data['created_from'],
-                        fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
-                    )
-                    ->when(
-                        $data['created_until'],
-                        fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
-                    );
-            })
-            ->indicateUsing(function (array $data): array {
-                $indicators = [];
-                if ($data['created_at'] ?? null) {
-                    $indicators['created_at'] = 'created from ' . Carbon::parse($data['created_at'])->toFormattedDateString();
-                }
-                if ($data['created_at'] ?? null) {
-                    $indicators['created_at'] = 'created until ' . Carbon::parse($data['created_at'])->toFormattedDateString();
-                }
-
-                return $indicators;
-            });
-    }
-
-
-    public static function filterSoftDeletes(): TrashedFilter
-    {
-        return TrashedFilter::make();
-    }
-
-
     public static function filterBasedOnQuery(): QueryBuilder
     {
         return QueryBuilder::make()
@@ -221,37 +141,117 @@ trait Filter
             ->constraintPickerColumns(5);
     }
 
+    public static function filterCreatedAt()
+    {
+        return FilamentFilter::make('created_at')
+            ->form([
+                DatePicker::make('created_from')
+                    ->placeholder(fn($state): string => 'Dec 18, ' . now()->subYear()->format('Y')),
+                DatePicker::make('created_until')
+                    ->placeholder(fn($state): string => now()->format('M d, Y')),
+            ])
+            ->query(function (Builder $query, array $data): Builder {
+                return $query
+                    ->when(
+                        $data['created_from'],
+                        fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                    )
+                    ->when(
+                        $data['created_until'],
+                        fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                    );
+            })
+            ->indicateUsing(function (array $data): array {
+                $indicators = [];
+                if ($data['created_at'] ?? null) {
+                    $indicators['created_at'] = 'created from ' . Carbon::parse($data['created_at'])->toFormattedDateString();
+                }
+                if ($data['created_at'] ?? null) {
+                    $indicators['created_at'] = 'created until ' . Carbon::parse($data['created_at'])->toFormattedDateString();
+                }
+
+                return $indicators;
+            });
+    }
+
+    public static function filterOrderStatus(): SelectFilter
+    {
+        return SelectFilter::make('order_status')
+            ->label('Status')
+            ->options(self::$statusTexts);
+    }
+
+    public static function filterProforma()
+    {
+        return FilamentFilter::make('proforma_date')
+            ->form([
+                DatePicker::make('proforma_from')
+                    ->placeholder(fn($state): string => 'Dec 18, ' . now()->subYear()->format('Y')),
+                DatePicker::make('proforma_until')
+                    ->placeholder(fn($state): string => now()->format('M d, Y')),
+            ])
+            ->query(function (Builder $query, array $data): Builder {
+                return $query
+                    ->when(
+                        $data['proforma_from'],
+                        fn(Builder $query, $date): Builder => $query->whereDate('proforma_date', '>=', $date),
+                    )
+                    ->when(
+                        $data['proforma_until'],
+                        fn(Builder $query, $date): Builder => $query->whereDate('proforma_date', '<=', $date),
+                    );
+            })
+            ->indicateUsing(function (array $data): array {
+                $indicators = [];
+                if ($data['proforma_from'] ?? null) {
+                    $indicators['proforma_from'] = 'Proforma from ' . Carbon::parse($data['proforma_from'])->toFormattedDateString();
+                }
+                if ($data['proforma_until'] ?? null) {
+                    $indicators['proforma_until'] = 'Proforma until ' . Carbon::parse($data['proforma_until'])->toFormattedDateString();
+                }
+
+                return $indicators;
+            });
+    }
+
+    public static function filterSoftDeletes(): TrashedFilter
+    {
+        return TrashedFilter::make();
+    }
+
+
     // GROUP_BY FILTER/SORTING
+
+    public static function groupByBuyer(): Group
+    {
+        return Group::make('party.buyer_id')->label('Buyer')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->party->buyer)->name ?? 'N/A');
+    }
+
     public static function groupByCategory(): Group
     {
         return Group::make('category_id')->label('Category')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->category->name ?? 'N/A'));
     }
 
-    public static function groupByProduct(): Group
+    public static function groupByCurrency(): Group
     {
-        return Group::make('product_id')->label('Product')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->product->name ?? 'N/A'));
+        return Group::make('orderDetail')->label('Currency')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->orderDetail)->currency ?? 'N/A')
+            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->orderDetail)->currency ?? 'N/A');
+    }
+
+    public static function groupByDeliveryTerm(): Group
+    {
+        return Group::make('logistic.delivery_term_id')->label('Delivery Term')->collapsible()
+            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->logistic->deliveryTerm)->name != null ? $record->logistic->deliveryTerm->name : 'N/A')
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->deliveryTerm)->name ?? 'N/A');
     }
 
     public static function groupByGrade(): Group
     {
         return Group::make('grade_id')->label('Grade')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->grade->name ?? 'N/A'));
-    }
-
-    public static function groupByStage(): Group
-    {
-        return Group::make('purchase_status_id')->label('Stage')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->purchaseStatus->name ?? 'N/A'));
-    }
-
-    public static function groupByStatus(): Group
-    {
-        return Group::make('order_status')->label('Status')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => self::$statusTexts[$record->order_status]
-                ?? ucfirst(str_replace('_', ' ', $record->order_status))
-            );
     }
 
     public static function groupByInvoiceNumber(): Group
@@ -280,6 +280,24 @@ trait Filter
             });
     }
 
+    public static function groupByPackaging(): Group
+    {
+        return Group::make('logistic.packaging_id')->label('Packaging')->collapsible()
+            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->logistic->packaging)->name != null ? $record->logistic->packaging->name : 'N/A')
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->packaging)->name ?? 'N/A');
+    }
+
+    public static function groupByPart(): Group
+    {
+        return Group::make('part')->label('Part')->collapsible();
+    }
+
+    public static function groupByProduct(): Group
+    {
+        return Group::make('product_id')->label('Product')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->product->name ?? 'N/A'));
+    }
+
     public static function groupByProformaNumber(): Group
     {
         return Group::make('proforma_invoice_id')
@@ -289,20 +307,6 @@ trait Filter
             ->collapsible();
     }
 
-    public static function groupByPackaging(): Group
-    {
-        return Group::make('logistic.packaging_id')->label('Packaging')->collapsible()
-            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->logistic->packaging)->name != null ? $record->logistic->packaging->name : 'N/A')
-            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->packaging)->name ?? 'N/A');
-    }
-
-    public static function groupByDeliveryTerm(): Group
-    {
-        return Group::make('logistic.delivery_term_id')->label('Delivery Term')->collapsible()
-            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->logistic->deliveryTerm)->name != null ? $record->logistic->deliveryTerm->name : 'N/A')
-            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->deliveryTerm)->name ?? 'N/A');
-    }
-
     public static function groupByShippingLine(): Group
     {
         return Group::make('logistic.shipping_line_id')->label('Shipping Carrier')->collapsible()
@@ -310,29 +314,24 @@ trait Filter
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->logistic->shippingLine)->name ?? 'N/A');
     }
 
-    public static function groupByBuyer(): Group
+    public static function groupByStage(): Group
     {
-        return Group::make('party.buyer_id')->label('Buyer')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->party->buyer)->name ?? 'N/A');
+        return Group::make('purchase_status_id')->label('Stage')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->purchaseStatus->name ?? 'N/A'));
+    }
+
+    public static function groupByStatus(): Group
+    {
+        return Group::make('order_status')->label('Status')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => self::$statusTexts[$record->order_status]
+                ?? ucfirst(str_replace('_', ' ', $record->order_status))
+            );
     }
 
     public static function groupBySupplier(): Group
     {
         return Group::make('party.supplier_id')->label('Supplier')->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->party->supplier)->name ?? 'N/A');
-    }
-
-    public static function groupByPart(): Group
-    {
-        return Group::make('part')->label('Part')->collapsible();
-    }
-
-
-    public static function groupByCurrency(): Group
-    {
-        return Group::make('orderDetail')->label('Currency')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->orderDetail)->currency ?? 'N/A')
-            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->orderDetail)->currency ?? 'N/A');
     }
 
     public static function groupByTags(): Group

@@ -18,8 +18,7 @@ use Filament\Models\Contracts\HasAvatar;
 
 class User extends Authenticatable implements FilamentUser, HasName, HasAvatar, CanResetPassword
 {
-    use HasApiTokens, HasFactory, Notifiable,
-        SoftDeletes, UserRoles, UserComputations;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, UserRoles, UserComputations;
 
 
     protected $fillable = [

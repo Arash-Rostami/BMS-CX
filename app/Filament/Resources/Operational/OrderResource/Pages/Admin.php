@@ -34,10 +34,20 @@ class Admin
         'processing' => 'Processing',
         'closed' => 'Closed',
         'cancelled' => 'Cancelled',
-        'accounting_review' => 'Under Accounting Review',
-        'accounting_approved' => 'Accounting Approved',
-        'accounting_rejected' => 'Accounting Rejected',
+        'accounting_review' => 'Review',
+        'accounting_approved' => 'Approved',
+        'accounting_rejected' => 'Rejected',
     ];
+
+    public static array $statusWithEmoji = [
+        'processing' => '🔄 Processing',
+        'closed' => '✔️ Closed ',
+        'cancelled' => '⛔ Cancelled',
+        'accounting_review' => '🔍 Review',
+        'accounting_approved' => '✅ Approved',
+        'accounting_rejected' => '❌ Rejected'
+    ];
+
 
     public static array $statusIcons = [
         'processing' => 'heroicon-s-arrow-path-rounded-square',
@@ -70,7 +80,91 @@ class Admin
         'TELEX RELEASE' => 'Telex Release'
     ];
 
-    private static array $requestCache = [];
+    private static ?array $requestCache = [];
+    private static ?array $portCache = [];
+    private static ?array $dynamicDocsCache = null;
+
+
+    public static function extractPortData(ProformaInvoice $pi, string $state = '1'): array
+    {
+        $cacheKey = "port_{$pi->id}_{$state}";
+
+        if (!isset(self::$portCache[$cacheKey])) {
+            $data = InfoExtractor::getPortInfo($pi, $state);
+            $city = $data['city'] ?? '';
+            $portId = $city !== '' ? PortOfDelivery::where('name', $city)->value('id') : null;
+            self::$portCache[$cacheKey] = [$data, $portId];
+        }
+
+        return self::$portCache[$cacheKey];
+    }
+
+    public static function formatPaySlip(Model $record): string
+    {
+        $extra = $record->orderDetail;
+        if (!$extra) return 'N/A';
+
+        return sprintf(
+            '<div class="percentage-display">
+                    <span class="currency">%s</span>:
+                    <span class="payment">%s</span>/<span class="total">%s</span>
+                    (<span class="remaining">🧾 %s</span>)
+                 </div>',
+            $extra['currency'] ?? '',
+            numberify($extra->payment ?? 0),
+            numberify($extra->total ?? 0),
+            numberify($extra->remaining ?? 0)
+        );
+    }
+
+    public static function getDynamicDocuments(): array
+    {
+        if (self::$dynamicDocsCache !== null) return self::$dynamicDocsCache;
+
+        try {
+            self::$dynamicDocsCache = Name::where('module', 'Order')
+                ->selectRaw('DISTINCT title, UPPER(title) AS uppercase_title')
+                ->orderBy('title')
+                ->pluck('title', 'uppercase_title')
+                ->map(fn($title) => Str::ucfirst($title))
+                ->toArray();
+        } catch (\Exception) {
+            // Fallback if query fails
+            self::$dynamicDocsCache = self::$documents;
+        }
+
+        return self::$dynamicDocsCache;
+    }
+
+    public static function hasRelevantAttachment(string $title, Model $order): bool
+    {
+        $cacheKey = "lookup_{$order->id}_{$title}";
+
+        if (!array_key_exists($cacheKey, self::$requestCache)) {
+            $order->loadMissing(['attachments', 'proformaInvoice.attachments']);
+
+            self::$requestCache[$cacheKey] = $order->attachments
+                ->concat($order->proformaInvoice?->attachments ?? collect())
+                ->contains(fn($attachment) => levenshtein($title, $attachment->name ?: $attachment->file_path) === 0);
+        }
+
+        return self::$requestCache[$cacheKey];
+    }
+
+    public static function increasePart(Model $replica): void
+    {
+        $replica->part = (Order::where('proforma_invoice_id', $replica->proforma_invoice_id)->max('part') ?? 0) + 1;
+        $replica->user_id = auth()->id();
+    }
+
+    public static function isPaymentCalculated($record): bool
+    {
+        $detail = optional($record->orderDetail);
+        $provisional = $detail->provisional_total;
+        $final = $detail->final_total;
+
+        return ($provisional !== null && $provisional != 0.0) || ($final !== null && $final != 0.0);
+    }
 
 
     public static function nameUploadedFile(): \Closure
@@ -87,187 +181,6 @@ class Admin
             // Sanitizing the file name
             return Str::slug($newFileName, '-') . ".{$extension}";
         };
-    }
-
-    public static function updatePortData(mixed $proformaInvoice, mixed $replica): void
-    {
-        [$matchedPortData, $portOfDeliveryId] = self::extractPortData($proformaInvoice, (string)$replica->part);
-        if ($matchedPortData && ($matchedPortData['partNumber'] ?? null) == $replica->part) {
-            $replica->orderDetail()->update(['provisional_quantity' => $matchedPortData['quantity'] ?? null]);
-            $replica->logistic()->update(['port_of_delivery_id' => $portOfDeliveryId]);
-        }
-    }
-
-    public static function extractPortData(ProformaInvoice $pi, string $state = '1'): array
-    {
-        $data = InfoExtractor::getPortInfo($pi, $state);
-        $city = $data['city'] ?? '';
-
-        $portId = $city !== ''
-            ? PortOfDelivery::where('name', $city)->value('id')
-            : null;
-
-        return [$data, $portId];
-    }
-
-    public static function updateFormBasedOnPreviousRecords(Get $get, Set $set, ?string $state): ?int
-    {
-        $id = $get('proforma_invoice_id');
-        if (!$id || !$state) return null;
-
-
-        $proformaInvoice = ProformaInvoice::find($id);
-        if (!$proformaInvoice) return null;
-
-
-        [$matchedPortData, $portOfDeliveryId] = self::extractPortData($proformaInvoice, $state);
-
-        if ($matchedPortData) {
-            $set('logistic.port_of_delivery_id', $portOfDeliveryId);
-            $set('orderDetail.provisional_quantity', $matchedPortData['quantity'] ?? '');
-        }
-
-        $set('orderDetail.provisional_price', $proformaInvoice->price ?? '');
-
-        if (($orders = Order::findByProformaInvoiceId($id))->isEmpty()) {
-            return null;
-        }
-
-        $orders
-            ->pluck('invoice_number')
-            ->filter()
-            ->unique()
-            ->whenNotEmpty(function ($projectNumbers) use ($set) {
-                $message = $projectNumbers->count() === 1
-                    ? $projectNumbers->first()
-                    : "🔴 Multiple Project Numbers: {$projectNumbers->join(', ')}";
-                $set('invoice_number', $message);
-            });
-
-        return $id;
-    }
-
-    public static function showAllDocs()
-    {
-        $columns = [];
-        foreach (self::getDynamicDocuments() as $key => $label) {
-            $labelTrimmed = slugify($label);
-
-            $columns[$labelTrimmed] = TextColumn::make("extra.docs.$key")
-                ->label($label)
-                ->grow(false)
-                ->state(fn() => $label)
-                ->color(fn() => ColorTheme::White)
-                ->extraAttributes(fn($record) => self::getExtraAttributes($record, $labelTrimmed))
-                ->tooltip(fn($record) => self::getTooltip($record, $labelTrimmed))
-                ->sortable();
-        }
-
-        return $columns;
-    }
-
-    public static function getDynamicDocuments(): array
-    {
-        return Cache::remember('dynamic_order_documents', 3600, function () {
-            try {
-                $documentsFromDatabase = Name::where('module', 'Order')->orderBy('title')->pluck('title');
-                $documents = [];
-                foreach ($documentsFromDatabase as $title) {
-                    $documents[strtoupper($title)] = Str::ucfirst($title);
-                }
-                return $documents;
-            } catch (\Exception $e) {
-                return self::$documents;
-            }
-        });
-    }
-
-    private static function getExtraAttributes($record, $labelTrimmed)
-    {
-        $deliveryTermName = $record->logistic?->deliveryTerm?->name;
-
-        if ($deliveryTermName) {
-            $deliveryTermMap = DeliveryDocumentService::getForTerm(trim($deliveryTermName));
-            $shouldBeShown = isset($deliveryTermMap[$labelTrimmed]) && $deliveryTermMap[$labelTrimmed] === true;
-
-            if (!$shouldBeShown) {
-                return ['style' => 'display:none;'];
-            }
-        }
-
-        $hasAttachment = self::hasRelevantAttachment($labelTrimmed, $record);
-        $color = $hasAttachment ? ColorTheme::MidnightTeal[500] : ColorTheme::DarkMaroon[500];
-
-        return [
-            'style' => "display:inline-flex;align-items:center;justify-content:center;padding:.25rem .5rem;margin:0 .25rem .25rem 0;gap:.25rem;min-width:3rem;font-size:.75rem;border:2px solid rgb({$color});background:rgb({$color});border-radius:.375rem;box-sizing:border-box;",
-            'title' => $hasAttachment ? 'Has Attachment' : 'No Attachment',
-        ];
-    }
-
-    public static function hasRelevantAttachment($title, $order)
-    {
-        $order->loadMissing([
-            'attachments',
-            'proformaInvoice.attachments'
-        ]);
-
-        $cacheKey = "lookup_{$order->id}_{$title}";
-        if (array_key_exists($cacheKey, self::$requestCache)) {
-            return self::$requestCache[$cacheKey];
-        }
-
-        $found = $order->attachments
-            ->concat(optional($order->proformaInvoice)->attachments ?? collect())
-            ->contains(function ($attachment) use ($title) {
-                $haystack = $attachment->name ?: $attachment->file_path;
-                return levenshtein($title, $haystack) === 0;
-            });
-
-        self::$requestCache[$cacheKey] = $found;
-        return $found;
-    }
-
-    private static function getTooltip($record, $labelTrimmed)
-    {
-        return self::hasRelevantAttachment($labelTrimmed, $record)
-            ? strtoupper($labelTrimmed) . ' Attached'
-            : strtoupper($labelTrimmed) . ' Not Given';
-    }
-
-    public static function formatPaySlip(Model $record): string
-    {
-        $extra = $record->orderDetail;
-        if (!$extra) return 'N/A';
-
-
-        return sprintf(
-            '<div class="percentage-display">
-                    <span class="currency">%s</span>:
-                    <span class="payment">%s</span>/<span class="total">%s</span>
-                    (<span class="remaining">🧾 %s</span>)
-                 </div>',
-            $extra['currency'] ?? '',
-            numberify($extra->payment ?? 0),
-            numberify($extra->total ?? 0),
-            numberify($extra->remaining ?? 0)
-        );
-    }
-
-    public static function isPaymentCalculated($record): bool
-    {
-        $detail = optional($record->orderDetail);
-        $provisional = $detail->provisional_total;
-        $final = $detail->final_total;
-
-        return ($provisional !== null && $provisional != 0.0) || ($final !== null && $final != 0.0);
-    }
-
-
-    public static function increasePart($replica)
-    {
-        $highestPart = Order::where('proforma_invoice_id', $replica->proforma_invoice_id)->max('part');
-        $replica->part = ($highestPart ?? 0) + 1;
-        $replica->user_id = auth()->id();
     }
 
     public static function replicateRelatedModels(Model $replica): void
@@ -293,37 +206,9 @@ class Admin
         $replica->save();
     }
 
-
-    public static function updateAutoCompute(Model $replica): void
+    public static function send(Model $record): void
     {
-        $replica->fill([
-            'payment' => null,
-            'remaining' => null,
-            'total' => null,
-            'initial_payment' => null,
-            'initial_total' => null,
-            'provisional_total' => null,
-            'final_total' => null,
-            'payable_quantity' => null,
-        ]);
-
-        $existingExtra = is_array($replica->extra)
-            ? $replica->extra
-            : (json_decode($replica->extra ?? '[]', true) ?? []);
-
-        $replica->extra = array_merge($existingExtra, [
-            'manualComputation' => false,
-            'lastOrder' => false,
-            'allOrders' => false,
-        ]);
-
-        $replica->save();
-    }
-
-    public static function syncOrder(Model $replica): void
-    {
-        persistReferenceNumber($replica, 'O');
-        (new OrderService())->notifyAgents($replica);
+        (new OrderService())->notifyAgents($record, 'delete');
     }
 
     public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
@@ -358,15 +243,135 @@ class Admin
         }
     }
 
-    public static function send(Model $record): void
+    public static function showAllDocs()
     {
-        (new OrderService())->notifyAgents($record, 'delete');
+        $columns = [];
+        foreach (self::getDynamicDocuments() as $key => $label) {
+            $labelTrimmed = slugify($label);
+
+            $columns[$labelTrimmed] = TextColumn::make("extra.docs.$key")
+                ->label($label)
+                ->grow(false)
+                ->state(fn() => $label)
+                ->color(fn() => ColorTheme::White)
+                ->extraAttributes(fn($record) => self::getExtraAttributes($record, $labelTrimmed))
+                ->tooltip(fn($record) => self::getTooltip($record, $labelTrimmed))
+                ->sortable();
+        }
+
+        return $columns;
     }
 
+    public static function syncOrder(Model $replica): void
+    {
+        persistReferenceNumber($replica, 'O');
+        (new OrderService())->notifyAgents($replica);
+    }
+
+    public static function updateAutoCompute(Model $replica): void
+    {
+        $replica->fill([
+            'payment' => null,
+            'remaining' => null,
+            'total' => null,
+            'initial_payment' => null,
+            'initial_total' => null,
+            'provisional_total' => null,
+            'final_total' => null,
+            'payable_quantity' => null,
+        ]);
+
+        $existingExtra = is_array($replica->extra)
+            ? $replica->extra
+            : (json_decode($replica->extra ?? '[]', true) ?? []);
+
+        $replica->extra = array_merge($existingExtra, [
+            'manualComputation' => false,
+            'lastOrder' => false,
+            'allOrders' => false,
+        ]);
+
+        $replica->save();
+    }
+
+    public static function updateFormBasedOnPreviousRecords(Get $get, Set $set, ?string $state): ?int
+    {
+        $id = $get('proforma_invoice_id');
+        if (!$id || !$state) return null;
+
+        if (!$proformaInvoice = ProformaInvoice::find($id)) return null;
+        [$matchedPortData, $portOfDeliveryId] = self::extractPortData($proformaInvoice, $state);
+
+        if ($matchedPortData) {
+            $set('logistic.port_of_delivery_id', $portOfDeliveryId);
+            $set('orderDetail.provisional_quantity', $matchedPortData['quantity'] ?? '');
+        }
+
+        $set('orderDetail.provisional_price', $proformaInvoice->price ?? '');
+
+        $orders = Order::findByProformaInvoiceId($id);
+        if ($orders->isEmpty()) return null;
+
+        $filteredOrders = $orders->load(['logistic:id,loading_deadline,extra']);
+
+        $orders
+            ->pluck('invoice_number')
+            ->filter()
+            ->unique()
+            ->whenNotEmpty(function ($projectNumbers) use ($set) {
+                $message = $projectNumbers->count() === 1
+                    ? $projectNumbers->first()
+                    : "🔴 Multiple Project Numbers: {$projectNumbers->join(', ')}";
+                $set('invoice_number', $message);
+            });
+
+        $ordersWithLogistics = $filteredOrders->whereNotNull('logistic');
+        if ($ordersWithLogistics->isNotEmpty()) {
+            $loadingStartline = $ordersWithLogistics->pluck('logistic.extra.loading_startline')->whereNotNull()->first();
+            $loadingDeadline = $ordersWithLogistics->pluck('logistic.loading_deadline')->whereNotNull()->first();
+
+
+            if ($loadingDeadline) $set('logistic.loading_deadline', $loadingDeadline);
+            if ($loadingStartline) $set('logistic.extra.loading_startline', $loadingStartline);
+        }
+
+        return $id;
+    }
+
+    public static function updatePortData(mixed $proformaInvoice, mixed $replica): void
+    {
+        [$matchedPortData, $portOfDeliveryId] = self::extractPortData($proformaInvoice, (string)$replica->part);
+        if ($matchedPortData && ($matchedPortData['partNumber'] ?? null) == $replica->part) {
+            $replica->orderDetail()->update(['provisional_quantity' => $matchedPortData['quantity'] ?? null]);
+            $replica->logistic()->update(['port_of_delivery_id' => $portOfDeliveryId]);
+        }
+    }
+
+    public static function updateReplicaLoadingData(Order $replica, int $proformaInvoiceId): void
+    {
+        $relatedOrders = Order::where('proforma_invoice_id', $proformaInvoiceId)
+            ->where('id', '!=', $replica->id)
+            ->whereHas('logistic')
+            ->with(['logistic:id,loading_deadline,extra'])
+            ->get();
+
+        if ($relatedOrders->isEmpty()) return;
+
+        $loadingStartline = $relatedOrders->pluck('logistic.extra.loading_startline')->whereNotNull()->first();
+        $loadingDeadline = $relatedOrders->pluck('logistic.loading_deadline')->whereNotNull()->first();
+
+        if ($loadingStartline || $loadingDeadline) {
+            $replica->logistic()->update([
+                'loading_deadline' => $loadingDeadline ?: $replica->logistic->loading_deadline,
+                'extra' => array_merge($replica->logistic->extra ?? [], [
+                    'loading_startline' => $loadingStartline ?: $replica->logistic->extra['loading_startline'] ?? null
+                ])
+            ]);
+        }
+    }
 
     protected static function calculateSummaries($type, $query)
     {
-
         $groupValue = $query->clone()->value('invoice_number');
         $cacheKey = 'order_summaries_' . $type . '_' . $groupValue;
 
@@ -406,6 +411,35 @@ class Admin
         }
 
         return null;
+    }
+
+    private static function getExtraAttributes($record, $labelTrimmed)
+    {
+        $deliveryTermName = $record->logistic?->deliveryTerm?->name;
+
+        if ($deliveryTermName) {
+            $deliveryTermMap = DeliveryDocumentService::getForTerm(trim($deliveryTermName));
+            $shouldBeShown = isset($deliveryTermMap[$labelTrimmed]) && $deliveryTermMap[$labelTrimmed] === true;
+
+            if (!$shouldBeShown) {
+                return ['style' => 'display:none;'];
+            }
+        }
+
+        $hasAttachment = self::hasRelevantAttachment($labelTrimmed, $record);
+        $color = $hasAttachment ? ColorTheme::MidnightTeal[500] : ColorTheme::DarkMaroon[500];
+
+        return [
+            'style' => "display:inline-flex;align-items:center;justify-content:center;padding:.25rem .5rem;margin:0 .25rem .25rem 0;gap:.25rem;min-width:3rem;font-size:.75rem;border:2px solid rgb({$color});background:rgb({$color});border-radius:.375rem;box-sizing:border-box;",
+            'title' => $hasAttachment ? 'Has Attachment' : 'No Attachment',
+        ];
+    }
+
+    private static function getTooltip($record, $labelTrimmed)
+    {
+        return self::hasRelevantAttachment($labelTrimmed, $record)
+            ? strtoupper($labelTrimmed) . ' Attached'
+            : strtoupper($labelTrimmed) . ' Not Given';
     }
 
     private static function updateForm(?string $state, Set $set): void

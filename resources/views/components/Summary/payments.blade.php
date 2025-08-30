@@ -2,7 +2,7 @@
     <!-- Header -->
     <h3 class="mb-3">
         <span class="material-icons-outlined payment-icon text-sm insight">payments</span>
-        <span class="text-2xl font-semibold mb-4">Payment(s)</span>
+        <span class="text-lg md:text-2xl font-semibold mb-4">Payment(s)</span>
     </h3>
 
     @foreach($selectedProforma->associatedPaymentRequests->concat($selectedProforma->orders->flatMap->paymentRequests) as $paymentRequest)
@@ -14,7 +14,7 @@
                 $paymentTitle = !isset($paymentRequest->order_id) ? 'Related to Proforma Invoice' : 'Related to Orders: Part ' .($paymentPart ?? '');
             @endphp
             <button @click="open = !open"
-                    class="w-full flex justify-between items-center my-dark-class px-4 py-3 text-left text-lg font-semibold rounded-xl">
+                    class="w-full flex justify-between items-center my-dark-class px-4 py-3 text-left text-md md:text-lg font-semibold rounded-xl">
                 <span
                     title="{{ $paymentTitle }}"> No: {{ $paymentRequest->reference_number ? $paymentRequest->reference_number .$paymentType : 'N/A' }}</span>
                 <span class="material-icons-outlined" x-show="open">expand_less</span>
@@ -190,39 +190,65 @@
                             <pre>{{ $paymentRequest->description ?? 'N/A' }}</pre>
                         </div>
                     </div>
-                    @if( $paymentRequest->payments->isNotEmpty())
-                        <h5 class="text-xl font-semibold col-span-full mt-6 divider-attachment">Settlement:</h5>
-                        <div class="proforma-details-box">
-                            <div class="font-medium">
-                                <span class="material-icons-outlined">tag</span> Reference No.:
+                    @if($paymentRequest->payments->isNotEmpty())
+                        <h5 class="text-xl font-semibold col-span-full mt-6 divider-attachment">Settlement Details:</h5>
+                        @foreach($paymentRequest->payments as $payment)
+                            <div class="col-span-full border-t-2 border-gray-200 mt-4 mb-2 p-4 rounded-lg">
+                                <h6 class="text-lg font-bold mb-3 text-indigo-600">Transfer #{{ $loop->iteration }}</h6>
+                                <div class="proforma-details-grid">
+                                    <div class="proforma-details-box">
+                                        <div class="font-medium">
+                                            <span class="material-icons-outlined">tag</span> Reference No.:
+                                        </div>
+                                        <pre>{{ $payment->reference_number ?: 'N/A' }}</pre>
+                                    </div>
+                                    <div class="proforma-details-box">
+                                        <div class="font-medium"><span class="material-icons-outlined">person</span>
+                                            Payer:
+                                        </div>
+                                        <pre>{{ $payment->payer ?: 'N/A' }}</pre>
+                                    </div>
+                                    <div class="proforma-details-box">
+                                        <div class="font-medium">
+                                            <span class="material-icons-outlined">calendar_today</span> Transfer Date:
+                                        </div>
+                                        <pre>{{ optional($payment->date)->format('Y-m-d') ?: 'N/A' }}</pre>
+                                    </div>
+                                    <div class="proforma-details-box">
+                                        <div class="font-medium"><span class="material-icons-outlined">payments</span>
+                                            Amount:
+                                        </div>
+                                        <pre>{{ $payment->currency === 'USD' ? '$' : '' }}{{ number_format($payment->amount, 2) }} {{ $payment->currency }}</pre>
+                                    </div>
+                                    @if($payment->notes)
+                                        <div class="proforma-details-box col-span-full">
+                                            <div class="font-medium"><span class="material-icons-outlined">notes</span>
+                                                Notes:
+                                            </div>
+                                            <pre>{{ $payment->notes }}</pre>
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
-                            <div class="flex items-center">
-                                <pre>{{ $paymentRequest->payments->pluck('reference_number')->implode(' | ') }}</pre>
+                        @endforeach
+                        @if($paymentRequest->payments->count() >1)
+                            <div class="col-span-full mt-4">
+                                <h6 class="text-lg font-bold mb-2">Total Settled Amount</h6>
+                                @foreach($paymentRequest->payments->groupBy('currency') as $currency => $paymentsInCurrency)
+                                    <div class="proforma-details-box">
+                                        <div class="font-medium">
+                                            <span class="material-icons-outlined text-green-600">check_circle</span>
+                                            Total ({{ $currency }}):
+                                        </div>
+                                        <pre
+                                            class="font-bold">{{ $currency === 'USD' ? '$' : '' }}{{ number_format($paymentsInCurrency->sum('amount'), 2) }}</pre>
+                                    </div>
+                                @endforeach
                             </div>
-                        </div>
-                        <div class="proforma-details-box">
-                            <div class="font-medium"><span class="material-icons-outlined">person</span> Payer(s):</div>
-                            <div class="flex items-center">
-                                <pre>{{ $paymentRequest->payments->pluck('payer')->implode(' | ') }}</pre>
-                            </div>
-                        </div>
-                        <div class="proforma-details-box">
-                            <div class="font-medium"><span class="material-icons-outlined">calendar_today</span>
-                                Transfer Dates:
-                            </div>
-                            <div class="flex items-center">
-                                <pre>{{ $paymentRequest->payments->pluck('date')->map(fn ($date) =>$date?->format('Y-m-d'))->implode(' | ') }}</pre>
-                            </div>
-                        </div>
-                        <div class="proforma-details-box">
-                            <div class="font-medium"><span class="material-icons-outlined">money</span> Total Amount:
-                            </div>
-                            <div class="flex items-center">
-                                <pre>{{ $paymentRequest->payments->contains('currency', 'USD') ? '$' : '' }}{{ number_format($paymentRequest->payments->sum('amount'), 2) }}</pre>
-                            </div>
-                        </div>
+                        @endif
                     @endif
-                    <h5 class="text-xl font-semibold col-span-full mt-6 divider-attachment">Payment Request Attachment(S):</h5>
+                    <h5 class="text-xl font-semibold col-span-full mt-6 divider-attachment">Payment Request
+                        Attachment(S):</h5>
                     @foreach ( $paymentRequest->attachments as $attachment)
                         <div class="flex items-center justify-between p-2 rounded border status-badge approved ">
                             <div class="flex items-center gap-2">

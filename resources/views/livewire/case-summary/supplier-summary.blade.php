@@ -91,14 +91,14 @@
 
                                     @if ($isAdvance)
                                         <span
-                                            class="mt-1 text-sm insight"
+                                            class="mt-1 insight text-sm md:text-md"
                                             title="Advance payment only; no associated order has been created for this contract."
                                         >
                                 ⚠️ No Order
                             </span>
                                     @elseif ($hasIncompleteRequest)
                                         <span
-                                            class="mt-1 text-sm insight"
+                                            class="mt-1 insight text-sm md:text-md"
                                             title="Pending payments for payment requests: {{ collect($row['incompleteOrder'])->pluck('reference_number')->join(' | ') }}"
                                         >
                                 ⚠️ No Payments

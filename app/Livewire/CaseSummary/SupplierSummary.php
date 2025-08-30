@@ -3,10 +3,10 @@
 namespace App\Livewire\CaseSummary;
 
 use App\Models\ProformaInvoice;
+use App\Models\SupplierSummary as Adjustment;
 use App\Services\SupplierSummaryService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
-use App\Models\SupplierSummary as Adjustment;
 
 class SupplierSummary extends Component
 {
@@ -15,7 +15,8 @@ class SupplierSummary extends Component
     public float $supplierBalance = 0;
     public mixed $supplierPaymentSummaryTable;
     public int $currentPage = 1;
-    public int $perPage = 15;
+    public int $perPage = 10;
+    public mixed $adjustments;
     public array $currencyDiffBalances = [];
 
     protected $listeners = ['refreshSupplierSummary' => 'refreshData'];
@@ -28,40 +29,6 @@ class SupplierSummary extends Component
         $this->supplierSummaryService = $supplierSummaryService;
     }
 
-    public function mount(?int $supplierId = null)
-    {
-        $this->supplierId = $supplierId;
-        $this->refreshData();
-    }
-
-    public function loadSupplierData()
-    {
-        $this->proformasForSupplier = ProformaInvoice::where('supplier_id', $this->supplierId)
-            ->with([
-                'supplier',
-                'associatedPaymentRequests.payments.paymentRequests',
-                'orders',
-                'orders.paymentRequests' => function ($query) {
-                    $query->where('supplier_id', $this->supplierId);
-                },
-                'orders.paymentRequests.payments',
-                'orders.orderDetail',
-                'orders.logistic',
-                'orders.doc',
-            ])
-            ->get();
-
-        $this->cachedPaymentData = null;
-    }
-
-    private function getSupplierAdjustments()
-    {
-        return Adjustment::where('supplier_id', $this->supplierId)
-            ->where('type', 'adjustment')
-            ->whereNull('proforma_invoice_id')
-            ->get();
-    }
-
     /**
      * Calculate supplier balance with cached payment data
      */
@@ -69,7 +36,7 @@ class SupplierSummary extends Component
     public function calculateSupplierBalance()
     {
         $paymentData = $this->getOrBuildPaymentData();
-        $adjustments = $this->getSupplierAdjustments();
+        $adjustments = $this->adjustments;
 
 
         $totalPaid = collect($paymentData)
@@ -89,7 +56,7 @@ class SupplierSummary extends Component
     public function generateSupplierPaymentSummaryTable()
     {
         $paymentData = $this->getOrBuildPaymentData();
-        $adjustments = $this->getSupplierAdjustments();
+        $adjustments = $this->adjustments;
 
         $paymentSummaryTable = [];
         $currencyDiffBalances = [];
@@ -106,26 +73,104 @@ class SupplierSummary extends Component
         $this->currencyDiffBalances = $currencyDiffBalances;
     }
 
-    /**
-     * Get or build cached payment data for all proformas
-     */
-    private function getOrBuildPaymentData(): array
+    public function index()
     {
-        if ($this->cachedPaymentData !== null) {
-            return $this->cachedPaymentData;
+        return view('components.Summary.main');
+    }
+
+    public function loadSupplierData()
+    {
+        $this->proformasForSupplier = ProformaInvoice::select(['id', 'supplier_id', 'contract_number', 'proforma_number', 'reference_number'])
+            ->where('supplier_id', $this->supplierId)
+            ->with([
+                'supplier:id,name',
+                'orders' => fn($q) => $q->whereNull('deleted_at'),
+                'orders.orderDetail',
+                'orders.logistic',
+                'orders.doc',
+                'orders.paymentRequests' => function ($query) {
+                    $query->where('supplier_id', $this->supplierId)->whereNull('deleted_at');
+                },
+                'orders.paymentRequests.payments' => fn($q) => $q->whereNull('deleted_at'),
+                'associatedPaymentRequests' => fn($q) => $q->whereNull('deleted_at'),
+                'associatedPaymentRequests.payments' => fn($q) => $q->whereNull('deleted_at'),
+                'associatedPaymentRequests.payments.paymentRequests' => fn($q) => $q->whereNull('deleted_at'),
+            ])
+            ->whereNull('deleted_at')
+            ->get();
+
+        $this->adjustments = Adjustment::where('supplier_id', $this->supplierId)
+            ->where('type', 'adjustment')
+            ->whereNull('proforma_invoice_id')
+            ->get();
+
+        $this->cachedPaymentData = null;
+    }
+
+    public function mount(?int $supplierId = null)
+    {
+        $this->supplierId = $supplierId;
+        $this->refreshData();
+    }
+
+    public function nextPage()
+    {
+        $totalPages = $this->totalPages();
+        if ($this->currentPage < $totalPages) {
+            $this->currentPage++;
         }
+    }
 
-        $this->cachedPaymentData = [];
-
-        foreach ($this->proformasForSupplier as $proforma) {
-            $this->cachedPaymentData[$proforma->id] = [
-                'proforma' => $proforma,
-                'expected' => $this->supplierSummaryService->calculateExpectedPayments($proforma),
-                'paid' => $this->supplierSummaryService->calculatePaidPayments($proforma),
-            ];
+    public function previousPage()
+    {
+        if ($this->currentPage > 1) {
+            $this->currentPage--;
         }
+    }
 
-        return $this->cachedPaymentData;
+    public function refreshData()
+    {
+        if (!$this->supplierId) return;
+
+        $this->cachedPaymentData = null;
+        $this->loadSupplierData();
+        $this->calculateSupplierBalance();
+        $this->generateSupplierPaymentSummaryTable();
+        $this->currentPage = 1;
+    }
+
+    public function render()
+    {
+        $totalItems = is_array($this->supplierPaymentSummaryTable)
+            ? count($this->supplierPaymentSummaryTable)
+            : 0;
+
+        $totalPages = $this->totalPages();
+
+        $this->currentPage = max(1, min($this->currentPage, $totalPages));
+
+        $paginatedData = $totalItems > 0
+            ? collect($this->supplierPaymentSummaryTable)
+                ->slice(($this->currentPage - 1) * $this->perPage, $this->perPage)
+                ->values()
+            : collect();
+
+
+        return view('livewire.case-summary.supplier-summary', [
+            'paginatedData' => $paginatedData,
+            'totalPages' => $totalPages,
+            'currentPage' => $this->currentPage,
+            'totalItems' => $totalItems,
+        ]);
+    }
+
+    public function totalPages(): int
+    {
+        $totalItems = is_array($this->supplierPaymentSummaryTable)
+            ? count($this->supplierPaymentSummaryTable)
+            : 0;
+
+        return max(1, (int)ceil($totalItems / $this->perPage));
     }
 
     protected function buildAdjustmentRows($adjustments, array $currencyDiffBalances, array $paymentSummaryTable): array
@@ -160,7 +205,6 @@ class SupplierSummary extends Component
         }
         return array($currencyDiffBalances, $paymentSummaryTable);
     }
-
 
     protected function buildProformaRows(array $paymentData, array $currencyDiffBalances, array $paymentSummaryTable): array
     {
@@ -215,68 +259,25 @@ class SupplierSummary extends Component
         };
     }
 
-    public function refreshData()
+    /**
+     * Get or build cached payment data for all proformas
+     */
+    private function getOrBuildPaymentData(): array
     {
-        if (!$this->supplierId) return;
-
-        $this->cachedPaymentData = null;
-        $this->loadSupplierData();
-        $this->calculateSupplierBalance();
-        $this->generateSupplierPaymentSummaryTable();
-        $this->currentPage = 1;
-    }
-
-    public function nextPage()
-    {
-        $totalPages = $this->totalPages();
-        if ($this->currentPage < $totalPages) {
-            $this->currentPage++;
+        if ($this->cachedPaymentData !== null) {
+            return $this->cachedPaymentData;
         }
-    }
 
-    public function previousPage()
-    {
-        if ($this->currentPage > 1) {
-            $this->currentPage--;
+        $this->cachedPaymentData = [];
+
+        foreach ($this->proformasForSupplier as $proforma) {
+            $this->cachedPaymentData[$proforma->id] = [
+                'proforma' => $proforma,
+                'expected' => $this->supplierSummaryService->calculateExpectedPayments($proforma),
+                'paid' => $this->supplierSummaryService->calculatePaidPayments($proforma),
+            ];
         }
-    }
 
-    public function totalPages(): int
-    {
-        $totalItems = is_array($this->supplierPaymentSummaryTable)
-            ? count($this->supplierPaymentSummaryTable)
-            : 0;
-
-        return max(1, (int)ceil($totalItems / $this->perPage));
-    }
-
-    public function render()
-    {
-        $totalItems = is_array($this->supplierPaymentSummaryTable)
-            ? count($this->supplierPaymentSummaryTable)
-            : 0;
-
-        $totalPages = $this->totalPages();
-
-        $this->currentPage = max(1, min($this->currentPage, $totalPages));
-
-        $paginatedData = $totalItems > 0
-            ? collect($this->supplierPaymentSummaryTable)
-                ->slice(($this->currentPage - 1) * $this->perPage, $this->perPage)
-                ->values()
-            : collect();
-
-
-        return view('livewire.case-summary.supplier-summary', [
-            'paginatedData' => $paginatedData,
-            'totalPages' => $totalPages,
-            'currentPage' => $this->currentPage,
-            'totalItems' => $totalItems,
-        ]);
-    }
-
-    public function index()
-    {
-        return view('components.Summary.main');
+        return $this->cachedPaymentData;
     }
 }

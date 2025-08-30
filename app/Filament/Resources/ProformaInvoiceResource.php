@@ -4,6 +4,11 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\Admin;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\ListProformaInvoices;
+use App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers\MainPaymentRequestsRelationManager;
+use App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers\MainPaymentsRelationManager;
+use App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers\OrdersRelationManager;
+use App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers\PaymentRequestsRelationManager;
+use App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Widgets\StatsOverview;
 use App\Models\ProformaInvoice;
 use App\Services\AttachmentDeletionService;
@@ -39,6 +44,8 @@ class ProformaInvoiceResource extends Resource
 
 
     protected static ?int $navigationSort = 2;
+
+    protected static ?string $pollingInterval = null;
 
 
     public static function form(Form $form): Form
@@ -177,11 +184,11 @@ class ProformaInvoiceResource extends Resource
     public static function getRelations(): array
     {
         return [
-            \App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers\OrdersRelationManager::class,
-            \App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers\MainPaymentRequestsRelationManager::class,
-            \App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers\PaymentRequestsRelationManager::class,
-            \App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers\MainPaymentsRelationManager::class,
-            \App\Filament\Resources\Operational\ProformaInvoiceResource\RelationManagers\PaymentsRelationManager::class,
+            OrdersRelationManager::class,
+            MainPaymentRequestsRelationManager::class,
+            PaymentRequestsRelationManager::class,
+            MainPaymentsRelationManager::class,
+            PaymentsRelationManager::class,
 
         ];
     }
@@ -200,12 +207,6 @@ class ProformaInvoiceResource extends Resource
         ];
     }
 
-
-    private static function configureCommonTableSettings(Table $table): Table
-    {
-        return (new ListProformaInvoices())->configureCommonTableSettings($table);
-    }
-
     public static function getModernLayout(Table $table): Table
     {
         return (new ListProformaInvoices())->getModernLayout($table);
@@ -221,7 +222,6 @@ class ProformaInvoiceResource extends Resource
         return isSimpleSidebar() ? 'Contracts' : 'Pro forma Invoices';
     }
 
-
     public static function getNavigationBadge(): ?string
     {
         $new = self::getNewRequests();
@@ -229,11 +229,6 @@ class ProformaInvoiceResource extends Resource
         if ($new > 0) return "{$new} New";
 
         return static::getModel()::count();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return self::getNewRequests() > 0 ? 'danger' : 'primary';
     }
 
     /**
@@ -244,6 +239,10 @@ class ProformaInvoiceResource extends Resource
         return static::getModel()::where('status', 'pending')->count();
     }
 
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return self::getNewRequests() > 0 ? 'danger' : 'primary';
+    }
 
     public static function getGloballySearchableAttributes(): array
     {
@@ -251,16 +250,18 @@ class ProformaInvoiceResource extends Resource
             'product.name', 'supplier.name', 'user.first_name', 'user.last_name'];
     }
 
-
     public static function getGlobalSearchResultUrl(Model $record): string
     {
         return ProformaInvoiceResource::getUrl('edit', ['record' => $record]);
     }
 
-
     public static function getGlobalSearchResultTitle(Model $record): string
     {
-//        return '📋 ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
         return '📋 ' . $record->reference_number . '  🔎 ' . $record->contract_number . ' - ' . $record->proforma_number;
+    }
+
+    private static function configureCommonTableSettings(Table $table): Table
+    {
+        return (new ListProformaInvoices())->configureCommonTableSettings($table);
     }
 }

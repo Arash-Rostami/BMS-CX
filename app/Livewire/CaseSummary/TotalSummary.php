@@ -4,7 +4,6 @@ namespace App\Livewire\CaseSummary;
 
 use App\Models\Name;
 use App\Models\ProformaInvoice;
-use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 
@@ -17,10 +16,75 @@ class TotalSummary extends Component
     public mixed $orderAttachmentNames;
     public mixed $businessInsights;
 
-    /**
-     * When the search property updates, we fetch matching Proforma invoices
-     * if the search term is at least 3 characters long.
-     */
+    public bool $loadFinancialSummary = false;
+    public bool $loadSupplierSummary = false;
+    private array $cachedTotals = [];
+    private array $cachedMetrics = [];
+
+
+    public function index()
+    {
+        return view('components.Summary.main');
+    }
+
+    public function loadFinancialTab()
+    {
+        $this->loadFinancialSummary = true;
+    }
+
+    public function loadSupplierTab()
+    {
+        $this->loadSupplierSummary = true;
+    }
+
+    public function render()
+    {
+        return view('livewire.case-summary.total-summary');
+    }
+
+    public function resetData()
+    {
+        $this->resetLoadingFlags();
+
+        $this->search = '';
+        $this->selectedProforma = null;
+        $this->proformaOptions = [];
+        $this->businessInsights = null;
+        $this->cachedTotals = [];
+        $this->cachedMetrics = [];
+        $this->dispatch('refreshSupplierSummary');
+        $this->dispatch('$refresh');
+        $this->dispatch('clear-selection');
+    }
+
+    public function resetLoadingFlags()
+    {
+        $this->loadFinancialSummary = false;
+        $this->loadSupplierSummary = false;
+        $this->dispatch('reset-active-tab');
+    }
+
+    public function selectProforma($id)
+    {
+        $this->resetLoadingFlags();
+        $this->cachedTotals = [];
+        $this->cachedMetrics = [];
+
+        $this->selectedProforma = $this->fetchProformaInvoice($id);
+
+        // Assign attachment names to component properties.
+        $attachmentNames = $this->fetchAttachmentNames();
+        $this->proformaAttachmentNames = $attachmentNames['ProformaInvoice']?->pluck('title') ?? collect();
+        $this->orderAttachmentNames = $attachmentNames['Order']?->pluck('title') ?? collect();
+
+        // Assemble the business insights.
+        $this->businessInsights = $this->calculateAllMetrics();
+
+        // Update the search input with the selected proforma number.
+        $this->search = $this->buildSearchLabelled();
+        $this->proformaOptions = [];
+    }
+
     public function updatedSearch()
     {
         if (strlen($this->search) === 0) {
@@ -32,14 +96,11 @@ class TotalSummary extends Component
         }
     }
 
-    /**
-     * Marks the selected proforma as verified.
-     */
     public function verifyProforma()
     {
         if ($this->selectedProforma) {
             $this->selectedProforma->update([
-                'verified'    => true,
+                'verified' => true,
                 'verified_by' => auth()->id(),
                 'verified_at' => now(),
             ]);
@@ -47,234 +108,59 @@ class TotalSummary extends Component
         }
     }
 
-    /**
-     * Fetches Proforma options based on the search term.
-     *
-     * Example: If $search = "abc", the query will look for any proforma_number,
-     * contract_number, etc. containing "abc" (case-insensitive) and return 5 results.
-     */
-    private function fetchProformaOptions(string $search)
+    private function buildSearchLabelled(): string
     {
-        $search = trim(strtolower($search));
+        $parts = [];
 
-        return ProformaInvoice::query()
-            ->when($search, function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->whereRaw('lower(proforma_number) like ?', ["%{$search}%"])
-                        ->orWhereRaw('lower(contract_number) like ?', ["%{$search}%"])
-                        ->orWhereRaw('lower(reference_number) like ?', ["%{$search}%"])
-                        ->orWhereHas('buyer', fn($q) => $q->whereRaw('lower(name) like ?', ["%{$search}%"]))
-                        ->orWhereHas('supplier', fn($q) => $q->whereRaw('lower(name) like ?', ["%{$search}%"]))
-                        ->orWhereHas('category', fn($q) => $q->whereRaw('lower(name) like ?', ["%{$search}%"]))
-                        ->orWhereHas('product', fn($q) => $q->whereRaw('lower(name) like ?', ["%{$search}%"]))
-                        ->orWhereHas('grade', fn($q) => $q->whereRaw('lower(name) like ?', ["%{$search}%"]));
-                });
-            })
-            ->limit(5)
-            ->get();
+        if (!empty($this->selectedProforma->contract_number)) {
+            $parts[] = 'Contract No: ' . $this->selectedProforma->contract_number ?? 'N/A';
+        }
+
+        if (!empty($this->selectedProforma->proforma_number)) {
+            $parts[] = 'PI No: ' . $this->selectedProforma->proforma_number ?? 'N/A';
+        }
+
+        return implode(' ↔️ ', $parts);
     }
 
-    /**
-     * Called when a proforma is selected.
-     * Fetches the detailed proforma data, attachments, and calculates all business insights.
-     */
-    public function selectProforma($id)
+    private function calculateAllMetrics(): object
     {
-        $attachmentNames = $this->fetchAttachmentNames();
+        if (!$this->selectedProforma) return (object)[];
 
-        $this->selectedProforma = $this->fetchProformaInvoice($id);
+        $totalPaymentRequests = $this->calculateTotalPaymentRequests();
+        $totalPayments = $this->calculateTotalPayments();
 
-        $totalPaymentRequests = $this->calculateTotalPaymentRequests($this->selectedProforma);
-        $totalPayments = $this->calculateTotalPayments($this->selectedProforma);
+        [$totalInitialPayment, $totalProvisionalTotal, $totalFinalTotal, $orderTotal] =
+            $this->calculateOrderTotals();
 
-        $formattedPaymentRequests = $this->formatCurrencyTotals($totalPaymentRequests);
-        $formattedPayments = $this->formatCurrencyTotals($totalPayments);
+        $expectedPaymentByCurrency = $this->calculateExpectedPaymentByCurrency();
+        $quantityComparison = $this->calculateTotalOrderQuantities();
+        $prepaymentAndRemaining = $this->calculatePrepaymentAndRemainingAmount();
 
-        $discrepancies = $this->calculateDiscrepancies($totalPaymentRequests, $totalPayments);
-        $totalCounts = $this->calculateTotalCounts($this->selectedProforma);
-
-        list($totalInitialPayment, $totalProvisionalTotal, $totalFinalTotal, $prepayment, $orderTotal) =
-            $this->calculateOrderTotals($this->selectedProforma);
-
-        $daysElapsed = $this->calculateDaysElapsed($this->selectedProforma);
-        list($gapBlProformaText, $gapDeclarationProformaText) = $this->calculateGaps($this->selectedProforma);
-        $expectedPaymentByCurrency = $this->calculateExpectedPaymentByCurrency($this->selectedProforma);
-        $paymentStatusByCurrency = $this->calculatePaymentStatus($expectedPaymentByCurrency, $totalPayments);
-
-        $quantityComparison = $this->calculateTotalOrderQuantities($this->selectedProforma);
-        $prepaymentAndRemaining = $this->calculatePrepaymentAndRemainingAmount($this->selectedProforma);
-        $progressByQuantity = $this->calculateProgressByQuantity($this->selectedProforma);
-        $progressByPayment = $this->calculateProgressByPayment($this->selectedProforma, $totalPayments);
-
-
-        // Assemble the business insights.
-        $this->businessInsights = (object)[
-            'total_payment_requests_paid' => $formattedPaymentRequests,
-            'total_payments_paid' => $formattedPayments,
-            'payment_discrepancies' => $discrepancies,
-            'total_count' => $totalCounts,
+        return (object)[
+            'total_payment_requests_paid' => $this->formatCurrencyTotals($totalPaymentRequests),
+            'total_payments_paid' => $this->formatCurrencyTotals($totalPayments),
+            'payment_discrepancies' => $this->calculateDiscrepancies($totalPaymentRequests, $totalPayments),
+            'total_count' => $this->calculateTotalCounts(),
             'total_initial_payment' => $totalInitialPayment,
             'total_provisional_total' => $totalProvisionalTotal,
             'total_final_total' => $totalFinalTotal,
             'aggregate_total' => $orderTotal,
-            'prepayment' => $prepayment,
+            'prepayment' => $totalInitialPayment,
             'contractual_prepayment' => $prepaymentAndRemaining['prepayment'],
             'contractual_remaining_amount' => $prepaymentAndRemaining['remaining_amount'],
-            'days_elapsed' => $daysElapsed,
-            'gap_bl_proforma' => $gapBlProformaText,
-            'gap_declaration_proforma' => $gapDeclarationProformaText,
+            'days_elapsed' => $this->selectedProforma->proforma_date?->diffInDays(now()),
+            'gap_bl_proforma' => $this->calculateGaps()[0],
+            'gap_declaration_proforma' => $this->calculateGaps()[1],
             'expected_payment_by_currency' => $expectedPaymentByCurrency,
             'total_payments_made_by_currency' => $totalPayments,
-            'payment_status_by_currency' => $paymentStatusByCurrency,
+            'payment_status_by_currency' => $this->calculatePaymentStatus($expectedPaymentByCurrency, $totalPayments),
             'quantity_comparison' => $quantityComparison,
-            'progress_by_quantity' => $progressByQuantity,
-            'progress_by_payment' => $progressByPayment,
+            'progress_by_quantity' => $this->calculateProgressByQuantity(),
+            'progress_by_payment' => $this->calculateProgressByPayment($totalPayments),
         ];
-
-        // Assign attachment names to component properties.
-        $this->proformaAttachmentNames = $attachmentNames->where('module', 'ProformaInvoice')->pluck('title');
-        $this->orderAttachmentNames = $attachmentNames->where('module', 'Order')->pluck('title');
-
-        // Update the search input with the selected proforma number.
-        $this->search = $this->selectedProforma->proforma_number ?? '';
-        $this->proformaOptions = [];
     }
 
-    /**
-     * Fetches attachment names from the Name model.
-     * Example: Returns a collection with module "ProformaInvoice" and "Order" each having a title.
-     */
-    private function fetchAttachmentNames()
-    {
-        return Name::whereIn('module', ['ProformaInvoice', 'Order'])
-            ->groupBy('module', 'title')
-            ->select('module', 'title')
-            ->get();
-    }
-
-    /**
-     * Retrieves the proforma invoice with all required relationships.
-     */
-    private function fetchProformaInvoice($id)
-    {
-        return ProformaInvoice::with([
-            'attachments',
-            'buyer',
-            'supplier',
-            'category',
-            'product',
-            'associatedPaymentRequests.payments.attachments',
-            'orders.orderDetail',
-            'orders.logistic',
-            'orders.doc',
-            'orders.paymentRequests.payments.attachments',
-            'orders.attachments'
-        ])->findOrFail($id);
-    }
-
-    /**
-     * Calculates total requested payment amounts grouped by currency.
-     * Example: If there is a payment request in USD for 100 and another for 150,
-     * this method returns ['USD' => 250].
-     */
-    #[Computed]
-    private function calculateTotalPaymentRequests($proforma)
-    {
-        $totals = [];
-
-        // From associated payment requests.
-        $proformaWeight = $proforma->price * $proforma->quantity * ($proforma->percentage / 100);
-        $proforma->associatedPaymentRequests->whereNull('deleted_at')->each(function ($pr) use (&$totals, $proformaWeight) {
-            $currency = $pr->currency;
-            $amount = $pr->requested_amount;
-
-            if ($pr->associatedProformaInvoices?->count() > 1) {
-                $totalWeight = $pr->associatedProformaInvoices->sum(function ($p) {
-                    return $p->price * $p->quantity * ($p->percentage / 100);
-                });
-                $amount = $pr->requested_amount * ($proformaWeight / $totalWeight);
-            }
-
-            if (!isset($totals[$currency])) {
-                $totals[$currency] = 0;
-            }
-            $totals[$currency] += $amount;
-        });
-
-        // From orders' payment requests.
-        $proforma->orders->flatMap->paymentRequests->whereNull('deleted_at')->each(function ($pr) use (&$totals) {
-            $currency = $pr->currency;
-            $amount = $pr->requested_amount;
-            if (!isset($totals[$currency])) {
-                $totals[$currency] = 0;
-            }
-            $totals[$currency] += $amount;
-        });
-
-        return $totals;
-    }
-
-    /**
-     * Calculates total paid payment amounts grouped by currency.
-     * Example: If payments in USD add up to 300, the method returns ['USD' => 300].
-     */
-    #[Computed]
-    private function calculateTotalPayments($proforma)
-    {
-        $totals = [];
-
-        // From associated payment requests' payments.
-        $proforma->associatedPaymentRequests->each(function ($req) use (&$totals, $proforma) {
-            $isCollective = $req->associatedProformaInvoices?->count() > 1;
-            $proformaWeight = $proforma->price * $proforma->quantity * ($proforma->percentage / 100);
-
-            $req->payments->whereNull('deleted_at')->each(function ($payment) use (&$totals, $isCollective, $proformaWeight) {
-                $currency = $payment->currency;
-                $amount = $payment->amount;
-
-                if ($isCollective) {
-                    $totalSum = $payment->paymentRequests->sum('requested_amount');
-                    $amount = $payment->amount * ($proformaWeight / $totalSum);
-                }
-
-                if (!isset($totals[$currency])) {
-                    $totals[$currency] = 0;
-                }
-                $totals[$currency] += $amount;
-            });
-        });
-
-        // From orders' payment requests' payments.
-        $proforma->orders->flatMap->paymentRequests->flatMap->payments->whereNull('deleted_at')->each(function ($payment) use (&$totals) {
-            $currency = $payment->currency;
-            $amount = $payment->amount;
-            if (!isset($totals[$currency])) {
-                $totals[$currency] = 0;
-            }
-            $totals[$currency] += $amount;
-        });
-
-        return $totals;
-    }
-
-    /**
-     * Formats the totals into a readable string.
-     * Example: ['USD' => 250, 'EUR' => 150] becomes "USD: $250.00<br>EUR: $150.00"
-     */
-    private function formatCurrencyTotals(array $totals): string
-    {
-        $formatted = [];
-        foreach ($totals as $currency => $amount) {
-            $formatted[] = "$currency: " . number_format($amount, 2);
-        }
-        return implode('<br>', $formatted);
-    }
-
-    /**
-     * Calculates discrepancies by comparing requested vs. paid amounts.
-     * Only returns currencies where there is a difference.
-     */
-    #[Computed]
     private function calculateDiscrepancies(array $requestedTotals, array $paidTotals): array
     {
         $discrepancies = [];
@@ -292,105 +178,16 @@ class TotalSummary extends Component
         return $discrepancies;
     }
 
-    /**
-     * Calculates counts for orders, payment requests, and payments.
-     * Example: "Order: 5<br>Pay. Req.: 10<br>Payment: 8"
-     */
-    #[Computed]
-    private function calculateTotalCounts($proforma): string
+    private function calculateExpectedPaymentByCurrency(): array
     {
-        $ordersCount = $proforma->orders->whereNull('deleted_at')->count();
-
-        $paymentRequestsCount = $proforma->associatedPaymentRequests->whereNull('deleted_at')->count() +
-            $proforma->orders->flatMap->paymentRequests->whereNull('deleted_at')->count();
-
-        $paymentsCount = $proforma->associatedPaymentRequests->flatMap->payments->whereNull('deleted_at')->count() +
-            $proforma->orders->flatMap->paymentRequests->flatMap->payments->whereNull('deleted_at')->count();
-
-        return "Order: $ordersCount<br>Pay. Req.: $paymentRequestsCount<br>Payment: $paymentsCount";
-    }
-
-    /**
-     * Calculates order totals including initial payment, provisional total,
-     * final total, and aggregate order total.
-     */
-    #[Computed]
-    private function calculateOrderTotals($proforma): array
-    {
-        $orders = $proforma->orders->whereNull('deleted_at');
-
-        // Total initial payment is calculated from associated payment requests (excluding Rial).
-        $totalInitialPayment = $orders->sum(function ($order) {
-            return $order->orderDetail ? $order->orderDetail->initial_payment : 0;
-        });
-
-//        $totalInitialPayment = $proforma->associatedPaymentRequests
-//            ->where('currency', '!=', 'Rial')
-//            ->whereNull('deleted_at')
-//            ->sum('requested_amount');
-
-        $totalProvisionalTotal = $orders->sum(function ($order) {
-            return $order->orderDetail ? $order->orderDetail->provisional_total : 0;
-        });
-        $totalFinalTotal = $orders->sum(function ($order) {
-            return $order->orderDetail ? $order->orderDetail->final_total : 0;
-        });
-        $prepayment = $orders->sum(function ($order) {
-            return $order->orderDetail ? $order->orderDetail->initial_payment : 0;
-        });
-        $orderTotal = $prepayment + $totalProvisionalTotal + $totalFinalTotal;
-
-        return [$totalInitialPayment, $totalProvisionalTotal, $totalFinalTotal, $prepayment, $orderTotal];
-    }
-
-    /**
-     * Calculates the number of days elapsed since the proforma date.
-     */
-    #[Computed]
-    private function calculateDaysElapsed($proforma)
-    {
-        return $proforma->proforma_date ? $proforma->proforma_date->diffInDays(now()) : null;
-    }
-
-    /**
-     * Calculates gaps (in days) between the proforma date and BL/declaration dates.
-     * Returns formatted strings for each gap.
-     */
-    #[Computed]
-    private function calculateGaps($proforma): array
-    {
-        $gapBl = [];
-        $gapDeclaration = [];
-        $orders = $proforma->orders->whereNull('deleted_at')->sortBy('part');
-
-        foreach ($orders as $order) {
-            if ($order->doc) {
-                $part = $order->part;
-                if ($order->doc->BL_date) {
-                    $blGap = $order->doc->BL_date->diffInDays($proforma->proforma_date);
-                    $gapBl[] = "Part $part: $blGap Days";
-                }
-                if ($order->doc->declaration_date) {
-                    $declarationGap = $order->doc->declaration_date->diffInDays($proforma->proforma_date);
-                    $gapDeclaration[] = "Part $part: $declarationGap Days";
-                }
-            }
+        if (isset($this->cachedMetrics['expected_payments'])) {
+            return $this->cachedMetrics['expected_payments'];
         }
-        return [implode('<br>', $gapBl), implode('<br>', $gapDeclaration)];
-    }
 
-    /**
-     * Calculates the expected payment amount by summing the initial payment,
-     * provisional total, and final total for each order, grouped by currency.
-     */
-    #[Computed]
-    private function calculateExpectedPaymentByCurrency($proforma): array
-    {
         $expectedPayments = [];
-        foreach ($proforma->orders as $order) {
-            if ($order->deleted_at !== null || !$order->orderDetail) {
-                continue;
-            }
+
+        foreach ($this->selectedProforma->orders as $order) {
+            if (!$order->orderDetail) continue;
 
             $currency = $order->orderDetail->currency ?? 'USD';
             $initialPayment = $order->orderDetail->initial_payment ?? 0;
@@ -402,19 +199,58 @@ class TotalSummary extends Component
                 continue;
             }
 
-            if (!isset($expectedPayments[$currency])) {
-                $expectedPayments[$currency] = 0;
-            }
-            $expectedPayments[$currency] += $amount;
+            $expectedPayments[$currency] = ($expectedPayments[$currency] ?? 0) + $amount;
         }
-        return $expectedPayments;
+
+        return $this->cachedMetrics['expected_payments'] = $expectedPayments;
     }
 
-    /**
-     * Compares the expected payments with the actual payments to determine
-     * the payment status by currency.
-     */
-    #[Computed]
+
+    private function calculateGaps(): array
+    {
+        $gapBl = $gapDeclaration = [];
+
+        foreach ($this->selectedProforma->orders->sortBy('part') as $order) {
+            if ($order->doc) {
+                $part = $order->part;
+                if ($order->doc->BL_date) {
+                    $blGap = $order->doc->BL_date->diffInDays($this->selectedProforma->proforma_date);
+                    $gapBl[] = "Part $part: $blGap Days";
+                }
+                if ($order->doc->declaration_date) {
+                    $declarationGap = $order->doc->declaration_date->diffInDays($this->selectedProforma->proforma_date);
+                    $gapDeclaration[] = "Part $part: $declarationGap Days";
+                }
+            }
+        }
+
+        return [implode('<br>', $gapBl), implode('<br>', $gapDeclaration)];
+    }
+
+    private function calculateOrderTotals(): array
+    {
+        if (isset($this->cachedMetrics['order_totals'])) {
+            return $this->cachedMetrics['order_totals'];
+        }
+
+        $totalInitialPayment = $totalProvisionalTotal = $totalFinalTotal = 0;
+
+        // Total initial payment is calculated from associated payment requests (excluding Rial).
+        foreach ($this->selectedProforma->orders as $order) {
+            if ($order->orderDetail) {
+                $totalInitialPayment += $order->orderDetail->initial_payment ?? 0;
+                $totalProvisionalTotal += $order->orderDetail->provisional_total ?? 0;
+                $totalFinalTotal += $order->orderDetail->final_total ?? 0;
+            }
+        }
+
+        $orderTotal = $totalInitialPayment + $totalProvisionalTotal + $totalFinalTotal;
+
+        return $this->cachedMetrics['order_totals'] = [
+            $totalInitialPayment, $totalProvisionalTotal, $totalFinalTotal, $orderTotal
+        ];
+    }
+
     private function calculatePaymentStatus(array $expectedPayments, array $paidPayments): array
     {
         $status = [];
@@ -434,114 +270,238 @@ class TotalSummary extends Component
         return $status;
     }
 
-    /**
-     * Calculates the total quantity from all orders, prioritizing final_quantity,
-     * then provisional_quantity, and finally buying_quantity.
-     */
-    #[Computed]
-    private function calculateTotalOrderQuantities($proforma): array
+    private function calculatePrepaymentAndRemainingAmount(): array
     {
-        $totalQuantity = 0;
-
-        foreach ($proforma->orders as $order) {
-            if ($order->deleted_at !== null || !$order->orderDetail) {
-                continue;
-            }
-
-            $quantity = $order->orderDetail->final_quantity ??
-                $order->orderDetail->provisional_quantity ??
-                $order->orderDetail->buying_quantity ?? 0;
-
-            $totalQuantity += $quantity;
-        }
-
-        return [
-            'proforma_quantity' => $proforma->quantity ?? 0,
-            'total_order_quantity' => $totalQuantity,
-            'status' => $this->compareQuantities($proforma->quantity ?? 0, $totalQuantity),
-        ];
-    }
-
-    /**
-     * Compares the proforma quantity with the total order quantity and returns the status.
-     */
-    #[Computed]
-    private function compareQuantities(float $proformaQuantity, float $totalOrderQuantity): string
-    {
-        if ($totalOrderQuantity > $proformaQuantity) {
-            return 'Over-Ordered ' . number_format($totalOrderQuantity - $proformaQuantity, 2);
-        } elseif ($totalOrderQuantity < $proformaQuantity) {
-            return 'Under-Ordered ' . number_format($proformaQuantity - $totalOrderQuantity, 2);
-        } else {
-            return 'Matched';
-        }
-    }
-
-    /**
-     * Calculates the prepayment and remaining amount for the contract.
-     */
-    #[Computed]
-    private function calculatePrepaymentAndRemainingAmount($proforma): array
-    {
-        $contractValue = $proforma->price * $proforma->quantity;
-        $prepaymentPercentage = $proforma->percentage ? ($proforma->percentage / 100) : 0.1;
+        $contractValue = $this->selectedProforma->price * $this->selectedProforma->quantity;
+        $prepaymentPercentage = $this->selectedProforma->percentage ?
+            ($this->selectedProforma->percentage / 100) : 0.1;
         $prepayment = $contractValue * $prepaymentPercentage;
-        $remainingAmount = $contractValue - $prepayment;
 
         return [
             'contract_value' => $contractValue,
             'prepayment' => $prepayment,
-            'remaining_amount' => $remainingAmount,
+            'remaining_amount' => $contractValue - $prepayment,
         ];
     }
 
-    /**
-     * Calculates the progress percentage based on the quantity shipped.
-     */
-    #[Computed]
-    private function calculateProgressByQuantity($proforma): float
+    private function calculateProgressByPayment(array $totalPaymentsMadeByCurrency): float
     {
-        $proformaQuantity = $proforma->quantity;
-        $shippedQuantity = $proforma->orders
-            ->whereNull('deleted_at')
-            ->sum(function ($order) {
-                return $order->orderDetail ? $order->orderDetail->final_quantity ?? $order->orderDetail->provisional_quantity ?? $order->orderDetail->buying_quantity ?? 0 : 0;
-            });
-
-        return $proformaQuantity > 0 ? ($shippedQuantity / $proformaQuantity) * 100 : 0;
-    }
-
-    /**
-     * Calculates the progress percentage based on payments made.
-     */
-    #[Computed]
-    private function calculateProgressByPayment($proforma, array $totalPaymentsMadeByCurrency): float
-    {
-        $contractValue = $proforma->price * $proforma->quantity;
-        $currency = 'USD';
-
-        $totalPaymentsMade = $totalPaymentsMadeByCurrency[$currency] ?? 0;
+        $contractValue = $this->selectedProforma->price * $this->selectedProforma->quantity;
+        $totalPaymentsMade = $totalPaymentsMadeByCurrency['USD'] ?? 0;
 
         return $contractValue > 0 ? ($totalPaymentsMade / $contractValue) * 100 : 0;
     }
 
-    public function resetData()
+
+    private function calculateProgressByQuantity(): float
     {
-        $this->search = '';
-        $this->selectedProforma = null;
-        $this->proformaOptions = [];
-        $this->businessInsights = null;
-        $this->dispatch('refreshSupplierSummary');
-        $this->dispatch('$refresh');
+        $proformaQuantity = $this->selectedProforma->quantity;
+        $shippedQuantity = 0;
+
+        foreach ($this->selectedProforma->orders as $order) {
+            if ($order->logistic) {
+                $shippedQuantity += $order->logistic->net_weight ?? 0;
+            }
+        }
+
+        return $proformaQuantity > 0 ? ($shippedQuantity / $proformaQuantity) * 100 : 0;
     }
 
-    public function render()
+    private function calculateTotalCounts(): string
     {
-        return view('livewire.case-summary.total-summary');
+        $ordersCount = $this->selectedProforma->orders->count();
+
+        $paymentRequestsCount = $this->selectedProforma->associatedPaymentRequests->count() +
+            $this->selectedProforma->orders->sum(fn($order) => $order->paymentRequests->count());
+
+        $paymentsCount = $this->selectedProforma->associatedPaymentRequests->sum(fn($pr) => $pr->payments->count()) +
+            $this->selectedProforma->orders->sum(fn($order) => $order->paymentRequests->sum(fn($pr) => $pr->payments->count()));
+
+        return "Order: $ordersCount<br>Pay. Req.: $paymentRequestsCount<br>Payment: $paymentsCount";
     }
 
-    public function index()
+    private function calculateTotalOrderQuantities(): array
     {
-        return view('components.Summary.main');
+        $totalQuantity = 0;
+        $netQuantity = 0;
+
+        foreach ($this->selectedProforma->orders as $order) {
+            if ($order->orderDetail) {
+                $totalQuantity += $order->orderDetail->final_quantity
+                    ?? $order->orderDetail->provisional_quantity
+                    ?? $order->orderDetail->buying_quantity
+                    ?? 0;
+            }
+
+            if ($order->logistic && $order->logistic->net_weight !== null) {
+                $netQuantity += $order->logistic->net_weight;
+            }
+        }
+
+        $proformaQuantity = $this->selectedProforma->quantity ?? 0;
+        $valueToCompare = $netQuantity > 0 ? $netQuantity : $totalQuantity;
+        $basis = $netQuantity > 0 ? 'net weight' : 'total quantity';
+
+
+        return [
+            'proforma_quantity' => $proformaQuantity,
+            'total_order_quantity' => $totalQuantity,
+            'total_net_weight' => $netQuantity,
+            'status' => $this->compareQuantities($proformaQuantity, $valueToCompare, $basis),
+        ];
+    }
+
+    private function calculateTotalPaymentRequests(): array
+    {
+        if (isset($this->cachedTotals['requests'])) {
+            return $this->cachedTotals['requests'];
+        }
+
+        $totals = [];
+        $proformaWeight = $this->selectedProforma->price * $this->selectedProforma->quantity *
+            ($this->selectedProforma->percentage / 100);
+
+        // From associated payment requests.
+        foreach ($this->selectedProforma->associatedPaymentRequests as $pr) {
+            $amount = $pr->requested_amount;
+
+            if ($pr->associatedProformaInvoices->count() > 1) {
+                $totalWeight = $pr->associatedProformaInvoices->sum(fn($p) => $p->price * $p->quantity * ($p->percentage / 100));
+                $amount = $totalWeight > 0 ? ($pr->requested_amount * ($proformaWeight / $totalWeight)) : 0;
+            }
+
+            $totals[$pr->currency] = ($totals[$pr->currency] ?? 0) + $amount;
+        }
+
+        // From orders' payment requests.
+        foreach ($this->selectedProforma->orders as $order) {
+            foreach ($order->paymentRequests as $pr) {
+                $totals[$pr->currency] = ($totals[$pr->currency] ?? 0) + $pr->requested_amount;
+            }
+        }
+
+        return $this->cachedTotals['requests'] = $totals;
+    }
+
+
+    private function calculateTotalPayments(): array
+    {
+        if (isset($this->cachedTotals['payments'])) {
+            return $this->cachedTotals['payments'];
+        }
+
+        $totals = [];
+        $proformaWeight = $this->selectedProforma->price * $this->selectedProforma->quantity *
+            ($this->selectedProforma->percentage / 100);
+
+        // From associated payment requests' payments.
+        foreach ($this->selectedProforma->associatedPaymentRequests as $req) {
+            $isCollective = $req->associatedProformaInvoices->count() > 1;
+
+            foreach ($req->payments as $payment) {
+                $amount = $payment->amount;
+
+                if ($isCollective) {
+                    $totalSum = $payment->paymentRequests->sum('requested_amount');
+                    $amount = $totalSum > 0 ? ($payment->amount * ($proformaWeight / $totalSum)) : 0;
+                }
+
+                $totals[$payment->currency] = ($totals[$payment->currency] ?? 0) + $amount;
+            }
+        }
+
+        foreach ($this->selectedProforma->orders as $order) {
+            foreach ($order->paymentRequests as $pr) {
+                foreach ($pr->payments as $payment) {
+                    $totals[$payment->currency] = ($totals[$payment->currency] ?? 0) + $payment->amount;
+                }
+            }
+        }
+
+        return $this->cachedTotals['payments'] = $totals;
+    }
+
+    private function compareQuantities(float $proformaQuantity, float $totalOrderQuantity, string $basis): string
+    {
+        if ($totalOrderQuantity > $proformaQuantity) {
+            return sprintf(
+                'Over-Ordered by %s MT based on %s',
+                number_format($totalOrderQuantity - $proformaQuantity, 2),
+                $basis
+            );
+        } elseif ($totalOrderQuantity < $proformaQuantity) {
+            return sprintf(
+                'Under-Ordered by %s based on %s',
+                number_format($proformaQuantity - $totalOrderQuantity, 2),
+                $basis
+            );
+        }
+        return 'Matched exactly based on ' . $basis;
+    }
+
+    private function fetchAttachmentNames()
+    {
+        return Name::whereIn('module', ['ProformaInvoice', 'Order'])
+            ->select('module', 'title')
+            ->get()
+            ->groupBy('module');
+    }
+
+    private function fetchProformaInvoice($id)
+    {
+        return ProformaInvoice::with([
+            'attachments',
+            'buyer:id,name',
+            'supplier:id,name',
+            'category:id,name',
+            'product:id,name',
+            'grade:id,name',
+            'associatedPaymentRequests' => fn($query) => $query->whereNull('deleted_at'),
+            'associatedPaymentRequests.payments' => fn($query) => $query->whereNull('deleted_at'),
+            'associatedPaymentRequests.payments.paymentRequests' => fn($q) => $q->whereNull('deleted_at'),
+            'associatedPaymentRequests.associatedProformaInvoices',
+            'orders' => fn($query) => $query->whereNull('deleted_at'),
+            'orders.orderDetail',
+            'orders.logistic',
+            'orders.doc',
+            'orders.attachments',
+            'orders.paymentRequests' => fn($query) => $query->whereNull('deleted_at'),
+            'orders.paymentRequests.payments' => fn($query) => $query->whereNull('deleted_at'),
+            'orders.paymentRequests.payments.paymentRequests'
+        ])
+            ->whereNull('deleted_at')
+            ->findOrFail($id);
+    }
+
+    private function fetchProformaOptions(string $search)
+    {
+        $search = trim(strtolower($search));
+
+        return ProformaInvoice::select(['id', 'proforma_number', 'contract_number', 'reference_number'])
+            ->whereNull('deleted_at')
+            ->with(['buyer:id,name', 'supplier:id,name', 'category:id,name', 'product:id,name', 'grade:id,name'])
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereRaw('lower(proforma_number) like ?', ["%{$search}%"])
+                        ->orWhereRaw('lower(contract_number) like ?', ["%{$search}%"])
+                        ->orWhereRaw('lower(reference_number) like ?', ["%{$search}%"])
+                        ->orWhereHas('buyer', fn($q) => $q->whereRaw('lower(name) like ?', ["%{$search}%"]))
+                        ->orWhereHas('supplier', fn($q) => $q->whereRaw('lower(name) like ?', ["%{$search}%"]))
+                        ->orWhereHas('category', fn($q) => $q->whereRaw('lower(name) like ?', ["%{$search}%"]))
+                        ->orWhereHas('product', fn($q) => $q->whereRaw('lower(name) like ?', ["%{$search}%"]))
+                        ->orWhereHas('grade', fn($q) => $q->whereRaw('lower(name) like ?', ["%{$search}%"]));
+                });
+            })
+            ->limit(5)
+            ->get();
+    }
+
+    private function formatCurrencyTotals(array $totals): string
+    {
+        $formatted = [];
+        foreach ($totals as $currency => $amount) {
+            $formatted[] = "$currency: " . number_format($amount, 2);
+        }
+        return implode('<br>', $formatted);
     }
 }

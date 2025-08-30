@@ -129,7 +129,7 @@ function isColorSelected()
 
 function isShadeSelected($bg)
 {
-    return isColorSelected() ? $bg : '' ?? null;
+    return (isColorSelected() ? $bg : '') ?? null;
 }
 
 
@@ -167,7 +167,7 @@ function isUserAccountant()
 {
     $user = auth()->user();
 
-    return $user->role === 'accountant' && ($user->info['position'] ?? null) == 'jnr';
+    return $user->role === 'accountant';
 }
 
 

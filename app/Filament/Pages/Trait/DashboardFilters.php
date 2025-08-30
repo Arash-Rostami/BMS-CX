@@ -3,6 +3,8 @@
 namespace App\Filament\Pages\Trait;
 
 use App\Models\Category;
+use App\Models\Department;
+use App\Models\PaymentRequest;
 use Carbon\Carbon;
 use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Actions\Action;
@@ -11,8 +13,6 @@ use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Get;
-use App\Models\Department;
-use App\Models\PaymentRequest;
 use Filament\Support\Enums\ActionSize;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
@@ -33,7 +33,7 @@ trait DashboardFilters
                             'cx' => 'CX Logistics',
                             'target' => 'CX Targets',
                         ])
-                        ->default('ac')
+                        ->default([])
                         ->extraAttributes(['class' => 'analytics'])
                         ->reactive(),
                     Select::make('yearlyOrders')

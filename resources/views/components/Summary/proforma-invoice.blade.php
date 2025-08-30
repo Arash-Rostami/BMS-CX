@@ -1,14 +1,14 @@
 <!-- Header -->
 <h3 class="mb-3">
     <span class="material-icons-outlined text-sm insight">receipt_long</span>
-    <span class="text-2xl font-semibold mb-4">Proforma Invoice</span>
+    <span class="text-lg md:text-2xl font-semibold mb-4">Proforma Invoice</span>
 </h3>
 
 <!-- Accordion Container -->
 <div x-data="{ open: false }" class="border rounded-lg shadow-lg">
     <!-- Accordion Header -->
     <button @click="open = !open"
-            class="w-full flex justify-between items-center my-dark-class px-4 py-3 text-left text-lg font-semibold rounded-xl">
+            class="w-full flex justify-between items-center my-dark-class px-4 py-3 text-left text-md md:text-lg font-semibold rounded-xl">
         <span>No: {{ $selectedProforma->reference_number ?? 'N/A' }}</span>
         <span class="material-icons-outlined" x-show="open">expand_less</span>
         <span class="material-icons-outlined" x-show="!open">expand_more</span>

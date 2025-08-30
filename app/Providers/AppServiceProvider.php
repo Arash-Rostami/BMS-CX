@@ -55,7 +55,7 @@ class AppServiceProvider extends ServiceProvider
         //added js files
         FilamentAsset::register([
             Js::make('fullscreen', __DIR__ . '/../../resources/js/fullscreen.js'),
-            Js::make('lightBox', 'https://cdn.jsdelivr.net/npm/fslightbox@3.4.1/index.min.js'),
+            Js::make('lightBoxLocal', __DIR__ . '/../../resources/js/lightBoxLocal.js'),
             Js::make('lightBoxInit', __DIR__ . '/../../resources/js/lightBoxInit.js'),
             Js::make('connectionStatus', __DIR__ . '/../../resources/js/connectionStatus.js'),
             Js::make('sortable-js', __DIR__ . '/../../resources/js/sort.js'),
@@ -103,8 +103,6 @@ class AppServiceProvider extends ServiceProvider
 //        Notifications::verticalAlignment(VerticalAlignment::End);
 
 
-        Gate::define('banner-manager', function (User $user) {
-            return $user->isAdmin() || $user->isManager();
-        });
+        Gate::define('banner-manager', fn(User $user) => $user->hasRole('admin') || $user->hasRole('manager'));
     }
 }

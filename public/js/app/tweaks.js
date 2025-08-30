@@ -1,15 +1,3 @@
-// show table minus of summary in red color
-window.addEventListener('DOMContentLoaded', function () {
-    if (!window.location.href.includes('orders')) return;
-
-    setTimeout(() => {
-        document.querySelectorAll('.fi-ta-text-summary span').forEach(span => {
-            span.innerHTML = span.innerHTML.replace(/(-\d+(\.\d+)?)/g, '<span style="color: red;">$1</span>');
-        });
-    }, 2000);
-
-});
-
 // overlay logic
 window.addEventListener('DOMContentLoaded', function () {
 
