@@ -2,13 +2,20 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 
 class AccessLevel
 {
+    private static ?User $loggedInUser = null;
+
     public static function hasPermissionForModel($permission, $model)
     {
-        $loggedUser = auth()->user();
+        $loggedUser = self::getAuthenticatedUser();
+
+        if (!$loggedUser) {
+            return false;
+        }
 
         // Allow Admin to access every Module
         if ($loggedUser->role == 'admin') {
@@ -29,5 +36,13 @@ class AccessLevel
                 })
                 ->exists();
         });
+    }
+
+    private static function getAuthenticatedUser(): ?User
+    {
+        if (self::$loggedInUser === null) {
+            self::$loggedInUser = auth()->user();
+        }
+        return self::$loggedInUser;
     }
 }

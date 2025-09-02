@@ -6,6 +6,7 @@ use App\Filament\Resources\Operational\PaymentResource\Pages\Admin;
 use App\Filament\Resources\Operational\PaymentResource\Pages\ListPayments;
 use App\Filament\Resources\Operational\PaymentResource\Widgets\StatsOverview;
 use App\Models\Payment;
+use App\Services\SmartCacheManager;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
@@ -33,6 +34,10 @@ class PaymentResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'reference_number';
 
+    public static function configureCommonTableSettings(Table $table): Table
+    {
+        return (new ListPayments())->configureCommonTableSettings($table);
+    }
 
     public static function form(Form $form): Form
     {
@@ -95,17 +100,79 @@ class PaymentResource extends Resource
             ]);
     }
 
-    public static function table(Table $table): Table
+    public static function getClassicLayout(Table $table): Table
     {
-        return $table;
+        return (new ListPayments())->getClassicLayout($table);
     }
 
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with([
+                'attachments',
+                'order',
+                'paymentRequests',
+                'user',
+            ])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return '💰  ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return PaymentResource::getUrl('edit', ['record' => $record]);
+    }
+
+    public static function getModernLayout(Table $table): Table
+    {
+        return (new ListPayments())->getModernLayout($table);
+
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $user = auth()->user();
+        $filters = ['user_id' => $user->id, 'type' => 'total_count'];
+
+        $count = SmartCacheManager::remember('Payment', $filters, 15, function () use ($user) {
+            return static::getModel()::query()
+                ->filterByUserPaymentRequests($user)
+                ->count();
+        });
+
+        return $count > 0 ? (string)$count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'primary';
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Operational\PaymentResource\Pages\ListPayments::route('/'),
+            'create' => Operational\PaymentResource\Pages\CreatePayment::route('/create'),
+            'edit' => Operational\PaymentResource\Pages\EditPayment::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            Operational\PaymentResource\RelationManagers\PaymentRequestsRelationManager::class,
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [StatsOverview::class];
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -127,74 +194,13 @@ class PaymentResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array
-    {
-        return [
-            Operational\PaymentResource\RelationManagers\PaymentRequestsRelationManager::class,
-        ];
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Operational\PaymentResource\Pages\ListPayments::route('/'),
-            'create' => Operational\PaymentResource\Pages\CreatePayment::route('/create'),
-            'edit' => Operational\PaymentResource\Pages\EditPayment::route('/{record}/edit'),
-        ];
-    }
-
-    public static function getWidgets(): array
-    {
-        return [StatsOverview::class];
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        $user = auth()->user();
-
-        $count = static::getModel()::query()
-            ->filterByUserPaymentRequests($user)
-            ->count();
-
-        return (string)$count;
-    }
-
     public static function shouldRegisterNavigation(): bool
     {
         return !isSimpleSidebar();
     }
 
-
-    public static function getNavigationBadgeColor(): ?string
+    public static function table(Table $table): Table
     {
-        return 'primary';
-    }
-
-
-    public static function getGlobalSearchResultUrl(Model $record): string
-    {
-        return PaymentResource::getUrl('edit', ['record' => $record]);
-    }
-
-    public static function getGlobalSearchResultTitle(Model $record): string
-    {
-        return '💰  ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
-    }
-
-    public static function configureCommonTableSettings(Table $table): Table
-    {
-        return (new ListPayments())->configureCommonTableSettings($table);
-    }
-
-
-    public static function getModernLayout(Table $table): Table
-    {
-        return (new ListPayments())->getModernLayout($table);
-
-    }
-
-    public static function getClassicLayout(Table $table): Table
-    {
-        return (new ListPayments())->getClassicLayout($table);
+        return $table;
     }
 }

@@ -5,12 +5,14 @@ namespace App\Filament\Resources\Operational\ProformaInvoiceResource\Pages;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\ProformaInvoiceResource;
 use App\Models\ProformaInvoice;
+use App\Services\SmartCacheManager;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
 use Carbon\Carbon;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\IconPosition;
@@ -41,13 +43,11 @@ use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
-//use Filament\Tables\Actions\ExportBulkAction;
-
 
 class ListProformaInvoices extends ListRecords
 {
+    private const SPECIFIC_CATEGORY_IDS = ['Mineral' => 1, 'Polymers' => 2, 'Chemicals' => 3, 'Petro' => 4];
     protected static string $resource = ProformaInvoiceResource::class;
-
     public bool $showActionsAhead = true;
 
     public bool $showTabs;
@@ -59,152 +59,24 @@ class ListProformaInvoices extends ListRecords
         'updateActiveTab'
     ];
 
-    protected static function getOriginalTable()
-    {
-        return static::getResource()::getEloquentQuery();
-    }
-
-    public function mount(): void
-    {
-        $this->showActionsAhead = $this->showActionsAhead ?? true;
-        $this->showTabs = (auth()->user()->info['filterDesign'] ?? 'hide') == 'show';
-        $this->dispatch('refreshSortJs');
-        $this->dispatch('refreshTabFilters');
-    }
-
-    public function updateActiveTab(string $scope = ''): void
-    {
-        $this->activeTab = $scope;
-        $this->dispatch('refreshTabFilters');
-    }
-
-    public function toggleTabs()
-    {
-        $this->showTabs = !$this->showTabs;
-        $this->dispatch('refreshPage');
-    }
-
-
-    public function moveActionsToStart()
-    {
-        $this->showActionsAhead = true;
-        $this->resetPage();
-    }
-
-    public function resetActionsToEnd()
-    {
-        $this->showActionsAhead = false;
-        $this->resetPage();
-    }
-
-    public function scrollLeft()
-    {
-        $this->dispatch('scrollLeft');
-    }
-
-    public function scrollRight()
-    {
-        $this->dispatch('scrollRight');
-    }
-
-    public function toggleFullScreen()
-    {
-        $this->dispatch('toggleFullScreen');
-    }
-
     public function clearTableSort()
     {
         $this->dispatch('clearTableSort');
-    }
-
-    public function getTabs(): array
-    {
-        if (!$this->showTabs) {
-            $this->registerTableRenderHook();
-            return [];
-        }
-
-        $counts = ProformaInvoice::getTabCounts();
-
-        $categoryTabs = [
-            null => ['label' => 'All', 'icon' => 'heroicon-o-inbox'],
-            'Mineral' => ['category_id' => 1, 'icon' => 'heroicon-o-cube'],
-            'Polymers' => ['category_id' => 2, 'icon' => 'heroicon-m-circle-stack'],
-            'Chemicals' => ['category_id' => 3, 'icon' => 'heroicon-o-beaker'],
-            'Petro' => ['category_id' => 4, 'icon' => 'heroicon-s-fire'],
-        ];
-
-        $buyerTabs = [
-            'Persore' => ['buyer_id' => 5],
-            'Paidon' => ['buyer_id' => 2],
-            'Zhuo' => ['buyer_id' => 3],
-            'Solsun' => ['buyer_id' => 4],
-        ];
-
-        $statusTabs = [
-            'Approved' => ['status' => 'approved', 'icon' => 'heroicon-o-check-circle'],
-            'Rejected' => ['status' => 'rejected', 'icon' => 'heroicon-o-x-circle'],
-            'Completed' => ['status' => 'fulfilled', 'icon' => 'heroicon-s-check-circle'],
-        ];
-
-        $tabs = [];
-
-        foreach ($categoryTabs as $key => $config) {
-            $tabs[$key] = Tab::make($config['label'] ?? $key)
-                ->query(fn($query) => isset($config['category_id']) ? $query->where('category_id', $config['category_id']) : $query)
-                ->badge($counts[strtolower($key) . '_count'] ?? $counts['total'] ?? 0)
-                ->icon($config['icon']);
-        }
-
-        foreach ($buyerTabs as $key => $config) {
-            $tabs[$key] = Tab::make($key)
-                ->query(fn($query) => $query->where('buyer_id', $config['buyer_id']))
-                ->badge($counts[strtolower($key) . '_count'] ?? 0)
-                ->icon('heroicon-o-user-group');
-        }
-
-        foreach ($statusTabs as $key => $config) {
-            $tabs[$key] = Tab::make($key === 'Rejected' ? 'Rejected/Cancelled' : $key)
-                ->query(fn($query) => $query->where('status', $config['status']))
-                ->badge($counts[strtolower($config['status']) . '_count'] ?? 0)
-                ->icon($config['icon']);
-        }
-
-        return $tabs;
-    }
-
-    private function registerTableRenderHook()
-    {
-        FilamentView::registerRenderHook(
-            TablesRenderHook::HEADER_BEFORE,
-            fn(): View => view('filament.resources.proforma-invoice-resource.table-tabs', ['activeTab' => $this->activeTab]),
-            scopes: ListProformaInvoices::class,
-        );
-    }
-
-    public function table(Table $table): Table
-    {
-        $table = $this->configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? $this->getModernLayout($table)
-            : $this->getClassicLayout($table);
     }
 
     public function configureCommonTableSettings(Table $table): Table
     {
         return $table
             ->filters([
+                Admin::filterNumberOfRecords(),
                 Admin::filterCategory(),
                 Admin::filterProduct(),
                 Admin::filterGrade(),
-                Admin::filterBuyer(),
                 Admin::filterSupplier(),
                 Admin::filterCreator(),
                 Admin::filterPart(),
                 Admin::filterStatus(),
                 Admin::filterProforma(),
-
                 AdminOrder::filterSoftDeletes(),
                 Admin::filterVerified(),
                 Admin::filterTelexNeeded(),
@@ -247,7 +119,6 @@ class ListProformaInvoices extends ListRecords
                         ->color('info')
                         ->modalWidth(MaxWidth::Medium)
                         ->modalIcon('heroicon-o-clipboard-document-list')
-//                        ->record(fn(Model $record) => $record)
                         ->mutateRecordDataUsing(function (array $data): array {
                             $data['user_id'] = auth()->id();
                             return $data;
@@ -288,7 +159,91 @@ class ListProformaInvoices extends ListRecords
                 Admin::groupSupplierRecords(),
                 Admin::groupContractRecords(),
                 Admin::groupStatusRecords(),
-            ]);
+            ])
+            ->deferLoading();
+    }
+
+    public function getClassicLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Admin::showID(),
+                Admin::showStatus(),
+                Admin::showProformaNumber(),
+                Admin::showProformaDate(),
+                Admin::showBuyer(),
+                Admin::showSupplier(),
+                Admin::showCategory(),
+                Admin::showProduct(),
+                Admin::showGrade(),
+                Admin::showPrice(),
+                Admin::showQuantity(),
+                Admin::showPercentage(),
+                Admin::showTotal(),
+                Admin::showShipmentPart(),
+                Admin::showVerifiable(),
+                Admin::showContractName(),
+                Admin::showCreator(),
+                Admin::showAssignedTo(),
+                TableObserver::showMissingData(),
+                Admin::showTimeStamp(),
+            ])->striped();
+    }
+
+    public function getInvisibleTableHeaderActions(): array
+    {
+
+        return [
+            Action::make('Refresh Sorting')
+                ->label('Reset')
+                ->tooltip('Reset Column Orders')
+                ->color('primary')
+                ->icon('heroicon-m-receipt-refund')
+                ->action('clearTableSort'),
+
+            Action::make('Move Actions to Start')
+                ->action('moveActionsToStart')
+                ->color('primary')
+                ->icon('heroicon-o-arrows-right-left')
+                ->iconPosition(IconPosition::After)
+                ->label('S')
+                ->tooltip('Move Actions to Start')
+                ->visible(!$this->showActionsAhead && !isModernDesign()),
+
+            Action::make('Reset Actions to End')
+                ->action('resetActionsToEnd')
+                ->color('secondary')
+                ->icon('heroicon-o-arrows-right-left')
+                ->iconPosition(IconPosition::Before)
+                ->label('E')
+                ->tooltip('Reset Actions to End')
+                ->visible($this->showActionsAhead && !isModernDesign()),
+
+            Action::make('Scroll Left')
+                ->label('Scroll')
+                ->tooltip('Scroll Left')
+                ->color('primary')
+                ->icon('heroicon-o-arrow-left-on-rectangle')
+                ->iconPosition(IconPosition::Before)
+                ->action('scrollLeft'),
+
+            Action::make('Scroll Right')
+                ->label('Scroll')
+                ->tooltip('Scroll Right')
+                ->color('primary')
+                ->icon('heroicon-o-arrow-right-end-on-rectangle')
+                ->iconPosition(IconPosition::After)
+                ->action('scrollRight'),
+
+            Action::make('Full Screen')
+                ->label('Go')
+                ->tooltip('Go Fullscreen')
+                ->color('primary')
+                ->icon('heroicon-s-arrows-pointing-out')
+                ->action('toggleFullScreen'),
+        ];
+
+
     }
 
     public function getModernLayout(Table $table): Table
@@ -319,31 +274,136 @@ class ListProformaInvoices extends ListRecords
             ]);
     }
 
-    public function getClassicLayout(Table $table): Table
+
+    public function getTabs(): array
     {
-        return $table
-            ->columns([
-                Admin::showID(),
-                Admin::showStatus(),
-                Admin::showProformaNumber(),
-                Admin::showProformaDate(),
-                Admin::showBuyer(),
-                Admin::showSupplier(),
-                Admin::showCategory(),
-                Admin::showProduct(),
-                Admin::showGrade(),
-                Admin::showPrice(),
-                Admin::showQuantity(),
-                Admin::showPercentage(),
-                Admin::showTotal(),
-                Admin::showShipmentPart(),
-                Admin::showVerifiable(),
-                Admin::showContractName(),
-                Admin::showCreator(),
-                Admin::showAssignedTo(),
-                TableObserver::showMissingData(),
-                Admin::showTimeStamp(),
-            ])->striped();
+        if (!$this->showTabs) {
+            $this->registerTableRenderHook();
+            return [];
+        }
+
+        $counts = ProformaInvoice::getTabCounts();
+
+        $baseTabs = collect([
+            null => [
+                'label' => 'All',
+                'query' => fn(Builder $query) => $query,
+                'badge' => $counts['total'] ?? 0,
+                'icon' => 'heroicon-o-inbox',
+            ],
+        ]);
+
+        $categoryTabs = collect([
+            'Mineral' => ['label' => 'Mineral', 'query' => fn(Builder $q) => $q->where('category_id', 1), 'badge' => $counts['mineral_count'] ?? 0, 'icon' => 'heroicon-o-cube'],
+            'Polymers' => ['label' => 'Polymers', 'query' => fn(Builder $q) => $q->where('category_id', 2), 'badge' => $counts['polymers_count'] ?? 0, 'icon' => 'heroicon-m-circle-stack'],
+            'Chemicals' => ['label' => 'Chemicals', 'query' => fn(Builder $q) => $q->where('category_id', 3), 'badge' => $counts['chemicals_count'] ?? 0, 'icon' => 'heroicon-o-beaker'],
+            'Petro' => ['label' => 'Petro', 'query' => fn(Builder $q) => $q->where('category_id', 4), 'badge' => $counts['petro_count'] ?? 0, 'icon' => 'heroicon-s-fire'],
+        ]);
+
+        $buyerTabs = collect([
+            'Persore' => ['label' => 'Persore', 'query' => fn(Builder $q) => $q->where('buyer_id', 5), 'badge' => $counts['persore_count'] ?? 0, 'icon' => 'heroicon-o-user-group'],
+            'Paidon' => ['label' => 'Paidon', 'query' => fn(Builder $q) => $q->where('buyer_id', 2), 'badge' => $counts['paidon_count'] ?? 0, 'icon' => 'heroicon-o-user-group'],
+            'Zhuo' => ['label' => 'Zhuo', 'query' => fn(Builder $q) => $q->where('buyer_id', 3), 'badge' => $counts['zhuo_count'] ?? 0, 'icon' => 'heroicon-o-user-group'],
+            'Solsun' => ['label' => 'Solsun', 'query' => fn(Builder $q) => $q->where('buyer_id', 4), 'badge' => $counts['solsun_count'] ?? 0, 'icon' => 'heroicon-o-user-group'],
+        ]);
+
+        $statusTabs = collect([
+            'Approved' => ['label' => 'Approved', 'query' => fn(Builder $q) => $q->where('status', 'approved'), 'badge' => $counts['approved_count'] ?? 0, 'icon' => 'heroicon-o-check-circle'],
+            'Rejected' => ['label' => 'Rejected/Cancelled', 'query' => fn(Builder $q) => $q->where('status', 'rejected'), 'badge' => $counts['rejected_count'] ?? 0, 'icon' => 'heroicon-o-x-circle'],
+            'Completed' => ['label' => 'Completed', 'query' => fn(Builder $q) => $q->where('status', 'fulfilled'), 'badge' => $counts['fulfilled_count'] ?? 0, 'icon' => 'heroicon-s-check-circle'],
+        ]);
+
+        return $baseTabs
+            ->merge($categoryTabs)
+            ->merge($buyerTabs)
+            ->merge($statusTabs)
+            ->map(fn(array $config): Tab => Tab::make($config['label'])
+                ->query($config['query'])
+                ->badge($config['badge'])
+                ->icon($config['icon'])
+            )
+            ->all();
+    }
+
+    public function mount(): void
+    {
+        $this->showActionsAhead = $this->showActionsAhead ?? true;
+        $this->showTabs = (auth()->user()->info['filterDesign'] ?? 'hide') == 'show';
+        $this->dispatch('refreshSortJs');
+        $this->dispatch('refreshTabFilters');
+    }
+
+    public function moveActionsToStart()
+    {
+        $this->showActionsAhead = true;
+        $this->resetPage();
+    }
+
+    public function resetActionsToEnd()
+    {
+        $this->showActionsAhead = false;
+        $this->resetPage();
+    }
+
+    public function scrollLeft()
+    {
+        $this->dispatch('scrollLeft');
+    }
+
+    public function scrollRight()
+    {
+        $this->dispatch('scrollRight');
+    }
+
+    public function table(Table $table): Table
+    {
+        $table = $this->configureCommonTableSettings($table);
+
+        return (getTableDesign() != 'classic')
+            ? $this->getModernLayout($table)
+            : $this->getClassicLayout($table);
+    }
+
+    public function toggleFullScreen()
+    {
+        $this->dispatch('toggleFullScreen');
+    }
+
+    public function toggleTabs()
+    {
+        $this->showTabs = !$this->showTabs;
+        $this->dispatch('refreshPage');
+    }
+
+    public function updateActiveTab(string $scope = ''): void
+    {
+        $this->activeTab = $scope;
+        $this->dispatch('refreshTabFilters');
+    }
+
+    protected function getCachedProformaInvoiceIds()
+    {
+        $filters = [
+            'activeTab' => $this->activeTab ?: 'all',
+            'monthly_data_proforma' => $this->getTableFilterState('monthly_data_proforma') ?? 'default',
+        ];
+
+        return SmartCacheManager::remember('ProformaInvoice', $filters, (4 * 60), function () {
+            $query = self::getOriginalTable();
+
+
+            if (is_null($this->getTableFilterState('monthly_data_proforma'))) {
+                $query->where('created_at', '>=', now()->subMonths(2)->startOfMonth());
+            }
+
+            if ($this->activeTab !== '') {
+                if (array_key_exists($this->activeTab, self::SPECIFIC_CATEGORY_IDS)) {
+                    $query->where('category_id', self::SPECIFIC_CATEGORY_IDS[$this->activeTab]);
+                }
+            }
+
+            return $query->pluck('id');
+        });
     }
 
     protected function getHeaderActions(): array
@@ -352,6 +412,27 @@ class ListProformaInvoices extends ListRecords
             Actions\CreateAction::make()
                 ->label('New')
                 ->icon('heroicon-o-sparkles'),
+            Actions\Action::make('clear_cache_and_refresh')
+                ->label('Refresh')
+                ->tooltip('Clear cache and update records')
+                ->icon('heroicon-o-arrow-path')
+                ->color('secondary')
+                ->action(function () {
+                    SmartCacheManager::invalidate('ProformaInvoice');
+                    Notification::make()
+                        ->title('Cache Cleared')
+                        ->body('The proforma invoice data has been refreshed.')
+                        ->success()
+                        ->send();
+                }),
+            Actions\Action::make('loadMoreMonths')
+                ->label('Load More Months')
+                ->tooltip('Add to the number of months of requested data')
+                ->icon('heroicon-o-plus')
+                ->action(function () {
+                    $currentMonths = $this->getTableFilterState('monthly_data_proforma')['months_to_load'] ?? 2;
+                    $this->tableFilters['monthly_data_proforma']['months_to_load'] = $currentMonths + 1;
+                }),
             ActionGroup::make(array_merge(
                 [
                     Actions\Action::make('Toggle Tabs')
@@ -368,97 +449,27 @@ class ListProformaInvoices extends ListRecords
         ];
     }
 
-    public function getInvisibleTableHeaderActions(): array
+    protected static function getOriginalTable()
     {
-        $design = isModernDesign();
-
-        $actions = [
-            Action::make('Refresh Sorting')
-                ->label('Reset')
-                ->tooltip('Reset Column Orders')
-                ->color('primary')
-                ->icon('heroicon-m-receipt-refund')
-                ->action('clearTableSort'),
-
-            Action::make('Move Actions to Start')
-                ->action('moveActionsToStart')
-                ->color('primary')
-                ->icon('heroicon-o-arrows-right-left')
-                ->iconPosition(IconPosition::After)
-                ->label('S')
-                ->tooltip('Move Actions to Start')
-                ->visible(!$this->showActionsAhead && !$design),
-
-            Action::make('Reset Actions to End')
-                ->action('resetActionsToEnd')
-                ->color('secondary')
-                ->icon('heroicon-o-arrows-right-left')
-                ->iconPosition(IconPosition::Before)
-                ->label('E')
-                ->tooltip('Reset Actions to End')
-                ->visible($this->showActionsAhead && !$design),
-
-            Action::make('Scroll Left')
-                ->label('Scroll')
-                ->tooltip('Scroll Left')
-                ->color('primary')
-                ->icon('heroicon-o-arrow-left-on-rectangle')
-                ->iconPosition(IconPosition::Before)
-                ->action('scrollLeft'),
-
-            Action::make('Scroll Right')
-                ->label('Scroll')
-                ->tooltip('Scroll Right')
-                ->color('primary')
-                ->icon('heroicon-o-arrow-right-end-on-rectangle')
-                ->iconPosition(IconPosition::After)
-                ->action('scrollRight'),
-
-            Action::make('Full Screen')
-                ->label('Go')
-                ->tooltip('Go Fullscreen')
-                ->color('primary')
-                ->icon('heroicon-s-arrows-pointing-out')
-                ->action('toggleFullScreen'),
-        ];
-
-//        if ($design) {
-//            return [ActionGroup::make($actions)];
-//        }
-
-        return $actions;
+        return static::getResource()::getEloquentQuery();
     }
 
-    protected function getTableQuery(): ?Builder
+    protected function getTableQuery(): Builder
     {
-        $query = ProformaInvoice::query()
+        return ProformaInvoice::query()
+            ->whereIn('id', $this->getCachedProformaInvoiceIds())
             ->with([
-                'attachments',
-                'buyer',
-                'category',
-                'grade',
-                'orders',
-                'activeOrders',
-                'paymentRequests',
-                'associatedPaymentRequests',
-                'activeApprovedPaymentRequests',
-                'product',
-                'supplier',
-                'user',
+                'buyer', 'category', 'grade', 'orders', 'activeOrders',
+                'product', 'supplier', 'user',
             ]);
+    }
 
-
-        $categoryTabs = [
-            'Mineral' => 1,
-            'Polymers' => 2,
-            'Chemicals' => 3,
-            'Petro' => 4,
-        ];
-
-        if (array_key_exists($this->activeTab, $categoryTabs)) {
-            $query->where('category_id', $categoryTabs[$this->activeTab]);
-        }
-
-        return $query;
+    private function registerTableRenderHook()
+    {
+        FilamentView::registerRenderHook(
+            TablesRenderHook::HEADER_BEFORE,
+            fn(): View => view('filament.resources.proforma-invoice-resource.table-tabs', ['activeTab' => $this->activeTab]),
+            scopes: ListProformaInvoices::class,
+        );
     }
 }

@@ -54,7 +54,10 @@ class Admin
         return TextColumn::make('response')
             ->tooltip('Response rate')
             ->label('Response Rate')
-            ->state(fn(Model $record) => QuoteRequest::showQuoteResponseRate($record->id))
+            ->state(fn(Model $record) => QuoteRequest::formatResponseRate(
+                (int) ($record->response_count ?? 0),
+                (int) ($record->token_count ?? 0)
+            ))
             ->badge()
             ->grow(false);
     }
@@ -164,13 +167,12 @@ class Admin
      */
     public static function showPackaging(): TextColumn
     {
-        return TextColumn::make('packing')
+        return TextColumn::make('packaging.name')
             ->label('Packaging')
             ->badge()
             ->grow(false)
             ->alignRight()
             ->color('secondary')
-            ->formatStateUsing(fn(string $state) => Packaging::find($state)->name ?? 'N/A')
             ->sortable()
             ->toggleable();
     }

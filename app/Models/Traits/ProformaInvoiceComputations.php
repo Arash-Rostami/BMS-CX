@@ -8,12 +8,11 @@ use Illuminate\Support\Facades\DB;
 
 trait ProformaInvoiceComputations
 {
-    public static function fetchProformasByID($id)
+    public static function fetchActiveApprovedProformas($paymentRequests)
     {
-        return self::find($id)
-            ->where('status', 'approved')
-            ->whereNull('deleted_at')
-            ->get(['quantity', 'price', 'percentage']);
+        return collect($paymentRequests)
+            ->flatMap->activeApprovedProformaInvoices
+            ->unique('id');
     }
 
     public static function fetchApprovedProformas($proformaNumbers)
@@ -25,18 +24,34 @@ trait ProformaInvoiceComputations
             ->get();
     }
 
-
-    public static function fetchActiveApprovedProformas($paymentRequests)
+    public static function fetchProformasByID($id)
     {
-        return collect($paymentRequests)
-            ->flatMap->activeApprovedProformaInvoices
-            ->unique('id');
+        return self::find($id)
+            ->where('status', 'approved')
+            ->whereNull('deleted_at')
+            ->get(['quantity', 'price', 'percentage']);
     }
 
-    public static function hasMatchingProformaNumber(string $search)
+    public static function generateCacheKey($prefix, $month, $category_id, $year): string
     {
-        return self::where('proforma_number', 'like', "%{$search}%")
-            ->exists();
+        $m = is_array($month) ? implode('_', $month) : ($month ?? 'all');
+        $c = is_array($category_id) ? implode('_', (array)$category_id) : ($category_id ?? 'all');
+
+        return "{$prefix}{$year}_{$c}_{$m}";
+    }
+
+    public static function getApproved()
+    {
+        return self::where('status', 'approved')
+            ->with('product', 'category', 'buyer')
+            ->orderBy('id', 'desc')
+            ->get()
+            ->pluck('formatted_value', 'id');
+    }
+
+    public function getDaysPassedAttribute()
+    {
+        return Carbon::parse($this->proforma_date)->diffInDays(now());
     }
 
     public static function getDistinctProformaNumbers()
@@ -59,6 +74,35 @@ trait ProformaInvoiceComputations
                     $pi->reference_number
                 )
             ]);
+    }
+
+    public function getFormattedValueAttribute()
+    {
+        $ref = $this->reference_number
+            ?? sprintf('PI-%s%04d', $this->created_at->format('y'), $this->id);
+
+        return $this->proforma_number
+            ? sprintf('%s 💢 Ref: %s', $this->proforma_number, $ref)
+            : sprintf(
+                '%s - %s (%s) 💢 Ref: %s',
+                $this->buyer->name,
+                $this->product->name,
+                $this->category->name,
+                $ref
+            );
+    }
+
+    public static function getLatestProformaDate(): ?string
+    {
+        return Cache::remember('latest_proforma_date', now()->addMinutes(15), function () {
+            $query = "SELECT proforma_date FROM proforma_invoices WHERE proforma_date IS NOT NULL ORDER BY proforma_date DESC LIMIT 1";
+
+            $result = DB::selectOne($query);
+
+            return $result && $result->proforma_date
+                ? Carbon::parse($result->proforma_date)->format('j F Y')
+                : 'N/A';
+        });
     }
 
     public static function getProformaInvoicesCached()
@@ -91,19 +135,10 @@ trait ProformaInvoiceComputations
         });
     }
 
-    public static function getApproved()
-    {
-        return self::where('status', 'approved')
-            ->with('product', 'category', 'buyer')
-            ->orderBy('id', 'desc')
-            ->get()
-            ->pluck('formatted_value', 'id');
-    }
-
     public static function getTabCounts(): array
     {
         $userId = auth()->id();
-        return Cache::remember("proforma_invoice_tab_counts_{$userId}", 60, function () use ($userId) {
+        return Cache::remember("proforma_invoice_tab_counts_{$userId}", 900, function () use ($userId) {
             return self::select(
                 DB::raw('COUNT(*) as total'),
                 DB::raw('COUNT(CASE WHEN status = "approved" THEN 1 END) as approved_count'),
@@ -120,19 +155,6 @@ trait ProformaInvoiceComputations
             )
                 ->first()
                 ->toArray();
-        });
-    }
-
-    public static function getLatestProformaDate(): ?string
-    {
-        return Cache::remember('latest_proforma_date', now()->addMinutes(15), function () {
-            $query = "SELECT proforma_date FROM proforma_invoices WHERE proforma_date IS NOT NULL ORDER BY proforma_date DESC LIMIT 1";
-
-            $result = DB::selectOne($query);
-
-            return $result && $result->proforma_date
-                ? Carbon::parse($result->proforma_date)->format('j F Y')
-                : 'N/A';
         });
     }
 
@@ -166,14 +188,6 @@ trait ProformaInvoiceComputations
             $result = DB::selectOne($query, $bindings);
             return $result->total_quantity ?? 0;
         });
-    }
-
-    public static function generateCacheKey($prefix, $month, $category_id, $year): string
-    {
-        $m = is_array($month) ? implode('_', $month) : ($month ?? 'all');
-        $c = is_array($category_id) ? implode('_', (array)$category_id) : ($category_id ?? 'all');
-
-        return "{$prefix}{$year}_{$c}_{$m}";
     }
 
     public static function getTotalQuantityWithBLDateByFilters($year, $category_id = null, $month = null): int
@@ -227,46 +241,6 @@ trait ProformaInvoiceComputations
         });
     }
 
-    public function getFormattedValueAttribute()
-    {
-        $ref = $this->reference_number
-            ?? sprintf('PI-%s%04d', $this->created_at->format('y'), $this->id);
-
-        return $this->proforma_number
-            ? sprintf('%s 💢 Ref: %s', $this->proforma_number, $ref)
-            : sprintf(
-                '%s - %s (%s) 💢 Ref: %s',
-                $this->buyer->name,
-                $this->product->name,
-                $this->category->name,
-                $ref
-            );
-    }
-
-    public function getDaysPassedAttribute()
-    {
-        return Carbon::parse($this->proforma_date)->diffInDays(now());
-    }
-
-    public function setExtraAttribute($value)
-    {
-        if (is_array($value) && isset($value['port'])) {
-            $value['port'] = array_map('strtoupper', $value['port']);
-        }
-        $this->attributes['extra'] = json_encode($value);
-    }
-
-    public function showSearchResult()
-    {
-        return sprintf(
-            "%s (%s - %s) 💢 Ref: %s",
-            $this->proforma_number ?? 'N/A',
-            optional($this->product)->name ?? 'N/A',
-            optional($this->grade)->name ?? 'N/A',
-            $this->reference_number ?? 'N/A'
-        );
-    }
-
     public function hasCompletedBalancePayment()
     {
         $proformaInvoiceId = $this->id;
@@ -305,5 +279,30 @@ trait ProformaInvoiceComputations
 
             return !empty($result);
         });
+    }
+
+    public static function hasMatchingProformaNumber(string $search)
+    {
+        return self::where('proforma_number', 'like', "%{$search}%")
+            ->exists();
+    }
+
+    public function setExtraAttribute($value)
+    {
+        if (is_array($value) && isset($value['port'])) {
+            $value['port'] = array_map('strtoupper', $value['port']);
+        }
+        $this->attributes['extra'] = json_encode($value);
+    }
+
+    public function showSearchResult()
+    {
+        return sprintf(
+            "%s (%s - %s) 💢 Ref: %s",
+            $this->proforma_number ?? 'N/A',
+            optional($this->product)->name ?? 'N/A',
+            optional($this->grade)->name ?? 'N/A',
+            $this->reference_number ?? 'N/A'
+        );
     }
 }

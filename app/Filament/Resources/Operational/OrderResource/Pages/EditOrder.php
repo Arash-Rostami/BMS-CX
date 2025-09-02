@@ -2,22 +2,44 @@
 
 namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
-use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\CreateProformaInvoice;
 use App\Filament\Resources\OrderResource;
+use App\Models\Order;
 use App\Services\AttachmentCreationService;
 use App\Services\Notification\OrderService;
+use App\Services\OrderPurchaseStatusService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
-use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\MaxWidth;
-use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 class EditOrder extends EditRecord
 {
     protected static string $resource = OrderResource::class;
+    protected function afterSave(): void
+    {
+        if ($this->record instanceof Order) {
+            $statusService = app(OrderPurchaseStatusService::class);
+            $statusService->updateStatusBasedOnAttachments($this->record);
+        }
+
+        $service = new OrderService();
+        $service->notifyAgents($this->record, 'edit');
+    }
+
+
+    protected function beforeSave()
+    {
+        $hasExistingAttachment = data_get($this->form->getRawState(), 'use_existing_attachments') ?? false;
+
+        if ($hasExistingAttachment) {
+            Cache::put('available_attachments', data_get($this->form->getRawState(), 'available_attachments'), 10);
+        }
+
+        AttachmentCreationService::createFromExisting($this->record->getOriginal('id'), 'order_id');
+    }
 
     protected function getHeaderActions(): array
     {
@@ -66,23 +88,5 @@ class EditOrder extends EditRecord
         $data['extra'] = data_get($this->form->getRawState(), 'extra');
 
         return $data;
-    }
-
-    protected function beforeSave()
-    {
-        $hasExistingAttachment = data_get($this->form->getRawState(), 'use_existing_attachments') ?? false;
-
-        if ($hasExistingAttachment) {
-            Cache::put('available_attachments', data_get($this->form->getRawState(), 'available_attachments'), 10);
-        }
-
-        AttachmentCreationService::createFromExisting($this->record->getOriginal('id'), 'order_id');
-    }
-
-    protected function afterSave(): void
-    {
-        $service = new OrderService();
-
-        $service->notifyAgents($this->record, 'edit');
     }
 }

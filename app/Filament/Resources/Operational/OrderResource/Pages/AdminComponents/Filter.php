@@ -11,9 +11,11 @@ use App\Models\Product;
 use App\Models\PurchaseStatus;
 use App\Models\Supplier;
 use App\Models\Tag;
+use App\Services\SmartCacheManager;
 use App\Services\Traits\Calculator;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Tables\Filters\Filter as FilamentFilter;
 use Filament\Tables\Filters\QueryBuilder;
 use Filament\Tables\Filters\QueryBuilder\Constraints\Constraint;
@@ -46,36 +48,64 @@ trait Filter
                     ->label('Stage')
                     ->icon('heroicon-o-clipboard-document-list')
                     ->multiple()
-                    ->options(fn() => PurchaseStatus::ordered()->pluck('name', 'id')),
+                    ->options(function () {
+                        return SmartCacheManager::remember('PurchaseStatus', ['type' => 'select_options'], 720, function () {
+                            return PurchaseStatus::ordered()->pluck('name', 'id')->all();
+                        });
+                    }),
                 SelectConstraint::make('party.supplier.id')
                     ->label('Supplier')
                     ->icon('heroicon-o-arrow-up-on-square-stack')
-                    ->options(fn() => Supplier::orderBy('name')->pluck('name', 'id'))
+                    ->options(function () {
+                        return SmartCacheManager::remember('Supplier', ['type' => 'select_options'], 720, function () {
+                            return Supplier::orderBy('name')->pluck('name', 'id')->all();
+                        });
+                    })
                     ->multiple(),
                 SelectConstraint::make('party.buyer.id')
                     ->label('Buyer')
                     ->icon('heroicon-o-arrow-down-on-square-stack')
-                    ->options(fn() => Buyer::orderBy('name')->pluck('name', 'id'))
+                    ->options(function () {
+                        return SmartCacheManager::remember('Buyer', ['type' => 'select_options'], 720, function () {
+                            return Buyer::orderBy('name')->pluck('name', 'id')->all();
+                        });
+                    })
                     ->multiple(),
                 SelectConstraint::make('category_id')
                     ->label('Category')
                     ->icon('heroicon-o-rectangle-stack')
-                    ->options(fn() => Category::orderBy('name')->pluck('name', 'id'))
+                    ->options(function () {
+                        return SmartCacheManager::remember('Category', ['type' => 'select_options'], 720, function () {
+                            return Category::orderBy('name')->pluck('name', 'id')->all();
+                        });
+                    })
                     ->multiple(),
                 SelectConstraint::make('product_id')
                     ->label('Product')
                     ->icon('heroicon-o-squares-2x2')
-                    ->options(fn() => Product::orderBy('name')->pluck('name', 'id'))
+                    ->options(function () {
+                        return SmartCacheManager::remember('Product', ['type' => 'select_options'], 720, function () {
+                            return Product::orderBy('name')->pluck('name', 'id')->all();
+                        });
+                    })
                     ->multiple(),
                 SelectConstraint::make('grade_id')
                     ->label('Grade')
                     ->icon('heroicon-m-ellipsis-horizontal-circle')
-                    ->options(fn() => Grade::orderBy('name')->pluck('name', 'id'))
+                    ->options(function () {
+                        return SmartCacheManager::remember('Grade', ['type' => 'select_options'], 720, function () {
+                            return Grade::orderBy('name')->pluck('name', 'id')->all();
+                        });
+                    })
                     ->multiple(),
                 SelectConstraint::make('logistic.portOfDelivery.id')
                     ->label('Port of Delivery')
                     ->icon('heroicon-o-truck')
-                    ->options(fn() => PortOfDelivery::orderBy('name')->pluck('name', 'id'))
+                    ->options(function () {
+                        return SmartCacheManager::remember('PortOfDelivery', ['type' => 'select_options'], 720, function () {
+                            return PortOfDelivery::orderBy('name')->pluck('name', 'id')->all();
+                        });
+                    })
                     ->multiple(),
                 TextConstraint::make('proforma_number')
                     ->label('Proforma Number')
@@ -174,6 +204,27 @@ trait Filter
             });
     }
 
+    public static function filterNumberOfRecords()
+    {
+        return SelectFilter::make('monthly_data_order')
+            ->label('Period')
+            ->indicateUsing(function (array $data): ?string {
+                if (isset($data['months_to_load']) && $data['months_to_load'] >= 1) {
+                    return 'Showing ' . $data['months_to_load'] . ' month(s) of data';
+                }
+                return null;
+            })
+            ->form([
+                Select::make('months_to_load')
+                    ->options(range(1, 12))
+                    ->default(1),
+            ])
+            ->query(function (Builder $query, array $data): Builder {
+                $monthsToLoad = $data['months_to_load'] ?? 1;
+                return $query->where('created_at', '>=', now()->subMonths($monthsToLoad)->startOfMonth());
+            });
+    }
+
     public static function filterOrderStatus(): SelectFilter
     {
         return SelectFilter::make('order_status')
@@ -218,7 +269,6 @@ trait Filter
     {
         return TrashedFilter::make();
     }
-
 
     // GROUP_BY FILTER/SORTING
 

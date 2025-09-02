@@ -25,6 +25,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\HtmlString;
 
 class ProformaInvoiceResource extends Resource
@@ -44,6 +45,9 @@ class ProformaInvoiceResource extends Resource
 
 
     protected static ?int $navigationSort = 2;
+
+    protected static ?int $newRequestsCount = null;
+
 
     protected static ?string $pollingInterval = null;
 
@@ -145,9 +149,104 @@ class ProformaInvoiceResource extends Resource
             ])->columns(3);
     }
 
-    public static function table(Table $table): Table
+    public static function getClassicLayout(Table $table): Table
     {
-        return $table;
+        return (new ListProformaInvoices())->getClassicLayout($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['category', 'product', 'supplier', 'user', 'attachments'])
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return '📋 ' . $record->reference_number . '  🔎 ' . $record->contract_number . ' - ' . $record->proforma_number;
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return ProformaInvoiceResource::getUrl('edit', ['record' => $record]);
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['proforma_number', 'reference_number', 'contract_number', 'category.name',
+            'product.name', 'supplier.name', 'user.first_name', 'user.last_name'];
+    }
+
+    public static function getModernLayout(Table $table): Table
+    {
+        return (new ListProformaInvoices())->getModernLayout($table);
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $newCount = self::getNewRequests();
+
+        if ($newCount > 0) {
+            return "{$newCount} New";
+        }
+
+        $cacheKey = 'total_count_' . str('ProformaInvoice')->slug();
+
+        return Cache::remember($cacheKey, now()->addMinutes(15), function () {
+            return static::getModel()::count();
+        });
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return self::getNewRequests() > 0 ? 'danger' : 'primary';
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return isSimpleSidebar() ? 'Contracts' : 'Pro forma Invoices';
+    }
+
+    public static function getNewRequests(): int
+    {
+        if (static::$newRequestsCount !== null) {
+            return static::$newRequestsCount;
+        }
+
+        $cacheKey = 'pending_count_' . str('ProformaInvoice')->slug();
+
+        return static::$newRequestsCount = Cache::remember($cacheKey, now()->addMinutes(15), function () {
+            return static::getModel()::where('status', 'pending')->count();
+        });
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Operational\ProformaInvoiceResource\Pages\ListProformaInvoices::route('/'),
+            'create' => Operational\ProformaInvoiceResource\Pages\CreateProformaInvoice::route('/create'),
+            'edit' => Operational\ProformaInvoiceResource\Pages\EditProformaInvoice::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            OrdersRelationManager::class,
+            MainPaymentRequestsRelationManager::class,
+            PaymentRequestsRelationManager::class,
+            MainPaymentsRelationManager::class,
+            PaymentsRelationManager::class,
+
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [StatsOverview::class];
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -172,92 +271,9 @@ class ProformaInvoiceResource extends Resource
             ])->columns(3);
     }
 
-    public static function getEloquentQuery(): Builder
+    public static function table(Table $table): Table
     {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            OrdersRelationManager::class,
-            MainPaymentRequestsRelationManager::class,
-            PaymentRequestsRelationManager::class,
-            MainPaymentsRelationManager::class,
-            PaymentsRelationManager::class,
-
-        ];
-    }
-
-    public static function getWidgets(): array
-    {
-        return [StatsOverview::class];
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Operational\ProformaInvoiceResource\Pages\ListProformaInvoices::route('/'),
-            'create' => Operational\ProformaInvoiceResource\Pages\CreateProformaInvoice::route('/create'),
-            'edit' => Operational\ProformaInvoiceResource\Pages\EditProformaInvoice::route('/{record}/edit'),
-        ];
-    }
-
-    public static function getModernLayout(Table $table): Table
-    {
-        return (new ListProformaInvoices())->getModernLayout($table);
-    }
-
-    public static function getClassicLayout(Table $table): Table
-    {
-        return (new ListProformaInvoices())->getClassicLayout($table);
-    }
-
-    public static function getNavigationLabel(): string
-    {
-        return isSimpleSidebar() ? 'Contracts' : 'Pro forma Invoices';
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        $new = self::getNewRequests();
-
-        if ($new > 0) return "{$new} New";
-
-        return static::getModel()::count();
-    }
-
-    /**
-     * @return mixed
-     */
-    public static function getNewRequests()
-    {
-        return static::getModel()::where('status', 'pending')->count();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return self::getNewRequests() > 0 ? 'danger' : 'primary';
-    }
-
-    public static function getGloballySearchableAttributes(): array
-    {
-        return ['proforma_number', 'reference_number', 'contract_number', 'category.name',
-            'product.name', 'supplier.name', 'user.first_name', 'user.last_name'];
-    }
-
-    public static function getGlobalSearchResultUrl(Model $record): string
-    {
-        return ProformaInvoiceResource::getUrl('edit', ['record' => $record]);
-    }
-
-    public static function getGlobalSearchResultTitle(Model $record): string
-    {
-        return '📋 ' . $record->reference_number . '  🔎 ' . $record->contract_number . ' - ' . $record->proforma_number;
+        return $table;
     }
 
     private static function configureCommonTableSettings(Table $table): Table

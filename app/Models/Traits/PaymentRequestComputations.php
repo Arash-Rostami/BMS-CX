@@ -11,14 +11,6 @@ use Illuminate\Support\Facades\DB;
 trait PaymentRequestComputations
 {
 
-    public static function searchBeneficiaries($query, $search): void
-    {
-        $query->where(fn($q) => $q->whereHas('contractor', fn($c) => $c->where('name', 'like', "%{$search}%"))
-            ->orWhereHas('supplier', fn($s) => $s->where('name', 'like', "%{$search}%"))
-            ->orWhereHas('beneficiary', fn($b) => $b->where('name', 'like', "%{$search}%"))
-        );
-    }
-
     public static function fetchPaymentDetails($proformaInvoiceNumber)
     {
         $escapedProformaInvoiceNumber = addslashes($proformaInvoiceNumber);
@@ -29,18 +21,6 @@ trait PaymentRequestComputations
             ->where('status', '<>', 'pending')
             ->whereNull('deleted_at')
             ->get(['requested_amount', 'total_amount', 'proforma_invoice_number']);
-    }
-
-    public static function showApproved($orderId)
-    {
-        $cacheKey = 'approved_payment_requests_' . $orderId;
-
-        return Cache::remember($cacheKey, 60, function () use ($orderId) {
-            return self::whereNotIn('status', ['cancelled', 'rejected', 'completed'])
-                ->where('order_id', $orderId)
-                ->pluck('type_of_payment', 'id')
-                ->map(fn($type) => self::$typesOfPayment[$type] ?? $type);
-        });
     }
 
     public static function getAllPaymentRequests($operation)
@@ -66,14 +46,19 @@ trait PaymentRequestComputations
         );
     }
 
-    public static function showAmongAllReasons($reason)
+    public static function getLastPaymentDetails(string $recipientName, string $paymentMethod, string $currency)
     {
-        return Allocation::find($reason)?->reason;
+        return self::query()
+            ->where('recipient_name', $recipientName)
+            ->where('extra->paymentMethod', $paymentMethod)
+            ->where('currency', $currency)
+            ->latest('created_at')
+            ->first();
     }
 
     public static function getMadeByOptions(): array
     {
-        return Cache::remember('payment_request_made_by_options', 60, function () {
+        return Cache::remember('payment_request_made_by_options', 900, function () {
             return self::query()
                 ->select('extra')
                 ->distinct()
@@ -83,61 +68,6 @@ trait PaymentRequestComputations
                 ->pluck('made_by', 'made_by')
                 ->toArray();
         });
-    }
-
-    public static function getStatusCounts()
-    {
-        $user = auth()->user();
-
-        $query = static::query()->authorizedForUser($user);
-
-        $countsByStatus = $query
-            ->select('status')
-            ->selectRaw('count(*) as count')
-            ->groupBy('status')
-            ->get()
-            ->keyBy('status')
-            ->map(fn($item) => $item->count);
-
-        $countsByStatus->put('total', $query->count());
-
-        return $countsByStatus;
-    }
-
-    public static function getTabCounts(): array
-    {
-        $userId = auth()->id();
-
-        return Cache::remember("payment_request_tab_counts_{$userId}", 60, function () use ($userId) {
-            return self::select(
-                DB::raw('COUNT(*) as total'),
-                DB::raw('COUNT(CASE WHEN status = "pending" THEN 1 END) as pending_count'),
-                DB::raw('COUNT(CASE WHEN status = "processing" THEN 1 END) as processing_count'),
-                DB::raw('COUNT(CASE WHEN status = "allowed" THEN 1 END) as allowed_count'),
-                DB::raw('COUNT(CASE WHEN status = "approved" THEN 1 END) as approved_count'),
-                DB::raw('COUNT(CASE WHEN status = "rejected" THEN 1 END) as rejected_count'),
-                DB::raw('COUNT(CASE WHEN status = "completed" THEN 1 END) as completed_count'),
-//                DB::raw('COUNT(CASE WHEN status = "cancelled" THEN 1 END) as cancelled_count'),
-                DB::raw('COUNT(CASE WHEN currency = "Rial" THEN 1 END) as rial_count'),
-                DB::raw('COUNT(CASE WHEN currency = "USD" THEN 1 END) as usd_count'),
-                DB::raw('COUNT(CASE WHEN type_of_payment = "advance" THEN 1 END) as advance_count'),
-                DB::raw('COUNT(CASE WHEN type_of_payment = "balance" THEN 1 END) as balance_count'),
-                DB::raw('COUNT(CASE WHEN type_of_payment = "other" THEN 1 END) as other_count'),
-            )
-                ->authorizedForUser(auth()->user())
-                ->first()
-                ->toArray();
-        });
-    }
-
-    public static function getLastPaymentDetails(string $recipientName, string $paymentMethod, string $currency)
-    {
-        return self::query()
-            ->where('recipient_name', $recipientName)
-            ->where('extra->paymentMethod', $paymentMethod)
-            ->where('currency', $currency)
-            ->latest('created_at')
-            ->first();
     }
 
     public static function getNextReferenceNumberForCurrency(string $currency, $excludeId = null): string
@@ -163,6 +93,68 @@ trait PaymentRequestComputations
 
         $nextSequentialId = $maxSequentialId + 1;
         return $prefix . sprintf('%05d', $nextSequentialId);
+    }
+
+    public function getRemainingAmountAttribute()
+    {
+        $total = $this->total_amount ?? 0;
+        $requested = $this->requested_amount ?? 0;
+        return $total - $requested;
+    }
+
+    public static function getStatusCounts()
+    {
+        $user = auth()->user();
+
+        $query = static::query()->authorizedForUser($user);
+
+        $countsByStatus = $query
+            ->select('status')
+            ->selectRaw('count(*) as count')
+            ->groupBy('status')
+            ->get()
+            ->keyBy('status')
+            ->map(fn($item) => $item->count);
+
+        $countsByStatus->put('total', $query->count());
+
+        return $countsByStatus;
+    }
+
+    public function getSupplierCreditAttribute()
+    {
+        return $this->supplierSummaries()?->sum('diff') ?: 0;
+    }
+
+    public function getSupplierSummaryUpdatedAtAttribute()
+    {
+        return $this->supplierSummaries()?->latest('updated_at')->value('updated_at');
+    }
+
+    public static function getTabCounts(): array
+    {
+        $userId = auth()->id();
+
+        return Cache::remember("payment_request_tab_counts_{$userId}", 900, function () use ($userId) {
+            return self::select(
+                DB::raw('COUNT(*) as total'),
+                DB::raw('COUNT(CASE WHEN status = "pending" THEN 1 END) as pending_count'),
+                DB::raw('COUNT(CASE WHEN status = "processing" THEN 1 END) as processing_count'),
+                DB::raw('COUNT(CASE WHEN status = "allowed" THEN 1 END) as allowed_count'),
+                DB::raw('COUNT(CASE WHEN status = "approved" THEN 1 END) as approved_count'),
+                DB::raw('COUNT(CASE WHEN status = "rejected" THEN 1 END) as rejected_count'),
+                DB::raw('COUNT(CASE WHEN status = "completed" THEN 1 END) as completed_count'),
+//                DB::raw('COUNT(CASE WHEN status = "cancelled" THEN 1 END) as cancelled_count'),
+                DB::raw('COUNT(CASE WHEN currency = "Rial" THEN 1 END) as rial_count'),
+                DB::raw('COUNT(CASE WHEN currency = "USD" THEN 1 END) as usd_count'),
+                DB::raw('COUNT(CASE WHEN type_of_payment = "advance" THEN 1 END) as advance_count'),
+                DB::raw('COUNT(CASE WHEN type_of_payment = "balance" THEN 1 END) as balance_count'),
+                DB::raw('COUNT(CASE WHEN type_of_payment = "other" THEN 1 END) as other_count'),
+            )
+                ->authorizedForUser(auth()->user())
+                ->first()
+                ->toArray();
+        });
     }
 
     public function scopeAuthorizedForUser($query, User $user)
@@ -200,20 +192,28 @@ trait PaymentRequestComputations
         });
     }
 
-    public function getSupplierCreditAttribute()
+    public static function searchBeneficiaries($query, $search): void
     {
-        return $this->supplierSummaries()?->sum('diff') ?: 0;
+        $query->where(fn($q) => $q->whereHas('contractor', fn($c) => $c->where('name', 'like', "%{$search}%"))
+            ->orWhereHas('supplier', fn($s) => $s->where('name', 'like', "%{$search}%"))
+            ->orWhereHas('beneficiary', fn($b) => $b->where('name', 'like', "%{$search}%"))
+        );
     }
 
-    public function getSupplierSummaryUpdatedAtAttribute()
+    public static function showAmongAllReasons($reason)
     {
-        return $this->supplierSummaries()?->latest('updated_at')->value('updated_at');
+        return Allocation::find($reason)?->reason;
     }
 
-    public function getRemainingAmountAttribute()
+    public static function showApproved($orderId)
     {
-        $total = $this->total_amount ?? 0;
-        $requested = $this->requested_amount ?? 0;
-        return $total - $requested;
+        $cacheKey = 'approved_payment_requests_' . $orderId;
+
+        return Cache::remember($cacheKey, 60, function () use ($orderId) {
+            return self::whereNotIn('status', ['cancelled', 'rejected', 'completed'])
+                ->where('order_id', $orderId)
+                ->pluck('type_of_payment', 'id')
+                ->map(fn($type) => self::$typesOfPayment[$type] ?? $type);
+        });
     }
 }

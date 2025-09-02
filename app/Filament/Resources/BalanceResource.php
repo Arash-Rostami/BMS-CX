@@ -2,21 +2,19 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Operational\BalanceResource\Pages;
-use App\Filament\Resources\Operational\BalanceResource\RelationManagers;
 use App\Filament\Resources\Operational\BalanceResource\Pages\Admin;
+use App\Filament\Resources\Operational\BalanceResource\RelationManagers;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Models\Balance;
+use App\Services\SmartCacheManager;
 use Filament\Forms\Form;
-use Filament\Resources\Components\Tab;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 
 
 class BalanceResource extends Resource
@@ -30,29 +28,6 @@ class BalanceResource extends Resource
     protected static ?int $navigationSort = 6;
 
     protected static ?string $pollingInterval = null;
-
-
-    public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Admin::getCurrency(),
-                Admin::getBase(),
-                Admin::getPayment(),
-                Admin::getDepartment(),
-                Admin::getCategory(),
-                Admin::getRecipient(),
-            ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        $table = self::configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? self::getModernLayout($table)
-            : self::getClassicLayout($table);
-    }
 
     public static function configureCommonTableSettings(Table $table): Table
     {
@@ -77,12 +52,52 @@ class BalanceResource extends Resource
                 Admin::filterByDepartment(),
                 Admin::filterByRecipient(),
                 AdminOrder::filterCreatedAt()
-            ])
+            ], layout: FiltersLayout::Modal)
             ->actions([Tables\Actions\EditAction::make()])
             ->bulkActions([Tables\Actions\BulkActionGroup::make([]),
             ]);
     }
 
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Admin::getCurrency(),
+                Admin::getBase(),
+                Admin::getPayment(),
+                Admin::getDepartment(),
+                Admin::getCategory(),
+                Admin::getRecipient(),
+            ]);
+    }
+
+    public static function getClassicLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Admin::showDepartment(),
+                Admin::showCurrency(),
+                Admin::showBase(),
+                Admin::showPayment(),
+                Admin::showTotal(),
+                Admin::showRecipient(),
+                Admin::showUser(),
+                Admin::showTimeStamp(),
+            ])->striped();
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'supplier',
+                'contractor',
+                'user',
+                'payee',
+                'beneficiary',
+                'department',
+            ]);
+    }
 
     public static function getModernLayout(Table $table): Table
     {
@@ -108,19 +123,23 @@ class BalanceResource extends Resource
 
     }
 
-    public static function getClassicLayout(Table $table): Table
+    public static function getNavigationBadge(): ?string
     {
-        return $table
-            ->columns([
-                Admin::showDepartment(),
-                Admin::showCurrency(),
-                Admin::showBase(),
-                Admin::showPayment(),
-                Admin::showTotal(),
-                Admin::showRecipient(),
-                Admin::showUser(),
-                Admin::showTimeStamp(),
-            ])->striped();
+        $user = auth()->user();
+        $filters = ['user_id' => $user->id, 'type' => 'department_count'];
+
+        $count = SmartCacheManager::remember('Balance', $filters, 15, function () use ($user) {
+            return static::getModel()::query()
+                ->filterByUserDepartment($user)
+                ->count();
+        });
+
+        return $count > 0 ? (string)$count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'primary';
     }
 
     public static function getPages(): array
@@ -130,18 +149,12 @@ class BalanceResource extends Resource
         ];
     }
 
-    public static function getNavigationBadge(): ?string
+    public static function table(Table $table): Table
     {
-        $user = auth()->user();
-        $count = static::getModel()::query()
-            ->filterByUserDepartment($user)
-            ->count();
+        $table = self::configureCommonTableSettings($table);
 
-        return (string)$count;
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'primary';
+        return (getTableDesign() != 'classic')
+            ? self::getModernLayout($table)
+            : self::getClassicLayout($table);
     }
 }

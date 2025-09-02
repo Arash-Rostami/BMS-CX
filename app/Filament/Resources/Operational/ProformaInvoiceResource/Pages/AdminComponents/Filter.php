@@ -8,111 +8,134 @@ use App\Models\Grade;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Services\SmartCacheManager;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Tables\Filters\Filter as FilamentFilter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
 
 trait Filter
 {
 
     /**
-     * @return Grouping
+     * @return mixed
      */
-    public static function groupProformaDateRecords(): Grouping
+    public static function filterBuyer()
     {
-        return Grouping::make('proforma_date')
-            ->label('Pro forma Date')
-            ->collapsible()
-            ->getKeyFromRecordUsing(fn(Model $record) => ($record->proforma_date) ?? 'Not Given')
-            ->getTitleFromRecordUsing(fn(Model $record): ?string => ucfirst(($record->proforma_date) ?? 'N/A'));
+        return SelectFilter::make('buyer_id')
+            ->label('Buyer')
+            ->options(function () {
+                return SmartCacheManager::remember('Buyer', ['type' => 'select_options'], 720, function () {
+                    return Buyer::pluck('name', 'id')->all();
+                });
+            })
+            ->searchable();
     }
 
     /**
-     * @return Grouping
+     * @return mixed
      */
-    public static function groupProformaInvoiceRecords(): Grouping
+    public static function filterCategory()
     {
-        return Grouping::make('proforma_number')
-            ->label('Pro forma No.')
-            ->collapsible()
-            ->getKeyFromRecordUsing(fn(Model $record) => ($record->proforma_number) ?? 'Not Given')
-            ->getTitleFromRecordUsing(fn(Model $record): ?string => ucfirst(($record->proforma_number) ?? 'N/A'));
-    }
-
-
-    /**
-     * @return Grouping
-     */
-    public static function groupCategoryRecords(): Grouping
-    {
-        return Grouping::make('category_id')->label('Category')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->category->name ?? 'Not Given'));
+        return SelectFilter::make('category_id')
+            ->label('Category')
+            ->options(function () {
+                return SmartCacheManager::remember('Category', ['type' => 'select_options'], 720, function () {
+                    return Category::pluck('name', 'id')->all();
+                });
+            })
+            ->searchable()
+            ->placeholder('All Categories');
     }
 
     /**
-     * @return Grouping
+     * @return mixed
      */
-    public static function groupProductRecords(): Grouping
+    public static function filterCreator()
     {
-        return Grouping::make('product_id')->label('Product')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->product->name ?? 'Not Given'));
-    }
-
-    /**
-     * @return Grouping
-     */
-    public static function groupBuyerRecords(): Grouping
-    {
-        return Grouping::make('buyer_id')->label('Buyer')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst(optional($record->buyer)->name ?? 'Not Given'));
-    }
-
-    /**
-     * @return Grouping
-     */
-    public static function groupSupplierRecords(): Grouping
-    {
-        return Grouping::make('supplier_id')->label('Supplier')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst(optional($record->supplier)->name ?? 'Not Given'));
-    }
-
-    /**
-     * @return Grouping
-     */
-    public static function groupStatusRecords(): Grouping
-    {
-        return Grouping::make('status')->label('Status')->collapsible()
-            ->getTitleFromRecordUsing(function (Model $record): string {
-                $status = ucfirst($record->status ?? 'Not Given');
-                return $status === 'Rejected' ? 'Declined/Cancelled' : $status;
+        return SelectFilter::make('user_id')
+            ->label('Created By')
+            ->options(function () {
+                $filters = ['type' => 'select_options', 'department' => 6];
+                return SmartCacheManager::remember('User', $filters, 720, function () {
+                    return User::whereJsonContains('info->department', '6')
+                        ->get()
+                        ->mapWithKeys(fn($user) => [
+                            $user->id => trim("{$user->first_name} {$user->middle_name} {$user->last_name}")
+                        ])
+                        ->all();
+                });
             });
     }
 
     /**
-     * @return Grouping
+     * @return mixed
      */
-    public static function groupContractRecords(): Grouping
+    public static function filterGrade()
     {
-        return Grouping::make('contract_number')->label('Contract No.')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->contract_number ?? 'Not Defined'));
+        return SelectFilter::make('grade_id')
+            ->label('Grade')
+            ->options(function () {
+                return SmartCacheManager::remember('Grade', ['type' => 'select_options'], 720, function () {
+                    return Grade::pluck('name', 'id')->all();
+                });
+            })
+            ->searchable();
+    }
+
+    public static function filterNumberOfRecords()
+    {
+        return SelectFilter::make('monthly_data_proforma')
+            ->label('Period')
+            ->indicateUsing(function (array $data): ?string {
+                if (isset($data['months_to_load']) && $data['months_to_load'] >= 2) {
+                    return 'Showing ' . $data['months_to_load'] . ' month(s) of data';
+                }
+                return null;
+            })
+            ->form([
+                Select::make('months_to_load')
+                    ->options(range(1, 12))
+                    ->default(2),
+            ])
+            ->query(function (Builder $query, array $data): Builder {
+                $monthsToLoad = $data['months_to_load'] ?? 1;
+                return $query->where('created_at', '>=', now()->subMonths($monthsToLoad)->startOfMonth());
+            });
     }
 
     /**
-     * @return Grouping
+     * @return mixed
      */
-    public static function groupPartRecords(): Grouping
+    public static function filterPart()
     {
-        return Grouping::make('part')->label('Part')->collapsible()
-            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->part ?? 'N/A'));
+        return SelectFilter::make('part')
+            ->label('Part')
+            ->options(array_combine(range(1, 100), range(1, 100)))
+            ->placeholder('All Parts')
+            ->searchable();
     }
 
+    /**
+     * @return mixed
+     */
+    public static function filterProduct()
+    {
+        return SelectFilter::make('product_id')
+            ->label('Product')
+            ->options(function () {
+                return SmartCacheManager::remember('Product', ['type' => 'select_options'], 720, function () {
+                    return Product::pluck('name', 'id')->all();
+                });
+            })
+            ->searchable();
+    }
 
     public static function filterProforma()
     {
@@ -150,74 +173,6 @@ trait Filter
     /**
      * @return mixed
      */
-    public static function filterCategory()
-    {
-        return SelectFilter::make('category_id')
-            ->label('Category')
-            ->options(fn() => Category::pluck('name', 'id')->toArray())
-            ->searchable()
-            ->placeholder('All Categories');
-    }
-
-    /**
-     * @return mixed
-     */
-    public static function filterProduct()
-    {
-        return SelectFilter::make('product_id')
-            ->label('Product')
-            ->options(fn() => Product::pluck('name', 'id')->toArray())
-            ->searchable();
-    }
-
-    /**
-     * @return mixed
-     */
-    public static function filterGrade()
-    {
-        return SelectFilter::make('grade_id')
-            ->label('Grade')
-            ->options(fn() => Grade::pluck('name', 'id')->toArray())
-            ->searchable();
-    }
-
-    /**
-     * @return mixed
-     */
-    public static function filterBuyer()
-    {
-        return SelectFilter::make('buyer_id')
-            ->label('Buyer')
-            ->options(fn() => Buyer::pluck('name', 'id')->toArray())
-            ->searchable();
-    }
-
-    /**
-     * @return mixed
-     */
-    public static function filterSupplier()
-    {
-        return SelectFilter::make('supplier_id')
-            ->label('Supplier')
-            ->options(fn() => Supplier::pluck('name', 'id')->toArray())
-            ->searchable();
-    }
-
-    /**
-     * @return mixed
-     */
-    public static function filterPart()
-    {
-        return SelectFilter::make('part')
-            ->label('Part')
-            ->options(array_combine(range(1, 100), range(1, 100)))
-            ->placeholder('All Parts')
-            ->searchable();
-    }
-
-    /**
-     * @return mixed
-     */
     public static function filterStatus()
     {
         return SelectFilter::make('status')
@@ -235,34 +190,17 @@ trait Filter
     /**
      * @return mixed
      */
-    public static function filterCreator()
+    public static function filterSupplier()
     {
-        return SelectFilter::make('user_id')
-            ->label('Created By')
-            ->options(fn() => User::whereJsonContains('info->department', '6')
-                ->get()
-                ->mapWithKeys(fn($user) => [
-                    $user->id => trim("{$user->first_name} {$user->middle_name} {$user->last_name}")
-                ])
-                ->toArray());
+        return SelectFilter::make('supplier_id')
+            ->label('Supplier')
+            ->options(function () {
+                return SmartCacheManager::remember('Supplier', ['type' => 'select_options'], 720, function () {
+                    return Supplier::pluck('name', 'id')->all();
+                });
+            })
+            ->searchable();
     }
-
-    public static function filterVerified()
-    {
-        return SelectFilter::make('verified')
-            ->form([
-                Toggle::make('verified')
-                    ->offColor('secondary')
-                    ->onColor('success')
-                    ->label('Verified'),
-            ])->query(function (Builder $query, array $data): Builder {
-                if (!empty($data['verified'])) {
-                    $query->where('verified', true);
-                }
-                return $query;
-            });
-    }
-
 
     public static function filterTelexNeeded()
     {
@@ -307,5 +245,111 @@ trait Filter
                 }
                 return $query;
             });
+    }
+
+    public static function filterVerified()
+    {
+        return SelectFilter::make('verified')
+            ->form([
+                Toggle::make('verified')
+                    ->offColor('secondary')
+                    ->onColor('success')
+                    ->label('Verified'),
+            ])->query(function (Builder $query, array $data): Builder {
+                if (!empty($data['verified'])) {
+                    $query->where('verified', true);
+                }
+                return $query;
+            });
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function groupBuyerRecords(): Grouping
+    {
+        return Grouping::make('buyer_id')->label('Buyer')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst(optional($record->buyer)->name ?? 'Not Given'));
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function groupCategoryRecords(): Grouping
+    {
+        return Grouping::make('category_id')->label('Category')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->category->name ?? 'Not Given'));
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function groupContractRecords(): Grouping
+    {
+        return Grouping::make('contract_number')->label('Contract No.')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->contract_number ?? 'Not Defined'));
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function groupPartRecords(): Grouping
+    {
+        return Grouping::make('part')->label('Part')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->part ?? 'N/A'));
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function groupProductRecords(): Grouping
+    {
+        return Grouping::make('product_id')->label('Product')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst($record->product->name ?? 'Not Given'));
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function groupProformaDateRecords(): Grouping
+    {
+        return Grouping::make('proforma_date')
+            ->label('Pro forma Date')
+            ->collapsible()
+            ->getKeyFromRecordUsing(fn(Model $record) => ($record->proforma_date) ?? 'Not Given')
+            ->getTitleFromRecordUsing(fn(Model $record): ?string => ucfirst(($record->proforma_date) ?? 'N/A'));
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function groupProformaInvoiceRecords(): Grouping
+    {
+        return Grouping::make('proforma_number')
+            ->label('Pro forma No.')
+            ->collapsible()
+            ->getKeyFromRecordUsing(fn(Model $record) => ($record->proforma_number) ?? 'Not Given')
+            ->getTitleFromRecordUsing(fn(Model $record): ?string => ucfirst(($record->proforma_number) ?? 'N/A'));
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function groupStatusRecords(): Grouping
+    {
+        return Grouping::make('status')->label('Status')->collapsible()
+            ->getTitleFromRecordUsing(function (Model $record): string {
+                $status = ucfirst($record->status ?? 'Not Given');
+                return $status === 'Rejected' ? 'Declined/Cancelled' : $status;
+            });
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function groupSupplierRecords(): Grouping
+    {
+        return Grouping::make('supplier_id')->label('Supplier')->collapsible()
+            ->getTitleFromRecordUsing(fn(Model $record): string => ucfirst(optional($record->supplier)->name ?? 'Not Given'));
     }
 }

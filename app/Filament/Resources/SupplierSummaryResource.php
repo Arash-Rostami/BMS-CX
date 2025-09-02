@@ -10,6 +10,7 @@ use Filament\Tables;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Cache;
 
 class SupplierSummaryResource extends Resource
 {
@@ -26,31 +27,6 @@ class SupplierSummaryResource extends Resource
     protected static ?int $navigationSort = 7;
 
     protected static ?string $pollingInterval = null;
-
-
-    public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Admin::getSupplier(),
-                Admin::getType(),
-                Admin::getCurrency(),
-                Admin::getDifference(),
-                Admin::gtStatus(),
-                Admin::getContractNumber(),
-                Admin::getPaidAmount(),
-                Admin::getExpectedAmount(),
-            ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        $table = self::configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? self::getModernLayout($table)
-            : self::getClassicLayout($table);
-    }
 
     public static function configureCommonTableSettings(Table $table): Table
     {
@@ -72,6 +48,36 @@ class SupplierSummaryResource extends Resource
             ])
             ->bulkActions([Tables\Actions\BulkActionGroup::make([]),
             ]);
+    }
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Admin::getSupplier(),
+                Admin::getType(),
+                Admin::getCurrency(),
+                Admin::getDifference(),
+                Admin::gtStatus(),
+                Admin::getContractNumber(),
+                Admin::getPaidAmount(),
+                Admin::getExpectedAmount(),
+            ]);
+    }
+
+    public static function getClassicLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Admin::showSupplier(),
+                Admin::showContractNumber(),
+                Admin::showCurrency(),
+                Admin::showPaid(),
+                Admin::showExpected(),
+                Admin::showBalance(),
+                Admin::showStatus(),
+                Admin::showTimeStamp(),
+            ])->striped();
     }
 
     public static function getModernLayout(Table $table): Table
@@ -98,19 +104,20 @@ class SupplierSummaryResource extends Resource
 
     }
 
-    public static function getClassicLayout(Table $table): Table
+    public static function getNavigationBadge(): ?string
     {
-        return $table
-            ->columns([
-                Admin::showSupplier(),
-                Admin::showContractNumber(),
-                Admin::showCurrency(),
-                Admin::showPaid(),
-                Admin::showExpected(),
-                Admin::showBalance(),
-                Admin::showStatus(),
-                Admin::showTimeStamp(),
-            ])->striped();
+        $cacheKey = 'total_count_' . str('SupplierSummary')->slug();
+
+        $count = Cache::remember($cacheKey, now()->addMinutes(15), function () {
+            return static::getModel()::distinct('supplier_id')->count();
+        });
+
+        return $count > 0 ? (string)$count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
     }
 
     public static function getPages(): array
@@ -125,13 +132,12 @@ class SupplierSummaryResource extends Resource
         return !isSimpleSidebar();
     }
 
-    public static function getNavigationBadge(): ?string
+    public static function table(Table $table): Table
     {
-        return static::getModel()::distinct('supplier_id')->count();
-    }
+        $table = self::configureCommonTableSettings($table);
 
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
+        return (getTableDesign() != 'classic')
+            ? self::getModernLayout($table)
+            : self::getClassicLayout($table);
     }
 }

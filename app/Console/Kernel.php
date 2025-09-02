@@ -31,7 +31,7 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
 
         $schedule->job(new RefreshAllSupplierSummaries())
-            ->cron('0 6,12,18 * * *')
+            ->cron('0 5 * * *')
             ->withoutOverlapping();
     }
 }

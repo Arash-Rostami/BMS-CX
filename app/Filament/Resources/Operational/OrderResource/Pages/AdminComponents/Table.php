@@ -62,7 +62,7 @@ trait Table
             ->badge()
             ->label('BL Date')
             ->date()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
 
@@ -173,7 +173,7 @@ trait Table
     {
         return ToggleColumn::make('logistic.change_of_destination')
             ->label('Change of Destination')
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
 
@@ -203,7 +203,7 @@ trait Table
             ->badge()
             ->label('Declaration Date')
             ->date()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
 
@@ -217,7 +217,7 @@ trait Table
             ->label('Declaration Number')
             ->color('amber')
             ->badge()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->searchable()
             ->sortable();
     }
@@ -232,7 +232,7 @@ trait Table
             ->label('Delivery Term')
             ->color('secondary')
             ->searchable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable()
             ->color('secondary');
     }
@@ -247,7 +247,7 @@ trait Table
             ->label('ETA')
             ->color('secondary')
             ->date()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 
@@ -261,7 +261,7 @@ trait Table
             ->label('ETD')
             ->color('secondary')
             ->date()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 
@@ -275,7 +275,7 @@ trait Table
             ->label('FCL')
             ->color('secondary')
             ->sortable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->color('secondary');
     }
 
@@ -311,7 +311,7 @@ trait Table
     {
         return TextColumn::make('final_price')
             ->label('Final Price')
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->color('info')
             ->state(function (Model $record): string {
                 return sprintf(
@@ -346,7 +346,7 @@ trait Table
     {
         return TextColumn::make('logistic.free_time_POD')
             ->label('Free Time (POD)')
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->color('secondary')
             ->sortable();
     }
@@ -362,7 +362,7 @@ trait Table
             ->badge()
             ->color('secondary')
             ->grow()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->searchable()
             ->sortable();
     }
@@ -406,7 +406,7 @@ trait Table
             ->color('danger')
             ->sortable()
             ->date()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 
@@ -420,7 +420,7 @@ trait Table
             ->label('Loading Start Date')
             ->color('secondary')
             ->date()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 
@@ -457,7 +457,7 @@ trait Table
     {
         return TextColumn::make('logistic.ocean_freight')
             ->label('Ocean Freight')
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
 
@@ -517,7 +517,7 @@ trait Table
             ->alignRight()
             ->grow(false)
             ->badge()
-            ->toggleable(isToggledHiddenByDefault: true)
+            ->toggleable()
             ->searchable();
     }
 
@@ -532,7 +532,7 @@ trait Table
             ->color('primary')
             ->badge()
             ->searchable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
 
@@ -583,7 +583,7 @@ trait Table
             ->color('secondary')
             ->grow(false)
             ->searchable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable()
             ->color('secondary');
     }
@@ -601,7 +601,7 @@ trait Table
             ->iconPosition(IconPosition::Before)
             ->badge()
             ->searchable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
 
@@ -639,7 +639,7 @@ trait Table
             })
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'PI: ' : '') . $record->proforma_number ?? null)
             ->sortable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->searchable(isIndividual: Str::contains(request()->fullUrl(), 'orders'));
     }
 
@@ -653,7 +653,7 @@ trait Table
             ->size(TextColumnSize::ExtraSmall)
             ->tooltip(fn(string $state): string => "Contract/Project No")
             ->sortable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->alignRight()
             ->badge()
             ->searchable(query: function ($query, string $search) {
@@ -683,7 +683,7 @@ trait Table
     {
         return TextColumn::make('provisional_price')
             ->label('Provisional Price')
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->color('info')
             ->state(function (Model $record): string {
                 return sprintf(
@@ -783,7 +783,7 @@ trait Table
             ->color('secondary')
             ->searchable()
             ->sortable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->color('secondary');
     }
 
@@ -801,7 +801,7 @@ trait Table
             ->tooltip('Supplier')
             ->badge()
             ->searchable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->color('secondary');
     }
 
@@ -858,7 +858,7 @@ trait Table
             ->label('Voyage Number')
             ->color('amber')
             ->badge()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->searchable()
             ->sortable();
     }

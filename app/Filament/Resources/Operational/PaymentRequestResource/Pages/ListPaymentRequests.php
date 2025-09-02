@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\PaymentRequestResource;
 use App\Models\PaymentRequest;
+use App\Services\SmartCacheManager;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
@@ -13,6 +14,7 @@ use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\CreateAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\IconPosition;
@@ -60,11 +62,7 @@ class ListPaymentRequests extends ListRecords
     public bool $showActionsAhead = true;
 
     public ?string $activeTab = '';
-    protected $listeners = [
-        'setStatusFilter',
-        'refreshPage' => '$refresh',
-        'updateActiveTab',
-    ];
+    protected $listeners = ['setStatusFilter', 'refreshPage' => '$refresh', 'updateActiveTab'];
 
     public function clearTableSort()
     {
@@ -78,6 +76,7 @@ class ListPaymentRequests extends ListRecords
             ->emptyStateIcon('heroicon-o-bookmark')
             ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->filters([
+                Admin::filterNumberOfRecords(),
                 Admin::filterByDepartment(),
                 Admin::filterByCostCenter(),
                 Admin::filterByTypeOfPayment(),
@@ -91,9 +90,7 @@ class ListPaymentRequests extends ListRecords
                 AdminOrder::filterCreatedAt(),
                 Admin::filterByCaseNumber(),
                 Admin::filterByPaymentMethod(),
-                Admin::filterByBankName(),
                 AdminOrder::filterSoftDeletes(),
-
             ], layout: FiltersLayout::Modal)
             ->filtersFormWidth(MaxWidth::FiveExtraLarge)
             ->filtersFormColumns(6)
@@ -154,10 +151,6 @@ class ListPaymentRequests extends ListRecords
                         ->color('warning')
                         ->openUrlInNewTab()
                         ->url(fn($record) => route('filament.admin.resources.payments.create', ['id' => [$record->id], 'module' => 'payment-request'])),
-
-//                    ->color('secondary')
-//                    ->tooltip('⇄ Change Status')
-//                    ->visible(fn($record) => $record->status === 'pending')
                 ])
             ], position: $this->showActionsAhead ? ActionsPosition::BeforeCells : ActionsPosition::AfterCells)
             ->bulkActions([
@@ -191,7 +184,8 @@ class ListPaymentRequests extends ListRecords
                 Admin::groupByBeneficiary(),
                 Admin::groupByStatus(),
                 Admin::groupByCase(),
-            ]);
+            ])
+            ->deferLoading();
     }
 
     public function getClassicLayout(Table $table)
@@ -246,9 +240,8 @@ class ListPaymentRequests extends ListRecords
     public function getInvisibleTableHeaderActions(): array
     {
         $cxDep = (auth()->user()->info['department'] == 6) || isModernDesign();
-        $design = getTableDesign() == 'modern';
 
-        $actions = [
+        return [
             Action::make('Refresh Sorting')
                 ->label('Reset')
                 ->tooltip('Reset Column Orders')
@@ -271,7 +264,7 @@ class ListPaymentRequests extends ListRecords
                 ->iconPosition(IconPosition::After)
                 ->label('S')
                 ->tooltip('Move Actions to Start')
-                ->visible(!$this->showActionsAhead && !$design),
+                ->visible(!$this->showActionsAhead && !isModernDesign()),
 
             Action::make('Reset Actions to End')
                 ->action('resetActionsToEnd')
@@ -280,7 +273,7 @@ class ListPaymentRequests extends ListRecords
                 ->iconPosition(IconPosition::Before)
                 ->label('E')
                 ->tooltip('Reset Actions to End')
-                ->visible($this->showActionsAhead && !$design),
+                ->visible($this->showActionsAhead && !isModernDesign()),
 
             Action::make('Scroll Left')
                 ->label('Scroll')
@@ -305,12 +298,6 @@ class ListPaymentRequests extends ListRecords
                 ->icon('heroicon-s-arrows-pointing-out')
                 ->action('toggleFullScreen'),
         ];
-
-//        if ($design) {
-//            return [ActionGroup::make($actions)];
-//        }
-
-        return $actions;
     }
 
     public function getModernLayout(Table $table): Table
@@ -353,40 +340,32 @@ class ListPaymentRequests extends ListRecords
 
         $counts = PaymentRequest::getTabCounts();
 
-        $tabConfigs = [
-            // Status tabs
-            ['column' => 'status', 'value' => 'pending', 'label' => 'New', 'icon' => 'heroicon-o-document-plus', 'count_key' => 'pending_count'],
-            ['column' => 'status', 'value' => 'processing', 'label' => 'Processing', 'icon' => 'heroicon-o-clock', 'count_key' => 'processing_count'],
-            ['column' => 'status', 'value' => 'allowed', 'label' => 'Allowed', 'icon' => 'heroicon-o-check-circle', 'count_key' => 'allowed_count'],
-            ['column' => 'status', 'value' => 'approved', 'label' => 'Approved', 'icon' => 'heroicon-o-check-badge', 'count_key' => 'approved_count'],
-            ['column' => 'status', 'value' => 'rejected', 'label' => 'Rejected', 'icon' => 'heroicon-o-x-circle', 'count_key' => 'rejected_count'],
-            ['column' => 'status', 'value' => 'completed', 'label' => 'Completed', 'icon' => 'heroicon-s-check-circle', 'count_key' => 'completed_count'],
-            // Currency tabs
-            ['column' => 'currency', 'value' => 'Rial', 'label' => 'Rial', 'icon' => 'heroicon-o-currency-rupee', 'count_key' => 'rial_count'],
-            ['column' => 'currency', 'value' => 'USD', 'label' => 'USD', 'icon' => 'heroicon-o-currency-dollar', 'count_key' => 'usd_count'],
-            // Type tabs
-            ['column' => 'type_of_payment', 'value' => 'advance', 'label' => 'Advance', 'icon' => 'heroicon-o-credit-card', 'count_key' => 'advance_count'],
-            ['column' => 'type_of_payment', 'value' => 'balance', 'label' => 'Balance', 'icon' => 'heroicon-o-scale', 'count_key' => 'balance_count'],
-            ['column' => 'type_of_payment', 'value' => 'other', 'label' => 'Other', 'icon' => 'heroicon-o-ellipsis-horizontal-circle', 'count_key' => 'other_count'],
-        ];
+        $baseTab = collect([
+            null => [
+                'label' => 'All',
+                'query' => fn(Builder $query) => $query,
+                'badge' => $counts['total'] ?? 0,
+                'icon' => 'heroicon-o-inbox',
+            ],
+        ]);
 
-        $tabs = [
-            null => Tab::make('All', null)
-                ->query(fn($query) => $query)
-                ->badge($counts['total'] ?? 0)
-                ->icon('heroicon-o-inbox'),
-        ];
+        $dynamicTabs = collect($this->getTabDefinitions())
+            ->mapWithKeys(fn(array $config) => [
+                $config['value'] => [
+                    'label' => $config['label'],
+                    'query' => fn(Builder $query) => $query->where($config['column'], $config['value']),
+                    'badge' => $counts[$config['count_key']] ?? 0,
+                    'icon' => $config['icon'],
+                ],
+            ]);
 
-        foreach ($tabConfigs as $config) {
-            $tabs[$config['value']] = Tab::make($config['label'], $config['value'])
-                ->query(function ($query) use ($config) {
-                    return $query->where($config['column'], $config['value']);
-                })
-                ->badge($counts[$config['count_key']] ?? 0)
-                ->icon($config['icon']);
-        }
-
-        return $tabs;
+        return $baseTab
+            ->merge($dynamicTabs)
+            ->map(fn(array $config): Tab => Tab::make($config['label'])
+                ->query($config['query'])
+                ->badge($config['badge'])
+                ->icon($config['icon']))
+            ->all();
     }
 
     public function mount(): void
@@ -459,6 +438,31 @@ class ListPaymentRequests extends ListRecords
         $this->resetPage();
     }
 
+    protected function getCachedPaymentRequestIds()
+    {
+        $filters = [
+            'activeTab' => $this->activeTab ?: 'all',
+            'monthly_data_pr' => $this->getTableFilterState('monthly_data_pr') ?? 'default',
+        ];
+
+        return SmartCacheManager::remember('PaymentRequest', $filters, (4 * 60), function () {
+            $query = self::getOriginalTable();
+
+            if (is_null($this->getTableFilterState('monthly_data_pr'))) {
+                $query->where('created_at', '>=', now()->subMonths(1)->startOfMonth());
+            }
+
+            if ($this->activeTab) {
+                $activeTabConfig = collect($this->getTabDefinitions())->firstWhere('value', $this->activeTab);
+                if ($activeTabConfig) {
+                    $query->where($activeTabConfig['column'], $activeTabConfig['value']);
+                }
+            }
+
+            return $query->pluck('id');
+        });
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -466,6 +470,26 @@ class ListPaymentRequests extends ListRecords
                 ->label('New')
                 ->url(fn() => static::getResource()::getUrl('create'))
                 ->icon('heroicon-o-sparkles'),
+            Actions\Action::make('clear_cache_and_refresh')
+                ->label('Refresh')
+                ->tooltip('Clear cache and update records')
+                ->icon('heroicon-o-arrow-path')
+                ->color('secondary')
+                ->action(function () {
+                    SmartCacheManager::invalidate('PaymentRequest');
+                    Notification::make()
+                        ->title('Cache Cleared')
+                        ->body('The payment request data has been refreshed.')
+                        ->success()->send();
+                }),
+            Actions\Action::make('loadMoreMonths')
+                ->label('Load More Months')
+                ->tooltip('Add to the number of months of requested data')
+                ->icon('heroicon-o-plus')
+                ->action(function () {
+                    $currentMonths = $this->getTableFilterState('monthly_data_pr')['months_to_load'] ?? 1;
+                    $this->tableFilters['monthly_data_pr']['months_to_load'] = $currentMonths + 1;
+                }),
             ActionGroup::make(array_merge(
                     [
                         Actions\Action::make('Toggle Tabs')
@@ -486,11 +510,10 @@ class ListPaymentRequests extends ListRecords
 
     protected function getTableQuery(): Builder
     {
-        $query = self::getOriginalTable()
+        return PaymentRequest::query()
+            ->whereIn('id', $this->getCachedPaymentRequestIds())
             ->with([
-                'attachments',
                 'contractor',
-                'chats',
                 'costCenter',
                 'department',
                 'order',
@@ -502,28 +525,31 @@ class ListPaymentRequests extends ListRecords
                 'supplierSummaries',
                 'user',
             ]);
-
-        if ($this->activeTab) {
-            $statusTabs = ['pending', 'processing', 'allowed', 'approved', 'rejected', 'completed'];
-            $currencyTabs = ['Rial', 'USD'];
-
-            $column = 'type_of_payment';
-
-            if (in_array($this->activeTab, $statusTabs)) {
-                $column = 'status';
-            } elseif (in_array($this->activeTab, $currencyTabs)) {
-                $column = 'currency';
-            }
-
-            $query->where($column, $this->activeTab);
-        }
-
-        return $query;
     }
 
     private static function getOriginalTable()
     {
         return static::getResource()::getEloquentQuery();
+    }
+
+    private function getTabDefinitions(): array
+    {
+        return [
+            // Status tabs
+            ['column' => 'status', 'value' => 'pending', 'label' => 'New', 'icon' => 'heroicon-o-document-plus', 'count_key' => 'pending_count'],
+            ['column' => 'status', 'value' => 'processing', 'label' => 'Processing', 'icon' => 'heroicon-o-clock', 'count_key' => 'processing_count'],
+            ['column' => 'status', 'value' => 'allowed', 'label' => 'Allowed', 'icon' => 'heroicon-o-check-circle', 'count_key' => 'allowed_count'],
+            ['column' => 'status', 'value' => 'approved', 'label' => 'Approved', 'icon' => 'heroicon-o-check-badge', 'count_key' => 'approved_count'],
+            ['column' => 'status', 'value' => 'rejected', 'label' => 'Rejected', 'icon' => 'heroicon-o-x-circle', 'count_key' => 'rejected_count'],
+            ['column' => 'status', 'value' => 'completed', 'label' => 'Completed', 'icon' => 'heroicon-s-check-circle', 'count_key' => 'completed_count'],
+            // Currency tabs
+            ['column' => 'currency', 'value' => 'Rial', 'label' => 'Rial', 'icon' => 'heroicon-o-currency-rupee', 'count_key' => 'rial_count'],
+            ['column' => 'currency', 'value' => 'USD', 'label' => 'USD', 'icon' => 'heroicon-o-currency-dollar', 'count_key' => 'usd_count'],
+            // Type tabs
+            ['column' => 'type_of_payment', 'value' => 'advance', 'label' => 'Advance', 'icon' => 'heroicon-o-credit-card', 'count_key' => 'advance_count'],
+            ['column' => 'type_of_payment', 'value' => 'balance', 'label' => 'Balance', 'icon' => 'heroicon-o-scale', 'count_key' => 'balance_count'],
+            ['column' => 'type_of_payment', 'value' => 'other', 'label' => 'Other', 'icon' => 'heroicon-o-ellipsis-horizontal-circle', 'count_key' => 'other_count'],
+        ];
     }
 
     private function registerTableRenderHook(): void

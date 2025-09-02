@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Auth;
 
 class Balance extends Model
 {
-    use HasFactory, BalanceComputations;
+    use HasFactory;
+    use  BalanceComputations;
 
     protected $fillable =
         [
@@ -31,6 +32,36 @@ class Balance extends Model
     protected $casts = [
         'extra' => 'json',
     ];
+
+    public function beneficiary()
+    {
+        return $this->belongsTo(Beneficiary::class, 'category_id');
+    }
+
+    public function contractor()
+    {
+        return $this->belongsTo(Contractor::class, 'category_id');
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function payee()
+    {
+        return $this->belongsTo(Beneficiary::class, 'category_id');
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class, 'category_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
     protected static function booted()
     {
@@ -67,37 +98,6 @@ class Balance extends Model
                 self::sendBaseApprovalNotification($balance);
             }
         });
-    }
-
-
-    public function contractor()
-    {
-        return $this->belongsTo(Contractor::class, 'category_id');
-    }
-
-    public function department()
-    {
-        return $this->belongsTo(Department::class, 'department_id');
-    }
-
-    public function beneficiary()
-    {
-        return $this->belongsTo(Beneficiary::class, 'category_id');
-    }
-
-    public function payee()
-    {
-        return $this->belongsTo(Beneficiary::class, 'category_id');
-    }
-
-    public function supplier()
-    {
-        return $this->belongsTo(Supplier::class, 'category_id');
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id');
     }
 }
 

@@ -59,7 +59,7 @@ trait Table
             })
             ->grow(false)
             ->sortable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->searchable()
             ->badge();
     }
@@ -104,7 +104,7 @@ trait Table
             ->color('gray')
             ->sortable()
             ->grow(false)
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->limit(20)
             ->tooltip(fn($record) => $record ? $record->bank_name : 'Not given')
             ->searchable()
@@ -409,7 +409,7 @@ trait Table
             ->grow(false)
             ->state(fn(?Model $record) => self::concatenateSum($record))
             ->sortable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
             ->badge();
 //
 //        if (request()->url() === route('filament.admin.resources.payment-requests.index')) {
@@ -613,7 +613,7 @@ trait Table
             ->dateTime()
             ->sortable()
             ->alignRight()
-            ->toggleable();
+            ->toggleable(isToggledHiddenByDefault: true);
     }
 
     /**
@@ -627,6 +627,7 @@ trait Table
             ->formatStateUsing(fn($state) => isModernDesign() ? 'Type: ' . ucwords($state) : ucwords($state))
             ->sortable()
             ->searchable()
+            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
             ->badge();
     }
 

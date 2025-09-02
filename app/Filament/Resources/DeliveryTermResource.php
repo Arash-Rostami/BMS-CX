@@ -79,11 +79,6 @@ class DeliveryTermResource extends Resource
         return !isSimpleSidebar();
     }
 
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
-    }
-
     public static function getNavigationBadgeColor(): ?string
     {
         return 'secondary';

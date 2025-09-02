@@ -2,23 +2,14 @@
 
 namespace App\Models\Traits;
 
-use App\Models\Quote;
-use App\Models\QuoteToken;
-
 trait QuoteRequestComputations
 {
-    public static function showQuoteResponseRate($id)
+    public static function formatResponseRate(int $responseCount, int $tokenCount): string
     {
-        $tokenCount = QuoteToken::countNum($id);
-
-        if ($tokenCount === 0) {
-            return '✖️ 0/0 (No Received Quote)';
-        }
-
-        $responseCount = Quote::countNum($id);
+        if ($tokenCount === 0) return '✖️ 0/0 (No Received Quote)';
 
         $percentage = number_format(($responseCount / $tokenCount) * 100, 2, '.', '');
 
-        return "🖂 $responseCount/$tokenCount ({$percentage}%)";
+        return "🖂 {$responseCount}/{$tokenCount} ({$percentage}%)";
     }
 }

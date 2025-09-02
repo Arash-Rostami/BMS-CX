@@ -4,6 +4,7 @@ namespace App\Livewire\CaseSummary;
 
 use App\Models\Name;
 use App\Models\ProformaInvoice;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 
 
@@ -449,28 +450,32 @@ class TotalSummary extends Component
 
     private function fetchProformaInvoice($id)
     {
-        return ProformaInvoice::with([
-            'attachments',
-            'buyer:id,name',
-            'supplier:id,name',
-            'category:id,name',
-            'product:id,name',
-            'grade:id,name',
-            'associatedPaymentRequests' => fn($query) => $query->whereNull('deleted_at'),
-            'associatedPaymentRequests.payments' => fn($query) => $query->whereNull('deleted_at'),
-            'associatedPaymentRequests.payments.paymentRequests' => fn($q) => $q->whereNull('deleted_at'),
-            'associatedPaymentRequests.associatedProformaInvoices',
-            'orders' => fn($query) => $query->whereNull('deleted_at'),
-            'orders.orderDetail',
-            'orders.logistic',
-            'orders.doc',
-            'orders.attachments',
-            'orders.paymentRequests' => fn($query) => $query->whereNull('deleted_at'),
-            'orders.paymentRequests.payments' => fn($query) => $query->whereNull('deleted_at'),
-            'orders.paymentRequests.payments.paymentRequests'
-        ])
-            ->whereNull('deleted_at')
-            ->findOrFail($id);
+        $cacheKey = "proforma_invoice.{$id}";
+
+        return Cache::remember($cacheKey, now()->addMinute(15), function () use ($id) {
+            return ProformaInvoice::with([
+                'attachments',
+                'buyer:id,name',
+                'supplier:id,name',
+                'category:id,name',
+                'product:id,name',
+                'grade:id,name',
+                'associatedPaymentRequests' => fn($query) => $query->whereNull('deleted_at'),
+                'associatedPaymentRequests.payments' => fn($query) => $query->whereNull('deleted_at'),
+                'associatedPaymentRequests.payments.paymentRequests' => fn($q) => $q->whereNull('deleted_at'),
+                'associatedPaymentRequests.associatedProformaInvoices',
+                'orders' => fn($query) => $query->whereNull('deleted_at'),
+                'orders.orderDetail',
+                'orders.logistic',
+                'orders.doc',
+                'orders.attachments',
+                'orders.paymentRequests' => fn($query) => $query->whereNull('deleted_at'),
+                'orders.paymentRequests.payments' => fn($query) => $query->whereNull('deleted_at'),
+                'orders.paymentRequests.payments.paymentRequests'
+            ])
+                ->whereNull('deleted_at')
+                ->findOrFail($id);
+        });
     }
 
     private function fetchProformaOptions(string $search)

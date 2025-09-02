@@ -9,11 +9,9 @@ use App\Models\User;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Tabs;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\ForceDeleteBulkAction;
 use Filament\Tables\Actions\RestoreBulkAction;
@@ -23,6 +21,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\HtmlString;
 use Illuminate\View\View;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
@@ -38,17 +37,6 @@ class UserResource extends Resource
     protected static ?string $recordTitleAttribute = 'first_name';
 
     public ?string $tableSortColumn = 'email';
-
-
-    public static function getGlobalSearchResultTitle(Model $record): string
-    {
-        return "👨🏻‍💻 " . $record->fullName;
-    }
-
-    public static function getGloballySearchableAttributes(): array
-    {
-        return ['first_name', 'last_name', 'middle_name'];
-    }
 
     public static function form(Form $form): Form
     {
@@ -95,6 +83,106 @@ class UserResource extends Resource
             ])->columns(1);
     }
 
+    public static function getClassicLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Admin::showAvatar(),
+                Admin::showFullName(),
+                Admin::showEmail(),
+                Admin::showPhone(),
+                Admin::showIP(),
+                Admin::showCompany(),
+                Admin::showStatus(),
+                Admin::showRole(),
+            ])->striped();
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return "👨🏻‍💻 " . $record->fullName;
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['first_name', 'last_name', 'middle_name'];
+    }
+
+    public function getHeader(): ?View
+    {
+        return view('filament.resources.user-resource.pages.settings');
+    }
+
+    public static function getModernLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                /*First panel*/
+                Tables\Columns\Layout\Split::make([
+                    Tables\Columns\Layout\Stack::make([
+                        Tables\Columns\Layout\Panel::make([
+                            Admin::showAvatar(),
+                            Admin::showFullName(),
+                            Admin::showEmail(),
+                            Admin::showPhone(),
+                        ])
+                    ]),
+                    /*Second panel*/
+                    Tables\Columns\Layout\Panel::make([
+                        Tables\Columns\Layout\Split::make([
+                            Tables\Columns\Layout\Stack::make([
+                                Admin::showIP(),
+                                Admin::showCompany()
+                            ])->space(),
+                            Tables\Columns\Layout\Stack::make([
+                                Admin::showStatus(),
+                                Admin::showRole(),
+                            ]),
+                        ]),
+                    ])
+                ]),
+                Admin::showLastOnline()
+            ]);
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $cacheKey = 'total_count_' . str('User')->slug();
+
+        $count = Cache::remember($cacheKey, now()->addHours(24), function () {
+            return static::getModel()::count();
+        });
+
+        return $count > 0 ? (string)$count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Core\UserResource\Pages\ListUsers::route('/'),
+            'create' => Core\UserResource\Pages\CreateUser::route('/create'),
+            'edit' => Core\UserResource\Pages\EditUser::route('/{record}/edit'),
+            'version' => Core\UserResource\Pages\Versions::route('/versions'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [];
+    }
 
     public static function table(Table $table): Table
     {
@@ -138,92 +226,5 @@ class UserResource extends Resource
                     ->collapsible(),
             ])
             ->striped();
-    }
-
-
-    public static function getModernLayout(Table $table): Table
-    {
-        return $table
-            ->columns([
-                /*First panel*/
-                Tables\Columns\Layout\Split::make([
-                    Tables\Columns\Layout\Stack::make([
-                        Tables\Columns\Layout\Panel::make([
-                            Admin::showAvatar(),
-                            Admin::showFullName(),
-                            Admin::showEmail(),
-                            Admin::showPhone(),
-                        ])
-                    ]),
-                    /*Second panel*/
-                    Tables\Columns\Layout\Panel::make([
-                        Tables\Columns\Layout\Split::make([
-                            Tables\Columns\Layout\Stack::make([
-                                Admin::showIP(),
-                                Admin::showCompany()
-                            ])->space(),
-                            Tables\Columns\Layout\Stack::make([
-                                Admin::showStatus(),
-                                Admin::showRole(),
-                            ]),
-                        ]),
-                    ])
-                ]),
-                Admin::showLastOnline()
-            ]);
-    }
-
-    public static function getClassicLayout(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Admin::showAvatar(),
-                Admin::showFullName(),
-                Admin::showEmail(),
-                Admin::showPhone(),
-                Admin::showIP(),
-                Admin::showCompany(),
-                Admin::showStatus(),
-                Admin::showRole(),
-            ])->striped();
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
-
-
-    public function getHeader(): ?View
-    {
-        return view('filament.resources.user-resource.pages.settings');
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Core\UserResource\Pages\ListUsers::route('/'),
-            'create' => Core\UserResource\Pages\CreateUser::route('/create'),
-            'edit' => Core\UserResource\Pages\EditUser::route('/{record}/edit'),
-            'version' => Core\UserResource\Pages\Versions::route('/versions'),
-        ];
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

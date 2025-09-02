@@ -14,6 +14,7 @@ use App\Services\DeliveryDocumentService;
 use App\Services\InfoExtractor;
 use App\Services\Notification\OrderService;
 use App\Services\ProjectNumberGenerator;
+use App\Services\SmartCacheManager;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
@@ -121,19 +122,23 @@ class Admin
     {
         if (self::$dynamicDocsCache !== null) return self::$dynamicDocsCache;
 
-        try {
-            self::$dynamicDocsCache = Name::where('module', 'Order')
-                ->selectRaw('DISTINCT title, UPPER(title) AS uppercase_title')
-                ->orderBy('title')
-                ->pluck('title', 'uppercase_title')
-                ->map(fn($title) => Str::ucfirst($title))
-                ->toArray();
-        } catch (\Exception) {
-            // Fallback if query fails
-            self::$dynamicDocsCache = self::$documents;
-        }
+        $filters = ['module' => 'Order', 'type' => 'dynamic_documents'];
 
-        return self::$dynamicDocsCache;
+        $cachedDocuments = SmartCacheManager::remember('Name', $filters, 900, function () {
+            try {
+                return Name::where('module', 'Order')
+                    ->selectRaw('DISTINCT title, UPPER(title) AS uppercase_title')
+                    ->orderBy('title')
+                    ->pluck('title', 'uppercase_title')
+                    ->map(fn($title) => Str::ucfirst($title))
+                    ->all();
+            } catch (\Exception) {
+                // If the query fails, cache the static fallback list instead.
+                return self::$documents;
+            }
+        });
+
+        return self::$dynamicDocsCache = $cachedDocuments;
     }
 
     public static function hasRelevantAttachment(string $title, Model $order): bool
@@ -256,6 +261,7 @@ class Admin
                 ->color(fn() => ColorTheme::White)
                 ->extraAttributes(fn($record) => self::getExtraAttributes($record, $labelTrimmed))
                 ->tooltip(fn($record) => self::getTooltip($record, $labelTrimmed))
+                ->toggleable(isToggledHiddenByDefault: !isModernDesign())
                 ->sortable();
         }
 

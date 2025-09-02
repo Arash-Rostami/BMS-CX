@@ -8,6 +8,7 @@ use App\Filament\Resources\Operational\PaymentRequestResource\Widgets\StatsOverv
 use App\Models\PaymentRequest;
 use App\Models\ProformaInvoice;
 use App\Services\AttachmentDeletionService;
+use App\Services\SmartCacheManager;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Grid;
@@ -44,15 +45,25 @@ class PaymentRequestResource extends Resource
     protected static ?array $badgeData = null;
 
     protected static ?int $navigationSort = 4;
-
     protected static ?string $pollingInterval = null;
-
     protected static ?string $recordTitleAttribute = 'reference_number';
-
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
-
-
+    private static ?int $newRequestsCount = null;
     protected $listeners = ['fillFormData'];
+
+    public static function configureCommonTableSettings(Table $table): Table
+    {
+        return (new ListPaymentRequests())->configureCommonTableSettings($table);
+    }
+
+    public function fillFormData(Form $form, $proformaInvoiceId)
+    {
+        $proformaInvoice = ProformaInvoice::find($proformaInvoiceId);
+
+        $form->fill([
+            'requested_amount' => $proformaInvoice->price,
+        ]);
+    }
 
     public static function form(Form $form): Form
     {
@@ -360,9 +371,110 @@ class PaymentRequestResource extends Resource
             ]);
     }
 
-    public static function table(Table $table): Table
+    public static function getClassicLayout(Table $table)
     {
-        return $table;
+        return (new ListPaymentRequests())->getClassicLayout($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'attachments',
+                'payments',
+                'contractor',
+                'costCenter',
+                'department',
+                'order',
+                'proformaInvoice',
+                'beneficiary',
+                'reason',
+                'supplier',
+                'user'
+            ])
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return '💳 ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return PaymentRequestResource::getUrl('edit', ['record' => $record]);
+    }
+
+    public static function getModernLayout(Table $table): Table
+    {
+        return (new ListPaymentRequests())->getModernLayout($table);
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $newCount = self::getNewRequestsCount();
+
+        if ($newCount > 0) {
+            return "{$newCount} New";
+        }
+
+        $user = auth()->user();
+        $filters = ['user_id' => $user->id, 'type' => 'total_count'];
+
+        $totalCount = SmartCacheManager::remember('PaymentRequest', $filters, 15, function () use ($user) {
+            return static::getModel()::query()
+                ->authorizedForUser($user)
+                ->count();
+        });
+
+        return (string)$totalCount;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return self::getNewRequestsCount() > 0 ? 'danger' : 'primary';
+    }
+
+    public static function getNewRequestsCount(): int
+    {
+        if (self::$newRequestsCount !== null) {
+            return self::$newRequestsCount;
+        }
+
+        $user = auth()->user();
+        $filters = ['user_id' => $user->id, 'type' => 'pending_count'];
+
+        return self::$newRequestsCount = SmartCacheManager::remember('PaymentRequest', $filters, 15, function () use ($user) {
+            return static::getModel()::query()
+                ->authorizedForUser($user)
+                ->where('status', 'pending')
+                ->count();
+        });
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Operational\PaymentRequestResource\Pages\ListPaymentRequests::route('/'),
+            'create' => Operational\PaymentRequestResource\Pages\CreatePaymentRequest::route('/create'),
+            'edit' => Operational\PaymentRequestResource\Pages\EditPaymentRequest::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            Operational\PaymentRequestResource\RelationManagers\ProformaInvoiceRelationManager::class,
+            Operational\PaymentRequestResource\RelationManagers\OrderRelationManager::class,
+            Operational\PaymentRequestResource\RelationManagers\PaymentsRelationManager::class,
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [StatsOverview::class];
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -416,121 +528,13 @@ class PaymentRequestResource extends Resource
             ->columns(1);
     }
 
-    public static function getWidgets(): array
-    {
-        return [StatsOverview::class];
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            Operational\PaymentRequestResource\RelationManagers\ProformaInvoiceRelationManager::class,
-            Operational\PaymentRequestResource\RelationManagers\OrderRelationManager::class,
-            Operational\PaymentRequestResource\RelationManagers\PaymentsRelationManager::class,
-        ];
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Operational\PaymentRequestResource\Pages\ListPaymentRequests::route('/'),
-            'create' => Operational\PaymentRequestResource\Pages\CreatePaymentRequest::route('/create'),
-            'edit' => Operational\PaymentRequestResource\Pages\EditPaymentRequest::route('/{record}/edit'),
-        ];
-    }
-
     public static function shouldRegisterNavigation(): bool
     {
         return !isSimpleSidebar();
     }
 
-    /**
-     * Get the navigation badge text.
-     *
-     * @return string|null
-     */
-    public static function getNavigationBadge(): ?string
+    public static function table(Table $table): Table
     {
-        $data = static::fetchBadgeData();
-
-        return $data['new'] > 0
-            ? "{$data['new']} New"
-            : (string)$data['total'];
-    }
-
-    protected static function fetchBadgeData(): array
-    {
-        if (static::$badgeData !== null) {
-            return static::$badgeData;
-        }
-
-        $user = auth()->user();
-        $query = static::getModel()::query();
-        $query = $query->authorizedForUser($user);
-
-
-        $newCount = (clone $query)->where('status', 'pending')->count();
-        $totalCount = $query->count();
-
-        static::$badgeData = [
-            'new' => $newCount,
-            'total' => $totalCount,
-        ];
-
-        return static::$badgeData;
-    }
-
-    /**
-     * Get the navigation badge color.
-     *
-     * @return string|null
-     */
-    public static function getNavigationBadgeColor(): ?string
-    {
-        $data = static::fetchBadgeData();
-
-        return $data['new'] > 0 ? 'danger' : 'primary';
-    }
-
-    public static function getGlobalSearchResultUrl(Model $record): string
-    {
-        return PaymentRequestResource::getUrl('edit', ['record' => $record]);
-    }
-
-    public static function getGlobalSearchResultTitle(Model $record): string
-    {
-        return '💳 ' . $record->reference_number . '  🗓️ ' . $record->created_at->format('M d, Y');
-    }
-
-    public static function configureCommonTableSettings(Table $table): Table
-    {
-        return (new ListPaymentRequests())->configureCommonTableSettings($table);
-    }
-
-    public static function getModernLayout(Table $table): Table
-    {
-        return (new ListPaymentRequests())->getModernLayout($table);
-    }
-
-    public static function getClassicLayout(Table $table)
-    {
-        return (new ListPaymentRequests())->getClassicLayout($table);
-    }
-
-    public function fillFormData(Form $form, $proformaInvoiceId)
-    {
-        $proformaInvoice = ProformaInvoice::find($proformaInvoiceId);
-
-        $form->fill([
-            'requested_amount' => $proformaInvoice->price,
-        ]);
+        return $table;
     }
 }

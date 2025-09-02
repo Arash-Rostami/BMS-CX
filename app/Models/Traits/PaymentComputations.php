@@ -20,40 +20,6 @@ trait PaymentComputations
             ->toArray();
     }
 
-    public static function sumAmountsForCurrencies(array $currencies)
-    {
-        return self::whereIn('currency', $currencies)
-            ->filterByUserPaymentRequests(auth()->user())
-            ->get(['currency', 'amount'])
-            ->groupBy('currency')
-            ->map(fn($items) => $items->sum('amount'))
-            ->toArray();
-    }
-
-    public static function getTabCounts(array $specificDepartmentIds): array
-    {
-        $userId = auth()->id();
-        return Cache::remember("payment_tab_counts_{$userId}", 60, function () use ($specificDepartmentIds) {
-            $selectStatements = [
-                DB::raw('COUNT(DISTINCT payments.id) as total'),
-                DB::raw('COUNT(DISTINCT CASE WHEN currency = "Rial" THEN payments.id END) as rial_count'),
-                DB::raw('COUNT(DISTINCT CASE WHEN currency = "USD" THEN payments.id END) as usd_count'),
-            ];
-
-            foreach ($specificDepartmentIds as $id) {
-                $selectStatements[] = DB::raw("COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM payment_payment_request INNER JOIN payment_requests ON payment_requests.id = payment_payment_request.payment_request_id WHERE payment_payment_request.payment_id = payments.id AND payment_requests.department_id = $id) THEN payments.id END) as department_{$id}_count");
-            }
-
-            $selectStatements[] = DB::raw("COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM payment_payment_request INNER JOIN payment_requests ON payment_requests.id = payment_payment_request.payment_request_id WHERE payment_payment_request.payment_id = payments.id AND payment_requests.department_id IN (" . implode(',', $specificDepartmentIds) . ")) THEN payments.id END) as other_count");
-
-            return self::query()
-                ->filterByUserPaymentRequests(auth()->user())
-                ->select($selectStatements)
-                ->first()
-                ->toArray();
-        });
-    }
-
     public function getProcessStatusAttribute()
     {
         $rejected = $this->paymentRequests()
@@ -69,6 +35,31 @@ trait PaymentComputations
         }
 
         return 'Completed (Sufficient Payment)';
+    }
+
+    public static function getTabCounts(array $specificDepartmentIds): array
+    {
+        $userId = auth()->id();
+        return Cache::remember("payment_tab_counts_{$userId}", now()->addMinutes(15),
+            function () use ($specificDepartmentIds) {
+                $selectStatements = [
+                    DB::raw('COUNT(DISTINCT payments.id) as total'),
+                    DB::raw('COUNT(DISTINCT CASE WHEN currency = "Rial" THEN payments.id END) as rial_count'),
+                    DB::raw('COUNT(DISTINCT CASE WHEN currency = "USD" THEN payments.id END) as usd_count'),
+                ];
+
+                foreach ($specificDepartmentIds as $id) {
+                    $selectStatements[] = DB::raw("COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM payment_payment_request INNER JOIN payment_requests ON payment_requests.id = payment_payment_request.payment_request_id WHERE payment_payment_request.payment_id = payments.id AND payment_requests.department_id = $id) THEN payments.id END) as department_{$id}_count");
+                }
+
+                $selectStatements[] = DB::raw("COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM payment_payment_request INNER JOIN payment_requests ON payment_requests.id = payment_payment_request.payment_request_id WHERE payment_payment_request.payment_id = payments.id AND payment_requests.department_id IN (" . implode(',', $specificDepartmentIds) . ")) THEN payments.id END) as other_count");
+
+                return self::query()
+                    ->filterByUserPaymentRequests(auth()->user())
+                    ->select($selectStatements)
+                    ->first()
+                    ->toArray();
+            });
     }
 
     public function scopeFilterByUserPaymentRequests(Builder $query, $user): Builder
@@ -111,6 +102,16 @@ trait PaymentComputations
         });
     }
 
+    public static function sumAmountsForCurrencies(array $currencies)
+    {
+        return self::whereIn('currency', $currencies)
+            ->filterByUserPaymentRequests(auth()->user())
+            ->get(['currency', 'amount'])
+            ->groupBy('currency')
+            ->map(fn($items) => $items->sum('amount'))
+            ->toArray();
+    }
+
     protected function cleanAttachments(): void
     {
         $this->attachments->each(function ($attachment) {
@@ -120,35 +121,9 @@ trait PaymentComputations
         });
     }
 
-    protected function handleUpdated(): void
+    protected function deleteBalance(string $category, int $categoryId): void
     {
-        if ($this->wasChanged(['currency', 'amount'])) {
-            $this->paymentRequests->each(fn($request) => $this->processPaymentRequest($request, 'update'));
-        }
-    }
-
-    protected function processPaymentRequest(PaymentRequest $req, string $action): void
-    {
-        foreach (['payees' => $req->payee_id, 'suppliers' => $req->supplier_id, 'contractors' => $req->contractor_id] as $cat => $id) {
-            if (!$id) continue;
-            match ($action) {
-                'update' => $this->updateOrCreateBalance($cat, $id, $req),
-                'delete' => $this->deleteBalance($cat, $id),
-                'restore' => $this->restoreBalance($cat, $id, $req),
-            };
-        }
-    }
-
-    protected function updateOrCreateBalance(string $category, int $categoryId, PaymentRequest $paymentRequest): void
-    {
-        $originalCurrency = $this->getOriginal('currency');
-        $originalAmount = $this->getOriginal('amount');
-
-        $balance = $this->findBalance($originalCurrency, $originalAmount, $category, $categoryId);
-
-        $balance
-            ? $balance->update(['payment' => $this->amount, 'currency' => $this->currency])
-            : $this->forceCreateBalance($category, $categoryId, $paymentRequest);
+        $this->findBalance($this->currency, $this->amount, $category, $categoryId)?->delete();
     }
 
     protected function findBalance(string $currency, float $amount, string $category, int $categoryId)
@@ -179,9 +154,33 @@ trait PaymentComputations
         ]);
     }
 
-    protected function deleteBalance(string $category, int $categoryId): void
+    protected function handleDeleted(): void
     {
-        $this->findBalance($this->currency, $this->amount, $category, $categoryId)?->delete();
+        $this->paymentRequests->each(fn($request) => $this->processPaymentRequest($request, 'delete'));
+    }
+
+    protected function handleRestored(): void
+    {
+        $this->paymentRequests->each(fn($request) => $this->processPaymentRequest($request, 'restore'));
+    }
+
+    protected function handleUpdated(): void
+    {
+        if ($this->wasChanged(['currency', 'amount'])) {
+            $this->paymentRequests->each(fn($request) => $this->processPaymentRequest($request, 'update'));
+        }
+    }
+
+    protected function processPaymentRequest(PaymentRequest $req, string $action): void
+    {
+        foreach (['payees' => $req->payee_id, 'suppliers' => $req->supplier_id, 'contractors' => $req->contractor_id] as $cat => $id) {
+            if (!$id) continue;
+            match ($action) {
+                'update' => $this->updateOrCreateBalance($cat, $id, $req),
+                'delete' => $this->deleteBalance($cat, $id),
+                'restore' => $this->restoreBalance($cat, $id, $req),
+            };
+        }
     }
 
     protected function restoreBalance(string $category, int $categoryId, PaymentRequest $paymentRequest): void
@@ -193,13 +192,15 @@ trait PaymentComputations
         }
     }
 
-    protected function handleDeleted(): void
+    protected function updateOrCreateBalance(string $category, int $categoryId, PaymentRequest $paymentRequest): void
     {
-        $this->paymentRequests->each(fn($request) => $this->processPaymentRequest($request, 'delete'));
-    }
+        $originalCurrency = $this->getOriginal('currency');
+        $originalAmount = $this->getOriginal('amount');
 
-    protected function handleRestored(): void
-    {
-        $this->paymentRequests->each(fn($request) => $this->processPaymentRequest($request, 'restore'));
+        $balance = $this->findBalance($originalCurrency, $originalAmount, $category, $categoryId);
+
+        $balance
+            ? $balance->update(['payment' => $this->amount, 'currency' => $this->currency])
+            : $this->forceCreateBalance($category, $categoryId, $paymentRequest);
     }
 }

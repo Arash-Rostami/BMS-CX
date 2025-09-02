@@ -10,35 +10,60 @@ use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
+
 
 class Admin
 {
 
     /**
-     * @return Select
+     * @return Filter
+     * @throws \Exception
      */
-    public static function getSupplier(): Select
+
+    public static function filterByAdjustment()
     {
-        return Select::make('supplier_id')
-            ->label('Supplier')
-            ->relationship('supplier', 'name')
-            ->options(Supplier::all()->pluck('name', 'id'))
-            ->searchable()
-            ->preload()
-            ->required();
+        return Filter::make('has_adjustment')
+            ->label('Show Previous  ➕ Credit / ➖ Debit')
+            ->query(fn($query) => $query->where('type', 'adjustment'));
     }
 
     /**
-     * @return Hidden
+     * @return SelectFilter
+     * @throws \Exception
      */
-    public static function getType(): Hidden
+    public static function filterByProformaInvoice(): SelectFilter
     {
-        return Hidden::make('type')
-            ->label('Type')
-            ->default('adjustment');
+        return SelectFilter::make('proforma_invoice_id')
+            ->label('Proforma Invoice')
+            ->searchable()
+            ->relationship('proformaInvoice', 'contract_number');
+    }
+
+    /**
+     * @return SelectFilter
+     * @throws \Exception
+     */
+    public static function filterBySupplier(): SelectFilter
+    {
+        return SelectFilter::make('supplier_id')
+            ->label('Supplier')
+            ->searchable()
+            ->relationship('supplier', 'name');
+    }
+
+    /**
+     * @return TextInput
+     */
+    public static function getContractNumber(): TextInput
+    {
+        return TextInput::make('contract_number')
+            ->placeholder('Optional for reference only')
+            ->maxLength(255);
     }
 
     /**
@@ -71,26 +96,15 @@ class Admin
     }
 
     /**
-     * @return Select
-     */
-    public static function gtStatus(): Select
-    {
-        return Select::make('status')
-            ->required()
-            ->options([
-                'Overpaid' => '🔴 Credit',
-                'Underpaid' => '🟢 Debit',
-            ]);
-    }
-
-    /**
      * @return TextInput
      */
-    public static function getContractNumber(): TextInput
+    public static function getExpectedAmount(): TextInput
     {
-        return TextInput::make('contract_number')
-            ->placeholder('Optional for reference only')
-            ->maxLength(255);
+        return TextInput::make('expected')
+            ->numeric()
+            ->placeholder('The expected amount to be paid according to contract/PI.')
+            ->helperText('The expected amount to be paid according to contract/PI.')
+            ->default(0.00);
     }
 
     /**
@@ -106,27 +120,61 @@ class Admin
     }
 
     /**
-     * @return TextInput
+     * @return Select
      */
-    public static function getExpectedAmount(): TextInput
+    public static function getSupplier(): Select
     {
-        return TextInput::make('expected')
-            ->numeric()
-            ->placeholder('The expected amount to be paid according to contract/PI.')
-            ->helperText('The expected amount to be paid according to contract/PI.')
-            ->default(0.00);
+        return Select::make('supplier_id')
+            ->label('Supplier')
+            ->relationship('supplier', 'name')
+            ->options(function () {
+                return Cache::remember('all_suppliers', now()->addHours(6), function () {
+                    return Supplier::pluck('name', 'id');
+                });
+            })
+            ->searchable()
+            ->preload()
+            ->required();
+    }
+
+    /**
+     * @return Hidden
+     */
+    public static function getType(): Hidden
+    {
+        return Hidden::make('type')
+            ->label('Type')
+            ->default('adjustment');
+    }
+
+    /**
+     * @return Select
+     */
+    public static function gtStatus(): Select
+    {
+        return Select::make('status')
+            ->required()
+            ->options([
+                'Overpaid' => '🔴 Credit',
+                'Underpaid' => '🟢 Debit',
+            ]);
     }
 
     /**
      * @return TextColumn
      */
-    public static function showSupplier(): TextColumn
+    public static function showBalance(): TextColumn
     {
-        return TextColumn::make('supplier.name')
-            ->label('Supplier')
-            ->searchable()
+        return TextColumn::make('diff')
+            ->label('Balance (Difference)')
+            ->money(fn(Model $record) => $record->currency)
             ->grow(false)
-            ->sortable();
+            ->color(fn(string $state): string => match (true) {
+                (float)$state < 0 => 'success',
+                (float)$state > 0 => 'danger',
+                default => 'gray',
+            })
+            ->summarize(self::getSummarizers());
     }
 
     /**
@@ -157,18 +205,6 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showPaid(): TextColumn
-    {
-        return TextColumn::make('paid')
-            ->money(fn(Model $record) => $record->currency)
-            ->grow(false)
-            ->badge()
-            ->color('secondary');
-    }
-
-    /**
-     * @return TextColumn
-     */
     public static function showExpected(): TextColumn
     {
         return TextColumn::make('expected')->money(fn(Model $record) => $record->currency)
@@ -180,18 +216,13 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showBalance(): TextColumn
+    public static function showPaid(): TextColumn
     {
-        return TextColumn::make('diff')
-            ->label('Balance (Difference)')
+        return TextColumn::make('paid')
             ->money(fn(Model $record) => $record->currency)
             ->grow(false)
-            ->color(fn(string $state): string => match (true) {
-                (float)$state < 0 => 'success',
-                (float)$state > 0 => 'danger',
-                default => 'gray',
-            })
-            ->summarize(self::getSummarizers());
+            ->badge()
+            ->color('secondary');
     }
 
     /**
@@ -215,6 +246,18 @@ class Admin
     /**
      * @return TextColumn
      */
+    public static function showSupplier(): TextColumn
+    {
+        return TextColumn::make('supplier.name')
+            ->label('Supplier')
+            ->searchable()
+            ->grow(false)
+            ->sortable();
+    }
+
+    /**
+     * @return TextColumn
+     */
     public static function showTimeStamp(): TextColumn
     {
         return TextColumn::make('updated_at')
@@ -224,64 +267,63 @@ class Admin
             ->toggleable(isToggledHiddenByDefault: true);
     }
 
-
-    /**
-     * @return SelectFilter
-     * @throws \Exception
-     */
-    public static function filterBySupplier(): SelectFilter
-    {
-        return SelectFilter::make('supplier_id')
-            ->label('Supplier')
-            ->searchable()
-            ->relationship('supplier', 'name');
-    }
-
-    /**
-     * @return SelectFilter
-     * @throws \Exception
-     */
-    public static function filterByProformaInvoice(): SelectFilter
-    {
-        return SelectFilter::make('proforma_invoice_id')
-            ->label('Proforma Invoice')
-            ->searchable()
-            ->relationship('proformaInvoice', 'contract_number');
-    }
-
-
-    /**
-     * @return Filter
-     * @throws \Exception
-     */
-
-    public static function filterByAdjustment()
-    {
-        return Filter::make('has_adjustment')
-            ->label('Show Previous  ➕ Credit / ➖ Debit')
-            ->query(fn($query) => $query->where('type', 'adjustment'));
-    }
+//    protected static function getSummarizers(): Summarizer
+//    {
+//        return Summarizer::make()->using(fn($query) => new HtmlString(
+//            $query->select('currency', DB::raw('SUM(diff) as total_diff'))
+//                ->groupBy('currency')
+//                ->get()
+//                ->map(function ($item) {
+//                    $totalDiff = (float)$item->total_diff;
+//                    [$status, $color] = match (true) {
+//                        $totalDiff < 0 => ['Underpaid', '#15803D'],
+//                        $totalDiff > 0 => ['Overpaid', '#EF4444'],
+//                        default => ['Settled', '#6B7280'],
+//                    };
+//                    return sprintf('<span style="color: %s">%s (%s): %s</span>',
+//                        $color,
+//                        $status,
+//                        strtoupper($item->currency),
+//                        number_format(abs($totalDiff), 2)
+//                    );
+//                })->implode('<br>'))
+//        );
+//    }
 
     protected static function getSummarizers(): Summarizer
     {
-        return Summarizer::make()->using(fn($query) => new HtmlString(
-            $query->select('currency', DB::raw('SUM(diff) as total_diff'))
-                ->groupBy('currency')
-                ->get()
-                ->map(function ($item) {
-                    $totalDiff = (float)$item->total_diff;
+        return Summarizer::make()->using(function ($query) {
+            $userId = auth()->id() ?? 'guest';
+            $baseForHash = ($query instanceof EloquentBuilder) ? $query->toBase() : $query;
+            $sql = $baseForHash->toSql();
+            $bindings = json_encode($baseForHash->getBindings());
+            $key = "balances:summarizer:{$userId}:" . md5($sql . '|' . $bindings);
+
+            $htmlString = Cache::remember($key, now()->addMinutes(10), function () use ($query) {
+
+                $rows = (clone $query)
+                    ->select('currency', DB::raw('SUM(diff) as total_diff'))
+                    ->groupBy('currency')
+                    ->get();
+
+                return collect($rows)->map(function ($item) {
+                    $totalDiff = (float)($item->total_diff ?? $item->total_diff);
                     [$status, $color] = match (true) {
                         $totalDiff < 0 => ['Underpaid', '#15803D'],
                         $totalDiff > 0 => ['Overpaid', '#EF4444'],
                         default => ['Settled', '#6B7280'],
                     };
-                    return sprintf('<span style="color: %s">%s (%s): %s</span>',
+                    return sprintf(
+                        '<span style="color: %s">%s (%s): %s</span>',
                         $color,
                         $status,
                         strtoupper($item->currency),
                         number_format(abs($totalDiff), 2)
                     );
-                })->implode('<br>'))
-        );
+                })->implode('<br>');
+            });
+
+            return new HtmlString($htmlString);
+        });
     }
 }

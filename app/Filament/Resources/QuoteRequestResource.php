@@ -3,8 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\Operational\QuoteRequestResource\Pages\Admin;
-use App\Filament\Resources\QuoteRequestResource\Pages;
-use App\Filament\Resources\QuoteRequestResource\RelationManagers;
 use App\Models\QuoteRequest;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
@@ -12,13 +10,14 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\RestoreBulkAction;
-use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Cache;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
-use Filament\Tables\Columns\Layout\Stack;
 
 
 class QuoteRequestResource extends Resource
@@ -30,6 +29,29 @@ class QuoteRequestResource extends Resource
     protected static ?string $navigationGroup = 'Operational Data';
 
     protected static ?int $navigationSort = 8;
+
+    public static function configureCommonTableSettings(Table $table): Table
+    {
+        return $table
+            ->emptyStateIcon('heroicon-o-bookmark')
+            ->recordClasses(fn(Model $record) => ($record->extra['use_markdown'] ?? false) ? 'major-row' : '')
+            ->emptyStateDescription('Once you create your first record, it will appear here.')
+            ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
+            ->defaultSort('created_at', 'desc')
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+//                Tables\Actions\EditAction::make(),
+//                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\RestoreAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                    RestoreBulkAction::make(),
+                    ExportBulkAction::make(),
+                ]),
+            ]);
+    }
 
     public static function form(Form $form): Form
     {
@@ -66,39 +88,6 @@ class QuoteRequestResource extends Resource
             ]);
     }
 
-    public static function table(Table $table): Table
-    {
-
-        $table = self::configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? self::getModernLayout($table)
-            : self::getClassicLayout($table);
-    }
-
-    public static function configureCommonTableSettings(Table $table): Table
-    {
-        return $table
-            ->emptyStateIcon('heroicon-o-bookmark')
-            ->recordClasses(fn(Model $record) => ($record->extra['use_markdown'] ?? false) ? 'major-row' : '')
-            ->emptyStateDescription('Once you create your first record, it will appear here.')
-            ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
-            ->defaultSort('created_at', 'desc')
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-//                Tables\Actions\EditAction::make(),
-//                Tables\Actions\DeleteAction::make(),
-                Tables\Actions\RestoreAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
-                    ExportBulkAction::make(),
-                ]),
-            ]);
-    }
-
     public static function getClassicLayout(Table $table): Table
     {
         return $table
@@ -122,6 +111,18 @@ class QuoteRequestResource extends Resource
                 Admin::showTimeStamp(),
             ])
             ->striped();
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withCount([
+                'quoteTokens as token_count',
+                'quotes as response_count',
+            ])
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
     }
 
     public static function getModernLayout(Table $table): Table
@@ -150,19 +151,20 @@ class QuoteRequestResource extends Resource
             ]);
     }
 
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getNavigationBadge(): ?string
     {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
+        $cacheKey = 'total_count_' . str('QuoteRequest')->slug();
+
+        $count = Cache::remember($cacheKey, now()->addHours(12), function () {
+            return static::getModel()::count();
+        });
+
+        return $count > 0 ? (string)$count : null;
     }
 
-    public static function getRelations(): array
+    public static function getNavigationBadgeColor(): ?string
     {
-        return [
-            Operational\QuoteRequestResource\RelationManagers\QuotesRelationManager::class,
-        ];
+        return 'primary';
     }
 
     public static function getPages(): array
@@ -175,14 +177,20 @@ class QuoteRequestResource extends Resource
         ];
     }
 
-    public static function getNavigationBadge(): ?string
+    public static function getRelations(): array
     {
-
-        return static::getModel()::count();
+        return [
+            Operational\QuoteRequestResource\RelationManagers\QuotesRelationManager::class,
+        ];
     }
 
-    public static function getNavigationBadgeColor(): ?string
+    public static function table(Table $table): Table
     {
-        return 'primary';
+
+        $table = self::configureCommonTableSettings($table);
+
+        return (getTableDesign() != 'classic')
+            ? self::getModernLayout($table)
+            : self::getClassicLayout($table);
     }
 }

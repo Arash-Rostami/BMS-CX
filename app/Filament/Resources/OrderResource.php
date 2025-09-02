@@ -9,6 +9,7 @@ use App\Filament\Resources\Operational\OrderResource\Widgets\StatsOverview;
 use App\Models\Order;
 use App\Services\AttachmentDeletionService;
 use App\Services\OrderPaymentCalculationService;
+use App\Services\OrderPurchaseStatusService;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Fieldset;
@@ -30,6 +31,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 
@@ -306,7 +308,14 @@ class OrderResource extends Resource
                             ->icon('heroicon-o-trash')
                             ->color('danger')
                             ->modalAlignment(Alignment::Center)
-                            ->action(fn(array $arguments, Repeater $component) => AttachmentDeletionService::removeAttachment($component, $arguments['item']))
+                            ->action(function (array $arguments, Repeater $component, $livewire) {
+                                AttachmentDeletionService::removeAttachment($component, $arguments['item']);
+                                $order = $livewire->getRecord();
+
+                                if ($order instanceof Order) {
+                                    app(OrderPurchaseStatusService::class)->updateStatusBasedOnAttachments($order);
+                                }
+                            })
                             ->after(fn($livewire) => $livewire->redirect(route('filament.admin.resources.orders.edit', ['record' => $livewire->getRecord()])))
                             ->modalContent(function (Action $action, array $arguments, Repeater $component, $operation, ?Model $record) {
                                 if (str_contains($arguments['item'], 'record')) {
@@ -352,7 +361,24 @@ class OrderResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['party', 'orderDetail', 'logistic', 'doc', 'attachments', 'tags'])
+            ->with([
+                'attachments',
+                'category',
+                'doc',
+                'grade',
+                'logistic',
+                'orderDetail',
+                'party',
+                'party.buyer',
+                'party.supplier',
+                'paymentRequests',
+                'payments',
+                'product',
+                'proformaInvoice',
+                'purchaseStatus',
+                'tags',
+                'user',
+            ])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
@@ -375,7 +401,11 @@ class OrderResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        $cacheKey = 'total_count_' . str('Order')->slug();
+
+        return Cache::remember($cacheKey, now()->addMinutes(15), function () {
+            return static::getModel()::count();
+        });
     }
 
     public static function getPages(): array

@@ -283,7 +283,7 @@ trait OrderComputations
     {
         $userId = auth()->id();
 
-        return Cache::remember("order_tab_counts_{$userId}", 60, function () {
+        return Cache::remember("order_tab_counts_{$userId}", 900, function () {
             return static::selectRaw('
                 COUNT(*) as total,
                 COUNT(CASE WHEN order_status = "accounting_review" THEN 1 END) as review_count,

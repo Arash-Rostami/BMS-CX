@@ -6,60 +6,11 @@ use Illuminate\Support\Facades\Cache;
 
 trait DepartmentCache
 {
-    public static function getByName($id)
-    {
-        $cacheKey = 'department_name_' . $id;
-
-        return Cache::remember($cacheKey, 60, function () use ($id) {
-            return self::find($id)->name;
-        });
-    }
-
-    public static function getByCode($id)
-    {
-        $cacheKey = 'department_code_' . $id;
-
-        return Cache::remember($cacheKey, 60, function () use ($id) {
-            return self::find($id)->code;
-        });
-    }
-
-    public static function getDescriptionByCode($code)
-    {
-        $cacheKey = 'department_description_' . $code;
-
-        return Cache::remember($cacheKey, 60, function () use ($code) {
-            return optional(self::where('code', $code)->first())->description;
-        });
-    }
-
-    public static function getAllDepartments()
-    {
-        $cacheKey = 'all_departments';
-
-        return Cache::remember($cacheKey, 60, function () {
-            return self::pluck('code')->toArray();
-        });
-    }
-
-    public static function getAllDepartmentNames()
-    {
-        $cacheKey = 'all_department_names';
-
-        return Cache::remember($cacheKey, 60, function () {
-            return self::query()
-                ->orderByRaw('CASE WHEN id = 0 THEN 0 ELSE 1 END, name ASC')
-                ->get(['id', 'name'])
-                ->pluck('name', 'id')
-                ->toArray();
-        });
-    }
-
     public static function getAllDepartmentCodes()
     {
         $cacheKey = 'all_department_names';
 
-        return Cache::remember($cacheKey, 60, function () {
+        return Cache::remember($cacheKey, 6000, function () {
             return self::query()
                 ->orderByRaw('CASE WHEN id = 0 THEN 0 ELSE 1 END, name ASC')
                 ->get(['id', 'code', 'name'])
@@ -68,9 +19,58 @@ trait DepartmentCache
         });
     }
 
+    public static function getAllDepartmentNames()
+    {
+        $cacheKey = 'all_department_names';
+
+        return Cache::remember($cacheKey, 6000, function () {
+            return self::query()
+                ->orderByRaw('CASE WHEN id = 0 THEN 0 ELSE 1 END, name ASC')
+                ->get(['id', 'name'])
+                ->pluck('name', 'id')
+                ->toArray();
+        });
+    }
+
+    public static function getAllDepartments()
+    {
+        $cacheKey = 'all_departments';
+
+        return Cache::remember($cacheKey, 6000, function () {
+            return self::pluck('code')->toArray();
+        });
+    }
+
+    public static function getByCode($id)
+    {
+        $cacheKey = 'department_code_' . $id;
+
+        return Cache::remember($cacheKey, 6000, function () use ($id) {
+            return self::find($id)->code;
+        });
+    }
+
+    public static function getByName($id)
+    {
+        $cacheKey = 'department_name_' . $id;
+
+        return Cache::remember($cacheKey, 6000, function () use ($id) {
+            return self::find($id)->name;
+        });
+    }
+
+    public static function getDescriptionByCode($code)
+    {
+        $cacheKey = 'department_description_' . $code;
+
+        return Cache::remember($cacheKey, 6000, function () use ($code) {
+            return optional(self::where('code', $code)->first())->description;
+        });
+    }
+
     public static function getSimplifiedDepartments()
     {
-        return Cache::remember('simplified_departments', 60,
+        return Cache::remember('simplified_departments', 6000,
             fn() => self::orderBy('name')->get()->map(fn($dept) => tap($dept, function ($d) {
                 $d->simplified_name = match (true) {
                     str_contains($d->name, 'Commercial Import Operation') => 'Import',

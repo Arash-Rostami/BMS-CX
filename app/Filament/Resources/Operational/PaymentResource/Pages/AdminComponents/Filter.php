@@ -6,11 +6,12 @@ use App\Models\Allocation;
 use App\Models\Department;
 use App\Models\Payment;
 use App\Models\PaymentRequest;
+use App\Services\SmartCacheManager;
+use Filament\Forms\Components\Select;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -20,11 +21,74 @@ trait Filter
     /**
      * @return Grouping
      */
+    public static function filterByBalance(): Grouping
+    {
+        return Grouping::make('extra')->collapsible()
+            ->label('Balance')
+            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->extra)['balanceStatus'] ? $record->extra['balanceStatus'] : 'undfined')
+            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->extra)['balanceStatus'] ? $record->extra['balanceStatus'] : 'undfined');
+    }
+
+    /**
+     * @return Grouping
+     */
     public static function filterByCurrency(): Grouping
     {
         return Grouping::make('currency')
             ->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => data_get($record, 'currency'));
+    }
+
+    public static function filterByPRCurrency(): SelectFilter
+    {
+        return SelectFilter::make('currency')
+            ->label('Currency')
+            ->options(function () {
+                $filters = ['type' => 'currency_options'];
+                return SmartCacheManager::remember('Payment', $filters, 720, function () {
+                    return Payment::getCurrencyOptions();
+                });
+            })
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->where('currency', $data['value']);
+                }
+            });
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function filterByPayer(): Grouping
+    {
+        return Grouping::make('payer')
+            ->collapsible();
+    }
+
+    /**
+     * @return Grouping
+     */
+    public static function filterByPaymentRequest(): Grouping
+    {
+        return Grouping::make('payment_request')
+            ->collapsible()
+            ->getKeyFromRecordUsing(function (Model $record) {
+                if (empty($record->payment_request)) {
+                    return 'N/A';
+                }
+                $refNumbers = explode(',', $record->payment_request);
+                sort($refNumbers);
+                return implode(', ', $refNumbers);
+            })
+            ->getTitleFromRecordUsing(function (Model $record) {
+                if (empty($record->payment_request)) {
+                    return 'N/A';
+                }
+                $refNumbers = explode(',', $record->payment_request);
+                sort($refNumbers);
+                return implode(' ⚝ ', $refNumbers);
+            })
+            ->label('Payment Request');
     }
 
     /**
@@ -43,72 +107,93 @@ trait Filter
                 : 'Undefined');
     }
 
-
-
-    public static function groupByContractor(): Grouping
+    /**
+     * @return SelectFilter
+     * @throws \Exception
+     */
+    public static function filterCostCenter(): SelectFilter
     {
-        return Grouping::make('paymentRequests.contractor.name')
-            ->collapsible()
-            ->label('Contractor')
-            ->getKeyFromRecordUsing(function ($record): string {
-                $contractorNames = $record->paymentRequests
-                    ->map(fn($pr) => $pr->contractor?->name)
-                    ->filter()
-                    ->unique();
-                return $contractorNames->first() ?? 'N/A';
-            })
-            ->getTitleFromRecordUsing(function ($record): string {
-                $contractorNames = $record->paymentRequests
-                    ->map(fn($pr) => $pr->contractor?->name)
-                    ->filter()
-                    ->unique();
-                return $contractorNames->implode(', ') ?: 'N/A';
-            })
-            ->orderQueryUsing(function (Builder $query, string $direction): Builder {
-                return $query->orderByRaw(
-                    "(SELECT MIN(contractors.name)
-                  FROM payment_requests
-                  INNER JOIN payment_payment_request
-                      ON payment_requests.id = payment_payment_request.payment_request_id
-                  INNER JOIN contractors
-                      ON payment_requests.contractor_id = contractors.id
-                  WHERE payments.id = payment_payment_request.payment_id
-                    AND payment_requests.deleted_at IS NULL) {$direction}"
-                );
+        return SelectFilter::make('costCenter')
+            ->label('Cost Center')
+            ->options(Department::getAllDepartmentNames())
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
+                        $query->where('cost_center', $data['value']);
+                    });
+                }
             });
     }
 
-
-    public static function groupBySupplier(): Grouping
+    /**
+     * @return SelectFilter
+     * @throws \Exception
+     */
+    public static function filterDepartments(): SelectFilter
     {
-        return Grouping::make('paymentRequests.supplier.name')
-            ->collapsible()
-            ->label('Supplier')
-            ->getKeyFromRecordUsing(function ($record): string {
-                $supplierNames = $record->paymentRequests
-                    ->map(fn($pr) => $pr->supplier?->name)
-                    ->filter()
-                    ->unique();
-                return $supplierNames->first() ?? 'N/A';
+        return SelectFilter::make('department')
+            ->label('Department')
+            ->options(Department::getAllDepartmentNames())
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
+                        $query->where('department_id', $data['value']);
+                    });
+                }
+            });
+    }
+
+    public static function filterMadeBy(): SelectFilter
+    {
+        return SelectFilter::make('made_by')
+            ->label('Made By')
+            ->options(PaymentRequest::getMadeByOptions())
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
+                        $query->whereJsonContains('extra->made_by', $data['value']);
+                    });
+                }
+            });
+    }
+
+    public static function filterNumberOfRecords()
+    {
+
+        return SelectFilter::make('monthly_data_payment')
+            ->label('Period')
+            ->indicateUsing(function (array $data): ?string {
+                if (isset($data['months_to_load']) && $data['months_to_load'] >= 1) {
+                    return 'Showing ' . $data['months_to_load'] . ' month(s) of data';
+                }
+                return null;
             })
-            ->getTitleFromRecordUsing(function ($record): string {
-                $supplierNames = $record->paymentRequests
-                    ->map(fn($pr) => $pr->supplier?->name)
-                    ->filter()
-                    ->unique();
-                return $supplierNames->implode(', ') ?: 'N/A';
-            })
-            ->orderQueryUsing(function (Builder $query, string $direction): Builder {
-                return $query->orderByRaw(
-                    "(SELECT MIN(suppliers.name)
-                  FROM payment_requests
-                  INNER JOIN payment_payment_request
-                      ON payment_requests.id = payment_payment_request.payment_request_id
-                  INNER JOIN suppliers
-                      ON payment_requests.supplier_id = suppliers.id
-                  WHERE payments.id = payment_payment_request.payment_id
-                    AND payment_requests.deleted_at IS NULL) {$direction}"
-                );
+            ->form([
+                Select::make('months_to_load')
+                    ->options(range(1, 6))
+                    ->default(1),
+            ])
+            ->query(function (Builder $query, array $data): Builder {
+                $monthsToLoad = $data['months_to_load'] ?? 1;
+                return $query->where('created_at', '>=', now()->subMonths($monthsToLoad)->startOfMonth());
+            });
+    }
+
+    /**
+     * @return SelectFilter
+     * @throws \Exception
+     */
+    public static function filterReason(): SelectFilter
+    {
+        return SelectFilter::make('reason')
+            ->label('Reasons')
+            ->options(Cache::remember('reason_options', 900, fn() => Allocation::orderBy('reason')->pluck('reason', 'id')->toArray()))
+            ->query(function (Builder $query, array $data) {
+                if (!empty($data['value'])) {
+                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
+                        $query->where('reason_for_payment', $data['value']);
+                    });
+                }
             });
     }
 
@@ -145,6 +230,39 @@ trait Filter
             });
     }
 
+    public static function groupByContractor(): Grouping
+    {
+        return Grouping::make('paymentRequests.contractor.name')
+            ->collapsible()
+            ->label('Contractor')
+            ->getKeyFromRecordUsing(function ($record): string {
+                $contractorNames = $record->paymentRequests
+                    ->map(fn($pr) => $pr->contractor?->name)
+                    ->filter()
+                    ->unique();
+                return $contractorNames->first() ?? 'N/A';
+            })
+            ->getTitleFromRecordUsing(function ($record): string {
+                $contractorNames = $record->paymentRequests
+                    ->map(fn($pr) => $pr->contractor?->name)
+                    ->filter()
+                    ->unique();
+                return $contractorNames->implode(', ') ?: 'N/A';
+            })
+            ->orderQueryUsing(function (Builder $query, string $direction): Builder {
+                return $query->orderByRaw(
+                    "(SELECT MIN(contractors.name)
+                  FROM payment_requests
+                  INNER JOIN payment_payment_request
+                      ON payment_requests.id = payment_payment_request.payment_request_id
+                  INNER JOIN contractors
+                      ON payment_requests.contractor_id = contractors.id
+                  WHERE payments.id = payment_payment_request.payment_id
+                    AND payment_requests.deleted_at IS NULL) {$direction}"
+                );
+            });
+    }
+
     public static function groupByPI(): Grouping
     {
         return Grouping::make('paymentRequests.proforma_invoice_number')
@@ -176,132 +294,36 @@ trait Filter
             });
     }
 
-
-    /**
-     * @return Grouping
-     */
-    public static function filterByPayer(): Grouping
+    public static function groupBySupplier(): Grouping
     {
-        return Grouping::make('payer')
-            ->collapsible();
-    }
-
-    /**
-     * @return Grouping
-     */
-    public static function filterByBalance(): Grouping
-    {
-        return Grouping::make('extra')->collapsible()
-            ->label('Balance')
-            ->getKeyFromRecordUsing(fn(Model $record): string => optional($record->extra)['balanceStatus'] ? $record->extra['balanceStatus'] : 'undfined')
-            ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->extra)['balanceStatus'] ? $record->extra['balanceStatus'] : 'undfined');
-    }
-
-    /**
-     * @return Grouping
-     */
-    public static function filterByPaymentRequest(): Grouping
-    {
-        return Grouping::make('payment_request')
+        return Grouping::make('paymentRequests.supplier.name')
             ->collapsible()
-            ->getKeyFromRecordUsing(function (Model $record) {
-                if (empty($record->payment_request)) {
-                    return 'N/A';
-                }
-                $refNumbers = explode(',', $record->payment_request);
-                sort($refNumbers);
-                return implode(', ', $refNumbers);
+            ->label('Supplier')
+            ->getKeyFromRecordUsing(function ($record): string {
+                $supplierNames = $record->paymentRequests
+                    ->map(fn($pr) => $pr->supplier?->name)
+                    ->filter()
+                    ->unique();
+                return $supplierNames->first() ?? 'N/A';
             })
-            ->getTitleFromRecordUsing(function (Model $record) {
-                if (empty($record->payment_request)) {
-                    return 'N/A';
-                }
-                $refNumbers = explode(',', $record->payment_request);
-                sort($refNumbers);
-                return implode(' ⚝ ', $refNumbers);
+            ->getTitleFromRecordUsing(function ($record): string {
+                $supplierNames = $record->paymentRequests
+                    ->map(fn($pr) => $pr->supplier?->name)
+                    ->filter()
+                    ->unique();
+                return $supplierNames->implode(', ') ?: 'N/A';
             })
-            ->label('Payment Request');
-    }
-
-
-    /**
-     * @return SelectFilter
-     * @throws \Exception
-     */
-    public static function filterReason(): SelectFilter
-    {
-        return SelectFilter::make('reason')
-            ->label('Reasons')
-            ->options(Cache::remember('reason_options', 60, fn() => Allocation::orderBy('reason')->pluck('reason', 'id')->toArray()))
-            ->query(function (Builder $query, array $data) {
-                if (!empty($data['value'])) {
-                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
-                        $query->where('reason_for_payment', $data['value']);
-                    });
-                }
-            });
-    }
-
-    /**
-     * @return SelectFilter
-     * @throws \Exception
-     */
-    public static function filterDepartments(): SelectFilter
-    {
-        return SelectFilter::make('department')
-            ->label('Department')
-            ->options(Cache::remember('department_option_filter', 60, fn() => Department::getAllDepartmentNames()))
-            ->query(function (Builder $query, array $data) {
-                if (!empty($data['value'])) {
-                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
-                        $query->where('department_id', $data['value']);
-                    });
-                }
-            });
-    }
-
-    /**
-     * @return SelectFilter
-     * @throws \Exception
-     */
-    public static function filterCostCenter(): SelectFilter
-    {
-        return SelectFilter::make('costCenter')
-            ->label('Cost Center')
-            ->options(Cache::remember('department_option_filter', 60, fn() => Department::getAllDepartmentNames()))
-            ->query(function (Builder $query, array $data) {
-                if (!empty($data['value'])) {
-                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
-                        $query->where('cost_center', $data['value']);
-                    });
-                }
-            });
-    }
-
-    public static function filterByPRCurrency(): SelectFilter
-    {
-        return SelectFilter::make('currency')
-            ->label('Currency')
-            ->options(Payment::getCurrencyOptions())
-            ->query(function (Builder $query, array $data) {
-                if (!empty($data['value'])) {
-                    $query->where('currency', $data['value']);
-                }
-            });
-    }
-
-
-    public static function filterMadeBy(): SelectFilter
-    {
-        return SelectFilter::make('made_by')
-            ->label('Made By')
-            ->options(PaymentRequest::getMadeByOptions())
-            ->query(function (Builder $query, array $data) {
-                if (!empty($data['value'])) {
-                    $query->whereHas('paymentRequests', function (Builder $query) use ($data) {
-                        $query->whereJsonContains('extra->made_by', $data['value']);
-                    });
-                }
+            ->orderQueryUsing(function (Builder $query, string $direction): Builder {
+                return $query->orderByRaw(
+                    "(SELECT MIN(suppliers.name)
+                  FROM payment_requests
+                  INNER JOIN payment_payment_request
+                      ON payment_requests.id = payment_payment_request.payment_request_id
+                  INNER JOIN suppliers
+                      ON payment_requests.supplier_id = suppliers.id
+                  WHERE payments.id = payment_payment_request.payment_id
+                    AND payment_requests.deleted_at IS NULL) {$direction}"
+                );
             });
     }
 }

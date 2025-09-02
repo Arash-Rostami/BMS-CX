@@ -6,14 +6,15 @@ use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\PaymentResource;
 use App\Models\Department;
 use App\Models\Payment;
+use App\Services\SmartCacheManager;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
 use Carbon\Carbon;
-use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Actions\CreateAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\IconPosition;
@@ -38,268 +39,23 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\View\View;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use pxlrbt\FilamentExcel\Columns\Column;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class ListPayments extends ListRecords
 {
+    private const SPECIFIC_DEPARTMENT_IDS = [2, 5, 6, 8, 9, 10, 13, 18];
     protected static string $resource = PaymentResource::class;
-
     public bool $showActionsAhead = true;
-
     public bool $showTabs;
-
     public ?string $activeTab = '';
-    protected $listeners = [
-        'refreshPage'     => '$refresh',
-        'updateActiveTab',
-    ];
-
-
-    public function mount(): void
-    {
-        $this->showActionsAhead = $this->showActionsAhead ?? true;
-        $this->showTabs = (auth()->user()->info['filterDesign'] ?? 'hide') == 'show';
-        $this->dispatch('refreshSortJs');
-        $this->dispatch('refreshTabFilters');
-    }
-
-    public function updateActiveTab(string $scope = ''): void
-    {
-        $this->activeTab = $scope;
-        $this->dispatch('refreshTabFilters');
-        $this->resetPage();
-    }
-
-    private function registerTableRenderHook(): void
-    {
-        FilamentView::registerRenderHook(
-            TablesRenderHook::HEADER_BEFORE,
-            fn(): View => view('filament.resources.payment-resource.table-tabs', ['activeTab' => $this->activeTab]),
-            scopes: self::class,
-        );
-    }
-
-    public function toggleTabs()
-    {
-        $this->showTabs = !$this->showTabs;
-        $this->dispatch('refreshPage');
-    }
-
-
-    public function moveActionsToStart()
-    {
-        $this->showActionsAhead = true;
-        $this->resetPage();
-    }
-
-    public function resetActionsToEnd()
-    {
-        $this->showActionsAhead = false;
-        $this->resetPage();
-    }
-
-    public function scrollLeft()
-    {
-        $this->dispatch('scrollLeft');
-    }
-
-    public function scrollRight()
-    {
-        $this->dispatch('scrollRight');
-    }
-
-    public function toggleFullScreen()
-    {
-        $this->dispatch('toggleFullScreen');
-    }
+    protected $listeners = ['refreshPage' => '$refresh', 'updateActiveTab'];
 
     public function clearTableSort()
     {
         $this->dispatch('clearTableSort');
-    }
-
-    public function getTabs(): array
-    {
-        if (! $this->showTabs) {
-            $this->registerTableRenderHook();
-            return [];
-        }
-
-        $specificDepartmentIds = [2, 5, 6, 8, 9, 10, 13, 18];
-        $departments = Department::getSimplifiedDepartments();
-        $counts = Payment::getTabCounts($specificDepartmentIds);
-
-        $tabs = [
-            null => Tab::make('All')
-                ->query(fn($query) => $query)
-                ->badge($counts['total'] ?? 0)
-                ->icon('heroicon-o-inbox')
-                ->extraAttributes(['style' => 'padding: 8px 16px;']),
-
-            'Rial' => Tab::make('Rial')
-                ->query(fn($query) => $query->where('currency', 'Rial'))
-                ->badge($counts['rial_count'] ?? 0)
-                ->icon('heroicon-o-currency-rupee')
-                ->extraAttributes(['style' => 'padding: 8px 16px;']),
-
-            'USD' => Tab::make('USD')
-                ->query(fn($query) => $query->where('currency', 'USD'))
-                ->badge($counts['usd_count'] ?? 0)
-                ->icon('heroicon-o-currency-dollar')
-                ->extraAttributes(['style' => 'padding: 8px 16px;']),
-        ];
-
-        foreach ($departments as $department) {
-            if (in_array($department->id, $specificDepartmentIds)) {
-                $tabs[$department->name] = Tab::make($department->simplified_name)
-                    ->query(fn($query) => $query->whereHas('paymentRequests', fn($q) => $q->where('department_id', $department->id)))
-                    ->badge($counts["department_{$department->id}_count"] ?? 0)
-                    ->icon('heroicon-o-building-office') // Corrected icon name
-                    ->extraAttributes(['style' => 'padding: 8px 16px;']);
-            }
-        }
-
-        $tabs['Other'] = Tab::make('Other')
-            ->query(function ($query) use ($specificDepartmentIds) {
-                $query->whereHas('paymentRequests', function ($q) use ($specificDepartmentIds) {
-                    $q->whereNotIn('department_id', $specificDepartmentIds);
-                });
-            })
-            ->badge($counts['other_count'] ?? 0)
-            ->icon('heroicon-o-ellipsis-horizontal-circle')
-            ->extraAttributes(['style' => 'padding: 8px 16px;']);
-
-        return $tabs;
-    }
-
-    public function getInvisibleTableHeaderActions(): array
-    {
-        $design = getTableDesign() == 'modern';
-
-        $actions = [
-            Action::make('Refresh Sorting')
-                ->label('Reset')
-                ->tooltip('Reset Column Orders')
-                ->color('primary')
-                ->icon('heroicon-m-receipt-refund')
-                ->action('clearTableSort'),
-
-            Action::make('Move Actions to Start')
-                ->action('moveActionsToStart')
-                ->color('primary')
-                ->icon('heroicon-o-arrows-right-left')
-                ->iconPosition(IconPosition::After)
-                ->label('S')
-                ->tooltip('Move Actions to Start')
-                ->visible(!$this->showActionsAhead && !$design),
-
-            Action::make('Reset Actions to End')
-                ->action('resetActionsToEnd')
-                ->color('secondary')
-                ->icon('heroicon-o-arrows-right-left')
-                ->iconPosition(IconPosition::Before)
-                ->label('E')
-                ->tooltip('Reset Actions to End')
-                ->visible($this->showActionsAhead && !$design),
-
-            Action::make('Scroll Left')
-                ->label('Scroll')
-                ->tooltip('Scroll Left')
-                ->color('primary')
-                ->icon('heroicon-o-arrow-left-on-rectangle')
-                ->iconPosition(IconPosition::Before)
-                ->action('scrollLeft'),
-
-            Action::make('Scroll Right')
-                ->label('Scroll')
-                ->tooltip('Scroll right')
-                ->color('primary')
-                ->icon('heroicon-o-arrow-right-end-on-rectangle')
-                ->iconPosition(IconPosition::After)
-                ->action('scrollRight'),
-
-            Action::make('Full Screen')
-                ->label('Go')
-                ->tooltip('Go Fullscreen')
-                ->color('primary')
-                ->icon('heroicon-s-arrows-pointing-out')
-                ->action('toggleFullScreen'),
-        ];
-
-//        if ($design) {
-//            return [ActionGroup::make($actions)];
-//        }
-
-        return $actions;
-    }
-
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('New')
-                ->url(fn() => static::getResource()::getUrl('create'))
-                ->icon('heroicon-o-sparkles'),
-            ActionGroup::make(array_merge(
-                    [
-                        Actions\Action::make('Toggle Tabs')
-                            ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
-                            ->tooltip('Toggle Filter Shortcuts')
-                            ->color($this->showTabs ? 'secondary' : 'primary')
-                            ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
-                            ->action('toggleTabs'),
-                        PrintAction::make(),
-                        ExcelImportAction::make()
-                            ->color("success"),
-                    ],
-                    $this->getInvisibleTableHeaderActions() ?? []
-                )
-            )
-        ];
-    }
-
-    protected function getFooterWidgets(): array
-    {
-        return PaymentResource::getWidgets();
-    }
-
-    private static function getOriginalTable()
-    {
-        return static::getResource()::getEloquentQuery();
-    }
-
-    protected function getTableQuery(): Builder
-    {
-        $query = self::getOriginalTable()
-            ->with([
-                'attachments',
-                'order',
-                'paymentRequests',
-                'approvedPaymentRequests',
-                'reason',
-                'user',
-            ]);
-
-        if ($this->activeTab !== '') {
-
-            if (in_array($this->activeTab, ['Rial','USD'])) {
-                $query->where('currency', $this->activeTab);
-            }
-        }
-
-        return $query;
-    }
-
-    public function table(Table $table): Table
-    {
-        $table = $this->configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? $this->getModernLayout($table)
-            : $this->getClassicLayout($table);
     }
 
     /**
@@ -309,14 +65,15 @@ class ListPayments extends ListRecords
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                return $query->filterByUserPaymentRequests(auth()->user())
+                return $query
+                    ->filterByUserPaymentRequests(auth()->user())
                     ->withCount([
                         'paymentRequests as has_rejected_proforma_invoice' => fn($query) => $query->whereHas('associatedProformaInvoices', fn($q) => $q->where('status', 'rejected')),
                         'paymentRequests as has_processing_payment_request' => fn($query) => $query->where('status', 'processing'),
                     ]);
             })
-//            ->headerActions($this->getInvisibleTableHeaderActions())
             ->filters([
+                Admin::filterNumberOfRecords(),
                 Admin::filterDepartments(),
                 Admin::filterCostCenter(),
                 Admin::filterByPRCurrency(),
@@ -387,34 +144,8 @@ class ListPayments extends ListRecords
                 Admin::filterByPayer(),
                 Admin::groupBySupplier(),
                 Admin::filterByTransferringDate(),
-            ]);
-    }
-
-
-    public function getModernLayout(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Stack::make([
-                    Split::make([
-                        Admin::showID(),
-                        Admin::showPaymentRequestDep(),
-                        Admin::showPaymentRequestBeneficiary(),
-                        Admin::showCurrency(),
-                        Admin::showRequestedAmount(),
-                        Admin::showStatus(),
-
-                    ]),
-                ])->space(3),
-                Split::make([
-                    Split::make([
-                        Admin::showPaymentRequest(),
-                        Admin::showPaymentRequestType(),
-                        Admin::showTransferredAmount(),
-                        Admin::showBalance(),
-                    ])->columnSpanFull(true),
-                ])->collapsible(),
-            ]);
+            ])
+            ->deferLoading();
     }
 
     public function getClassicLayout(Table $table): Table
@@ -439,8 +170,294 @@ class ListPayments extends ListRecords
                 Admin::showTransactionID(),
                 Admin::showDate(),
                 Admin::showCreator(),
-                TableObserver::showMissingData(0,1),
+                TableObserver::showMissingData(0, 1),
                 Admin::showTimeStamp()
             ])->striped();
+    }
+
+    public function getInvisibleTableHeaderActions(): array
+    {
+        return [
+            Action::make('Refresh Sorting')
+                ->label('Reset')
+                ->tooltip('Reset Column Orders')
+                ->color('primary')
+                ->icon('heroicon-m-receipt-refund')
+                ->action('clearTableSort'),
+
+            Action::make('Move Actions to Start')
+                ->action('moveActionsToStart')
+                ->color('primary')
+                ->icon('heroicon-o-arrows-right-left')
+                ->iconPosition(IconPosition::After)
+                ->label('S')
+                ->tooltip('Move Actions to Start')
+                ->visible(!$this->showActionsAhead && !isModernDesign()),
+
+            Action::make('Reset Actions to End')
+                ->action('resetActionsToEnd')
+                ->color('secondary')
+                ->icon('heroicon-o-arrows-right-left')
+                ->iconPosition(IconPosition::Before)
+                ->label('E')
+                ->tooltip('Reset Actions to End')
+                ->visible($this->showActionsAhead && !isModernDesign()),
+
+            Action::make('Scroll Left')
+                ->label('Scroll')
+                ->tooltip('Scroll Left')
+                ->color('primary')
+                ->icon('heroicon-o-arrow-left-on-rectangle')
+                ->iconPosition(IconPosition::Before)
+                ->action('scrollLeft'),
+
+            Action::make('Scroll Right')
+                ->label('Scroll')
+                ->tooltip('Scroll right')
+                ->color('primary')
+                ->icon('heroicon-o-arrow-right-end-on-rectangle')
+                ->iconPosition(IconPosition::After)
+                ->action('scrollRight'),
+
+            Action::make('Full Screen')
+                ->label('Go')
+                ->tooltip('Go Fullscreen')
+                ->color('primary')
+                ->icon('heroicon-s-arrows-pointing-out')
+                ->action('toggleFullScreen'),
+        ];
+    }
+
+    public function getModernLayout(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Stack::make([
+                    Split::make([
+                        Admin::showID(),
+                        Admin::showPaymentRequestDep(),
+                        Admin::showPaymentRequestBeneficiary(),
+                        Admin::showCurrency(),
+                        Admin::showRequestedAmount(),
+                        Admin::showStatus(),
+                    ]),
+                ])->space(3),
+                Split::make([
+                    Split::make([
+                        Admin::showPaymentRequest(),
+                        Admin::showPaymentRequestType(),
+                        Admin::showTransferredAmount(),
+                        Admin::showBalance(),
+                    ])->columnSpanFull(true),
+                ])->collapsible(),
+            ]);
+    }
+
+    public function getTabs(): array
+    {
+        if (!$this->showTabs) {
+            $this->registerTableRenderHook();
+            return [];
+        }
+
+        $counts = Payment::getTabCounts(self::SPECIFIC_DEPARTMENT_IDS);
+        $departmentTabs = Department::getTabsConfiguration(self::SPECIFIC_DEPARTMENT_IDS, $counts);
+
+
+        $baseTabs = collect([
+            null => [
+                'label' => 'All',
+                'query' => fn(Builder $query) => $query,
+                'badge' => $counts['total'] ?? 0,
+                'icon' => 'heroicon-o-inbox',
+            ],
+            'Rial' => [
+                'label' => 'Rial',
+                'query' => fn(Builder $query) => $query->where('currency', 'Rial'),
+                'badge' => $counts['rial_count'] ?? 0,
+                'icon' => 'heroicon-o-currency-rupee',
+            ],
+            'USD' => [
+                'label' => 'USD',
+                'query' => fn(Builder $query) => $query->where('currency', 'USD'),
+                'badge' => $counts['usd_count'] ?? 0,
+                'icon' => 'heroicon-o-currency-dollar',
+            ],
+        ]);
+
+        $otherTab = collect([
+            'Other' => [
+                'label' => 'Other',
+                'query' => fn(Builder $query) => $query->whereHas(
+                    'paymentRequests',
+                    fn(Builder $q) => $q->whereNotIn('department_id', self::SPECIFIC_DEPARTMENT_IDS)
+                ),
+                'badge' => $counts['other_count'] ?? 0,
+                'icon' => 'heroicon-o-ellipsis-horizontal-circle',
+            ],
+        ]);
+
+        return $baseTabs
+            ->merge($departmentTabs)
+            ->merge($otherTab)
+            ->map(fn(array $config): Tab => Tab::make($config['label'])
+                ->query($config['query'])
+                ->badge($config['badge'])
+                ->icon($config['icon'])
+                ->extraAttributes(['style' => 'padding: 8px 16px;']))
+            ->all();
+    }
+
+    public function mount(): void
+    {
+        $this->showActionsAhead = $this->showActionsAhead ?? true;
+        $this->showTabs = (auth()->user()->info['filterDesign'] ?? 'hide') == 'show';
+        $this->dispatch('refreshSortJs');
+        $this->dispatch('refreshTabFilters');
+    }
+
+    public function moveActionsToStart()
+    {
+        $this->showActionsAhead = true;
+        $this->resetPage();
+    }
+
+    public function resetActionsToEnd()
+    {
+        $this->showActionsAhead = false;
+        $this->resetPage();
+    }
+
+    public function scrollLeft()
+    {
+        $this->dispatch('scrollLeft');
+    }
+
+    public function scrollRight()
+    {
+        $this->dispatch('scrollRight');
+    }
+
+    public function table(Table $table): Table
+    {
+        $table = $this->configureCommonTableSettings($table);
+
+        return (getTableDesign() != 'classic')
+            ? $this->getModernLayout($table)
+            : $this->getClassicLayout($table);
+    }
+
+    public function toggleFullScreen()
+    {
+        $this->dispatch('toggleFullScreen');
+    }
+
+    public function toggleTabs()
+    {
+        $this->showTabs = !$this->showTabs;
+        $this->dispatch('refreshPage');
+    }
+
+    public function updateActiveTab(string $scope = ''): void
+    {
+        $this->activeTab = $scope;
+        $this->dispatch('refreshTabFilters');
+        $this->resetPage();
+    }
+
+    protected function getCachedPaymentIds()
+    {
+        $filters = [
+            'activeTab' => $this->activeTab ?: 'all',
+            'monthly_data_payment' => $this->getTableFilterState('monthly_data_payment') ?? 'default',
+        ];
+
+        return SmartCacheManager::remember('Payment', $filters, (4 * 60), function () {
+            $query = self::getOriginalTable();
+
+            if (is_null($this->getTableFilterState('monthly_data_payment'))) {
+                $query->where('created_at', '>=', now()->subMonths(1)->startOfMonth());
+            }
+
+            if ($this->activeTab !== '') {
+                if (in_array($this->activeTab, ['Rial', 'USD'])) {
+                    $query->where('currency', $this->activeTab);
+                }
+            }
+            return $query->pluck('id');
+        });
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('New')
+                ->url(fn() => static::getResource()::getUrl('create'))
+                ->icon('heroicon-o-sparkles'),
+            Actions\Action::make('clear_cache_and_refresh')
+                ->label('Refresh')
+                ->tooltip('Clear cache and update records')
+                ->icon('heroicon-o-arrow-path')
+                ->color('secondary')
+                ->action(function () {
+                    SmartCacheManager::invalidate('Payment');
+                    Notification::make()
+                        ->title('Cache Cleared')
+                        ->body('The payment data has been refreshed.')
+                        ->success()
+                        ->send();
+                }),
+            Actions\Action::make('loadMoreMonths')
+                ->label('Load More Months')
+                ->tooltip('Add to  the number of months of requested data')
+                ->icon('heroicon-o-plus')
+                ->action(function () {
+                    $currentMonths = $this->getTableFilterState('monthly_data_payment')['months_to_load'] ?? 1;
+                    $this->tableFilters['monthly_data_payment']['months_to_load'] = $currentMonths + 1;
+                }),
+            ActionGroup::make(array_merge(
+                    [
+                        Actions\Action::make('Toggle Tabs')
+                            ->label($this->showTabs ? 'Hide Shortcuts' : 'Show Shortcuts')
+                            ->tooltip('Toggle Filter Shortcuts')
+                            ->color($this->showTabs ? 'secondary' : 'primary')
+                            ->icon($this->showTabs ? 'heroicon-m-eye-slash' : 'heroicon-s-eye')
+                            ->action('toggleTabs'),
+                        PrintAction::make(),
+                        ExcelImportAction::make()
+                            ->color("success"),
+                    ],
+                    $this->getInvisibleTableHeaderActions() ?? []
+                )
+            )
+        ];
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        return Payment::query()
+            ->whereIn('id', $this->getCachedPaymentIds())
+            ->with([
+                'order',
+                'paymentRequests',
+                'approvedPaymentRequests',
+                'reason',
+                'user',
+            ]);
+    }
+
+    private static function getOriginalTable()
+    {
+        return static::getResource()::getEloquentQuery();
+    }
+
+    private function registerTableRenderHook(): void
+    {
+        FilamentView::registerRenderHook(
+            TablesRenderHook::HEADER_BEFORE,
+            fn(): View => view('filament.resources.payment-resource.table-tabs', ['activeTab' => $this->activeTab]),
+            scopes: self::class,
+        );
     }
 }

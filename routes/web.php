@@ -25,11 +25,10 @@ Route::get('/clear', function () {
     Artisan::call('filament:clear-cached-components');
 
     // Rebuild caches
-    Artisan::call('config:cache');
-    Artisan::call('route:cache');
+//    Artisan::call('config:cache');
+//    Artisan::call('route:cache');
     Artisan::call('view:cache');
     Artisan::call('filament:cache-components');
-    Artisan::call('queue:restart');
 
     return response()->json([
         'message' => 'All caches including Filament caches and queue workers have been cleared successfully!',
@@ -46,6 +45,7 @@ Route::get('/cache', function () {
 
     return 'All caches including Filament caches have been rebuilt successfully!';
 });
+
 
 
 Route::middleware(['web', 'custom_auth'])->group(function () {

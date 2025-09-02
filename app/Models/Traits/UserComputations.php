@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 trait UserComputations
 {
     private static array $allowedDomains = [
-        'persolco.com', 'time-gr.com', 'solsuntrading.com', 'admont.ae',
+        'persolco.com', 'time-gr.com', 'solsuntrading.com', 'admont.ae', 'bazorg.com',
         'persoreco.com', 'zhuoyuanenergy.cn', 'persol.cn', 'qq.com'
     ];
 

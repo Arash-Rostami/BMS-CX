@@ -57,7 +57,7 @@ trait Table
             ->grow(false)
             ->tooltip(fn(?string $state): ?string => "Pro forma Invoice Date")
             ->date()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
 
@@ -74,6 +74,7 @@ trait Table
             ->badge()
             ->color('secondary')
             ->searchable()
+            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
             ->grow(false)
             ->sortable();
     }
@@ -103,6 +104,7 @@ trait Table
             ->label('Buyer')
             ->sortable()
             ->searchable()
+            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
             ->grow(false)
             ->color('secondary');
     }
@@ -157,7 +159,7 @@ trait Table
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'Gr: ' : '') . optional($record->grade)->name ?? null)
             ->tooltip('Grade')
             ->searchable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
 
@@ -172,7 +174,7 @@ trait Table
             ->color('secondary')
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '🚢 Part(s): ' : '') . $record->part)
             ->searchable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable();
     }
 
@@ -285,7 +287,7 @@ trait Table
             ->color('info')
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '⏲️ Qt: ' : '') . number_format($record->quantity ?? 0))
             ->grow(false)
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->searchable()
             ->sortable()
             ->badge();
@@ -300,7 +302,7 @@ trait Table
             ->color('info')
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '💰 Pri: ' : '') . number_format($record->price ?? 0))
             ->searchable()
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->grow(false)
             ->sortable()
             ->badge();
@@ -316,7 +318,7 @@ trait Table
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '°/•' : '') . $record->percentage ?? 0)
             ->tooltip('Percentage of payment')
             ->grow(false)
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->color('secondary')
             ->badge()
             ->html();
@@ -334,7 +336,7 @@ trait Table
                 $formattedResult = self::computeShareFromTotal($record);
                 return getTableDesign() === 'modern' ? '💳 Ttl: ' . $formattedResult : ' ' . $formattedResult;
             })
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->grow(false)
             ->badge();
     }

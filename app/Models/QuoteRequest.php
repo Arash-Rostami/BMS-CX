@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class QuoteRequest extends Model
 {
-    use HasFactory, SoftDeletes, QuoteRequestComputations;
+    use HasFactory;
+    use SoftDeletes;
+    use QuoteRequestComputations;
 
 
     protected $fillable = [
@@ -34,22 +36,14 @@ class QuoteRequest extends Model
         'extra' => 'json',
     ];
 
-    protected static function booted()
+    public function packaging()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
-        });
+        return $this->belongsTo(Packaging::class, 'packing');
     }
 
     public function product()
     {
         return $this->belongsTo(Product::class, 'commodity');
-    }
-
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
     }
 
     public function quoteTokens()
@@ -60,5 +54,17 @@ class QuoteRequest extends Model
     public function quotes()
     {
         return $this->hasMany(Quote::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($post) {
+            $post->user_id = auth()->id();
+        });
     }
 }

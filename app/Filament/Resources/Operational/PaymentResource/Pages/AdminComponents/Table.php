@@ -2,17 +2,13 @@
 
 namespace App\Filament\Resources\Operational\PaymentResource\Pages\AdminComponents;
 
-use App\Models\Order;
 use App\Models\PaymentRequest;
-use App\Models\ProformaInvoice;
 use App\Services\PaymentSummarizer;
 use Carbon\Carbon;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\Summarizers\Count;
-use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
@@ -22,6 +18,120 @@ use Illuminate\Support\HtmlString;
 
 trait Table
 {
+
+    /**
+     * @return TextColumn
+     */
+    public static function showAmount(): TextColumn
+    {
+        return TextColumn::make('amount')
+            ->label('Payable Amount')
+            ->color('info')
+            ->grow(false)
+            ->state(fn(?Model $record) => '💰 ' . $record->currency . ' ' . number_format($record->amount))
+            ->searchable()
+            ->sortable()
+            ->badge()
+            ->summarize(
+                Summarizer::make()
+                    ->label('Total')
+                    ->using(fn(Builder $query) => PaymentSummarizer::calculateTotalsByCurrency($query))
+            );
+    }
+
+    public static function showBalance(): TextColumn
+    {
+        return TextColumn::make('extra.remainderSum')
+            ->label('Amount Delta')
+            ->formatStateUsing(function (Model $record) {
+                $diff = self::calculateDiff($record);
+                return match (true) {
+                    ($diff > 0) => '🔺 Overpayment: +' . number_format($diff, 0),
+                    ($diff < 0) => '🔻 Underpayment: -' . number_format(abs($diff), 0),
+                    default => '⚖️ Balance',
+                };
+            })
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->grow(false)
+            ->color(function (Model $record) {
+                $diff = self::calculateDiff($record);
+                return match (true) {
+                    ($diff > 0) => 'danger',
+                    ($diff < 0) => 'warning',
+                    default => 'info',
+                };
+            })
+            ->badge();
+    }
+
+    public static function showContractBuyer(): TextColumn
+    {
+        return TextColumn::make('buyer')
+            ->label('Buyer')
+            ->grow(false)
+            ->state(function ($record) {
+                $paymentRequest = optional($record->paymentRequests)->first();
+                if ($paymentRequest) {
+                    if ($paymentRequest->order_id) {
+                        return $paymentRequest->order?->proformaInvoice?->buyer?->name ?? 'N/A';
+                    }
+                    return $paymentRequest->associatedProformaInvoices()->first()?->buyer?->name ?? 'N/A';
+                }
+                return 'N/A';
+            })
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->searchable(query: function ($query, string $search) {
+                return $query->where(function ($q) use ($search) {
+                    $q->whereHas('paymentRequests.order.proformaInvoice.buyer', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    })->orWhereHas('paymentRequests.associatedProformaInvoices.buyer', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
+                });
+            });
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showCreator(): TextColumn
+    {
+        return TextColumn::make('user.fullName')
+            ->label('Created by')
+            ->badge()
+            ->color('secondary')
+            ->searchable(['first_name', 'last_name'])
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->sortable();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showCurrency(): TextColumn
+    {
+        return TextColumn::make('paymentRequests.currency')
+            ->label('💱')
+            ->color('secondary')
+            ->grow(false)
+            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showDate(): TextColumn
+    {
+        return TextColumn::make('date')
+            ->label('Transferring Date')
+            ->color('secondary')
+            ->formatStateUsing(fn($state) => $state ? Carbon::parse($state)->format('F j, Y') : null)
+            ->sortable()
+            ->searchable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->badge();
+    }
 
     public static function showID(): TextColumn
     {
@@ -39,42 +149,18 @@ trait Table
             ->searchable();
     }
 
-    public static function showPaymentRequestID(): TextColumn
-    {
-        return TextColumn::make('paymentRequests.reference_number')
-            ->label('Pay. Req. Ref. No.')
-            ->weight(FontWeight::ExtraLight)
-            ->sortable()
-            ->grow(false)
-            ->toggleable()
-            ->searchable();
-    }
-
     /**
      * @return TextColumn
      */
-    public static function showTimeGap(): TextColumn
+    public static function showPayer(): TextColumn
     {
-        return TextColumn::make('id')
-            ->label('Deadline Delta')
-            ->formatStateUsing(function (Model $record) {
-
-                if ($record->paymentRequests) {
-                    $deadlines = $record->paymentRequests->pluck('deadline')->filter();
-
-                    if ($deadlines->isNotEmpty()) {
-                        $nearestDeadline = $deadlines->min();
-                        return static::calculateTimeGap($record->created_at, $nearestDeadline);
-                    }
-                    return 'Undefined';
-                }
-                return 'Undefined';
-            })
-            ->grow(false)
-            ->color('info')
+        return TextColumn::make('payer')
+            ->color('secondary')
+            ->sortable()
+            ->searchable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
-
 
     /**
      * @return TextColumn
@@ -99,86 +185,6 @@ trait Table
             ->limit(50)
             ->tooltip(fn(Model $record) => trim(explode("💢", self::getCustomizedDisplayName($record))[1]))
             ->state(fn(Model $record) => self::getCustomizedDisplayName($record));
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showPaymentRequestType(): TextColumn
-    {
-        return TextColumn::make('paymentRequests.type_of_payment')
-            ->label('Type')
-            ->grow(false)
-            ->formatStateUsing(fn($state) => PaymentRequest::$typesOfPayment[$state])
-            ->sortable()
-            ->searchable()
-            ->badge();
-    }
-
-    public static function showContractBuyer(): TextColumn
-    {
-        return TextColumn::make('buyer')
-            ->label('Buyer')
-            ->grow(false)
-            ->state(function ($record) {
-                $paymentRequest = optional($record->paymentRequests)->first();
-                if ($paymentRequest) {
-                    if ($paymentRequest->order_id) {
-                        return $paymentRequest->order?->proformaInvoice?->buyer?->name ?? 'N/A';
-                    }
-                    return $paymentRequest->associatedProformaInvoices()->first()?->buyer?->name ?? 'N/A';
-                }
-                return 'N/A';
-            })
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->searchable(query: function ( $query, string $search) {
-                return $query->where(function ($q) use ($search) {
-                    $q->whereHas('paymentRequests.order.proformaInvoice.buyer', function ($q2) use ($search) {
-                        $q2->where('name', 'like', "%{$search}%");
-                    })->orWhereHas('paymentRequests.associatedProformaInvoices.buyer', function ($q2) use ($search) {
-                        $q2->where('name', 'like', "%{$search}%");
-                    });
-                });
-            });
-    }
-
-
-    /**
-     * @return TextColumn
-     */
-    public static function showPaymentRequestDep(): TextColumn
-    {
-        return TextColumn::make('paymentRequests.department.code')
-            ->label('Department')
-            ->tooltip(function (Model $record) {
-                $firstRequest = optional($record->paymentRequests)->first();
-                return 'Requester: ' . optional($firstRequest)->extra['made_by'] ?? null;
-            })
-            ->grow(false)
-            ->sortable()
-            ->searchable(query: function ($query, string $search) {
-                return $query->whereHas('paymentRequests', function ($paymentRequestQuery) use ($search) {
-                    $paymentRequestQuery->whereHas('department', function ($departmentQuery) use ($search) {
-                        $departmentQuery->where('name', 'like', '%' . $search . '%')
-                            ->orWhere('code', 'like', '%' . $search . '%');
-                    });
-                });
-            })
-            ->badge();
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showPaymentRequestCostCenter(): TextColumn
-    {
-        return TextColumn::make('paymentRequests.costCenter.code')
-            ->label('Cost Center')
-            ->grow()
-            ->toggleable()
-            ->sortable()
-            ->searchable()
-            ->badge();
     }
 
     /**
@@ -209,19 +215,16 @@ trait Table
             });
     }
 
-
     /**
      * @return TextColumn
      */
-    public static function showTransferredAmount(): TextColumn
+    public static function showPaymentRequestCostCenter(): TextColumn
     {
-        return TextColumn::make('amount')
-            ->label('Paid Amount')
-            ->color('warning')
-            ->grow(false)
-            ->state(fn(?Model $record) => "💰 Sum: {$record->currency} " . number_format($record->amount) . " transferred by {$record->payer}")
+        return TextColumn::make('paymentRequests.costCenter.code')
+            ->label('Cost Center')
+            ->grow()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->sortable()
-            ->toggleable()
             ->searchable()
             ->badge();
     }
@@ -229,63 +232,50 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showTimeStamp(): TextColumn
+    public static function showPaymentRequestDep(): TextColumn
     {
-        return TextColumn::make('created_at')
-            ->label('Creation Time')
-            ->icon('heroicon-s-calendar-days')
-            ->dateTime()
+        return TextColumn::make('paymentRequests.department.code')
+            ->label('Department')
+            ->tooltip(function (Model $record) {
+                $firstRequest = optional($record->paymentRequests)->first();
+                return 'Requester: ' . optional($firstRequest)->extra['made_by'] ?? null;
+            })
+            ->grow(false)
             ->sortable()
-            ->alignRight()
-            ->toggleable(isToggledHiddenByDefault: true);
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showPayer(): TextColumn
-    {
-        return TextColumn::make('payer')
-            ->color('secondary')
-            ->sortable()
-            ->searchable()
-            ->toggleable()
+            ->searchable(query: function ($query, string $search) {
+                return $query->whereHas('paymentRequests', function ($paymentRequestQuery) use ($search) {
+                    $paymentRequestQuery->whereHas('department', function ($departmentQuery) use ($search) {
+                        $departmentQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('code', 'like', '%' . $search . '%');
+                    });
+                });
+            })
             ->badge();
     }
 
-    /**
-     * @return TextColumn
-     */
-    public static function showAmount(): TextColumn
+    public static function showPaymentRequestID(): TextColumn
     {
-        return TextColumn::make('amount')
-            ->label('Payable Amount')
-            ->color('info')
-            ->grow(false)
-            ->state(fn(?Model $record) => '💰 ' . $record->currency . ' ' . number_format($record->amount))
-            ->searchable()
+        return TextColumn::make('paymentRequests.reference_number')
+            ->label('Pay. Req. Ref. No.')
+            ->weight(FontWeight::ExtraLight)
             ->sortable()
-            ->badge()
-            ->summarize(
-                Summarizer::make()
-                    ->label('Total')
-                    ->using(fn(Builder $query) => PaymentSummarizer::calculateTotalsByCurrency($query))
-            );
-//            ->summarize([
-//                Sum::make()->label('Total'),
-//            ]);
+            ->grow(false)
+            ->toggleable()
+            ->searchable();
     }
 
-
     /**
      * @return TextColumn
      */
-    public static function showCurrency(): TextColumn
+    public static function showPaymentRequestType(): TextColumn
     {
-        return TextColumn::make('paymentRequests.currency')
-            ->label('💱')
-            ->color('secondary')
+        return TextColumn::make('paymentRequests.type_of_payment')
+            ->label('Type')
             ->grow(false)
+            ->formatStateUsing(fn($state) => PaymentRequest::$typesOfPayment[$state])
+            ->sortable()
+            ->searchable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
 
@@ -299,104 +289,7 @@ trait Table
             ->color('secondary')
             ->grow(true)
             ->formatStateUsing(fn($state) => $state ? number_format($state, 2) : 'N/A')
-            ->badge();
-    }
-
-
-    /**
-     * @return TextColumn
-     */
-    public static function showTotalAmount(): TextColumn
-    {
-        return TextColumn::make('total_amount_display')
-            ->label('Total')
-            ->color('secondary')
-            ->getStateUsing(function ($record) {
-                $paymentRequests = $record->paymentRequests;
-
-                if ($paymentRequests->isEmpty()) {
-                    return 'N/A';
-                }
-
-                $total = $paymentRequests->sum('total_amount');
-                $requested = $paymentRequests->sum('requested_amount');
-                $remaining = $total - $requested;
-
-                $totalFormatted = number_format($total, 2);
-                $remainingFormatted = number_format($remaining, 2);
-
-                return "{$totalFormatted} ┆ Remaining: {$remainingFormatted}";
-            })
-            ->grow(false)
-            ->badge();
-    }
-
-
-    /**
-     * @return TextColumn
-     */
-    public static function showTransactionID(): TextColumn
-    {
-        return TextColumn::make('transaction_id')
-            ->label('Transaction ID')
-            ->color('secondary')
-            ->sortable()
-            ->searchable()
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->badge();
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showCreator(): TextColumn
-    {
-        return TextColumn::make('user.fullName')
-            ->label('Created by')
-            ->badge()
-            ->color('secondary')
-            ->searchable(['first_name', 'last_name'])
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->sortable();
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showDate(): TextColumn
-    {
-        return TextColumn::make('date')
-            ->label('Transferring Date')
-            ->color('secondary')
-            ->formatStateUsing(fn($state) => $state ? Carbon::parse($state)->format('F j, Y') : null)
-            ->sortable()
-            ->searchable()
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->badge();
-    }
-
-
-    public static function showBalance(): TextColumn
-    {
-        return TextColumn::make('extra.remainderSum')
-            ->label('Amount Delta')
-            ->formatStateUsing(function (Model $record) {
-                $diff = self::calculateDiff($record);
-                return match (true) {
-                    ($diff > 0) => '🔺 Overpayment: +' . number_format($diff, 0),
-                    ($diff < 0) => '🔻 Underpayment: -' . number_format(abs($diff), 0),
-                    default => '⚖️ Balance',
-                };
-            })
-            ->grow(false)
-            ->color(function (Model $record) {
-                $diff = self::calculateDiff($record);
-                return match (true) {
-                    ($diff > 0) => 'danger',
-                    ($diff < 0) => 'warning',
-                    default => 'info',
-                };
-            })
+            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
             ->badge();
     }
 
@@ -439,21 +332,135 @@ trait Table
     }
 
     /**
+     * @return TextColumn
+     */
+    public static function showTimeGap(): TextColumn
+    {
+        return TextColumn::make('id')
+            ->label('Deadline Delta')
+            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
+            ->formatStateUsing(function (Model $record) {
+
+                if ($record->paymentRequests) {
+                    $deadlines = $record->paymentRequests->pluck('deadline')->filter();
+
+                    if ($deadlines->isNotEmpty()) {
+                        $nearestDeadline = $deadlines->min();
+                        return static::calculateTimeGap($record->created_at, $nearestDeadline);
+                    }
+                    return 'Undefined';
+                }
+                return 'Undefined';
+            })
+            ->grow(false)
+            ->color('info')
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showTimeStamp(): TextColumn
+    {
+        return TextColumn::make('created_at')
+            ->label('Creation Time')
+            ->icon('heroicon-s-calendar-days')
+            ->dateTime()
+            ->sortable()
+            ->alignRight()
+            ->toggleable(isToggledHiddenByDefault: true);
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showTotalAmount(): TextColumn
+    {
+        return TextColumn::make('total_amount_display')
+            ->label('Total')
+            ->color('secondary')
+            ->getStateUsing(function ($record) {
+                $paymentRequests = $record->paymentRequests;
+
+                if ($paymentRequests->isEmpty()) {
+                    return 'N/A';
+                }
+
+                $total = $paymentRequests->sum('total_amount');
+                $requested = $paymentRequests->sum('requested_amount');
+                $remaining = $total - $requested;
+
+                $totalFormatted = number_format($total, 2);
+                $remainingFormatted = number_format($remaining, 2);
+
+                return "{$totalFormatted} ┆ Remaining: {$remainingFormatted}";
+            })
+            ->grow(false)
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showTransactionID(): TextColumn
+    {
+        return TextColumn::make('transaction_id')
+            ->label('Transaction ID')
+            ->color('secondary')
+            ->sortable()
+            ->searchable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showTransferredAmount(): TextColumn
+    {
+        return TextColumn::make('amount')
+            ->label('Paid Amount')
+            ->color('warning')
+            ->grow(false)
+            ->state(fn(?Model $record) => "💰 Sum: {$record->currency} " . number_format($record->amount) . " transferred by {$record->payer}")
+            ->sortable()
+            ->toggleable()
+            ->searchable()
+            ->badge();
+    }
+
+    /**
+     * @return ImageEntry
+     */
+    public static function viewAttachments(): ImageEntry
+    {
+        return ImageEntry::make('file_path')
+            ->label('')
+            ->extraAttributes(fn($state) => $state ? [
+                'class' => 'cursor-pointer',
+                'title' => '👁️‍',
+                'onclick' => "showImage('" . url($state) . "')",
+            ] : [])
+            ->disk('filament')
+            ->alignCenter()
+            ->visibility('public');
+    }
+
+    /**
      * @return TextEntry
      */
-    public static function viewOrder(): TextEntry
+    public static function viewCostCenter(): TextEntry
     {
-        return TextEntry::make('created_at')
-            ->label('Order')
-            ->state(function (Model $record): string {
-                return $record->paymentRequests->map(
-                    function ($paymentRequest) {
-                        if ($paymentRequest->order_id) {
-                            return $paymentRequest->order->invoice_number;
-                        }
-                        return "Unrelated to orders, but related to PI No. {$paymentRequest->proforma_invoice_number}";
-                    }
-                )->join(', ') ?? 'N/A';
+        return TextEntry::make('paymentRequests')
+            ->label('Cost Center')
+            ->formatStateUsing(function (?Model $record): ?string {
+                $costCenters = optional($record->paymentRequests)
+                    ->pluck('costCenter.code')
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                return !empty($costCenters) ? implode(', ', $costCenters) : null;
             })
             ->badge();
     }
@@ -461,26 +468,11 @@ trait Table
     /**
      * @return TextEntry
      */
-    public static function viewPaymentRequest(): TextEntry
+    public static function viewDate(): TextEntry
     {
-        return TextEntry::make('paymentRequests.reference_number')
-            ->label('Payment request')
-            ->badge();
-    }
-
-    public static function viewPaymentRequester(): TextEntry
-    {
-        return TextEntry::make('paymentRequests')
-            ->label('Requester')
-            ->formatStateUsing(function (?Model $record): ?string {
-                $madeByValues = optional($record->paymentRequests)
-                    ->pluck('extra.made_by')
-                    ->filter()
-                    ->unique()
-                    ->toArray();
-
-                return !empty($madeByValues) ? implode(', ', $madeByValues) : null;
-            })
+        return TextEntry::make('date')
+            ->date()
+            ->label('Transferring Date')
             ->badge();
     }
 
@@ -506,42 +498,39 @@ trait Table
     /**
      * @return TextEntry
      */
-    public static function viewCostCenter(): TextEntry
+    public static function viewOrder(): TextEntry
     {
-        return TextEntry::make('paymentRequests')
-            ->label('Cost Center')
-            ->formatStateUsing(function (?Model $record): ?string {
-                $costCenters = optional($record->paymentRequests)
-                    ->pluck('costCenter.code')
-                    ->filter()
-                    ->unique()
-                    ->toArray();
-
-                return !empty($costCenters) ? implode(', ', $costCenters) : null;
+        return TextEntry::make('created_at')
+            ->label('Order')
+            ->state(function (Model $record): string {
+                return $record->paymentRequests->map(
+                    function ($paymentRequest) {
+                        if ($paymentRequest->order_id) {
+                            return $paymentRequest->order->invoice_number;
+                        }
+                        return "Unrelated to orders, but related to PI No. {$paymentRequest->proforma_invoice_number}";
+                    }
+                )->join(', ') ?? 'N/A';
             })
             ->badge();
     }
 
-
     /**
      * @return TextEntry
      */
-    public static function viewPaymentRequestReason(): TextEntry
+    public static function viewPayer(): TextEntry
     {
-        return TextEntry::make('paymentRequests.reason.reason')
-            ->label('Payment Purpose')
-//            ->formatStateUsing(fn(Model $record) => ucwords($record->paymentRequests->type_of_payment))
+        return TextEntry::make('payer')
             ->badge();
     }
 
     /**
      * @return TextEntry
      */
-    public static function viewPaymentType(): TextEntry
+    public static function viewPaymentRequest(): TextEntry
     {
-        return TextEntry::make('payment_request')
-            ->label('Payment Type')
-            ->formatStateUsing(fn(Model $record) => ucwords($record->paymentRequests->map(fn($pr) => $pr->type_of_payment)->join(', ')))
+        return TextEntry::make('paymentRequests.reference_number')
+            ->label('Payment request')
             ->badge();
     }
 
@@ -564,19 +553,38 @@ trait Table
     /**
      * @return TextEntry
      */
-    public static function viewPayer(): TextEntry
+    public static function viewPaymentRequestReason(): TextEntry
     {
-        return TextEntry::make('payer')
+        return TextEntry::make('paymentRequests.reason.reason')
+            ->label('Payment Purpose')
+//            ->formatStateUsing(fn(Model $record) => ucwords($record->paymentRequests->type_of_payment))
+            ->badge();
+    }
+
+    public static function viewPaymentRequester(): TextEntry
+    {
+        return TextEntry::make('paymentRequests')
+            ->label('Requester')
+            ->formatStateUsing(function (?Model $record): ?string {
+                $madeByValues = optional($record->paymentRequests)
+                    ->pluck('extra.made_by')
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                return !empty($madeByValues) ? implode(', ', $madeByValues) : null;
+            })
             ->badge();
     }
 
     /**
      * @return TextEntry
      */
-    public static function viewTransferredAmount(): TextEntry
+    public static function viewPaymentType(): TextEntry
     {
-        return TextEntry::make('amount')
-            ->state(fn(?Model $record) => '💰 Sum: ' . $record->currency . ' ' . number_format($record->amount))
+        return TextEntry::make('payment_request')
+            ->label('Payment Type')
+            ->formatStateUsing(fn(Model $record) => ucwords($record->paymentRequests->map(fn($pr) => $pr->type_of_payment)->join(', ')))
             ->badge();
     }
 
@@ -593,28 +601,10 @@ trait Table
     /**
      * @return TextEntry
      */
-    public static function viewDate(): TextEntry
+    public static function viewTransferredAmount(): TextEntry
     {
-        return TextEntry::make('date')
-            ->date()
-            ->label('Transferring Date')
+        return TextEntry::make('amount')
+            ->state(fn(?Model $record) => '💰 Sum: ' . $record->currency . ' ' . number_format($record->amount))
             ->badge();
-    }
-
-    /**
-     * @return ImageEntry
-     */
-    public static function viewAttachments(): ImageEntry
-    {
-        return ImageEntry::make('file_path')
-            ->label('')
-            ->extraAttributes(fn($state) => $state ? [
-                'class' => 'cursor-pointer',
-                'title' => '👁️‍',
-                'onclick' => "showImage('" . url($state) . "')",
-            ] : [])
-            ->disk('filament')
-            ->alignCenter()
-            ->visibility('public');
     }
 }

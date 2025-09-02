@@ -4,8 +4,6 @@ namespace App\Filament\Resources\Operational\BalanceResource\Pages;
 
 use App\Filament\Resources\BalanceResource;
 use App\Models\Balance;
-use App\Models\Department;
-use App\Models\Payment;
 use Filament\Actions;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ManageRecords;
@@ -14,18 +12,14 @@ class ManageBalances extends ManageRecords
 {
     protected static string $resource = BalanceResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\CreateAction::make()
-                ->label('New')
-                ->icon('heroicon-o-sparkles')
-                ->createAnother(false),
-        ];
-    }
+    public bool $showTabs;
 
     public function getTabs(): array
     {
+        if (!$this->showTabs) {
+            return [];
+        }
+
         $counts = Balance::getTabCounts();
 
         $tabs = [
@@ -43,5 +37,20 @@ class ManageBalances extends ManageRecords
         }
 
         return $tabs;
+    }
+
+    public function mount(): void
+    {
+        $this->showTabs = (cachedUser()->info['filterDesign'] ?? 'hide') == 'show';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make()
+                ->label('New')
+                ->icon('heroicon-o-sparkles')
+                ->createAnother(false),
+        ];
     }
 }

@@ -7,20 +7,14 @@ use Illuminate\Support\Facades\Cache;
 
 class AttachmentCreationService
 {
-    public static function createFromExisting(int $proformaInvoiceId, $col = 'proforma_invoice_id')
+    public static function createFromExisting(int $newRecordId, string $col = 'proforma_invoice_id'): void
     {
-        if (Cache::has('available_attachments')) {
-            $oldAttachment = Attachment::find(Cache::get('available_attachments'));
+        $oldAttachmentId = Cache::pull('available_attachments');
+        if (!$oldAttachmentId) return;
 
-            if ($oldAttachment) {
-                Attachment::create([
-                    'file_path' => $oldAttachment->file_path,
-                    'name' => $oldAttachment->name,
-                    'user_id' => auth()->id(),
-                    $col => $proformaInvoiceId,
-                ]);
-            }
-            Cache::forget('available_attachments');
-        }
+        $src = Attachment::find((int)$oldAttachmentId, ['file_path', 'name']);
+        if (!$src) return;
+
+        $src->replicate()->forceFill(['user_id' => auth()->id(), $col => $newRecordId])->save();
     }
 }

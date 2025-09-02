@@ -80,13 +80,11 @@ class AdminPanelProvider extends PanelProvider
                 NavigationItem::make('About us')
                     ->label('Case Summary')
                     ->url(fn() => route('case-summary'), shouldOpenInNewTab: true)
-                    ->badge("+ AI", 'success')
 //                    ->visible(fn() => auth()->check() && (isUserAdmin() || isUserManager()))
                     ->icon('heroicon-c-magnifying-glass'),
                 NavigationItem::make('cost-overview')
                     ->label('Cost Overview')
                     ->url(fn() => route('cost-calculation'), shouldOpenInNewTab: true)
-                    ->badge(fn (): string => (string) CostCalculation::count(), 'success')
 //                    ->visible(fn() => auth()->check() && (isUserAdmin() || isUserManager()))
                     ->icon('heroicon-o-calculator'),
             ])

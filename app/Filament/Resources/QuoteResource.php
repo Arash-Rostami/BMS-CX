@@ -5,24 +5,18 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\Operational\QuoteResource\Pages\Admin;
 use App\Filament\Resources\QuoteResource\Pages;
 use App\Filament\Resources\QuoteResource\RelationManagers;
-use App\Models\DeliveryTerm;
-use App\Models\Packaging;
 use App\Models\Quote;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\RestoreBulkAction;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Cache;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class QuoteResource extends Resource
@@ -34,22 +28,6 @@ class QuoteResource extends Resource
     protected static ?string $navigationGroup = 'Operational Data';
 
     protected static ?int $navigationSort = 9;
-
-
-    public static function form(Form $form): Form
-    {
-        return $form->schema([]);
-    }
-
-    public static function table(Table $table): Table
-    {
-
-        $table = self::configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? self::getModernLayout($table)
-            : self::getClassicLayout($table);
-    }
 
     public static function configureCommonTableSettings(Table $table): Table
     {
@@ -76,6 +54,11 @@ class QuoteResource extends Resource
             ]);
     }
 
+    public static function form(Form $form): Form
+    {
+        return $form->schema([]);
+    }
+
     public static function getClassicLayout(Table $table): Table
     {
         return $table
@@ -96,6 +79,14 @@ class QuoteResource extends Resource
                 Admin::showTimeStamp(),
             ])
             ->striped();
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
     }
 
     public static function getModernLayout(Table $table): Table
@@ -128,10 +119,20 @@ class QuoteResource extends Resource
             ]);
     }
 
-
-    public static function getRelations(): array
+    public static function getNavigationBadge(): ?string
     {
-        return [];
+        $cacheKey = 'total_count_' . str('Quote')->slug();
+
+        $count = Cache::remember($cacheKey, now()->addHours(12), function () {
+            return static::getModel()::count();
+        });
+
+        return $count > 0 ? (string)$count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'primary';
     }
 
     public static function getPages(): array
@@ -144,12 +145,9 @@ class QuoteResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): Builder
+    public static function getRelations(): array
     {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
+        return [];
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -157,15 +155,13 @@ class QuoteResource extends Resource
         return !isSimpleSidebar();
     }
 
-
-    public static function getNavigationBadge(): ?string
+    public static function table(Table $table): Table
     {
 
-        return static::getModel()::count();
-    }
+        $table = self::configureCommonTableSettings($table);
 
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'primary';
+        return (getTableDesign() != 'classic')
+            ? self::getModernLayout($table)
+            : self::getClassicLayout($table);
     }
 }

@@ -7,48 +7,13 @@ use App\Models\User;
 use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 
 trait BalanceComputations
 {
-
-    /***** Helpers *****/
-    public static function getTabCounts(): array
-    {
-        $user = auth()->user();
-        $userId = $user->id;
-
-        return Cache::remember("balance_tab_counts_{$userId}", 60, function () use ($user) {
-            $filteredQuery = self::filterByUserDepartment($user);
-
-            $totalCount = (clone $filteredQuery)->count();
-
-            $departmentCounts = $filteredQuery
-                ->with('department:id,code')
-                ->selectRaw('department_id, COUNT(*) as record_count')
-                ->groupBy('department_id')
-                ->get();
-
-            $tabCounts = [];
-            foreach ($departmentCounts as $balance) {
-                if ($balance->department && $balance->department_id != 0) {
-                    $tabCounts[] = [
-                        'code' => $balance->department->code,
-                        'count' => $balance->record_count,
-                        'department_id' => $balance->department_id,
-                    ];
-                }
-            }
-
-            return [
-                'total' => $totalCount,
-                'departments' => $tabCounts,
-            ];
-        });
-    }
-
     public static function getGroupedRecipientOptions(): array
     {
         return Cache::remember('recipient_filter_options_' . auth()->id(), 60, function () {
@@ -88,50 +53,6 @@ trait BalanceComputations
         });
     }
 
-    public static function isBaseColumnUpdatable($user): bool
-    {
-        return isUserManager() || isUserAdmin();
-    }
-
-    private static function sendBaseApprovalNotification(Balance $balance)
-    {
-        $authorizedUsers = User::getUsersByRoles(['admin', 'manager']);
-        $proposedBase = $balance->extra['proposed_base'] ?? 0;
-        $recipientName = $balance->recipient_name;
-        $formattedAmount = number_format($proposedBase, 2);
-
-        $notificationBody = "The balance update for {$recipientName}, with a proposed credit of {$formattedAmount}, is awaiting your approval.";
-
-        foreach ($authorizedUsers as $user) {
-            Notification::make()
-                ->title('Balance Credit Approval Required')
-                ->body($notificationBody)
-                ->actions([
-                    Action::make('approve')
-                        ->label('Approve')
-                        ->button()
-                        ->icon('heroicon-o-check-circle')
-                        ->iconButton()
-                        ->color('success')
-                        ->markAsRead()
-                        ->close()
-                        ->dispatch('BalanceApprovedEvent', [$balance->id])
-                        ->button(),
-                    Action::make('reject')
-                        ->label('Reject')
-                        ->button()
-                        ->icon('heroicon-o-x-circle')
-                        ->iconButton()
-                        ->color('danger')
-                        ->markAsRead()
-                        ->close()
-                        ->dispatch('BalanceRejectedEvent', [$balance->id])
-                        ->button(),
-                ])
-                ->sendToDatabase($user);
-        }
-    }
-
     /***** Accessors *****/
 
     public function getRecipientNameAttribute()
@@ -145,9 +66,50 @@ trait BalanceComputations
         };
     }
 
+    /***** Helpers *****/
+
+    public static function getTabCounts(): array
+    {
+        $user = auth()->user();
+        $userId = $user->id;
+
+        return Cache::remember("balance_tab_counts_{$userId}", 60, function () use ($user) {
+            $filteredQuery = self::filterByUserDepartment($user);
+
+            $totalCount = (clone $filteredQuery)->count();
+
+            $departmentCounts = $filteredQuery
+                ->with('department:id,code')
+                ->selectRaw('department_id, COUNT(*) as record_count')
+                ->groupBy('department_id')
+                ->get();
+
+            $tabCounts = [];
+            foreach ($departmentCounts as $balance) {
+                if ($balance->department && $balance->department_id != 0) {
+                    $tabCounts[] = [
+                        'code' => $balance->department->code,
+                        'count' => $balance->record_count,
+                        'department_id' => $balance->department_id,
+                    ];
+                }
+            }
+
+            return [
+                'total' => $totalCount,
+                'departments' => $tabCounts,
+            ];
+        });
+    }
+
     public function getTotalAttribute()
     {
         return $this->base + $this->payment;
+    }
+
+    public static function isBaseColumnUpdatable($user): bool
+    {
+        return isUserManager() || isUserAdmin();
     }
 
     /***** Local Scopes *****/
@@ -205,5 +167,59 @@ trait BalanceComputations
                 ->whereColumn('balances.payment', 'payments.amount')
                 ->whereRaw('ABS(TIMESTAMPDIFF(SECOND, balances.created_at, payments.created_at)) <= 1');
         });
+    }
+
+    protected function recipientName(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => match ($this->category) {
+                'suppliers' => 'supplier:' . $this->supplier?->name,
+                'contractors' => 'contractor:' . $this->contractor?->name,
+                'payees' => 'beneficiary:' . $this->beneficiary?->name,
+                default => 'N/A',
+            },
+        );
+    }
+
+    private static function sendBaseApprovalNotification(Balance $balance)
+    {
+        $authorizedUsers = Cache::remember('authorized_notification_users', now()->addHours(12), function () {
+            return User::getUsersByRoles(['admin', 'manager']);
+        });
+
+        $proposedBase = $balance->extra['proposed_base'] ?? 0;
+        $recipientName = $balance->recipient_name;
+        $formattedAmount = number_format($proposedBase, 2);
+
+        $notificationBody = "The balance update for {$recipientName}, with a proposed credit of {$formattedAmount}, is awaiting your approval.";
+
+        foreach ($authorizedUsers as $user) {
+            Notification::make()
+                ->title('Balance Credit Approval Required')
+                ->body($notificationBody)
+                ->actions([
+                    Action::make('approve')
+                        ->label('Approve')
+                        ->button()
+                        ->icon('heroicon-o-check-circle')
+                        ->iconButton()
+                        ->color('success')
+                        ->markAsRead()
+                        ->close()
+                        ->dispatch('BalanceApprovedEvent', [$balance->id])
+                        ->button(),
+                    Action::make('reject')
+                        ->label('Reject')
+                        ->button()
+                        ->icon('heroicon-o-x-circle')
+                        ->iconButton()
+                        ->color('danger')
+                        ->markAsRead()
+                        ->close()
+                        ->dispatch('BalanceRejectedEvent', [$balance->id])
+                        ->button(),
+                ])
+                ->sendToDatabase($user);
+        }
     }
 }

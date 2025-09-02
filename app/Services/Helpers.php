@@ -1,10 +1,22 @@
 <?php
 
 use App\Services\Traits\BpCredentials;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 
+
+function cachedUser(): ?Authenticatable
+{
+    static $user = null;
+
+    if ($user === null) {
+        $user = auth()->user();
+    }
+
+    return $user;
+}
 
 function capitalizeFirstLetters(string $text): string
 {
@@ -73,12 +85,12 @@ function getCurrencySymbols($currency)
 
 function getTableDesign()
 {
-    return data_get(optional(auth()->user()->info), 'tableDesign');
+    return data_get(optional(cachedUser()->info), 'tableDesign');
 }
 
 function getMenuDesign()
 {
-    return data_get(optional(auth()->user()->info), 'menuDesign');
+    return data_get(optional(cachedUser()->info), 'menuDesign');
 }
 
 function isModernDesign()
@@ -93,14 +105,14 @@ function isMenuTop()
 
 function isSimpleSidebar()
 {
-    $user = auth()->user();
+    $user = cachedUser();
 
     return $user && (($user->info['sideBarItems'] ?? 'show') === 'hide');
 }
 
 function isFilterSelected()
 {
-    $user = auth()->user();
+    $user = cachedUser();
 
     return ($user && ($user->info['filterDesign'] ?? 'hide') == 'show');
 }
@@ -121,10 +133,9 @@ function initializeBp($key)
 
 function isColorSelected()
 {
-    $user = auth()->user();
+    $user = cachedUser();
 
     return ($user && ($user->info['shadeDesign'] ?? 'hide') === 'show');
-
 }
 
 function isShadeSelected($bg)
@@ -132,53 +143,46 @@ function isShadeSelected($bg)
     return (isColorSelected() ? $bg : '') ?? null;
 }
 
-
 function isUserAdmin()
 {
-    return auth()->user()->role === 'admin';
+    return optional(cachedUser())->role === 'admin';
 }
-
 
 function isUserManager()
 {
-    return auth()->user()->role === 'manager';
+    return optional(cachedUser())->role === 'manager';
 }
-
 
 function isUserAgent()
 {
-    return auth()->user()->role === 'agent';
+    return optional(cachedUser())->role === 'agent';
 }
 
 function isUserJnrAccountant()
 {
-    $user = auth()->user();
-    return $user->role === 'accountant' && ($user->info['position'] ?? null) == 'jnr';
+    $user = cachedUser();
+    return $user && $user->role === 'accountant' && ($user->info['position'] ?? null) == 'jnr';
 }
 
 function isUserSnrAccountant()
 {
-    $user = auth()->user();
-    return $user->role === 'accountant' && ($user->info['position'] ?? null) == 'snr';
+    $user = cachedUser();
+    return $user && $user->role === 'accountant' && ($user->info['position'] ?? null) == 'snr';
 }
-
 
 function isUserAccountant()
 {
-    $user = auth()->user();
-
-    return $user->role === 'accountant';
+    return optional(cachedUser())->role === 'accountant';
 }
-
 
 function isUserPartner()
 {
-    return auth()->user()->role === 'partner';
+    return optional(cachedUser())->role === 'partner';
 }
 
 function isUserCXHead()
 {
-    $user = auth()->user();
+    $user = cachedUser();
 
     if (!$user || !isset($user->role, $user->info['department'], $user->info['position'])) {
         return false;
@@ -186,7 +190,6 @@ function isUserCXHead()
 
     return $user->role === 'agent' && $user->info['department'] == 6 && $user->info['position'] == 'mdr';
 }
-
 
 function numberify($number)
 {
@@ -221,7 +224,6 @@ function showCurrencyWithoutHTMLTags($record)
 {
     return strip_tags(showCurrencies()[$record]);
 }
-
 
 function showDelimiter(float|int $number, ?string $currency = null)
 {

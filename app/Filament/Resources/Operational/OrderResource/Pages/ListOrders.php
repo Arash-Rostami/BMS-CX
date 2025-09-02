@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
 use App\Models\Order;
+use App\Services\SmartCacheManager;
 use App\Services\TableObserver;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintBulkAction;
@@ -11,6 +12,7 @@ use Carbon\Carbon;
 use EightyNine\ExcelImport\ExcelImportAction;
 use Filament\Actions;
 use Filament\Actions\CreateAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\IconPosition;
@@ -53,11 +55,7 @@ class ListOrders extends ListRecords
     public bool $showTabs;
     public bool $showActionsAhead = true;
 
-    protected $listeners = [
-        'setShipmentStatusFilter',
-        'refreshPage' => '$refresh',
-        'updateActiveTab'
-    ];
+    protected $listeners = ['setShipmentStatusFilter', 'refreshPage' => '$refresh', 'updateActiveTab'];
 
     public function buildBulkDeleteAction(): DeleteBulkAction
     {
@@ -147,13 +145,7 @@ class ListOrders extends ListRecords
     public function buildTabs(): array
     {
         $counts = Order::getTabCounts();
-        $tabConfigs = [
-            [null, 'All', 'total', 'heroicon-o-inbox', null],
-            ['Review', 'Review', 'review_count', 'heroicon-o-eye', 'accounting_review'],
-            ['Approved', 'Approved', 'approved_count', 'heroicon-o-check-badge', 'accounting_approved'],
-            ['Rejected', 'Rejected', 'rejected_count', 'heroicon-o-x-circle', 'accounting_rejected'],
-            ['Closed', 'Closed', 'closed_count', 'heroicon-o-check-circle', 'closed'],
-        ];
+        $tabConfigs = $this->getTabDefinitions();
 
         return collect($tabConfigs)->mapWithKeys(function ($config) use ($counts) {
             [$key, $label, $countKey, $icon, $status] = $config;
@@ -165,6 +157,7 @@ class ListOrders extends ListRecords
             ];
         })->toArray();
     }
+
 
     public function buildToggleTabsAction()
     {
@@ -187,7 +180,8 @@ class ListOrders extends ListRecords
             ->paginated([15, 30])
             ->groupingSettingsInDropdownOnDesktop()
             ->recordClasses(fn(Model $record) => isShadeSelected('order-table'))
-            ->filters([Admin::filterSoftDeletes(), Admin::filterBasedOnQuery()], layout: FiltersLayout::Modal)
+            ->filters([Admin::filterSoftDeletes(), Admin::filterNumberOfRecords(), Admin::filterBasedOnQuery()],
+                layout: FiltersLayout::Modal)
             ->filtersFormWidth(MaxWidth::FiveExtraLarge)
             ->filtersFormColumns(6)
             ->filtersTriggerAction(fn(TableAction $action) => $action->button()->label('')->tooltip('Filter records'))
@@ -196,7 +190,8 @@ class ListOrders extends ListRecords
             ->actions($this->getTableActions(), position: $this->showActionsAhead ? ActionsPosition::BeforeCells : ActionsPosition::AfterCells)
             ->bulkActions($this->getBulkActions())
             ->defaultSort('id', 'desc')
-            ->groups($this->getTableGroups());
+            ->groups($this->getTableGroups())
+            ->deferLoading();
     }
 
     public function getBulkActions(): array
@@ -285,10 +280,8 @@ class ListOrders extends ListRecords
             'orderDetail',
             'party.buyer',
             'party.supplier',
-            'paymentRequests.payments',
             'payments',
             'product',
-            'proformaInvoice.attachments',
             'purchaseStatus',
             'tags',
             'user',
@@ -322,9 +315,7 @@ class ListOrders extends ListRecords
 
     public function getInvisibleTableHeaderActions(): array
     {
-        $design = getTableDesign() == 'modern';
-
-        $actions = [
+        return [
             Action::make('Refresh Sorting')
                 ->label('Reset')
                 ->tooltip('Reset Column Orders')
@@ -339,7 +330,7 @@ class ListOrders extends ListRecords
                 ->iconPosition(IconPosition::After)
                 ->label('S')
                 ->tooltip('Move Actions to Start')
-                ->visible(!$this->showActionsAhead && !$design),
+                ->visible(!$this->showActionsAhead && !isModernDesign()),
 
             Action::make('Reset Actions to End')
                 ->action('resetActionsToEnd')
@@ -348,7 +339,7 @@ class ListOrders extends ListRecords
                 ->iconPosition(IconPosition::Before)
                 ->label('E')
                 ->tooltip('Reset Actions to End')
-                ->visible($this->showActionsAhead && !$design),
+                ->visible($this->showActionsAhead && !isModernDesign()),
 
             Action::make('Scroll Left')
                 ->label('Scroll')
@@ -373,12 +364,6 @@ class ListOrders extends ListRecords
                 ->icon('heroicon-s-arrows-pointing-out')
                 ->action('toggleFullScreen'),
         ];
-
-//        if ($design) {
-//            return [ActionGroup::make($actions)];
-//        }
-
-        return $actions;
     }
 
     public function getModernLayout(Table $table): Table
@@ -517,6 +502,27 @@ class ListOrders extends ListRecords
         $this->dispatch('refreshTabFilters');
     }
 
+    protected function getCachedOrderIds()
+    {
+        $filters = [
+            'activeTab' => $this->activeTab ?: 'all',
+            'monthly_data_order' => $this->getTableFilterState('monthly_data_order') ?? 'default',
+        ];
+
+        return SmartCacheManager::remember('Order', $filters, (4 * 60), function () {
+            $query = self::getOriginalTable();
+
+            if (is_null($this->getTableFilterState('monthly_data_order'))) {
+                $query->where('created_at', '>=', now()->subMonths(1)->startOfMonth());
+            }
+
+            if ($this->activeTab !== '') {
+                $query->where('order_status', $this->activeTab);
+            }
+
+            return $query->pluck('id');
+        });
+    }
 
     protected function getExportQuery(): ?Builder
     {
@@ -558,7 +564,27 @@ class ListOrders extends ListRecords
             CreateAction::make()
                 ->label('New')
                 ->url(fn() => static::getResource()::getUrl('create'))
-                ->icon('heroicon-o-sparkles')
+                ->icon('heroicon-o-sparkles'),
+            Actions\Action::make('clear_cache_and_refresh')
+                ->label('Refresh')
+                ->tooltip('Clear cache and update records')
+                ->icon('heroicon-o-arrow-path')
+                ->color('secondary')
+                ->action(function () {
+                    SmartCacheManager::invalidate('Order');
+                    Notification::make()
+                        ->title('Cache Cleared')
+                        ->body('The order data has been refreshed.')
+                        ->success()->send();
+                }),
+            Actions\Action::make('loadMoreMonths')
+                ->label('Load More Months')
+                ->tooltip('Add to the number of months of requested data')
+                ->icon('heroicon-o-plus')
+                ->action(function () {
+                    $currentMonths = $this->getTableFilterState('monthly_data_order')['months_to_load'] ?? 1;
+                    $this->tableFilters['monthly_data_order']['months_to_load'] = $currentMonths + 1;
+                }),
         ];
     }
 
@@ -580,13 +606,24 @@ class ListOrders extends ListRecords
     protected function getTableQuery(): ?Builder
     {
         return Order::query()
-            ->with($this->getEagerLoadRelations())
-            ->when($this->activeTab, fn($q) => $q->where('order_status', $this->activeTab));
+            ->whereIn('id', $this->getCachedOrderIds())
+            ->with($this->getEagerLoadRelations());
     }
 
     private static function getOriginalTable()
     {
         return static::getResource()::getEloquentQuery();
+    }
+
+    private function getTabDefinitions(): array
+    {
+        return [
+            [null, 'All', 'total', 'heroicon-o-inbox', null],
+            ['Review', 'Review', 'review_count', 'heroicon-o-eye', 'accounting_review'],
+            ['Approved', 'Approved', 'approved_count', 'heroicon-o-check-badge', 'accounting_approved'],
+            ['Rejected', 'Rejected', 'rejected_count', 'heroicon-o-x-circle', 'accounting_rejected'],
+            ['Closed', 'Closed', 'closed_count', 'heroicon-o-check-circle', 'closed'],
+        ];
     }
 
     private function getUserFilterDesign(): string

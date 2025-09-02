@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Models\Traits\AttachmentComputations;
-use App\Services\OrderPurchaseStatusService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -71,33 +70,67 @@ class Attachment extends Model
         return $this->belongsTo(User::class);
     }
 
+//    protected static function booted()
+//    {
+//        $statusService = app(OrderPurchaseStatusService::class);
+//
+//        static::creating(fn($attachment) => $attachment->user_id = auth()->id());
+//
+//        static::saved(function (Attachment $attachment) use ($statusService) {
+//            if ($attachment->order) {
+//                $statusService->updateStatusBasedOnAttachments($attachment->order);
+//            }
+//
+//            if ($attachment->wasChanged('order_id')) {
+//                $originalOrderId = $attachment->getOriginal('order_id');
+//                if ($originalOrderId && $originalOrder = Order::find($originalOrderId)) {
+//                    $statusService->updateStatusBasedOnAttachments($originalOrder);
+//                }
+//            }
+//        });
+//
+//        static::deleted(function (Attachment $attachment) use ($statusService) {
+//            if ($attachment->order) {
+//                $statusService->updateStatusBasedOnAttachments($attachment->order);
+//            }
+//
+//            if (!$attachment->isUsedElsewhere() && $attachment->file_path && File::exists(public_path($attachment->file_path))) {
+//                Storage::disk('public')->delete($attachment->file_path);
+//            }
+//        });
+//    }
     protected static function booted()
     {
-        $statusService = app(OrderPurchaseStatusService::class);
-
         static::creating(fn($attachment) => $attachment->user_id = auth()->id());
 
-        static::saved(function (Attachment $attachment) use ($statusService) {
-            if ($attachment->order) {
-                $statusService->updateStatusBasedOnAttachments($attachment->order);
-            }
-
-            if ($attachment->wasChanged('order_id')) {
-                $originalOrderId = $attachment->getOriginal('order_id');
-                if ($originalOrderId && $originalOrder = Order::find($originalOrderId)) {
-                    $statusService->updateStatusBasedOnAttachments($originalOrder);
-                }
-            }
-        });
-
-        static::deleted(function (Attachment $attachment) use ($statusService) {
-            if ($attachment->order) {
-                $statusService->updateStatusBasedOnAttachments($attachment->order);
-            }
-
+        static::deleted(function (Attachment $attachment) {
             if (!$attachment->isUsedElsewhere() && $attachment->file_path && File::exists(public_path($attachment->file_path))) {
                 Storage::disk('public')->delete($attachment->file_path);
             }
         });
     }
+
+//    private static function updateOrderStatuses(array $orderIds): void
+//    {
+//        $ids = array_values(array_unique(array_filter($orderIds, fn($v) => (int)$v > 0)));
+//        if (empty($ids)) return;
+//
+//        static $processed = [];
+//
+//        $toProcess = array_values(array_diff($ids, array_keys($processed)));
+//        if (empty($toProcess)) return;
+//
+//        foreach ($toProcess as $id) $processed[$id] = true;
+//
+//        $orders = Order::with(['attachments' => fn($q) => $q->select('id', 'order_id', 'name')])
+//            ->select('id', 'order_status', 'purchase_status_id')
+//            ->whereIn('id', $toProcess)
+//            ->get();
+//
+//        $statusService = app(OrderPurchaseStatusService::class);
+//
+//        foreach ($orders as $order) {
+//            $statusService->updateStatusBasedOnAttachments($order);
+//        }
+//    }
 }
