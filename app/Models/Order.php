@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use HasFactory, SoftDeletes, OrderComputations;
+    use HasFactory;
+    use OrderComputations;
+    use SoftDeletes;
 
     protected $fillable = [
         'order_number',
@@ -139,7 +141,8 @@ class Order extends Model
             $order->order_number = self::makeOrderNumber($order);
         });
 
-        static::saving(function ($order) {
+        static::saved(function ($order) {
+            $order->loadMissing('attachments');
             $order->attachments()
                 ->where(function ($q) {
                     $q->whereNull('file_path')
@@ -149,7 +152,6 @@ class Order extends Model
                 })
                 ->delete();
         });
-
 
         static::updating(function ($order) {
             $order->order_number = self::makeOrderNumber($order);

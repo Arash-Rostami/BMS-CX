@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Operational\SupplierSummaryResource\Pages;
 
+use App\Models\ProformaInvoice;
 use App\Models\Supplier;
+use App\Services\SmartCacheManager;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -32,6 +34,7 @@ class Admin
             ->query(fn($query) => $query->where('type', 'adjustment'));
     }
 
+
     /**
      * @return SelectFilter
      * @throws \Exception
@@ -41,7 +44,11 @@ class Admin
         return SelectFilter::make('proforma_invoice_id')
             ->label('Proforma Invoice')
             ->searchable()
-            ->relationship('proformaInvoice', 'contract_number');
+            ->options(function () {
+                return SmartCacheManager::remember('ProformaInvoice', ['type' => 'select_options'], 720, function () {
+                    return ProformaInvoice::orderBy('id', 'asc')->pluck('contract_number', 'id')->all();
+                });
+            });
     }
 
     /**
@@ -53,7 +60,11 @@ class Admin
         return SelectFilter::make('supplier_id')
             ->label('Supplier')
             ->searchable()
-            ->relationship('supplier', 'name');
+            ->options(function () {
+                return SmartCacheManager::remember('Supplier', ['type' => 'select_options'], 720, function () {
+                    return Supplier::orderBy('name', 'asc')->pluck('name', 'id')->all();
+                });
+            });
     }
 
     /**
@@ -128,8 +139,8 @@ class Admin
             ->label('Supplier')
             ->relationship('supplier', 'name')
             ->options(function () {
-                return Cache::remember('all_suppliers', now()->addHours(6), function () {
-                    return Supplier::pluck('name', 'id');
+                return SmartCacheManager::remember('Supplier', ['type' => 'select_options'], 720, function () {
+                    return Supplier::orderBy('name', 'asc')->pluck('name', 'id')->all();
                 });
             })
             ->searchable()
@@ -154,10 +165,7 @@ class Admin
     {
         return Select::make('status')
             ->required()
-            ->options([
-                'Overpaid' => '🔴 Credit',
-                'Underpaid' => '🟢 Debit',
-            ]);
+            ->options(['Overpaid' => '🔴 Credit', 'Underpaid' => '🟢 Debit']);
     }
 
     /**
@@ -266,29 +274,6 @@ class Admin
             ->grow(false)
             ->toggleable(isToggledHiddenByDefault: true);
     }
-
-//    protected static function getSummarizers(): Summarizer
-//    {
-//        return Summarizer::make()->using(fn($query) => new HtmlString(
-//            $query->select('currency', DB::raw('SUM(diff) as total_diff'))
-//                ->groupBy('currency')
-//                ->get()
-//                ->map(function ($item) {
-//                    $totalDiff = (float)$item->total_diff;
-//                    [$status, $color] = match (true) {
-//                        $totalDiff < 0 => ['Underpaid', '#15803D'],
-//                        $totalDiff > 0 => ['Overpaid', '#EF4444'],
-//                        default => ['Settled', '#6B7280'],
-//                    };
-//                    return sprintf('<span style="color: %s">%s (%s): %s</span>',
-//                        $color,
-//                        $status,
-//                        strtoupper($item->currency),
-//                        number_format(abs($totalDiff), 2)
-//                    );
-//                })->implode('<br>'))
-//        );
-//    }
 
     protected static function getSummarizers(): Summarizer
     {

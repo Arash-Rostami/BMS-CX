@@ -22,92 +22,40 @@ use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
 class Admin
 {
 
-    /**
-     * @return TextInput
-     */
-    public static function getFirstName(): TextInput
+    public static function filterDep(): SelectFilter
     {
-        return TextInput::make('first_name')
-            ->label(fn() => new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Forename</span>'))
-            ->autocapitalize('words')
-            ->placeholder('First Name in English only')
-            ->minLength(2)
-            ->maxLength(50)
-            ->required();
-    }
-
-
-    /**
-     * @return TextInput
-     */
-    public static function getMiddleName(): TextInput
-    {
-        return TextInput::make('middle_name')
-            ->label(fn() => new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Middle Name</span>'))
-            ->autocapitalize('words')
-            ->placeholder('Middle Name in English only')
-            ->minLength(2)
-            ->maxLength(50);
+        return SelectFilter::make('info->department')
+            ->label('Department')
+            ->options(Department::getAllDepartmentCodes());
     }
 
     /**
-     * @return TextInput
+     * @return SelectFilter
+     * @throws \Exception
      */
-    public static function getLastName(): TextInput
+    public static function filterRole(): SelectFilter
     {
-        return TextInput::make('last_name')
-            ->label(fn() => new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Surname</span>'))
-            ->autocapitalize('words')
-            ->placeholder('Last Name in English only')
-            ->minLength(2)
-            ->maxLength(50)
-            ->required();
+        return SelectFilter::make('role')
+            ->options([
+                'agent' => 'Agent',
+                'accountant' => 'Accountant',
+                'manager' => 'Manager',
+                'partner' => 'Partner',
+            ]);
     }
 
     /**
-     * @return PhoneInput
+     * @return SelectFilter
+     * @throws \Exception
      */
-    public static function getPhoneNum(): PhoneInput
+    public static function filterStatus(): SelectFilter
     {
-        return PhoneInput::make('phone')
-            ->label(fn() => new HtmlString('<span class="grayscale">📞 </span><span class="text-primary-500 font-normal">Phone No.</span>'))
-            ->ipLookup(function () {
-                return rescue(fn() => Http::get('http://ip-api.com/json/')->json('country'), app()->getLocale(), report: false);
-            })
-            ->autoPlaceholder('polite')
-            ->placeholder('Phone number')
-            ->required();
-    }
-
-    /**
-     * @return Password
-     */
-    public static function getPassword(): Password
-    {
-        return Password::make('password')
-            ->label(fn() => new HtmlString('<span class="grayscale">🗝️</span><span class="text-primary-500 font-normal">Password</span>'))
-            ->placeholder('Write your Password')
-            ->visibleOn('create')
-            ->password()
-            ->minLength(8)
-            ->required(fn(?User $record) => $record === null)
-            ->columnSpan(1);
-    }
-
-    /**
-     * @return Password
-     */
-    public static function getPassWordConfirmation(): Password
-    {
-        return Password::make('password_confirmation')
-            ->label(fn() => new HtmlString('<span class="grayscale">🗝️🗝  </span><span class="text-primary-500 font-normal">Password Confirmation</span>'))
-            ->visibleOn('create')
-            ->password()
-            ->minLength(8)
-            ->same('password')
-            ->required()
-            ->placeholder('Re-type your Password')
-            ->columnSpan(1);
+        return SelectFilter::make('status')
+            ->options([
+                'active' => 'Active',
+                'inactive' => 'Inactive',
+                'pending' => 'Suspended',
+            ]);
     }
 
     /**
@@ -148,22 +96,91 @@ class Admin
     }
 
     /**
-     * @return ButtonGroup
+     * @return TextInput
      */
-    public static function getStatus(): ButtonGroup
+    public static function getFirstName(): TextInput
     {
-        return ButtonGroup::make('status')
-            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Status</span>'))
-            ->options([
-                'active' => 'Active ✅',
-                'inactive' => 'Inactive ❌',
-                'pending' => '️Suspended ⚠',
-            ])
-            ->onColor('primary')
-            ->offColor('gray')
+        return TextInput::make('first_name')
+            ->label(fn() => new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Forename</span>'))
+            ->autocapitalize('words')
+            ->placeholder('First Name in English only')
+            ->minLength(2)
+            ->maxLength(50)
             ->required();
     }
 
+    /**
+     * @return TextInput
+     */
+    public static function getLastName(): TextInput
+    {
+        return TextInput::make('last_name')
+            ->label(fn() => new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Surname</span>'))
+            ->autocapitalize('words')
+            ->placeholder('Last Name in English only')
+            ->minLength(2)
+            ->maxLength(50)
+            ->required();
+    }
+
+    /**
+     * @return TextInput
+     */
+    public static function getMiddleName(): TextInput
+    {
+        return TextInput::make('middle_name')
+            ->label(fn() => new HtmlString('<span class="grayscale">🖊 </span><span class="text-primary-500 font-normal">Middle Name</span>'))
+            ->autocapitalize('words')
+            ->placeholder('Middle Name in English only')
+            ->minLength(2)
+            ->maxLength(50);
+    }
+
+    /**
+     * @return Password
+     */
+    public static function getPassWordConfirmation(): Password
+    {
+        return Password::make('password_confirmation')
+            ->label(fn() => new HtmlString('<span class="grayscale">🗝️🗝  </span><span class="text-primary-500 font-normal">Password Confirmation</span>'))
+            ->visibleOn('create')
+            ->password()
+            ->minLength(8)
+            ->same('password')
+            ->required()
+            ->placeholder('Re-type your Password')
+            ->columnSpan(1);
+    }
+
+    /**
+     * @return Password
+     */
+    public static function getPassword(): Password
+    {
+        return Password::make('password')
+            ->label(fn() => new HtmlString('<span class="grayscale">🗝️</span><span class="text-primary-500 font-normal">Password</span>'))
+            ->placeholder('Write your Password')
+            ->visibleOn('create')
+            ->password()
+            ->minLength(8)
+            ->required(fn(?User $record) => $record === null)
+            ->columnSpan(1);
+    }
+
+    /**
+     * @return PhoneInput
+     */
+    public static function getPhoneNum(): PhoneInput
+    {
+        return PhoneInput::make('phone')
+            ->label(fn() => new HtmlString('<span class="grayscale">📞 </span><span class="text-primary-500 font-normal">Phone No.</span>'))
+            ->ipLookup(function () {
+                return rescue(fn() => Http::get('http://ip-api.com/json/')->json('country'), app()->getLocale(), report: false);
+            })
+            ->autoPlaceholder('polite')
+            ->placeholder('Phone number')
+            ->required();
+    }
 
     public static function getPosition(): ButtonGroup
     {
@@ -198,6 +215,23 @@ class Admin
     }
 
     /**
+     * @return ButtonGroup
+     */
+    public static function getStatus(): ButtonGroup
+    {
+        return ButtonGroup::make('status')
+            ->label(fn() => new HtmlString('<span class="text-primary-500 font-normal">Status</span>'))
+            ->options([
+                'active' => 'Active ✅',
+                'inactive' => 'Inactive ❌',
+                'pending' => '️Suspended ⚠',
+            ])
+            ->onColor('primary')
+            ->offColor('gray')
+            ->required();
+    }
+
+    /**
      * @return ImageColumn|string
      */
     public static function showAvatar(): ImageColumn
@@ -207,6 +241,41 @@ class Admin
             ->height(20)
             ->grow(false)
             ->defaultImageUrl(fn(User $record) => Vite::asset(sprintf('%s%s.svg', 'resources/images/avatars/', strtolower(($record->role == 'partner') ? 'viewer' : $record->role))));
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showCompany(): TextColumn
+    {
+        return TextColumn::make('company')
+            ->searchable()
+            ->sortable()
+            ->toggleable()
+            ->state(function (?Model $record) {
+                $departmentName = ($id = $record->info['department'] ?? null)
+                    ? Cache::remember("department_{$id}", 86400, fn() => Department::find($id))?->name
+                    : null;
+
+                return ($record->company ?? '') . ($departmentName ? " ({$departmentName})" : '') ?: 'N/A';
+            })
+            ->color('secondary')
+            ->alignLeft()
+            ->icon('heroicon-o-building-office-2');
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showEmail(): TextColumn
+    {
+        return TextColumn::make('email')
+            ->icon('heroicon-m-envelope')
+            ->sortable()
+            ->searchable()
+            ->toggleable()
+            ->color('gray')
+            ->alignLeft();
     }
 
     /**
@@ -227,34 +296,6 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showEmail(): TextColumn
-    {
-        return TextColumn::make('email')
-            ->icon('heroicon-m-envelope')
-            ->sortable()
-            ->searchable()
-            ->toggleable()
-            ->color('gray')
-            ->alignLeft();
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showPhone(): TextColumn
-    {
-        return TextColumn::make('phone')
-            ->icon('heroicon-o-device-phone-mobile')
-            ->sortable()
-            ->searchable()
-            ->toggleable()
-            ->color('gray')
-            ->alignLeft();
-    }
-
-    /**
-     * @return TextColumn
-     */
     public static function showIP(): TextColumn
     {
         return TextColumn::make('ip_address')
@@ -266,31 +307,6 @@ class Admin
             ->tooltip(fn() => "IP address")
             ->formatStateUsing(fn(string $state) => self::getCountryFromIp($state));
     }
-
-
-    /**
-     * @return TextColumn
-     */
-    public static function showCompany(): TextColumn
-    {
-        return TextColumn::make('company')
-            ->searchable()
-            ->sortable()
-            ->toggleable()
-            ->state(function (?Model $record) {
-                if (!$record->company && !isset($record->info['department'])) {
-                    return 'N/A';
-                }
-
-                $departmentName = isset($record->info['department']) ? Department::find($record->info['department'])->name : null;
-
-                return $record->company . ($departmentName ? ' (' . $departmentName . ')' : '');
-            })
-            ->color('secondary')
-            ->alignLeft()
-            ->icon('heroicon-o-building-office-2');
-    }
-
 
     /**
      * @return TextColumn
@@ -307,28 +323,14 @@ class Admin
     /**
      * @return TextColumn
      */
-    public static function showStatus(): TextColumn
+    public static function showPhone(): TextColumn
     {
-        return TextColumn::make('status')
-            ->badge()
-            ->searchable()
+        return TextColumn::make('phone')
+            ->icon('heroicon-o-device-phone-mobile')
             ->sortable()
+            ->searchable()
             ->toggleable()
-            ->icon(fn(string $state): string => match ($state) {
-                'active' => 'heroicon-m-check-badge',
-                'inactive' => 'heroicon-o-x-circle',
-                'pending' => 'heroicon-o-question-mark-circle',
-            })
-            ->formatStateUsing(fn(string $state): string => match ($state) {
-                'active' => 'Active',
-                'inactive' => 'Inactive',
-                'pending' => 'Suspended',
-            })
-            ->color(fn(string $state): string => match ($state) {
-                'active' => 'success',
-                'inactive' => 'danger',
-                'pending' => 'warning',
-            })
+            ->color('gray')
             ->alignLeft();
     }
 
@@ -382,32 +384,31 @@ class Admin
     }
 
     /**
-     * @return SelectFilter
-     * @throws \Exception
+     * @return TextColumn
      */
-    public static function filterRole(): SelectFilter
+    public static function showStatus(): TextColumn
     {
-        return SelectFilter::make('role')
-            ->options([
-                'agent' => 'Agent',
-                'accountant' => 'Accountant',
-                'manager' => 'Manager',
-                'partner' => 'Partner',
-            ]);
-    }
-
-    /**
-     * @return SelectFilter
-     * @throws \Exception
-     */
-    public static function filterStatus(): SelectFilter
-    {
-        return SelectFilter::make('status')
-            ->options([
+        return TextColumn::make('status')
+            ->badge()
+            ->searchable()
+            ->sortable()
+            ->toggleable()
+            ->icon(fn(string $state): string => match ($state) {
+                'active' => 'heroicon-m-check-badge',
+                'inactive' => 'heroicon-o-x-circle',
+                'pending' => 'heroicon-o-question-mark-circle',
+            })
+            ->formatStateUsing(fn(string $state): string => match ($state) {
                 'active' => 'Active',
                 'inactive' => 'Inactive',
                 'pending' => 'Suspended',
-            ]);
+            })
+            ->color(fn(string $state): string => match ($state) {
+                'active' => 'success',
+                'inactive' => 'danger',
+                'pending' => 'warning',
+            })
+            ->alignLeft();
     }
 
     public static function validateEmail()

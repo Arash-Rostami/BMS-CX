@@ -9,13 +9,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PaymentRequest extends Model
 {
-    use HasFactory, SoftDeletes, PaymentRequestComputations;
-
-
-    protected $casts = [
-        'deadline' => 'datetime',
-        'extra' => 'json',
-    ];
+    use HasFactory;
+    use PaymentRequestComputations;
+    use SoftDeletes;
 
 
     public static array $typesOfPayment = [
@@ -25,7 +21,26 @@ class PaymentRequest extends Model
         'full' => 'Full (One-Time Only)',
         'other' => 'Other'
     ];
-
+    public static array $typesOfPaymentInFarsi = [
+        'advance' => '💼 Advance (پیش پرداخت)',
+        'partial' => '📉 Partial (اقساط)',
+        'balance' => '⚖️ Balance (تسویه)',
+        'full' => '✅ Full (یکجا/کامل)',
+        'other' => '🔄 Other (سایر)'
+    ];
+    public static array $status = [
+        'pending' => '🕒 Pending',
+        'allowed' => '✔️ Allow',
+        'approved' => '✔️✔️ Approve',
+        'rejected' => '🚫 Deny',
+        'processing' => '⏳ Processing',
+        'completed' => '☑️ Completed',
+        'cancelled' => '❌ Called off',
+    ];
+    protected $casts = [
+        'deadline' => 'datetime',
+        'extra' => 'json',
+    ];
     protected $fillable = [
         'reference_number',
         'reason_for_payment',
@@ -61,61 +76,46 @@ class PaymentRequest extends Model
         'sequential_id',
     ];
 
-    public static array $typesOfPaymentInFarsi = [
-        'advance' => '💼 Advance (پیش پرداخت)',
-        'partial' => '📉 Partial (اقساط)',
-        'balance' => '⚖️ Balance (تسویه)',
-        'full' => '✅ Full (یکجا/کامل)',
-        'other' => '🔄 Other (سایر)'
-    ];
-
-    public static array $status = [
-        'pending' => '🕒 Pending',
-        'allowed' => '✔️ Allow',
-        'approved' => '✔️✔️ Approve',
-        'rejected' => '🚫 Deny',
-        'processing' => '⏳ Processing',
-        'completed' => '☑️ Completed',
-        'cancelled' => '❌ Called off',
-    ];
-
-    protected static function booted()
+    public function activeApprovedProformaInvoices()
     {
-        static::creating(function ($paymentRequest) {
-            $paymentRequest->user_id = auth()->id();
-            $paymentRequest->sequential_id = self::getNextReferenceNumberForCurrency($paymentRequest->currency);
-        });
-
-        static::updating(function ($paymentRequest) {
-            if ($paymentRequest->isDirty('currency')) {
-                $paymentRequest->sequential_id = self::getNextReferenceNumberForCurrency($paymentRequest->currency, $paymentRequest->id);
-            }
-        });
-
-
-        static::saving(function ($paymentRequest) {
-            $paymentRequest->attachments->each(function ($attachment) {
-                if (empty($attachment->file_path) || empty($attachment->name)) {
-                    $attachment->delete();
-                }
-            });
-        });
+        return $this->belongsToMany(
+            ProformaInvoice::class,
+            'payment_request_proforma_invoice',
+            'payment_request_id',
+            'proforma_invoice_id'
+        )
+            ->where('status', 'approved')
+            ->whereNull('deleted_at');
     }
 
+    public function associatedProformaInvoices()
+    {
+        return $this->belongsToMany(
+            ProformaInvoice::class,
+            'payment_request_proforma_invoice',
+            'payment_request_id',
+            'proforma_invoice_id'
+        );
+    }
 
     public function attachments()
     {
         return $this->hasMany(Attachment::class, 'payment_request_id');
     }
 
-    public function contractor()
+    public function beneficiary()
     {
-        return $this->belongsTo(Contractor::class);
+        return $this->belongsTo(Beneficiary::class, 'payee_id');
     }
 
     public function chats()
     {
         return $this->morphMany(Chat::class, 'record');
+    }
+
+    public function contractor()
+    {
+        return $this->belongsTo(Contractor::class);
     }
 
     public function costCenter()
@@ -133,48 +133,9 @@ class PaymentRequest extends Model
         return $this->morphMany(NotificationSubscription::class, 'notifiable');
     }
 
-
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id');
-    }
-
-    public function associatedProformaInvoices()
-    {
-        return $this->belongsToMany(
-            ProformaInvoice::class,
-            'payment_request_proforma_invoice',
-            'payment_request_id',
-            'proforma_invoice_id'
-        );
-    }
-
-    public function activeApprovedProformaInvoices()
-    {
-        return $this->belongsToMany(
-            ProformaInvoice::class,
-            'payment_request_proforma_invoice',
-            'payment_request_id',
-            'proforma_invoice_id'
-        )
-            ->where('status', 'approved')
-            ->whereNull('deleted_at');
-    }
-
-    public function proformaInvoices()
-    {
-        return $this->hasMany(ProformaInvoice::class, 'proforma_number', 'proforma_invoice_number');
-    }
-
-    public function proformaInvoice()
-    {
-        return $this->hasOne(ProformaInvoice::class, 'proforma_number', 'proforma_invoice_number');
-    }
-
-
-    public function beneficiary()
-    {
-        return $this->belongsTo(Beneficiary::class, 'payee_id');
     }
 
     public function payments()
@@ -185,11 +146,20 @@ class PaymentRequest extends Model
         );
     }
 
+    public function proformaInvoice()
+    {
+        return $this->hasOne(ProformaInvoice::class, 'proforma_number', 'proforma_invoice_number');
+    }
+
+    public function proformaInvoices()
+    {
+        return $this->hasMany(ProformaInvoice::class, 'proforma_number', 'proforma_invoice_number');
+    }
+
     public function reason()
     {
         return $this->belongsTo(Allocation::class, 'reason_for_payment');
     }
-
 
     public function supplier()
     {
@@ -205,5 +175,28 @@ class PaymentRequest extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($paymentRequest) {
+            $paymentRequest->user_id = auth()->id();
+            $paymentRequest->sequential_id = self::getNextReferenceNumberForCurrency($paymentRequest->currency);
+        });
+
+        static::updating(function ($paymentRequest) {
+            if ($paymentRequest->isDirty('currency')) {
+                $paymentRequest->sequential_id = self::getNextReferenceNumberForCurrency($paymentRequest->currency, $paymentRequest->id);
+            }
+        });
+
+        static::saved(function ($paymentRequest) {
+            $paymentRequest->loadMissing('attachments');
+            $paymentRequest->attachments->each(function ($attachment) {
+                if (empty($attachment->file_path) || empty($attachment->name)) {
+                    $attachment->delete();
+                }
+            });
+        });
     }
 }

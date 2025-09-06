@@ -41,7 +41,7 @@ class AccessLevel
     private static function getAuthenticatedUser(): ?User
     {
         if (self::$loggedInUser === null) {
-            self::$loggedInUser = auth()->user();
+            self::$loggedInUser = cachedUser();
         }
         return self::$loggedInUser;
     }

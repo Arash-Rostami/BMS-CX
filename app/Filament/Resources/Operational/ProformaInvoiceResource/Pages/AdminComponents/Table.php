@@ -15,52 +15,31 @@ use Illuminate\Support\HtmlString;
 trait Table
 {
 
-    public static function showID(): TextColumn
+    public static function showAssignedTo(): TextColumn
     {
-        return TextColumn::make('reference_number')
-            ->label(new HtmlString('<span class="text-primary-500 cursor-pointer" title="Record Unique ID">Ref. No. ⋮ ID</span>'))
-            ->weight(FontWeight::ExtraLight)
-            ->sortable()
-            ->formatStateUsing(fn(Model $record) => $record->reference_number ?? sprintf('PI-%s%04d', $record->created_at->format('y'), $record->id))
-            ->grow(false)
-            ->copyable()
-            ->extraAttributes(['class' => 'copyable-content'])
-            ->tooltip(fn(?string $state): ?string => ($state) ? "Pro forma Ref. No. / ID" : '')
-            ->toggleable()
-            ->searchable();
-    }
-
-    public static function showProformaNumber(): TextColumn
-    {
-        return TextColumn::make('proforma_number')
-            ->label('Pro forma No.')
-            ->color('info')
+        return TextColumn::make('assignee.fullName')
+            ->label('Assigned to')
             ->badge()
-            ->icon('heroicon-s-paper-clip')
-            ->iconPosition(IconPosition::Before)
-            ->grow(false)
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'PI: ' : '') . $record->proforma_number ?? null)
-            ->tooltip(fn(?string $state): ?string => ($state) ? "Pro forma Invoice Number" : '')
-            ->toggleable()
-            ->searchable(isIndividual: true);
+            ->color('secondary')
+            ->searchable(['first_name', 'middle_name', 'last_name'])
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->sortable()
+            ->default('None');
     }
 
     /**
      * @return TextColumn
      */
-    public static function showProformaDate(): TextColumn
+    public static function showBuyer(): TextColumn
     {
-        return TextColumn::make('proforma_date')
-            ->label('Pro forma Date')
-            ->color('secondary')
-            ->badge()
+        return TextColumn::make('buyer.name')
+            ->label('Buyer')
+            ->sortable()
+            ->searchable()
+            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
             ->grow(false)
-            ->tooltip(fn(?string $state): ?string => "Pro forma Invoice Date")
-            ->date()
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->sortable();
+            ->color('secondary');
     }
-
 
     /**
      * @return TextColumn
@@ -82,6 +61,100 @@ trait Table
     /**
      * @return TextColumn
      */
+    public static function showContractName(): TextColumn
+    {
+        return TextColumn::make('contract_number')
+            ->label('Contract No.')
+            ->color('primary')
+            ->badge()
+            ->color('secondary')
+            ->searchable()
+            ->grow(false)
+            ->tooltip('Contract/Project No')
+            ->toggleable()
+            ->sortable();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showCreator(): TextColumn
+    {
+        return TextColumn::make('user.fullName')
+            ->label('Created by')
+            ->badge()
+            ->color('secondary')
+            ->searchable(['first_name', 'middle_name', 'last_name'])
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->sortable();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showGrade(): TextColumn
+    {
+        return TextColumn::make('grade.name')
+            ->icon('heroicon-m-ellipsis-horizontal-circle')
+            ->badge()
+            ->grow(false)
+            ->color('secondary')
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'Gr: ' : '') . optional($record->grade)->name ?? null)
+            ->tooltip('Grade')
+            ->searchable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->sortable();
+    }
+
+    public static function showID(): TextColumn
+    {
+        return TextColumn::make('reference_number')
+            ->label(new HtmlString('<span class="text-primary-500 cursor-pointer" title="Record Unique ID">Ref. No. ⋮ ID</span>'))
+            ->weight(FontWeight::ExtraLight)
+            ->sortable()
+            ->formatStateUsing(fn(Model $record) => $record->reference_number ?? sprintf('PI-%s%04d', $record->created_at->format('y'), $record->id))
+            ->grow(false)
+            ->copyable()
+            ->extraAttributes(['class' => 'copyable-content'])
+            ->tooltip(fn(?string $state): ?string => ($state) ? "Pro forma Ref. No. / ID" : '')
+            ->toggleable()
+            ->searchable();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showPercentage(): TextColumn
+    {
+        return TextColumn::make('percentage')
+            ->label('%')
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '°/•' : '') . $record->percentage ?? 0)
+            ->tooltip('Percentage of payment')
+            ->grow(false)
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->color('secondary')
+            ->badge()
+            ->html();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showPrice(): TextColumn
+    {
+        return TextColumn::make('price')
+            ->color('info')
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '💰 Pri: ' : '') . number_format($record->price ?? 0))
+            ->searchable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->grow(false)
+            ->sortable()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
     public static function showProduct(): TextColumn
     {
         return TextColumn::make('product.name')
@@ -98,15 +171,62 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showBuyer(): TextColumn
+    public static function showProformaDate(): TextColumn
     {
-        return TextColumn::make('buyer.name')
-            ->label('Buyer')
-            ->sortable()
-            ->searchable()
-            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
+        return TextColumn::make('proforma_date')
+            ->label('Pro forma Date')
+            ->color('secondary')
+            ->badge()
             ->grow(false)
-            ->color('secondary');
+            ->tooltip(fn(?string $state): ?string => "Pro forma Invoice Date")
+            ->date()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->sortable();
+    }
+
+    public static function showProformaNumber(): TextColumn
+    {
+        return TextColumn::make('proforma_number')
+            ->label('Pro forma No.')
+            ->color('info')
+            ->badge()
+            ->icon('heroicon-s-paper-clip')
+            ->iconPosition(IconPosition::Before)
+            ->grow(false)
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'PI: ' : '') . $record->proforma_number ?? null)
+            ->tooltip(fn(?string $state): ?string => ($state) ? "Pro forma Invoice Number" : '')
+            ->toggleable()
+            ->searchable(isIndividual: true);
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showQuantity(): TextColumn
+    {
+        return TextColumn::make('quantity')
+            ->color('info')
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '⏲️ Qt: ' : '') . number_format($record->quantity ?? 0))
+            ->grow(false)
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->searchable()
+            ->sortable()
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showShipmentPart(): TextColumn
+    {
+        return TextColumn::make('part')
+            ->badge()
+            ->grow(false)
+            ->color('secondary')
+            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '🚢 Part(s): ' : '') . $record->part)
+            ->searchable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->sortable();
     }
 
     /**
@@ -149,33 +269,33 @@ trait Table
     /**
      * @return TextColumn
      */
-    public static function showGrade(): TextColumn
+
+    public static function showTimeStamp(): TextColumn
     {
-        return TextColumn::make('grade.name')
-            ->icon('heroicon-m-ellipsis-horizontal-circle')
-            ->badge()
-            ->grow(false)
-            ->color('secondary')
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'Gr: ' : '') . optional($record->grade)->name ?? null)
-            ->tooltip('Grade')
-            ->searchable()
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->sortable();
+        return TextColumn::make('created_at')
+            ->label('Creation Time')
+            ->icon('heroicon-s-calendar-days')
+            ->dateTime()
+            ->sortable()
+            ->alignRight()
+            ->toggleable(isToggledHiddenByDefault: true);
     }
 
     /**
      * @return TextColumn
      */
-    public static function showShipmentPart(): TextColumn
+    public static function showTotal(): TextColumn
     {
-        return TextColumn::make('part')
-            ->badge()
-            ->grow(false)
-            ->color('secondary')
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '🚢 Part(s): ' : '') . $record->part)
-            ->searchable()
+        return TextColumn::make('id')
+            ->label('Total')
+            ->color('info')
+            ->state(function (Model $record) {
+                $formattedResult = self::computeShareFromTotal($record);
+                return getTableDesign() === 'modern' ? '💳 Ttl: ' . $formattedResult : ' ' . $formattedResult;
+            })
             ->toggleable(isToggledHiddenByDefault: true)
-            ->sortable();
+            ->grow(false)
+            ->badge();
     }
 
     public static function showVerifiable(): IconColumn
@@ -220,135 +340,23 @@ trait Table
     }
 
     /**
-     * @return TextColumn
+     * @return TextEntry
      */
-    public static function showContractName(): TextColumn
+    public static function viewBuyer(): TextEntry
     {
-        return TextColumn::make('contract_number')
-            ->label('Contract No.')
-            ->color('primary')
-            ->badge()
+        return TextEntry::make('buyer.name')
+            ->label('Buyer')
             ->color('secondary')
-            ->searchable()
-            ->grow(false)
-            ->tooltip('Contract/Project No')
-            ->toggleable()
-            ->sortable();
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showCreator(): TextColumn
-    {
-        return TextColumn::make('user.fullName')
-            ->label('Created by')
-            ->badge()
-            ->color('secondary')
-            ->searchable(['first_name', 'middle_name', 'last_name'])
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->sortable();
-    }
-
-    public static function showAssignedTo(): TextColumn
-    {
-        return TextColumn::make('assignee.fullName')
-            ->label('Assigned to')
-            ->badge()
-            ->color('secondary')
-            ->searchable(['first_name', 'middle_name', 'last_name'])
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->sortable()
-            ->default('None');
-    }
-
-    /**
-     * @return TextColumn
-     */
-
-    public static function showTimeStamp(): TextColumn
-    {
-        return TextColumn::make('created_at')
-            ->label('Creation Time')
-            ->icon('heroicon-s-calendar-days')
-            ->dateTime()
-            ->sortable()
-            ->alignRight()
-            ->toggleable(isToggledHiddenByDefault: true);
-    }
-
-
-    /**
-     * @return TextColumn
-     */
-    public static function showQuantity(): TextColumn
-    {
-        return TextColumn::make('quantity')
-            ->color('info')
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '⏲️ Qt: ' : '') . number_format($record->quantity ?? 0))
-            ->grow(false)
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->searchable()
-            ->sortable()
             ->badge();
     }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showPrice(): TextColumn
-    {
-        return TextColumn::make('price')
-            ->color('info')
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '💰 Pri: ' : '') . number_format($record->price ?? 0))
-            ->searchable()
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->grow(false)
-            ->sortable()
-            ->badge();
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showPercentage(): TextColumn
-    {
-        return TextColumn::make('percentage')
-            ->label('%')
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '°/•' : '') . $record->percentage ?? 0)
-            ->tooltip('Percentage of payment')
-            ->grow(false)
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->color('secondary')
-            ->badge()
-            ->html();
-    }
-
-    /**
-     * @return TextColumn
-     */
-    public static function showTotal(): TextColumn
-    {
-        return TextColumn::make('id')
-            ->label('Total')
-            ->color('info')
-            ->state(function (Model $record) {
-                $formattedResult = self::computeShareFromTotal($record);
-                return getTableDesign() === 'modern' ? '💳 Ttl: ' . $formattedResult : ' ' . $formattedResult;
-            })
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->grow(false)
-            ->badge();
-    }
-
 
     /**
      * @return TextEntry
      */
-    public static function viewProformaInvoice(): TextEntry
+    public static function viewCategory(): TextEntry
     {
-        return TextEntry::make('proforma_number')
-            ->label('Pro forma Invoice No.')
+        return TextEntry::make('category.name')
+            ->label('Category')
             ->color('secondary')
             ->badge();
     }
@@ -361,10 +369,46 @@ trait Table
             ->badge();
     }
 
-    public static function viewReferenceNumber(): TextEntry
+    /**
+     * @return TextEntry
+     */
+    public static function viewGrade(): TextEntry
     {
-        return TextEntry::make('reference_number')
-            ->label('Ref. No. ⋮ ID')
+        return TextEntry::make('grade.name')
+            ->color('secondary')
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewPercentage(): TextEntry
+    {
+        return TextEntry::make('percentage')
+            ->label('°/•')
+            ->color('secondary')
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewPrice(): TextEntry
+    {
+        return TextEntry::make('price')
+            ->label('Price')
+            ->state(fn(?Model $record) => number_format($record->price ?? 0))
+            ->color('secondary')
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewProduct(): TextEntry
+    {
+        return TextEntry::make('product.name')
+            ->label('Product')
             ->color('secondary')
             ->badge();
     }
@@ -383,13 +427,10 @@ trait Table
     /**
      * @return TextEntry
      */
-    public static function viewCategory(): TextEntry
+    public static function viewProformaInvoice(): TextEntry
     {
-        return TextEntry::make('category_id')
-            ->label('Category')
-            ->state(function (Model $record): string {
-                return $record->category->name ?? 'N/A';
-            })
+        return TextEntry::make('proforma_number')
+            ->label('Pro forma Invoice No.')
             ->color('secondary')
             ->badge();
     }
@@ -397,13 +438,19 @@ trait Table
     /**
      * @return TextEntry
      */
-    public static function viewProduct(): TextEntry
+    public static function viewQuantity(): TextEntry
     {
-        return TextEntry::make('product_id')
-            ->label('Product')
-            ->state(function (Model $record): string {
-                return $record->product->name ?? 'N/A';
-            })
+        return TextEntry::make('quantity')
+            ->label('Quantity')
+            ->state(fn(?Model $record) => number_format($record->quantity ?? 0))
+            ->color('secondary')
+            ->badge();
+    }
+
+    public static function viewReferenceNumber(): TextEntry
+    {
+        return TextEntry::make('reference_number')
+            ->label('Ref. No. ⋮ ID')
             ->color('secondary')
             ->badge();
     }
@@ -411,9 +458,10 @@ trait Table
     /**
      * @return TextEntry
      */
-    public static function viewGrade(): TextEntry
+    public static function viewShipmentPart(): TextEntry
     {
-        return TextEntry::make('grade.name')
+        return TextEntry::make('part')
+            ->label('Part')
             ->color('secondary')
             ->badge();
     }
@@ -434,77 +482,13 @@ trait Table
     /**
      * @return TextEntry
      */
-    public static function viewBuyer(): TextEntry
-    {
-        return TextEntry::make('buyer_id')
-            ->label('Buyer')
-            ->state(function (Model $record): string {
-                return $record->buyer->name ?? 'N/A';
-            })
-            ->color('secondary')
-            ->badge();
-    }
-
-    /**
-     * @return TextEntry
-     */
     public static function viewSupplier(): TextEntry
     {
-        return TextEntry::make('supplier_id')
+        return TextEntry::make('supplier.name')
             ->label('Supplier')
-            ->state(function (Model $record): string {
-                return $record->supplier->name ?? 'N/A';
-            })
             ->color('secondary')
             ->badge();
     }
-
-    /**
-     * @return TextEntry
-     */
-    public static function viewQuantity(): TextEntry
-    {
-        return TextEntry::make('quantity')
-            ->label('Quantity')
-            ->state(fn(?Model $record) => number_format($record->quantity ?? 0))
-            ->color('secondary')
-            ->badge();
-    }
-
-    /**
-     * @return TextEntry
-     */
-    public static function viewPrice(): TextEntry
-    {
-        return TextEntry::make('price')
-            ->label('Price')
-            ->state(fn(?Model $record) => number_format($record->price ?? 0))
-            ->color('secondary')
-            ->badge();
-    }
-
-    /**
-     * @return TextEntry
-     */
-    public static function viewShipmentPart(): TextEntry
-    {
-        return TextEntry::make('part')
-            ->label('Part')
-            ->color('secondary')
-            ->badge();
-    }
-
-    /**
-     * @return TextEntry
-     */
-    public static function viewPercentage(): TextEntry
-    {
-        return TextEntry::make('percentage')
-            ->label('°/•')
-            ->color('secondary')
-            ->badge();
-    }
-
 
     public static function viewTotal()
     {

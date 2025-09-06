@@ -3,8 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\Operational\QuoteResource\Pages\Admin;
-use App\Filament\Resources\QuoteResource\Pages;
-use App\Filament\Resources\QuoteResource\RelationManagers;
+use App\Filament\Resources\Operational\QuoteResource\RelationManagers;
 use App\Models\Quote;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -16,7 +15,6 @@ use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Cache;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class QuoteResource extends Resource
@@ -27,7 +25,7 @@ class QuoteResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
 
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 10;
 
     public static function configureCommonTableSettings(Table $table): Table
     {
@@ -36,7 +34,7 @@ class QuoteResource extends Resource
             ->emptyStateIcon('heroicon-o-bookmark')
             ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
-            ->poll(30)
+            ->poll('900s')
             ->defaultSort('created_at', 'desc')
             ->paginated([12, 24, 36, 48, 'all'])
             ->actions([
@@ -84,6 +82,12 @@ class QuoteResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with([
+                'product',
+                'quoteProvider',
+                'attachment',
+                'packaging',
+            ])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
@@ -117,22 +121,6 @@ class QuoteResource extends Resource
                 'md' => 2,
                 'xl' => 3,
             ]);
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        $cacheKey = 'total_count_' . str('Quote')->slug();
-
-        $count = Cache::remember($cacheKey, now()->addHours(12), function () {
-            return static::getModel()::count();
-        });
-
-        return $count > 0 ? (string)$count : null;
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'primary';
     }
 
     public static function getPages(): array

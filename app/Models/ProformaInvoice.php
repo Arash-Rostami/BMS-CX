@@ -11,7 +11,10 @@ use Illuminate\Notifications\Notifiable;
 
 class ProformaInvoice extends Model
 {
-    use HasFactory, Notifiable, SoftDeletes, ProformaInvoiceComputations;
+    use HasFactory;
+    use Notifiable;
+    use ProformaInvoiceComputations;
+    use SoftDeletes;
 
     protected $table = 'proforma_invoices';
 
@@ -50,30 +53,38 @@ class ProformaInvoice extends Model
         'verified_at' => 'datetime',
     ];
 
-
-    protected static function booted()
+    public function activeApprovedPaymentRequests()
     {
-        static::creating(function ($proformaInvoice) {
-            $proformaInvoice->user_id = auth()->id();
-        });
+        return $this->belongsToMany(
+            PaymentRequest::class,
+            'payment_request_proforma_invoice',
+            'proforma_invoice_id',
+            'payment_request_id'
+        )
+            ->whereNull('order_id')
+            ->whereNull('deleted_at')
+            ->whereNotIn('status', ['pending', 'cancelled', 'rejected']);
+    }
 
-        static::updating(function ($proformaInvoice) {
-            $dirty = $proformaInvoice->getDirty();
-            $changedAttributes = array_diff(array_keys($dirty), ['verified', 'verified_by', 'verified_at']);
-            if (!empty($changedAttributes)) {
-                $proformaInvoice->verified = false;
-                $proformaInvoice->verified_by = null;
-                $proformaInvoice->verified_at = null;
-            }
-        });
+    public function activeOrders()
+    {
+        return $this->hasMany(Order::class, 'proforma_invoice_id')
+            ->whereNull('deleted_at');
+    }
 
-        static::saving(function ($proformaInvoice) {
-            $proformaInvoice->attachments->each(function ($attachment) {
-                if (empty($attachment->file_path) || empty($attachment->name)) {
-                    $attachment->delete();
-                }
-            });
-        });
+    public function assignee()
+    {
+        return $this->belongsTo(User::class, 'assignee_id');
+    }
+
+    public function associatedPaymentRequests()
+    {
+        return $this->belongsToMany(
+            PaymentRequest::class,
+            'payment_request_proforma_invoice',
+            'proforma_invoice_id',
+            'payment_request_id'
+        );
     }
 
     public function attachments()
@@ -111,38 +122,9 @@ class ProformaInvoice extends Model
         return $this->hasMany(Order::class, 'proforma_invoice_id');
     }
 
-    public function activeOrders()
-    {
-        return $this->hasMany(Order::class, 'proforma_invoice_id')
-            ->whereNull('deleted_at');
-    }
-
     public function paymentRequests()
     {
         return $this->hasOneThrough(PaymentRequest::class, Order::class, 'proforma_invoice_id', 'order_id');
-    }
-
-    public function associatedPaymentRequests()
-    {
-        return $this->belongsToMany(
-            PaymentRequest::class,
-            'payment_request_proforma_invoice',
-            'proforma_invoice_id',
-            'payment_request_id'
-        );
-    }
-
-    public function activeApprovedPaymentRequests()
-    {
-        return $this->belongsToMany(
-            PaymentRequest::class,
-            'payment_request_proforma_invoice',
-            'proforma_invoice_id',
-            'payment_request_id'
-        )
-            ->whereNull('order_id')
-            ->whereNull('deleted_at')
-            ->whereNotIn('status', ['pending', 'cancelled', 'rejected']);
     }
 
     public function product()
@@ -155,11 +137,6 @@ class ProformaInvoice extends Model
         return $this->belongsTo(Supplier::class, 'supplier_id');
     }
 
-    public function assignee()
-    {
-        return $this->belongsTo(User::class, 'assignee_id');
-    }
-
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -168,5 +145,31 @@ class ProformaInvoice extends Model
     public function verifier()
     {
         return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($proformaInvoice) {
+            $proformaInvoice->user_id = auth()->id();
+        });
+
+        static::updating(function ($proformaInvoice) {
+            $dirty = $proformaInvoice->getDirty();
+            $changedAttributes = array_diff(array_keys($dirty), ['verified', 'verified_by', 'verified_at']);
+            if (!empty($changedAttributes)) {
+                $proformaInvoice->verified = false;
+                $proformaInvoice->verified_by = null;
+                $proformaInvoice->verified_at = null;
+            }
+        });
+
+        static::saved(function ($proformaInvoice) {
+            $proformaInvoice->loadMissing('attachments');
+            $proformaInvoice->attachments->each(function ($attachment) {
+                if (empty($attachment->file_path) || empty($attachment->name)) {
+                    $attachment->delete();
+                }
+            });
+        });
     }
 }

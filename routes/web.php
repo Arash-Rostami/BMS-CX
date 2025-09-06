@@ -21,17 +21,11 @@ Route::get('/clear', function () {
     Artisan::call('config:clear');
     Artisan::call('route:clear');
     Artisan::call('view:clear');
-    Artisan::call('optimize:clear');
     Artisan::call('filament:clear-cached-components');
-
-    // Rebuild caches
-//    Artisan::call('config:cache');
-//    Artisan::call('route:cache');
-    Artisan::call('view:cache');
-    Artisan::call('filament:cache-components');
+    Artisan::call('optimize:clear');
 
     return response()->json([
-        'message' => 'All caches including Filament caches and queue workers have been cleared successfully!',
+        'message' => 'All caches including Filament caches have been cleared successfully!',
         'timestamp' => now()->toDateTimeString()
     ]);
 });
@@ -41,11 +35,13 @@ Route::get('/cache', function () {
         abort(403, 'Unauthorized');
     }
 
+    // Artisan::call('config:cache');
+    Artisan::call('route:cache');
+    Artisan::call('view:cache');
     Artisan::call('filament:cache-components');
 
     return 'All caches including Filament caches have been rebuilt successfully!';
 });
-
 
 
 Route::middleware(['web', 'custom_auth'])->group(function () {
@@ -91,5 +87,6 @@ Route::middleware(['web', 'custom_auth'])->group(function () {
 //});
 
 Route::get('/quote-service/{token}', [QuoteController::class, 'authenticate'])->name('quote-service');
+
 
 Route::fallback(fn() => view('errors.404'));

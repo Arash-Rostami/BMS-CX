@@ -49,3 +49,6 @@ Thumbs.db
 *.mov
 *.wmv
 
+/bootstrap/cache/*.php
+/bootstrap/cache/packages.php
+/bootstrap/cache/services.php

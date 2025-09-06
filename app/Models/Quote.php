@@ -32,16 +32,6 @@ class Quote extends Model
         'attachment_id',
     ];
 
-    public function quoteRequest()
-    {
-        return $this->belongsTo(QuoteRequest::class, 'quote_request_id');
-    }
-
-    public function quoteProvider()
-    {
-        return $this->belongsTo(QuoteProvider::class);
-    }
-
     public function attachment()
     {
         return $this->belongsTo(Attachment::class);
@@ -52,8 +42,23 @@ class Quote extends Model
         return $this->attachment()->exists();
     }
 
+    public function packaging()
+    {
+        return $this->belongsTo(Packaging::class, 'packing_type');
+    }
+
     public function product()
     {
         return $this->belongsTo(Product::class, 'commodity_type');
+    }
+
+    public function quoteProvider()
+    {
+        return $this->belongsTo(QuoteProvider::class);
+    }
+
+    public function quoteRequest()
+    {
+        return $this->belongsTo(QuoteRequest::class, 'quote_request_id');
     }
 }

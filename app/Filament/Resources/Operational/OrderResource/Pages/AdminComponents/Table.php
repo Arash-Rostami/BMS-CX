@@ -539,13 +539,10 @@ trait Table
     /**
      * @return TextColumn
      */
-    public
-    static function showPaymentRequests(): TextColumn
+    public static function showPaymentRequests(): TextColumn
     {
-        return TextColumn::make('paymentRequest')
-            ->state(function (Model $record): string {
-                return 'PR Total: ' . count($record->paymentRequests) ?? 0;
-            })
+        return TextColumn::make('payment_requests_count')
+            ->formatStateUsing(fn($state, $record) => 'PR Total: ' . ((int) $state))
             ->alignRight()
             ->color(fn($state) => $state == 'PR Total: 0' ? 'secondary' : 'warning')
             ->tooltip('No of Payment Requests')

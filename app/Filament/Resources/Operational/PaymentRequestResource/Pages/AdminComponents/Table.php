@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages\AdminComponents;
 
-use App\Models\Department;
 use App\Models\PaymentRequest;
 use App\Policies\PaymentRequestPolicy;
 use App\Services\Notification\PaymentRequestService;
@@ -203,7 +202,7 @@ trait Table
             ->label('Cost Center')
             ->grow(false)
             ->searchable(['name', 'code'])
-            ->tooltip(fn($state) => $state ? Department::getByName($state) : 'N/A')
+            ->tooltip(fn($record) => $record ? $record->costCenter?->name : 'N/A')
             ->formatStateUsing(fn($state) => $state ?: 'N/A')
             ->color('secondary')
             ->badge();

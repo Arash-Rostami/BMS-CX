@@ -157,7 +157,15 @@ class ProformaInvoiceResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['category', 'product', 'supplier', 'user', 'attachments'])
+            ->with([
+                'category',
+                'product',
+                'grade',
+                'buyer',
+                'supplier',
+                'user',
+                'attachments'
+            ])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);

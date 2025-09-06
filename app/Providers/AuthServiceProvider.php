@@ -7,6 +7,7 @@ use App\Models\Allocation;
 use App\Models\Balance;
 use App\Models\Beneficiary;
 use App\Models\Buyer;
+use App\Models\CashTransaction;
 use App\Models\Category;
 use App\Models\Contractor;
 use App\Models\DeliveryTerm;
@@ -34,6 +35,7 @@ use App\Policies\AllocationPolicy;
 use App\Policies\BalancePolicy;
 use App\Policies\BeneficiaryPolicy;
 use App\Policies\BuyerPolicy;
+use App\Policies\CashTransactionPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\ContractorPolicy;
 use App\Policies\DeliveryTermPolicy;
@@ -71,6 +73,7 @@ class AuthServiceProvider extends ServiceProvider
         Balance::class => BalancePolicy::class,
         Beneficiary::class => BeneficiaryPolicy::class,
         Buyer::class => BuyerPolicy::class,
+        CashTransaction::class => CashTransactionPolicy::class,
         Category::class => CategoryPolicy::class,
         Contractor::class => ContractorPolicy::class,
         DeliveryTerm::class => DeliveryTermPolicy::class,

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Filament\Resources\Operational\PaymentResource\Pages\CreatePayment;
 use App\Models\Traits\PaymentComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +10,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Payment extends Model
 {
-    use HasFactory, SoftDeletes, PaymentComputations;
+    use HasFactory;
+    use PaymentComputations;
+    use SoftDeletes;
 
     protected $fillable = [
         'reference_number',
@@ -32,13 +33,12 @@ class Payment extends Model
         'date' => 'datetime',
     ];
 
-    protected static function booted()
+    public function approvedPaymentRequests()
     {
-        static::creating(fn($payment) => $payment->user_id = auth()->id());
-        static::saving(fn($payment) => $payment->cleanAttachments());
-        static::updated(fn($payment) => $payment->handleUpdated());
-        static::deleted(fn($payment) => $payment->handleDeleted());
-        static::restored(fn($payment) => $payment->handleRestored());
+        return $this->belongsToMany(
+            PaymentRequest::class,
+            'payment_payment_request'
+        )->whereIn('status', ['processing', 'approved', 'allowed']);
     }
 
     public function attachments()
@@ -70,16 +70,6 @@ class Payment extends Model
         );
     }
 
-
-    public function approvedPaymentRequests()
-    {
-        return $this->belongsToMany(
-            PaymentRequest::class,
-            'payment_payment_request'
-        )->whereIn('status', ['processing', 'approved', 'allowed']);
-    }
-
-
     public function reason()
     {
         return $this->hasOneThrough(Allocation::class, PaymentRequest::class, 'id', 'id', 'payment_request_id', 'reason_for_payment');
@@ -88,5 +78,14 @@ class Payment extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(fn($payment) => $payment->user_id = auth()->id());
+        static::saving(fn($payment) => $payment->cleanAttachments());
+        static::updated(fn($payment) => $payment->handleUpdated());
+        static::deleted(fn($payment) => $payment->handleDeleted());
+        static::restored(fn($payment) => $payment->handleRestored());
     }
 }

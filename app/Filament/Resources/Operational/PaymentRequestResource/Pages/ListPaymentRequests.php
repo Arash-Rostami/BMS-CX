@@ -56,7 +56,6 @@ class ListPaymentRequests extends ListRecords
     public bool $showTabs;
     public $statusFilter;
 
-
     public bool $showExtendedColumns = false;
 
     public bool $showActionsAhead = true;
@@ -185,6 +184,7 @@ class ListPaymentRequests extends ListRecords
                 Admin::groupByStatus(),
                 Admin::groupByCase(),
             ])
+            ->poll('900s')
             ->deferLoading();
     }
 
@@ -512,11 +512,15 @@ class ListPaymentRequests extends ListRecords
     {
         return PaymentRequest::query()
             ->whereIn('id', $this->getCachedPaymentRequestIds())
+            ->withCount('paymentRequests')
             ->with([
                 'contractor',
                 'costCenter',
                 'department',
                 'order',
+                'order.logistic',
+                'order.doc',
+                'order.proformaInvoice',
                 'associatedProformaInvoices',
                 'beneficiary',
                 'payments',

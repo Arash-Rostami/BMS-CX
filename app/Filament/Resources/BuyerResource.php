@@ -2,11 +2,9 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\BuyerResource\Pages;
-use App\Filament\Resources\BuyerResource\RelationManagers;
 use App\Filament\Resources\Master\BuyerResource\Pages\Admin;
+use App\Filament\Resources\Master\BuyerResource\RelationManagers;
 use App\Models\Buyer;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -31,6 +29,18 @@ class BuyerResource extends Resource
                 Admin::getName(),
                 Admin::getDescription()
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\BuyerResource\Pages\ManageBuyers::route('/'),
+        ];
     }
 
     public static function table(Table $table): Table
@@ -64,17 +74,5 @@ class BuyerResource extends Resource
                     ExportBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\BuyerResource\Pages\ManageBuyers::route('/'),
-        ];
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

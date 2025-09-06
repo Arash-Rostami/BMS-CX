@@ -15,7 +15,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -23,6 +22,7 @@ use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as DbBuilder;
+use Illuminate\Support\Facades\Cache;
 
 class Admin
 {
@@ -278,7 +278,16 @@ class Admin
             ->grow(false)
             ->color('secondary')
             ->searchable()
-            ->summarize(Count::make()->label('Count'));
+            ->summarize(
+                Summarizer::make()
+                    ->label('Count')
+                    ->using(fn(DbBuilder $query) => SmartCacheManager::remember(
+                        'balance_count',
+                        ['query_hash' => md5($query->toSql() . serialize($query->getBindings())), 'type' => 'count_summary'],
+                        500,
+                        fn() => $query->count()
+                    ))
+            );
     }
 
     /**
@@ -365,7 +374,11 @@ class Admin
                 Summarizer::make()
                     ->label('Total')
                     ->using(fn(DbBuilder $query) => BalanceSummarizer::formatSummaryOutput(
-                        BalanceSummarizer::summarizeByCurrency($query)
+                        Cache::remember(
+                            'balance_summary_' . md5($query->toSql() . serialize($query->getBindings())),
+                            500,
+                            fn() => BalanceSummarizer::summarizeByCurrency($query)
+                        )
                     ))
             );
     }

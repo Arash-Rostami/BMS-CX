@@ -37,7 +37,9 @@ class SupplierSummaryResource extends Resource
             ->groupingSettingsInDropdownOnDesktop()
             ->defaultGroup('supplier.name')
             ->paginated([10, 20, 30])
-            ->filters([Admin::filterByProformaInvoice(), Admin::filterBySupplier(), Admin::filterByAdjustment()])
+            ->filters([Admin::filterByProformaInvoice(), Admin::filterBySupplier(), Admin::filterByAdjustment()],
+            layout: Tables\Enums\FiltersLayout::Modal)
+            ->filtersFormColumns(2)
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\EditAction::make()
@@ -46,6 +48,7 @@ class SupplierSummaryResource extends Resource
                         ->visible(fn(SupplierSummary $record): bool => $record->type === 'adjustment'),
                 ])
             ])
+            ->poll('900s')
             ->bulkActions([Tables\Actions\BulkActionGroup::make([]),
             ]);
     }

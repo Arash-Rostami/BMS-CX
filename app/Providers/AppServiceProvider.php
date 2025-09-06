@@ -42,7 +42,9 @@ use Filament\Forms\Components\Field;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\Facades\FilamentView;
+use Filament\Tables\Columns\TextColumn;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\View\View;
@@ -109,6 +111,16 @@ class AppServiceProvider extends ServiceProvider
                     ->label("")
                     ->tooltip($tooltip)
             );
+        });
+
+
+        TextColumn::macro('clickable', function (string $resourceClass, string $recordIdColumn = 'id', string $tooltip = '🔗 clickable', string $action = 'edit') {
+            return $this->tooltip($tooltip)
+                ->url(fn($record) => $record->{$recordIdColumn}
+                    ? $resourceClass::getUrl($action, ['record' => $record->{$recordIdColumn}])
+                    : null
+                )
+                ->openUrlInNewTab(true);
         });
     }
 

@@ -45,7 +45,9 @@ class PaymentRequestResource extends Resource
     protected static ?array $badgeData = null;
 
     protected static ?int $navigationSort = 4;
+
     protected static ?string $pollingInterval = null;
+
     protected static ?string $recordTitleAttribute = 'reference_number';
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
     private static ?int $newRequestsCount = null;
@@ -446,12 +448,13 @@ class PaymentRequestResource extends Resource
         $user = auth()->user();
         $filters = ['user_id' => $user->id, 'type' => 'pending_count'];
 
-        return self::$newRequestsCount = SmartCacheManager::remember('PaymentRequest', $filters, 15, function () use ($user) {
-            return static::getModel()::query()
-                ->authorizedForUser($user)
-                ->where('status', 'pending')
-                ->count();
-        });
+        return self::$newRequestsCount =
+            SmartCacheManager::remember('PaymentRequest', $filters, 15, function () use ($user) {
+                return static::getModel()::query()
+                    ->authorizedForUser($user)
+                    ->where('status', 'pending')
+                    ->count();
+            });
     }
 
     public static function getPages(): array

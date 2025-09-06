@@ -3,8 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\Master\TargetResource\Pages\Admin;
-use App\Filament\Resources\TargetResource\Pages;
-use App\Filament\Resources\TargetResource\RelationManagers;
+use App\Filament\Resources\Master\TargetResource\RelationManagers;
 use App\Models\Target;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
@@ -14,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class TargetResource extends Resource
@@ -56,6 +56,25 @@ class TargetResource extends Resource
             ]);
     }
 
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\TargetResource\Pages\ListTargets::route('/'),
+            'create' => Master\TargetResource\Pages\CreateTarget::route('/create'),
+            'edit' => Master\TargetResource\Pages\EditTarget::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [];
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -90,23 +109,9 @@ class TargetResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array
+    protected function getTableQuery(): Builder
     {
-        return [];
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\TargetResource\Pages\ListTargets::route('/'),
-            'create' => Master\TargetResource\Pages\CreateTarget::route('/create'),
-            'edit' => Master\TargetResource\Pages\EditTarget::route('/{record}/edit'),
-        ];
-    }
-
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
+        return static::getModel()::query()
+            ->with(['category', 'user']);
     }
 }

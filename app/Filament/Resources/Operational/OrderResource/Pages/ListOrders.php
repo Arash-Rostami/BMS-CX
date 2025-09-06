@@ -191,6 +191,7 @@ class ListOrders extends ListRecords
             ->bulkActions($this->getBulkActions())
             ->defaultSort('id', 'desc')
             ->groups($this->getTableGroups())
+            ->poll('900s')
             ->deferLoading();
     }
 
@@ -280,8 +281,10 @@ class ListOrders extends ListRecords
             'orderDetail',
             'party.buyer',
             'party.supplier',
+            'paymentRequests.payments',
             'payments',
             'product',
+            'proformaInvoice',
             'purchaseStatus',
             'tags',
             'user',
@@ -607,6 +610,7 @@ class ListOrders extends ListRecords
     {
         return Order::query()
             ->whereIn('id', $this->getCachedOrderIds())
+            ->withCount('paymentRequests')
             ->with($this->getEagerLoadRelations());
     }
 

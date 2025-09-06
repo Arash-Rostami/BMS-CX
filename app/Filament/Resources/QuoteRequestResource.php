@@ -16,7 +16,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Cache;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 
@@ -28,7 +27,7 @@ class QuoteRequestResource extends Resource
 
     protected static ?string $navigationGroup = 'Operational Data';
 
-    protected static ?int $navigationSort = 8;
+    protected static ?int $navigationSort = 9;
 
     public static function configureCommonTableSettings(Table $table): Table
     {
@@ -38,10 +37,9 @@ class QuoteRequestResource extends Resource
             ->emptyStateDescription('Once you create your first record, it will appear here.')
             ->filters([Admin::filterCreatedAt(), Admin::filterSoftDeletes()])
             ->defaultSort('created_at', 'desc')
+            ->poll('900s')
             ->actions([
                 Tables\Actions\ViewAction::make(),
-//                Tables\Actions\EditAction::make(),
-//                Tables\Actions\DeleteAction::make(),
                 Tables\Actions\RestoreAction::make(),
             ])
             ->bulkActions([
@@ -75,7 +73,6 @@ class QuoteRequestResource extends Resource
                         Admin::getGrossWeight(),
                         Admin::getQuantity(),
                         Admin::getTargetRate(),
-//                        Admin::getTargetTHC(),
                         Admin::getSwitchBL(),
                         Admin::getTargetSwitchBL(),
                         Admin::getTargetLocalCharges(),
@@ -116,6 +113,10 @@ class QuoteRequestResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with([
+                'packaging',
+                'product'
+            ])
             ->withCount([
                 'quoteTokens as token_count',
                 'quotes as response_count',
@@ -143,7 +144,6 @@ class QuoteRequestResource extends Resource
                         Admin::showCommodity(),
                         Admin::showPackaging(),
                         Admin::showContainerType(),
-                        Admin::showPackaging(),
                         Admin::showValidity(),
                         Admin::showRequester(),
                     ])->columnSpan(3),
@@ -151,21 +151,6 @@ class QuoteRequestResource extends Resource
             ]);
     }
 
-    public static function getNavigationBadge(): ?string
-    {
-        $cacheKey = 'total_count_' . str('QuoteRequest')->slug();
-
-        $count = Cache::remember($cacheKey, now()->addHours(12), function () {
-            return static::getModel()::count();
-        });
-
-        return $count > 0 ? (string)$count : null;
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'primary';
-    }
 
     public static function getPages(): array
     {
@@ -186,7 +171,6 @@ class QuoteRequestResource extends Resource
 
     public static function table(Table $table): Table
     {
-
         $table = self::configureCommonTableSettings($table);
 
         return (getTableDesign() != 'classic')

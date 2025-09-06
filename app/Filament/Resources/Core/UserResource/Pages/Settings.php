@@ -6,7 +6,6 @@ use App\Filament\Resources\UserResource;
 use App\Models\User;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
-use Illuminate\Support\Collection;
 
 class Settings extends Page
 {

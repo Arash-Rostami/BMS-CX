@@ -16,7 +16,7 @@ trait BalanceComputations
 {
     public static function getGroupedRecipientOptions(): array
     {
-        return Cache::remember('recipient_filter_options_' . auth()->id(), 60, function () {
+        return Cache::remember('recipient_filter_options_' . auth()->id(), 600, function () {
             $balances = self::select('category', 'category_id')
                 ->distinct()
                 ->with(['supplier:id,name', 'contractor:id,name', 'beneficiary:id,name'])
@@ -53,19 +53,6 @@ trait BalanceComputations
         });
     }
 
-    /***** Accessors *****/
-
-    public function getRecipientNameAttribute()
-    {
-        return match ($this->category) {
-            'payees' => $this->payee->name ?? 'N/A',
-            'beneficiaries' => $this->beneficiary->name ?? 'N/A',
-            'suppliers' => $this->supplier->name ?? 'N/A',
-            'contractors' => $this->contractor->name ?? 'N/A',
-            default => 'Unknown Recipient'
-        };
-    }
-
     /***** Helpers *****/
 
     public static function getTabCounts(): array
@@ -73,7 +60,7 @@ trait BalanceComputations
         $user = auth()->user();
         $userId = $user->id;
 
-        return Cache::remember("balance_tab_counts_{$userId}", 60, function () use ($user) {
+        return Cache::remember("balance_tab_counts_{$userId}", 600, function () use ($user) {
             $filteredQuery = self::filterByUserDepartment($user);
 
             $totalCount = (clone $filteredQuery)->count();
@@ -169,13 +156,15 @@ trait BalanceComputations
         });
     }
 
+    /***** Accessors *****/
+
     protected function recipientName(): Attribute
     {
         return Attribute::make(
             get: fn() => match ($this->category) {
-                'suppliers' => 'supplier:' . $this->supplier?->name,
-                'contractors' => 'contractor:' . $this->contractor?->name,
-                'payees' => 'beneficiary:' . $this->beneficiary?->name,
+                'suppliers' => 'supplier ➡ ' . $this->supplier?->name,
+                'contractors' => 'contractor ➡ ' . $this->contractor?->name,
+                'payees' => 'beneficiary ➡ ' . $this->beneficiary?->name,
                 default => 'N/A',
             },
         );

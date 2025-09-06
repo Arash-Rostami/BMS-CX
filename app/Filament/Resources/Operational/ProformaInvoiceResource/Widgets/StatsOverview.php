@@ -10,6 +10,8 @@ use Illuminate\Support\HtmlString;
 
 class StatsOverview extends BaseWidget
 {
+    protected static ?string $pollingInterval = null;
+
     protected function getStats(): array
     {
         $statuses = ['review', 'approved', 'rejected', 'completed'];

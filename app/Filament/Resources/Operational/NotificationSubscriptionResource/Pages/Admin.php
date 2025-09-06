@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Operational\NotificationSubscriptionResource\Pa
 use App\Models\User;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -16,59 +15,19 @@ class Admin
 
 
     /**
-     * @return Select
+     * @return SelectFilter
+     * @throws \Exception
      */
-    public static function getNotifiableModule(): Select
+    public static function filterBasedOnModule(): SelectFilter
     {
-        return Select::make('notifiable_type')
+        return SelectFilter::make('notifiable_type')
             ->label('Module')
             ->options([
                 'App\Models\ProformaInvoice' => 'Proforma Invoice',
                 'App\Models\Order' => 'Order',
                 'App\Models\PaymentRequest' => 'Payment Request',
                 'App\Models\Payment' => 'Payment',
-            ])
-            ->reactive()
-            ->required()
-            ->columnSpan(1);
-    }
-
-
-    public static function getUser()
-    {
-        $currentUser = auth()->user();
-        $isAdminOrManager = in_array($currentUser->role, ['admin', 'manager']);
-
-        $options = $isAdminOrManager
-            ? User::query()
-                ->select(['id', 'first_name', 'middle_name', 'last_name'])
-                ->where('status', 'active')
-                ->orderBy('first_name')
-                ->get()
-                ->mapWithKeys(fn($user) => [$user->id => $user->full_name])
-            : collect([$currentUser->id => $currentUser->full_name]);
-
-        if (!$isAdminOrManager) {
-            return Hidden::make('user_id')->default($currentUser->id);
-        }
-
-        return Select::make('user_id')
-            ->label('User')
-            ->options($options)
-            ->searchable()
-            ->default(null)
-            ->columnSpan(1)
-            ->required();
-    }
-
-
-    /**
-     * @return Hidden
-     */
-    public static function getNotifiableRecord(): Hidden
-    {
-        return Hidden::make('notifiable_id')
-            ->default(0);
+            ]);
     }
 
     /**
@@ -78,16 +37,6 @@ class Admin
     {
         return Toggle::make('notify_create')
             ->label('Notify on Create')
-            ->default(false);
-    }
-
-    /**
-     * @return Toggle
-     */
-    public static function getUpdate(): Toggle
-    {
-        return Toggle::make('notify_update')
-            ->label('Notify on Update')
             ->default(false);
     }
 
@@ -120,6 +69,33 @@ class Admin
     }
 
     /**
+     * @return Select
+     */
+    public static function getNotifiableModule(): Select
+    {
+        return Select::make('notifiable_type')
+            ->label('Module')
+            ->options([
+                'App\Models\ProformaInvoice' => 'Proforma Invoice',
+                'App\Models\Order' => 'Order',
+                'App\Models\PaymentRequest' => 'Payment Request',
+                'App\Models\Payment' => 'Payment',
+            ])
+            ->reactive()
+            ->required()
+            ->columnSpan(1);
+    }
+
+    /**
+     * @return Hidden
+     */
+    public static function getNotifiableRecord(): Hidden
+    {
+        return Hidden::make('notifiable_id')
+            ->default(0);
+    }
+
+    /**
      * @return Toggle
      */
     public static function getSMSOpton(): Toggle
@@ -129,39 +105,40 @@ class Admin
     }
 
     /**
-     * @return TextColumn
+     * @return Toggle
      */
-    public static function showNotifiableModule(): TextColumn
+    public static function getUpdate(): Toggle
     {
-        return TextColumn::make('notifiable_type')
-            ->label('Module')
-            ->searchable()
-            ->badge()
-            ->sortable()
-            ->tooltip(fn($record) => $record->notifiable_id == 0
-                ? 'Module-Level Subscription'
-                : "Record ID: {$record->notifiable_id}")
-            ->formatStateUsing(function ($state) {
-                $modules = [
-                    'App\Models\ProformaInvoice' => 'Proforma Invoice',
-                    'App\Models\Order' => 'Order',
-                    'App\Models\PaymentRequest' => 'Payment Request',
-                    'App\Models\Payment' => 'Payment',
-                ];
-
-                return $modules[$state] ?? 'Unknown Module';
-            });
+        return Toggle::make('notify_update')
+            ->label('Notify on Update')
+            ->default(false);
     }
 
-    /**
-     * @return TextColumn
-     */
-    public static function showUser(): TextColumn
+    public static function getUser()
     {
-        return TextColumn::make('user.full_name')
+        $currentUser = auth()->user();
+        $isAdminOrManager = in_array($currentUser->role, ['admin', 'manager']);
+
+        $options = $isAdminOrManager
+            ? User::query()
+                ->select(['id', 'first_name', 'middle_name', 'last_name'])
+                ->where('status', 'active')
+                ->orderBy('first_name')
+                ->get()
+                ->mapWithKeys(fn($user) => [$user->id => $user->full_name])
+            : collect([$currentUser->id => $currentUser->full_name]);
+
+        if (!$isAdminOrManager) {
+            return Hidden::make('user_id')->default($currentUser->id);
+        }
+
+        return Select::make('user_id')
             ->label('User')
-            ->sortable()
-            ->searchable(['first_name', 'middle_name', 'last_name']);
+            ->options($options)
+            ->searchable()
+            ->default(null)
+            ->columnSpan(1)
+            ->required();
     }
 
     /**
@@ -171,16 +148,6 @@ class Admin
     {
         return IconColumn::make('notify_create')
             ->label('Create')
-            ->boolean();
-    }
-
-    /**
-     * @return IconColumn
-     */
-    public static function showUpdate(): IconColumn
-    {
-        return IconColumn::make('notify_update')
-            ->label('Update')
             ->boolean();
     }
 
@@ -215,6 +182,31 @@ class Admin
     }
 
     /**
+     * @return TextColumn
+     */
+    public static function showNotifiableModule(): TextColumn
+    {
+        return TextColumn::make('notifiable_type')
+            ->label('Module')
+            ->searchable()
+            ->badge()
+            ->sortable()
+            ->tooltip(fn($record) => $record->notifiable_id == 0
+                ? 'Module-Level Subscription'
+                : "Record ID: {$record->notifiable_id}")
+            ->formatStateUsing(function ($state) {
+                $modules = [
+                    'App\Models\ProformaInvoice' => 'Proforma Invoice',
+                    'App\Models\Order' => 'Order',
+                    'App\Models\PaymentRequest' => 'Payment Request',
+                    'App\Models\Payment' => 'Payment',
+                ];
+
+                return $modules[$state] ?? 'Unknown Module';
+            });
+    }
+
+    /**
      * @return IconColumn
      */
     public static function showSMSOption(): IconColumn
@@ -237,18 +229,23 @@ class Admin
     }
 
     /**
-     * @return SelectFilter
-     * @throws \Exception
+     * @return IconColumn
      */
-    public static function filterBasedOnModule(): SelectFilter
+    public static function showUpdate(): IconColumn
     {
-        return SelectFilter::make('notifiable_type')
-            ->label('Module')
-            ->options([
-                'App\Models\ProformaInvoice' => 'Proforma Invoice',
-                'App\Models\Order' => 'Order',
-                'App\Models\PaymentRequest' => 'Payment Request',
-                'App\Models\Payment' => 'Payment',
-            ]);
+        return IconColumn::make('notify_update')
+            ->label('Update')
+            ->boolean();
+    }
+
+    /**
+     * @return TextColumn
+     */
+    public static function showUser(): TextColumn
+    {
+        return TextColumn::make('user.full_name')
+            ->label('User')
+            ->sortable()
+            ->searchable(['first_name', 'middle_name', 'last_name']);
     }
 }

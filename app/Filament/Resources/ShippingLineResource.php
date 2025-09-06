@@ -66,6 +66,7 @@ class ShippingLineResource extends Resource
             ]);
     }
 
+
     public static function getPages(): array
     {
         return [
@@ -76,10 +77,5 @@ class ShippingLineResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         return !isSimpleSidebar();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

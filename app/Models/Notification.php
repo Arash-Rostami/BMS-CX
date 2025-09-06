@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Traits\NotificationComputations;
+use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -10,7 +11,10 @@ use Illuminate\Notifications\Notifiable;
 
 class Notification extends Model
 {
-    use SoftDeletes, HasFactory, Notifiable, NotificationComputations;
+    use HasFactory;
+    use Notifiable;
+    use NotificationComputations;
+    use SoftDeletes;
 
 
     protected $table = 'notifications';
@@ -34,7 +38,7 @@ class Notification extends Model
     public function forceDelete()
     {
         // Option 2: Throw an exception if someone tries to force delete
-        throw new \Exception("Hard deletes are disabled for this model.");
+        throw new Exception('Hard deletes are disabled for this model.');
     }
 
 

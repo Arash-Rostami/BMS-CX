@@ -101,6 +101,7 @@ class UserResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with('department')
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
@@ -200,8 +201,8 @@ class UserResource extends Resource
             ->filters([
                 Admin::filterRole(),
                 Admin::filterStatus(),
+                Admin::filterDep(),
                 TrashedFilter::make(),
-
             ], layout: FiltersLayout::Modal)
             ->actions([
 //                Action::make('setting')
@@ -225,6 +226,7 @@ class UserResource extends Resource
                     ->label('Company')
                     ->collapsible(),
             ])
+            ->poll('900s')
             ->striped();
     }
 }

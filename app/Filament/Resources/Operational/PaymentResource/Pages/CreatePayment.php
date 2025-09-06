@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operational\PaymentResource\Pages;
 
 use App\Filament\Resources\PaymentResource;
 use App\Models\Balance;
+use App\Models\CashTransaction;
 use App\Models\PaymentRequest;
 use App\Services\Notification\PaymentService;
 use App\Services\SmartPayment;
@@ -34,9 +35,31 @@ class CreatePayment extends CreateRecord
             0, (float)data_get($this->data, 'amount', 0) - $credit);
     }
 
+    protected function afterCreate(): void
+    {
+        persistReferenceNumber($this->record, 'P');
+
+        $paymentRequests = $this->record->paymentRequests->load('department:id,name');
+        $records = $paymentRequests->map(fn($each) => $each->proforma_invoice_number ?? $each->reason->reason)->join(', ');
+        $this->record['records'] = $records;
+
+        $this->handleCashTransaction($this->record, $paymentRequests);
+        (new PaymentService())->notifyAccountants($this->record);
+    }
+
     protected function afterFill(): void
     {
         SmartPayment::fillForm($this->id, $this->module, $this->form);
+    }
+
+    protected function handleRecordCreation(array $data): Model
+    {
+        $paymentRequests = PaymentRequest::with('payments.paymentRequests')
+            ->findMany(data_get($data, 'paymentRequests'));
+
+        $data = $this->processPaymentRequest($paymentRequests, $data);
+
+        return static::getModel()::create($data);
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
@@ -54,16 +77,6 @@ class CreatePayment extends CreateRecord
         }
 
         return $data;
-    }
-
-    protected function handleRecordCreation(array $data): Model
-    {
-        $paymentRequests = PaymentRequest::with('payments.paymentRequests')
-            ->findMany(data_get($data, 'paymentRequests'));
-
-        $data = $this->processPaymentRequest($paymentRequests, $data);
-
-        return static::getModel()::create($data);
     }
 
     protected function processPaymentRequest($paymentRequests, array $data): array
@@ -149,15 +162,21 @@ class CreatePayment extends CreateRecord
         }
     }
 
-    protected function afterCreate(): void
+    private function handleCashTransaction($payment, $paymentRequests): void
     {
-        persistReferenceNumber($this->record, 'P');
+        $pr = $paymentRequests->first(fn($pr) => strtolower(data_get($pr, 'extra.paymentMethod', '')) === 'cash'
+        );
 
-        $records = $this->record->paymentRequests
-            ->map(fn($each) => $each->proforma_invoice_number ?? $each->reason->reason)->join(', ');
+        if (!$pr || ($amount = (float)$payment->amount) <= 0) return;
 
-        $this->record['records'] = $records;
-
-        (new PaymentService())->notifyAccountants($this->record);
+        CashTransaction::create([
+            'type' => 'debit', 'amount' => $amount, 'currency' => $payment->currency,
+            'description' => sprintf('📍From: %s (%s) 🎯To: %s',
+                $pr->department->name ?? 'Unknown Department',
+                $pr->reference_number ?? 'Unknown Reference Number',
+                $pr->recipient_name ?? 'Unknown Recipient'
+            ),
+            'payment_id' => $payment->id, 'user_id' => auth()->id(),
+        ]);
     }
 }

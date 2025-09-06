@@ -51,6 +51,7 @@ class ListPayments extends ListRecords
     public bool $showActionsAhead = true;
     public bool $showTabs;
     public ?string $activeTab = '';
+
     protected $listeners = ['refreshPage' => '$refresh', 'updateActiveTab'];
 
     public function clearTableSort()
@@ -145,6 +146,7 @@ class ListPayments extends ListRecords
                 Admin::groupBySupplier(),
                 Admin::filterByTransferringDate(),
             ])
+            ->poll('900s')
             ->deferLoading();
     }
 
@@ -440,10 +442,18 @@ class ListPayments extends ListRecords
             ->whereIn('id', $this->getCachedPaymentIds())
             ->with([
                 'order',
+                'user',
+                'reason',
                 'paymentRequests',
                 'approvedPaymentRequests',
-                'reason',
-                'user',
+                'paymentRequests.order.proformaInvoice.buyer',
+                'paymentRequests.associatedProformaInvoices.buyer',
+                'paymentRequests.contractor',
+                'paymentRequests.supplier',
+                'paymentRequests.beneficiary',
+                'paymentRequests.costCenter',
+                'paymentRequests.department',
+                'paymentRequests.reason',
             ]);
     }
 

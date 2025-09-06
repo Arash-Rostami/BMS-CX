@@ -160,6 +160,7 @@ class ListProformaInvoices extends ListRecords
                 Admin::groupContractRecords(),
                 Admin::groupStatusRecords(),
             ])
+            ->poll('900s')
             ->deferLoading();
     }
 
@@ -460,7 +461,7 @@ class ListProformaInvoices extends ListRecords
             ->whereIn('id', $this->getCachedProformaInvoiceIds())
             ->with([
                 'buyer', 'category', 'grade', 'orders', 'activeOrders',
-                'product', 'supplier', 'user',
+                'product', 'supplier', 'user', 'assignee', 'verifier',
             ]);
     }
 

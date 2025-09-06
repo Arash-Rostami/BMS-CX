@@ -15,6 +15,8 @@ use App\Models\Supplier;
 use App\Rules\EnglishAlphabet;
 use App\Rules\NoMultipleProjectNumbers;
 use App\Rules\UniqueTitleInOrder;
+use App\Services\SmartCacheManager;
+use Closure;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -27,9 +29,12 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\HtmlString;
+use League\Flysystem\UnableToRetrieveMetadata;
 use Wallo\FilamentSelectify\Components\ToggleButton;
 
 
@@ -88,8 +93,8 @@ trait Form
                 TextInput::make('title')
                     ->required()
                     ->maxLength(255)
-                    ->rule(new EnglishAlphabet)
-                    ->rule(new UniqueTitleInOrder)
+                    ->rule(new EnglishAlphabet())
+                    ->rule(new UniqueTitleInOrder())
                     ->dehydrateStateUsing(fn(?string $state) => slugify($state)),
                 Hidden::make('module')
                     ->dehydrateStateUsing(fn($state) => $state ?? 'Order')
@@ -186,7 +191,11 @@ trait Form
 
         return Select::make('buyer_id')
             ->label(fn() => new HtmlString('<span class="grayscale">📥 </span><span class="text-primary-500 font-normal">Buyer</span>'))
-            ->options(Buyer::all()->pluck('name', 'id'))
+            ->options(function () {
+                return SmartCacheManager::remember('Buyer', ['type' => 'select_options'], 720, function () {
+                    return Buyer::orderBy('name')->pluck('name', 'id')->all();
+                });
+            })
             ->searchable()
             ->required()
             ->createOptionForm([
@@ -302,8 +311,7 @@ trait Form
     static function getDeliveryTerm(): Select
     {
         return Select::make('delivery_term_id')
-            ->options(DeliveryTerm::all()->pluck('name', 'id'))
-            ->searchable()
+            ->options(fn() => Cache::remember('delivery_terms_options', 3600, fn() => DeliveryTerm::pluck('name', 'id')->toArray()))
             ->label(fn() => new HtmlString('<span class="grayscale">🚛 </span><span class="text-primary-500 font-normal">Delivery Term</span>'))
             ->createOptionForm([
                 TextInput::make('name')
@@ -384,8 +392,7 @@ trait Form
     /**
      * @return FileUpload
      */
-    public
-    static function getFileUpload(): FileUpload
+    public static function getFileUpload(): FileUpload
     {
         return FileUpload::make('file_path')
             ->label('')
@@ -399,7 +406,23 @@ trait Form
             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
             ->imageEditor()
             ->openable()
-            ->downloadable();
+            ->downloadable()
+            ->rules([
+                fn(): Closure => function (string $attribute, $value, Closure $fail) {
+                    if ($value instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
+                        try {
+                            $value->getSize();
+                        } catch (UnableToRetrieveMetadata $e) {
+                            Notification::make()
+                                ->title('Upload Error')
+                                ->body('File upload failed. Please try uploading again.')
+                                ->danger()
+                                ->send();
+                            $fail('File processing failed.');
+                        }
+                    }
+                },
+            ]);
     }
 
     /**
@@ -703,7 +726,7 @@ trait Form
     static function getPackaging(): Select
     {
         return Select::make('packaging_id')
-            ->options(Packaging::pluck('name', 'id'))
+            ->options(fn() => Cache::remember('packaging_options', 3600, fn() => Packaging::pluck('name', 'id')->toArray()))
             ->searchable()
             ->label(fn() => new HtmlString('<span class="grayscale">🗳️ </span><span class="text-primary-500 font-normal">Packaging</span>'))
             ->createOptionForm([
@@ -786,7 +809,11 @@ trait Form
     static function getPortOfDelivery(): Select
     {
         return Select::make('port_of_delivery_id')
-            ->options(fn() => PortOfDelivery::all()->pluck('name', 'id'))
+            ->options(function () {
+                return SmartCacheManager::remember('PortOfDelivery', ['type' => 'select_options'], 720, function () {
+                    return PortOfDelivery::orderBy('name')->pluck('name', 'id')->all();
+                });
+            })
             ->searchable()
             ->label(fn() => new HtmlString('<span class="grayscale">⚓ </span><span class="text-primary-500 font-normal">Port of Delivery</span>'))
             ->createOptionForm([
@@ -961,11 +988,11 @@ trait Form
     {
         return Select::make('purchase_status_id')
             ->label(fn() => new HtmlString('<span class="grayscale">🚢 </span><span class="text-primary-500 font-normal">Shipment</span>'))
-            ->options(
-                PurchaseStatus::ordered()
-                    ->pluck('name', 'id')
-                    ->toArray()
-            )
+            ->options(function () {
+                return SmartCacheManager::remember('PurchaseStatus', ['type' => 'select_options'], 720, function () {
+                    return PurchaseStatus::ordered()->pluck('name', 'id')->all();
+                });
+            })
             ->searchable()
             ->required();
     }
@@ -1000,7 +1027,7 @@ trait Form
     static function getShippingLine(): Select
     {
         return Select::make('shipping_line_id')
-            ->options(ShippingLine::all()->pluck('name', 'id'))
+            ->options(fn() => Cache::remember('shipping_line_options', 3600, fn() => ShippingLine::pluck('name', 'id')->toArray()))
             ->searchable()
             ->label(fn() => new HtmlString('<span class="grayscale">⛵ </span><span class="text-primary-500 font-normal">Shipping Company (Cargo Carrier)</span>'))
             ->createOptionForm([
@@ -1030,7 +1057,11 @@ trait Form
     {
         return Select::make('supplier_id')
             ->label(fn() => new HtmlString('<span class="grayscale"> 📤</span><span class="text-primary-500 font-normal">Supplier</span>'))
-            ->options(Supplier::all()->pluck('name', 'id'))
+            ->options(function () {
+                return SmartCacheManager::remember('Supplier', ['type' => 'select_options'], 720, function () {
+                    return Supplier::orderBy('name')->pluck('name', 'id')->all();
+                });
+            })
             ->searchable()
             ->required()
             ->createOptionForm([

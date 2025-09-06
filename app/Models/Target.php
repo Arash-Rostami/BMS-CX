@@ -21,6 +21,9 @@ class Target extends Model
         'extra',
     ];
 
+    protected $with = ['category', 'user'];
+
+
     protected $casts = [
         'month' => 'array',
         'extra' => 'array',

@@ -307,9 +307,10 @@ trait Filter
      */
     public static function groupByDepartment(): Grouping
     {
-        return Grouping::make('department_id')->collapsible()
+        return Grouping::make('department_id')
+            ->collapsible()
             ->label('Dep.')
-            ->getTitleFromRecordUsing(fn(Model $record): string => Department::getByName($record->department_id));
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->department?->name);
     }
 
     /**
@@ -346,9 +347,10 @@ trait Filter
      */
     public static function groupByReason(): Grouping
     {
-        return Grouping::make('reason_for_payment')->collapsible()
+        return Grouping::make('reason_for_payment')
+            ->collapsible()
             ->label('Reason')
-            ->getTitleFromRecordUsing(fn(Model $record): string => PaymentRequest::showAmongAllReasons($record->reason_for_payment));
+            ->getTitleFromRecordUsing(fn(Model $record): string => $record->reason?->reason ?? 'No Reason');
     }
 
     /**

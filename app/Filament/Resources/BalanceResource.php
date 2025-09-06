@@ -53,6 +53,7 @@ class BalanceResource extends Resource
                 Admin::filterByRecipient(),
                 AdminOrder::filterCreatedAt()
             ], layout: FiltersLayout::Modal)
+            ->poll('900s')
             ->actions([Tables\Actions\EditAction::make()])
             ->bulkActions([Tables\Actions\BulkActionGroup::make([]),
             ]);
@@ -97,6 +98,7 @@ class BalanceResource extends Resource
                 'beneficiary',
                 'department',
             ]);
+
     }
 
     public static function getModernLayout(Table $table): Table
