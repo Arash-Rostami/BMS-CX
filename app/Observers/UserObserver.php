@@ -12,15 +12,18 @@ class UserObserver
     public function deleted(User $user): void
     {
         SmartCacheManager::invalidate('User');
+        User::flushQueryCache();
     }
 
     public function restored(User $user): void
     {
         SmartCacheManager::invalidate('User');
+        User::flushQueryCache();
     }
 
     public function saved(User $user): void
     {
         SmartCacheManager::invalidate('User');
+        User::flushQueryCache();
     }
 }

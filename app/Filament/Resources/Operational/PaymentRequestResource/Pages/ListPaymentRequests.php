@@ -184,8 +184,7 @@ class ListPaymentRequests extends ListRecords
                 Admin::groupByStatus(),
                 Admin::groupByCase(),
             ])
-            ->poll('900s')
-            ->deferLoading();
+            ->poll('900s');
     }
 
     public function getClassicLayout(Table $table)
@@ -512,7 +511,6 @@ class ListPaymentRequests extends ListRecords
     {
         return PaymentRequest::query()
             ->whereIn('id', $this->getCachedPaymentRequestIds())
-            ->withCount('paymentRequests')
             ->with([
                 'contractor',
                 'costCenter',

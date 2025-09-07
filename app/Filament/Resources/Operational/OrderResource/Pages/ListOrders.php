@@ -191,8 +191,7 @@ class ListOrders extends ListRecords
             ->bulkActions($this->getBulkActions())
             ->defaultSort('id', 'desc')
             ->groups($this->getTableGroups())
-            ->poll('900s')
-            ->deferLoading();
+            ->poll('900s');
     }
 
     public function getBulkActions(): array
@@ -271,23 +270,24 @@ class ListOrders extends ListRecords
     {
         return [
             'attachments',
-            'category',
+            'category:id,name',
             'doc',
-            'grade',
-            'logistic.deliveryTerm',
-            'logistic.packaging',
-            'logistic.portOfDelivery',
+            'grade:id,name,product_id',
+            'logistic.deliveryTerm:id,name',
+            'logistic.packaging:id,name',
+            'logistic.portOfDelivery:id,name',
             'logistic.shippingLine',
             'orderDetail',
-            'party.buyer',
-            'party.supplier',
+            'party:id,buyer_id,supplier_id',
+            'party.buyer:id,name',
+            'party.supplier:id,name',
             'paymentRequests.payments',
             'payments',
-            'product',
+            'product:id,name,category_id',
             'proformaInvoice',
-            'purchaseStatus',
+            'purchaseStatus:id,name',
             'tags',
-            'user',
+            'user:id,first_name,last_name',
         ];
     }
 

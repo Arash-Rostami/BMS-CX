@@ -8,21 +8,7 @@ use Illuminate\Support\Facades\Storage;
 
 class AttachmentObserver
 {
-    /**
-     * Handle the Attachment "created" event.
-     */
-    public function created(Attachment $attachment): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Attachment "updated" event.
-     */
-    public function updated(Attachment $attachment): void
-    {
-        //
-    }
+    public $afterCommit = true;
 
     /**
      * Handle the Attachment "deleted" event.
@@ -30,6 +16,7 @@ class AttachmentObserver
     public function deleted(Attachment $attachment)
     {
         $attachment->forceDelete();
+        Attachment::flushQueryCache();
     }
 
     /**
@@ -43,18 +30,10 @@ class AttachmentObserver
     }
 
     /**
-     * Handle the Attachment "restored" event.
+     * Handle the Attachment "created" event.
      */
-    public function restored(Attachment $attachment): void
+    public function saved(Attachment $attachment): void
     {
-        //
-    }
-
-    /**
-     * Handle the Attachment "force deleted" event.
-     */
-    public function forceDeleted(Attachment $attachment): void
-    {
-        //
+        Attachment::flushQueryCache();
     }
 }

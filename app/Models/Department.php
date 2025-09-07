@@ -15,6 +15,7 @@ class Department extends Model
     use DepartmentCache;
     use HasFactory;
 
+
     public static $filamentDetection = false;
 
     protected $fillable = [

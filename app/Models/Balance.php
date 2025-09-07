@@ -7,13 +7,19 @@ use App\Models\Traits\BalanceComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
 class Balance extends Model
 {
     use HasFactory;
-    use  BalanceComputations;
+    use BalanceComputations;
+    use QueryCacheable;
 
+    protected static $flushCacheOnUpdate = true;
+    public $cacheFor = 86400;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['balance_table'];
     protected $fillable =
         [
             'base',

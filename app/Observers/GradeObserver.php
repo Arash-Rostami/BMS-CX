@@ -13,15 +13,18 @@ class GradeObserver
     public function deleted(Grade $grade): void
     {
         SmartCacheManager::invalidate('Grade');
+        Grade::flushQueryCache();
     }
 
     public function restored(Grade $grade): void
     {
         SmartCacheManager::invalidate('Grade');
+        Grade::flushQueryCache();
     }
 
     public function saved(Grade $grade): void
     {
         SmartCacheManager::invalidate('Grade');
+        Grade::flushQueryCache();
     }
 }

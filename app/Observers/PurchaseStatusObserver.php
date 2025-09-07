@@ -13,6 +13,7 @@ class PurchaseStatusObserver
     public function deleted(PurchaseStatus $purchaseStatus): void
     {
         SmartCacheManager::invalidate('PurchaseStatus');
+        PurchaseStatus::flushQueryCache();
     }
 
     public function restored(PurchaseStatus $purchaseStatus): void
@@ -23,5 +24,6 @@ class PurchaseStatusObserver
     public function saved(PurchaseStatus $purchaseStatus): void
     {
         SmartCacheManager::invalidate('PurchaseStatus');
+        PurchaseStatus::flushQueryCache();
     }
 }

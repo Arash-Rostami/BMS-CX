@@ -14,11 +14,23 @@ use Laravel\Sanctum\HasApiTokens;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasName;
 use Filament\Models\Contracts\HasAvatar;
+use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
 class User extends Authenticatable implements FilamentUser, HasName, HasAvatar, CanResetPassword
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, UserRoles, UserComputations;
+    use HasApiTokens;
+    use HasFactory;
+    use Notifiable;
+    use SoftDeletes;
+    use UserRoles;
+    use UserComputations;
+    use QueryCacheable;
+
+    public $cacheFor = 86400;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['users_table'];
+    protected static $flushCacheOnUpdate = true;
 
 
     protected $fillable = [

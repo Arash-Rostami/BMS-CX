@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseQuantityChart extends ChartWidget
 {
-    use InteractsWithPageFilters, BaseOrderChart;
+    use InteractsWithPageFilters;
+    use BaseOrderChart;
 
     protected static ?string $heading = '🛒 Total Purchase Quantities';
 
@@ -52,6 +53,11 @@ class PurchaseQuantityChart extends ChartWidget
         return ['category' => 'Categories', 'product' => 'Products'];
     }
 
+    protected function getType(): string
+    {
+        return 'doughnut';
+    }
+
     private function getPurchaseQuantityData($filterType)
     {
 
@@ -82,11 +88,5 @@ class PurchaseQuantityChart extends ChartWidget
         }
 
         return DB::select($query, $bindings);
-    }
-
-
-    protected function getType(): string
-    {
-        return 'doughnut';
     }
 }

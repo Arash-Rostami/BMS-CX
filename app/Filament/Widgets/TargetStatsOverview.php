@@ -18,12 +18,12 @@ class TargetStatsOverview extends BaseWidget
 
     protected function getStats(): array
     {
-        list($year, $categoryId, $month, $monthName) = $this->fetchFilters();
+        list($year, $categoryId, $month, $monthName, $status) = $this->fetchFilters();
 
         $latestBlDate = Doc::getLatestBLDate();
         $latestProformaDate = ProformaInvoice::getLatestProformaDate();
         $totalProformaQty = ProformaInvoice::getTotalQuantityByYearAndCategoryAndMonth($year, $categoryId, $month);
-        $totalProformaQtyWithBlDate = ProformaInvoice::getTotalQuantityWithBLDateByFilters($year, $categoryId, $month);
+        $totalProformaQtyWithBlDate = ProformaInvoice::getTotalQuantityWithBLDateByFilters($year, $categoryId, $month, $status);
         $totalTargetQty = Target::getTotalTargetQuantityByYearCategoryAndMonth($year, $categoryId, $monthName);
 
         $purchasePercentage = $this->calculatePercentage($totalTargetQty, $totalProformaQty);
@@ -75,6 +75,8 @@ class TargetStatsOverview extends BaseWidget
     protected function fetchFilters(): array
     {
         $months = $this->filters['monthlyOrders'] ?? [];
+        $status = $this->filters['order_status'] ?? [];
+
 
         $monthNames = array_map(
             fn($month) => $this->generateMonthName((int)$month),
@@ -85,7 +87,8 @@ class TargetStatsOverview extends BaseWidget
             $this->filters['yearlyOrders'] ?? null,
             $this->filters['category_id'] ?? null,
             $months,
-            $monthNames
+            $monthNames,
+            $status
         ];
     }
 }

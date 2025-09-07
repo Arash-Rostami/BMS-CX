@@ -9,24 +9,14 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseTargetChart extends ChartWidget
 {
-    use InteractsWithPageFilters, BaseTargetChart;
+    use InteractsWithPageFilters;
+    use BaseTargetChart;
 
-    protected static ?string $heading = '🛍️ Procured Proformas (by PI Date)';
+    protected static ?string $heading = '🛍️ Procured Proformas (measured by PI)';
 
     protected static ?string $maxHeight = '350px';
 
-    protected function getData(): array
-    {
-        $filterType = $this->filter ?? 'quantity';
-        $chartData = $this->getPurchaseTargetData();
-
-        return $this->prepareChartData($chartData, $filterType, 'category_name');
-    }
-
-    protected function getFilters(): ?array
-    {
-        return ['quantity' => 'Quantity', 'gap' => 'Gap', 'percentage' => 'Percentage'];
-    }
+    protected static ?string $pollingInterval = '200s';
 
     public function getPurchaseTargetData()
     {
@@ -45,6 +35,7 @@ class PurchaseTargetChart extends ChartWidget
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN proforma_invoices pi ON pi.category_id = c.id AND pi.deleted_at IS NULL AND YEAR(pi.proforma_date) = ?
         ";
+
         $bindings[] = $year;
 
         $this->addMonthFilter($query, $bindings, 'pi.proforma_date');
@@ -52,7 +43,21 @@ class PurchaseTargetChart extends ChartWidget
         $query .= " GROUP BY c.name, t.target_quantity, t.modified_target_quantity, t.month";
         $orders = DB::select($query, $bindings);
 
+
         return $this->processChartData($orders, $filters['month']);
+    }
+
+    protected function getData(): array
+    {
+        $filterType = $this->filter ?? 'quantity';
+        $chartData = $this->getPurchaseTargetData();
+
+        return $this->prepareChartData($chartData, $filterType, 'category_name');
+    }
+
+    protected function getFilters(): ?array
+    {
+        return ['quantity' => 'Quantity', 'gap' => 'Gap', 'percentage' => 'Percentage'];
     }
 
     protected function getType(): string

@@ -6,12 +6,19 @@ use App\Models\Traits\OrderedStage;
 use App\Models\Traits\PurchaseStatusComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class PurchaseStatus extends Model
 {
-    use HasFactory, OrderedStage, PurchaseStatusComputations;
+    use HasFactory;
+    use OrderedStage;
+    use PurchaseStatusComputations;
+    use QueryCacheable;
 
-    protected $fillable = ['name', 'description', 'user_id'];
+    public $cacheFor = 86400;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['purchase_statuses_table'];
+    protected static $flushCacheOnUpdate = true;
 
     public const SORTED_ORDER = [
         '⏳ Pending',
@@ -21,14 +28,7 @@ class PurchaseStatus extends Model
         '🚢 Shipped',
         '🆓 Released',
     ];
-
-
-    protected static function booted()
-    {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
-        });
-    }
+    protected $fillable = ['name', 'description', 'user_id'];
 
     public function orders()
     {
@@ -38,5 +38,12 @@ class PurchaseStatus extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($post) {
+            $post->user_id = auth()->id();
+        });
     }
 }

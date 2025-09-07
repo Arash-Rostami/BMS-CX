@@ -12,18 +12,18 @@ class ProductObserver
     public function deleted(Product $product): void
     {
         SmartCacheManager::invalidate('Product');
-
+        Product::flushQueryCache();
     }
 
     public function restored(Product $product): void
     {
         SmartCacheManager::invalidate('Product');
-
+        Product::flushQueryCache();
     }
 
     public function saved(Product $product): void
     {
         SmartCacheManager::invalidate('Product');
-
+        Product::flushQueryCache();
     }
 }

@@ -19,7 +19,7 @@ class CashTransactionResource extends Resource
 
     protected static ?string $model = CashTransaction::class;
 
-    protected static ?string $pluralModelLabel = 'Cash Leger';
+    protected static ?string $pluralModelLabel = 'Cash Ledger';
 
     protected static ?string $navigationLabel = 'Cash Ledger';
 

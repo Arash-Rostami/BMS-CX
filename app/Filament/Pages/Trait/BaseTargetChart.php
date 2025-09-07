@@ -60,7 +60,8 @@ trait BaseTargetChart
                     } elseif ($status == 'cancelled') {
                         $proformaStatuses[] = 'rejected';
                     } else {
-                        $proformaStatuses[] = 'fulfilled'; // Assuming 'closed' maps to 'fulfilled'
+                        $proformaStatuses[] = 'approved';
+//                        $proformaStatuses[] = 'fulfilled'; // Assuming 'closed' maps to 'fulfilled'
                     }
                 }
                 if (!empty($proformaStatuses)) {
@@ -103,11 +104,10 @@ trait BaseTargetChart
     protected function processChartData($orders, $monthFilter)
     {
         $processedData = [];
-
         foreach ($orders as $order) {
             $targetQuantity = $order->modified_target_quantity ?? $order->target_quantity;
 
-            if ($monthFilter !== 'all') {
+            if ($monthFilter !== 'all' AND $monthFilter != null ) {
                 $monthFilterArray = is_array($monthFilter) ? $monthFilter : [$monthFilter];
                 $monthlyTargetQuantity = 0;
                 foreach ($monthFilterArray as $month) {
@@ -117,13 +117,12 @@ trait BaseTargetChart
                 }
                 $targetQuantity = $monthlyTargetQuantity;
             }
-
             $gapQuantity = ($order->realized_quantity ?? 0) - $targetQuantity;
 
             $processedData[] = [
                 'category_name' => $order->category_name,
                 'realized_quantity' => $order->realized_quantity,
-                'target_quantity' => $targetQuantity,
+                'target_quantity' => $targetQuantity ?? $orders->target_quantity,
                 'gap_quantity' => $gapQuantity,
             ];
         }

@@ -6,12 +6,19 @@ use App\Models\Traits\OrderComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Order extends Model
 {
     use HasFactory;
     use OrderComputations;
     use SoftDeletes;
+    use QueryCacheable;
+
+    public $cacheFor = 86400;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['orders_table'];
+    protected static $flushCacheOnUpdate = true;
 
     protected $fillable = [
         'order_number',

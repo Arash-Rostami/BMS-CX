@@ -6,14 +6,21 @@ use App\Models\Traits\DocCache;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Doc extends Model
 {
-    use HasFactory, SoftDeletes, DocCache;
+    use HasFactory;
+    use SoftDeletes;
+    use DocCache;
+
+    use QueryCacheable;
 
     public static bool $filamentDetection = false;
-
-
+    protected static $flushCacheOnUpdate = true;
+    public $cacheFor = 86400;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['docs_table'];
     protected $fillable = [
         'voyage_number',
         'declaration_number',
@@ -36,13 +43,6 @@ class Doc extends Model
         return $this->hasMany(Attachment::class, 'doc_id');
     }
 
-    protected static function booted()
-    {
-        static::creating(function ($doc) {
-            $doc->user_id = auth()->id();
-        });
-    }
-
     public function order()
     {
         return $this->hasOne(Order::class);
@@ -51,5 +51,12 @@ class Doc extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($doc) {
+            $doc->user_id = auth()->id();
+        });
     }
 }

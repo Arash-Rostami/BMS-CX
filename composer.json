@@ -33,6 +33,7 @@
         "pxlrbt/filament-excel": "^2.3",
         "pxlrbt/filament-spotlight": "^1.2",
         "rawilk/filament-password-input": "^1.1",
+        "rennokki/laravel-eloquent-query-cache": "^3.6",
         "ryangjchandler/blade-tabler-icons": "^2.3",
         "solution-forest/filament-simplelightbox": "^0.0.5",
         "stevebauman/location": "^7.4",

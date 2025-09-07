@@ -6,12 +6,19 @@ use App\Models\Traits\PaymentRequestComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class PaymentRequest extends Model
 {
     use HasFactory;
     use PaymentRequestComputations;
     use SoftDeletes;
+    use QueryCacheable;
+
+    public $cacheFor = 43200;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['payment_requests_table'];
+    protected static $flushCacheOnUpdate = true;
 
 
     public static array $typesOfPayment = [

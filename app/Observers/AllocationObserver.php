@@ -10,18 +10,20 @@ class AllocationObserver
 
     public bool $afterCommit = true;
 
-    public function created(Allocation $allocation): void
-    {
-        SmartCacheManager::invalidate('Allocation');
-    }
-
     public function deleted(Allocation $allocation): void
     {
         SmartCacheManager::invalidate('Allocation');
+        Allocation::flushQueryCache();
     }
 
     public function restored(Allocation $allocation): void
     {
         SmartCacheManager::invalidate('Allocation');
+    }
+
+    public function saved(Allocation $allocation): void
+    {
+        SmartCacheManager::invalidate('Allocation');
+        Allocation::flushQueryCache();
     }
 }

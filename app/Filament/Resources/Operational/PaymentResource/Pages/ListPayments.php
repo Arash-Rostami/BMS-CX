@@ -146,8 +146,7 @@ class ListPayments extends ListRecords
                 Admin::groupBySupplier(),
                 Admin::filterByTransferringDate(),
             ])
-            ->poll('900s')
-            ->deferLoading();
+            ->poll('900s');
     }
 
     public function getClassicLayout(Table $table): Table
@@ -453,7 +452,7 @@ class ListPayments extends ListRecords
                 'paymentRequests.beneficiary',
                 'paymentRequests.costCenter',
                 'paymentRequests.department',
-                'paymentRequests.reason',
+                'paymentRequests.reason'
             ]);
     }
 

@@ -5,11 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Party extends Model
 {
     use HasFactory;
     use SoftDeletes;
+    use QueryCacheable;
+
+    public $cacheFor = 86400;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['parties_table'];
+    protected static $flushCacheOnUpdate = true;
 
     public static bool $filamentDetection = false;
     public static string $filamentName = 'PART';

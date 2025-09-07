@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Name extends Model
 {
-    use HasFactory, NameCache;
+    use HasFactory;
+    use NameCache;
 
     public static $filamentDetection = false;
 

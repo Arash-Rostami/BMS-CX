@@ -69,6 +69,7 @@ return array(
     'RyanChandler\\TablerIcons\\' => array($vendorDir . '/ryangjchandler/blade-tabler-icons/src'),
     'RyanChandler\\BladeCaptureDirective\\Database\\Factories\\' => array($vendorDir . '/ryangjchandler/blade-capture-directive/database/factories'),
     'RyanChandler\\BladeCaptureDirective\\' => array($vendorDir . '/ryangjchandler/blade-capture-directive/src'),
+    'Rennokki\\QueryCache\\' => array($vendorDir . '/rennokki/laravel-eloquent-query-cache/src'),
     'Rawilk\\FilamentPasswordInput\\Database\\Factories\\' => array($vendorDir . '/rawilk/filament-password-input/database/factories'),
     'Rawilk\\FilamentPasswordInput\\' => array($vendorDir . '/rawilk/filament-password-input/src'),
     'Ramsey\\Uuid\\' => array($vendorDir . '/ramsey/uuid/src'),

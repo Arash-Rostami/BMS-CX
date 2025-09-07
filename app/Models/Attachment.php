@@ -8,13 +8,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
 class Attachment extends Model
 {
-    use HasFactory, SoftDeletes, AttachmentComputations;
+    use HasFactory;
+    use SoftDeletes;
+    use AttachmentComputations;
+    use QueryCacheable;
 
     public static bool $filamentDetection = false;
+    protected static $flushCacheOnUpdate = true;
+    public $cacheFor = 86400;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['attachments_table'];
+
+
     protected $fillable = [
         'name',
         'file_path',

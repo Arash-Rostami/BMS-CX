@@ -16,6 +16,7 @@ class PaymentObserver
     public function deleted(Payment $payment): void
     {
         SmartCacheManager::invalidate('Payment');
+        Payment::flushQueryCache();
     }
 
     public function restored(Payment $payment): void
@@ -26,5 +27,6 @@ class PaymentObserver
     public function saved(Payment $payment): void
     {
         SmartCacheManager::invalidate('Payment');
+        Payment::flushQueryCache();
     }
 }

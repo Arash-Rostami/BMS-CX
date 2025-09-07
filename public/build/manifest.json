@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-IHavaDVd.css",
+    "file": "assets/app-xeR5uOYy.css",
     "isEntry": true,
     "src": "resources/css/app.css"
   },
@@ -88,7 +88,7 @@
   },
   "resources/images/avatars/partner.png": {
     "file": "assets/viewer-ANmOMvP3.png",
-    "src": "resources/images/avatars/viewer.png"
+    "src": "resources/images/avatars/partner.png"
   },
   "resources/images/avatars/partner.svg": {
     "file": "assets/viewer-dBUqkQ1t.svg",
@@ -96,7 +96,7 @@
   },
   "resources/images/avatars/viewer.png": {
     "file": "assets/viewer-ANmOMvP3.png",
-    "src": "resources/images/avatars/viewer.png"
+    "src": "resources/images/avatars/partner.png"
   },
   "resources/images/avatars/viewer.svg": {
     "file": "assets/viewer-dBUqkQ1t.svg",
@@ -125,10 +125,6 @@
   "resources/images/logos/bms-logo-v2.png": {
     "file": "assets/bms-logo-v2-m6mLPnEk.png",
     "src": "resources/images/logos/bms-logo-v2.png"
-  },
-  "resources/images/logos/bms-logo-v3.png": {
-    "file": "assets/bms-logo-v3-q-UcLQVf.png",
-    "src": "resources/images/logos/bms-logo-v3.png"
   },
   "resources/images/logos/bms-logo-v4.png": {
     "file": "assets/bms-logo-v4-Sfu6pJ0K.png",
@@ -162,14 +158,6 @@
     "file": "assets/minimal-uLPwyC_5.jpg",
     "src": "resources/images/logos/minimal.jpg"
   },
-  "resources/images/logos/plugs.png": {
-    "file": "assets/plugs-glBulfD0.png",
-    "src": "resources/images/logos/plugs.png"
-  },
-  "resources/images/logos/roll-large.png": {
-    "file": "assets/roll-large-UhI0EgiF.png",
-    "src": "resources/images/logos/roll-large.png"
-  },
   "resources/images/logos/roll.png": {
     "file": "assets/roll-blvjO63R.png",
     "src": "resources/images/logos/roll.png"
@@ -177,10 +165,6 @@
   "resources/images/logos/world.png": {
     "file": "assets/world-QNe1wFOY.png",
     "src": "resources/images/logos/world.png"
-  },
-  "resources/images/logos/wrap.png": {
-    "file": "assets/wrap-NXhjF0Tz.png",
-    "src": "resources/images/logos/wrap.png"
   },
   "resources/images/main-bg.png": {
     "file": "assets/main-bg-rCHIBv3t.png",

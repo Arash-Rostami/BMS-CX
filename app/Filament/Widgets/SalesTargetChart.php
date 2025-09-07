@@ -9,24 +9,14 @@ use Illuminate\Support\Facades\DB;
 
 class SalesTargetChart extends ChartWidget
 {
-    use InteractsWithPageFilters, BaseTargetChart;
+    use InteractsWithPageFilters;
+    use BaseTargetChart;
 
-    protected static ?string $heading = '🚢 Shipped Proformas (by BL Date)';
+    protected static ?string $heading = '🚢 Shipped or Released Orders';
 
     protected static ?string $maxHeight = '350px';
 
-    protected function getData(): array
-    {
-        $filterType = $this->filter ?? 'quantity';
-        $chartData = $this->getSalesTargetData();
-
-        return $this->prepareChartData($chartData, $filterType, 'category_name');
-    }
-
-    protected function getFilters(): ?array
-    {
-        return ['quantity' => 'Quantity', 'gap' => 'Gap', 'percentage' => 'Percentage'];
-    }
+    protected static ?string $pollingInterval = '200s';
 
     public function getSalesTargetData()
     {
@@ -48,7 +38,7 @@ class SalesTargetChart extends ChartWidget
                 t.month
             FROM targets t
             LEFT JOIN categories c ON c.id = t.category_id
-            LEFT JOIN orders o ON o.category_id = c.id AND o.deleted_at IS NULL
+            LEFT JOIN orders o ON o.category_id = c.id AND o.deleted_at IS NULL AND o.purchase_status_id IN (6, 2)
             LEFT JOIN docs d ON d.id = o.doc_id
             LEFT JOIN proforma_invoices pi ON pi.id = o.proforma_invoice_id AND pi.deleted_at IS NULL AND pi.status != 'rejected'
     ";
@@ -61,6 +51,20 @@ class SalesTargetChart extends ChartWidget
 
         return $this->processChartData($orders, $filters['month']);
     }
+
+    protected function getData(): array
+    {
+        $filterType = $this->filter ?? 'quantity';
+        $chartData = $this->getSalesTargetData();
+
+        return $this->prepareChartData($chartData, $filterType, 'category_name');
+    }
+
+    protected function getFilters(): ?array
+    {
+        return ['quantity' => 'Quantity', 'gap' => 'Gap', 'percentage' => 'Percentage'];
+    }
+
     protected function getType(): string
     {
         return 'bar';

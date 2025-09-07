@@ -6,11 +6,21 @@ use App\Models\Traits\LogisticComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
 class Logistic extends Model
 {
-    use HasFactory, SoftDeletes, LogisticComputations;
+    use HasFactory;
+    use SoftDeletes;
+    use LogisticComputations;
+    use QueryCacheable;
+
+    public $cacheFor = 86400;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['logistics_table'];
+
+    protected static $flushCacheOnUpdate = true;
 
     public static bool $filamentDetection = false;
 
@@ -40,52 +50,9 @@ class Logistic extends Model
         'packaging_id',
     ];
 
-    protected static function booted()
-    {
-        static::creating(function ($logistic) {
-            $logistic->user_id = auth()->id();
-        });
-    }
-
-
     public function attachments()
     {
         return $this->hasMany(Attachment::class, 'logistic_id');
-    }
-
-
-    /**
-     * Get the user that owns the logistic.
-     */
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-
-    /**
-     * Get the packaging associated with the party.
-     */
-    public function packaging()
-    {
-        return $this->belongsTo(Packaging::class);
-    }
-
-
-    /**
-     * Get the shipping line associated with the logistic.
-     */
-    public function shippingLine()
-    {
-        return $this->belongsTo(ShippingLine::class);
-    }
-
-    /**
-     * Get the port of delivery associated with the logistic.
-     */
-    public function portOfDelivery()
-    {
-        return $this->belongsTo(PortOfDelivery::class);
     }
 
     /**
@@ -102,5 +69,44 @@ class Logistic extends Model
     public function order()
     {
         return $this->hasOne(Order::class, 'logistic_id');
+    }
+
+    /**
+     * Get the packaging associated with the party.
+     */
+    public function packaging()
+    {
+        return $this->belongsTo(Packaging::class);
+    }
+
+    /**
+     * Get the port of delivery associated with the logistic.
+     */
+    public function portOfDelivery()
+    {
+        return $this->belongsTo(PortOfDelivery::class);
+    }
+
+    /**
+     * Get the shipping line associated with the logistic.
+     */
+    public function shippingLine()
+    {
+        return $this->belongsTo(ShippingLine::class);
+    }
+
+    /**
+     * Get the user that owns the logistic.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($logistic) {
+            $logistic->user_id = auth()->id();
+        });
     }
 }

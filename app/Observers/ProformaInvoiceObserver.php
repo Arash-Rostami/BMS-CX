@@ -14,19 +14,12 @@ class ProformaInvoiceObserver
     public $afterCommit = true;
 
     /**
-     * Handle the ProformaInvoice "saved" event.
-     */
-    public function saved(ProformaInvoice $proformaInvoice): void
-    {
-        SmartCacheManager::invalidate('ProformaInvoice');
-    }
-
-    /**
      * Handle the ProformaInvoice "deleted" event.
      */
     public function deleted(ProformaInvoice $proformaInvoice): void
     {
         SmartCacheManager::invalidate('ProformaInvoice');
+        ProformaInvoice::flushQueryCache();
     }
 
     /**
@@ -35,5 +28,14 @@ class ProformaInvoiceObserver
     public function restored(ProformaInvoice $proformaInvoice): void
     {
         SmartCacheManager::invalidate('ProformaInvoice');
+    }
+
+    /**
+     * Handle the ProformaInvoice "saved" event.
+     */
+    public function saved(ProformaInvoice $proformaInvoice): void
+    {
+        SmartCacheManager::invalidate('ProformaInvoice');
+        ProformaInvoice::flushQueryCache();
     }
 }

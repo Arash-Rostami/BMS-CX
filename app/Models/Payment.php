@@ -6,6 +6,7 @@ use App\Models\Traits\PaymentComputations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
 class Payment extends Model
@@ -13,6 +14,13 @@ class Payment extends Model
     use HasFactory;
     use PaymentComputations;
     use SoftDeletes;
+    use QueryCacheable;
+
+    public $cacheFor = 43200;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['payments_table'];
+    protected static $flushCacheOnUpdate = true;
+
 
     protected $fillable = [
         'reference_number',

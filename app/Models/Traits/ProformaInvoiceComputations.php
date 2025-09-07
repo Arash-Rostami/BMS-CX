@@ -32,12 +32,14 @@ trait ProformaInvoiceComputations
             ->get(['quantity', 'price', 'percentage']);
     }
 
-    public static function generateCacheKey($prefix, $month, $category_id, $year): string
+    public static function generateCacheKey($prefix, $month, $category_id, $year, $status = null): string
     {
         $m = is_array($month) ? implode('_', $month) : ($month ?? 'all');
         $c = is_array($category_id) ? implode('_', (array)$category_id) : ($category_id ?? 'all');
+        $s = is_array($status) ? implode('_', $status) : ($status ?? 'all');
 
-        return "{$prefix}{$year}_{$c}_{$m}";
+
+        return "{$prefix}{$year}_{$c}_{$m}_{$s}";
     }
 
     public static function getApproved()
@@ -190,22 +192,21 @@ trait ProformaInvoiceComputations
         });
     }
 
-    public static function getTotalQuantityWithBLDateByFilters($year, $category_id = null, $month = null): int
+    public static function getTotalQuantityWithBLDateByFilters($year, $category_id = null, $month = null, $status = []): int
     {
         if (!$year || $year === 'all') {
             return 0;
         }
 
-        $cacheKey = self::generateCacheKey('pi_total_quantity_with_bl_date_', $month, $category_id, $year);
+        $cacheKey = self::generateCacheKey('pi_total_quantity_with_bl_date_', $month, $category_id, $year, $status);
 
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month) {
+        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month, $status) {
             $query = "
             SELECT SUM(DISTINCT COALESCE(pi.quantity, 0)) AS total_quantity
             FROM proforma_invoices pi
             INNER JOIN orders o ON pi.id = o.proforma_invoice_id
             INNER JOIN docs d ON o.doc_id = d.id
-            WHERE pi.deleted_at IS NULL
-              AND d.BL_date IS NOT NULL
+            WHERE pi.deleted_at IS NULL AND d.BL_date IS NOT NULL AND o.purchase_status_id IN (6, 2)
         ";
 
             $bindings = [];
@@ -233,6 +234,16 @@ trait ProformaInvoiceComputations
                 } else {
                     $query .= " AND pi.category_id = ?";
                     $bindings[] = $category_id;
+                }
+            }
+
+            if (!empty($status)) {
+                if (is_array($status)) {
+                    $query .= " AND o.order_status IN (" . implode(',', array_fill(0, count($status), '?')) . ")";
+                    $bindings = array_merge($bindings, $status);
+                } else {
+                    $query .= " AND o.order_status = ?";
+                    $bindings[] = $status;
                 }
             }
 

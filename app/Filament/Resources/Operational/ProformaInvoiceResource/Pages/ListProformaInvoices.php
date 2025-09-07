@@ -160,8 +160,7 @@ class ListProformaInvoices extends ListRecords
                 Admin::groupContractRecords(),
                 Admin::groupStatusRecords(),
             ])
-            ->poll('900s')
-            ->deferLoading();
+            ->poll('900s');
     }
 
     public function getClassicLayout(Table $table): Table
