@@ -16,19 +16,22 @@
                     @php
                         $total = $balance['total'] ?? 0;
                         $adjusted = $balance['adjusted'] ?? 0;
-                        [$balanceClass, $balanceLabel, $badgeClass] =  match (true) {
+                        [$balanceClass, $balanceLabel, $badgeClass] = match (true) {
                             $adjusted > 0 => ['text-danger', 'Overpaid', 'cancelled'],
                             $adjusted < 0 => ['text-success', 'Underpaid', 'approved'],
-                            default      => ['', 'Settled', 'settled'],
+                            default => ['', 'Settled', 'settled'],
                         };
                     @endphp
                     <tr>
                         <td class="border px-4 py-2">{{ $currency }}</td>
                         <td class="border px-4 py-2">
-                            <span
-                                class="status-badge {{ $badgeClass }} text-xl">{{ number_format(abs($adjusted), 2) }} {{ $balanceLabel }}</span>
+                                <span class="status-badge {{ $badgeClass }} text-xl">
+                                    {{ number_format(abs($adjusted), 2) }} {{ $balanceLabel }}
+                                </span>
                             @if($currency !== 'Rial')
-                                <span class="text-sm insight"> (Net Balance: {{ number_format(abs($total), 2) }})</span>
+                                <span class="text-sm insight">
+                                         &nbsp;(With processing contracts: {{ number_format(abs($total), 2) }})
+                                </span>
                             @endif
                         </td>
                     </tr>
@@ -37,6 +40,7 @@
             </table>
         @endif
     </div>
+
     <div>
         <div class="overflow-x-auto">
             <table class="table-auto">
@@ -44,65 +48,66 @@
                 <tr>
                     <th class="border px-4 py-2">Contract Number</th>
                     <th class="border px-4 py-2">Currency</th>
-                    <th class="border px-4 py-2">Paid Amount</th>
-                    <th class="border px-4 py-2">Expected Amount</th>
-                    <th class="border px-4 py-2">Balance (Difference)</th>
-                    <th class="border px-4 py-2">Credit Status</th>
+                    <th class="border px-4 py-2">Total Paid</th>
+                    <th class="border px-4 py-2">Total Expected</th>
+                    <th class="border px-4 py-2">Balance/Variance</th>
+                    <th class="border px-4 py-2">Status</th>
+                    <th class="border px-4 py-2">Credit Used</th>
                 </tr>
                 </thead>
                 <tbody>
-                @foreach ($paginatedData as $row)
+                @foreach ($paginatedData->sortBy(fn($item) => $item['type'] === 'adjustment' ? 1 : 0) as $row)
                     @php
                         $isAdjustment = $row['type'] === 'adjustment';
+                        $isNotDetermined= $row['expected_amount'] == 0;
                         $hasIncompleteRequest = !$isAdjustment && !empty($row['incompleteOrder']) && count($row['incompleteOrder']);
                         $isAdvance = !$isAdjustment && $row['proforma']->orders->isEmpty();
-                        $insightClass = ($isAdvance || $isAdjustment) ? 'insight' : '';
+                        $insightClass = ($isAdvance || ($isNotDetermined && !$isAdjustment) ) ? 'insight' : '';
                     @endphp
 
                     <tr>
                         <td
-                            title="{{ $isAdjustment ? 'Adjustment Record' : 'View details of PI No: ' . $row['proforma_number'] }}"
-                            class="border px-4 py-2 cursor-pointer"
-                        >
+                            title="{{ $isAdjustment ? 'Adjustment Record' : 'View details of Supplier\'s ' . $row['proforma_number'] }}"
+                            class="border px-4 py-2 cursor-pointer">
                             @if ($isAdjustment)
                                 <span
                                     class="status-badge material-icons-outlined"
-                                    title="Manual adjustment entry"
-                                >
-                        swap_horiz
-                    </span>
-                                <span class="{{ $insightClass }}" title="Manual adjustment entry">{{ $row['contract_number'] }}
-                    </span>
+                                    title="Manual adjustment entry">
+                                        swap_horiz
+                                </span>
+                                <span class="{{ $insightClass }}" title="Manual adjustment entry">
+                                        {{ $row['contract_number'] }}
+                                </span>
                             @else
                                 <a
                                     href="{{ route('filament.admin.resources.proforma-invoices.edit', ['record' => $row['id']]) }}"
                                     target="_blank"
-                                    class="flex items-center space-x-2"
-                                >
-                        <span
-                            class="status-badge material-icons-outlined"
-                            title="Proforma Invoice"
-                        >
-                            receipt_long
-                        </span>
+                                    class="flex items-center space-x-2">
+                                        <span class="status-badge material-icons-outlined" title="Proforma Invoice">
+                                            receipt_long
+                                        </span>
                                     <span class="{{ $insightClass }}">
-                            {{ $row['contract_number'] }} ({{ $row['reference_number'] }})
-                        </span>
+                                            {{ $row['contract_number'] }} ({{ $row['reference_number'] }})
+                                        </span>
 
                                     @if ($isAdvance)
                                         <span
                                             class="mt-1 insight text-sm md:text-md"
-                                            title="Advance payment only; no associated order has been created for this contract."
-                                        >
-                                ⚠️ No Order
-                            </span>
+                                            title="Advance payment only; no associated order has been created for this contract.">
+                                                ⚠️ No Order
+                                            </span>
                                     @elseif ($hasIncompleteRequest)
                                         <span
                                             class="mt-1 insight text-sm md:text-md"
-                                            title="Pending payments for payment requests: {{ collect($row['incompleteOrder'])->pluck('reference_number')->join(' | ') }}"
-                                        >
-                                ⚠️ No Payments
-                            </span>
+                                            title="Pending payments for payment requests: {{ collect($row['incompleteOrder'])->pluck('reference_number')->join(' | ') }}">
+                                                ⚠️ No Payments
+                                            </span>
+                                    @elseif ($isNotDetermined)
+                                        <span
+                                            class="mt-1 insight text-sm md:text-md"
+                                            title="Not Closed/Approved Orders">
+                                                ⚠️ Not Finalized
+                                        </span>
                                     @endif
                                 </a>
                             @endif
@@ -126,37 +131,55 @@
 
                         <td class="border px-4 py-2 {{ $insightClass }}">
                             @if ($row['diff_status'] === 'Overpaid')
-                                <span class="status-badge cancelled">
-                        {{ $row['diff_status'] }}
-                    </span>
+                                <span class="status-badge cancelled">{{ $row['diff_status'] }}</span>
                             @elseif ($row['diff_status'] === 'Underpaid')
-                                <span class="status-badge approved">
-                        {{ $row['diff_status'] }}
-                    </span>
+                                <span class="status-badge approved">{{ $row['diff_status'] }}</span>
                             @elseif ($row['diff_status'] === 'Settled')
-                                <span class="status-badge settled">
-                        {{ $row['diff_status'] }}
-                    </span>
+                                <span class="status-badge settled">{{ $row['diff_status'] }}</span>
                             @else
                                 {{ $row['diff_status'] }}
                             @endif
                         </td>
+
+                        <td @class([
+                                'border px-4 py-2',
+                                'text-green-500' => (float) $row['credit'] > 0,
+                                'text-gray-500' => (float) $row['credit'] == 0,
+                            ])>
+                            {{ $row['credit'] }}
+                        </td>
+
                     </tr>
                 @endforeach
                 </tbody>
             </table>
         </div>
+
         <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-            <button wire:click="previousPage" @if ($currentPage == 1) disabled @endif
-                @class(['pagination-button', 'disabled' => $currentPage == 1, 'enabled' => $currentPage != 1])>
+            <button
+                wire:click="previousPage"
+                @if ($currentPage == 1) disabled @endif
+                @class([
+                    'pagination-button',
+                    'disabled' => $currentPage == 1,
+                    'enabled' => $currentPage != 1
+                ])>
                 Previous
             </button>
+
             <span class="pagination-summary">
                 <span class="total-items">{{ number_format($totalItems) }} items</span> &nbsp; | &nbsp;
                 <span class="page-info">Page {{ $currentPage }} of {{ $totalPages }}</span>
             </span>
-            <button wire:click="nextPage" @if ($currentPage >= $totalPages) disabled @endif
-                @class(['pagination-button', 'disabled' => $currentPage >= $totalPages, 'enabled' => $currentPage < $totalPages])>
+
+            <button
+                wire:click="nextPage"
+                @if ($currentPage >= $totalPages) disabled @endif
+                @class([
+                    'pagination-button',
+                    'disabled' => $currentPage >= $totalPages,
+                    'enabled' => $currentPage < $totalPages
+                ])>
                 Next
             </button>
         </div>

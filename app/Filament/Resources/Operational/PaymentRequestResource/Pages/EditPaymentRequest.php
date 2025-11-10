@@ -5,17 +5,13 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 use App\Filament\Resources\PaymentRequestResource;
 use App\Models\Attachment;
 use App\Models\User;
-use App\Notifications\PaymentRequestStatusNotification;
 use App\Services\AttachmentCreationService;
 use App\Services\Notification\PaymentRequestService;
-use App\Services\NotificationManager;
-use App\Services\RetryableEmailService;
 use ArielMejiaDev\FilamentPrintable\Actions\PrintAction;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\MaxWidth;
-use Filament\Tables\Actions\ReplicateAction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
@@ -24,6 +20,35 @@ use niklasravnsborg\LaravelPdf\Facades\Pdf;
 class EditPaymentRequest extends EditRecord
 {
     protected static string $resource = PaymentRequestResource::class;
+
+    protected function afterSave(): void
+    {
+        $record = $this->record;
+
+        $service = new PaymentRequestService();
+
+        $service->notifyAccountants($record, type: 'edit');
+
+        $this->sendStatusNotification($service);
+
+        $this->clearSessionData();
+    }
+
+    protected function beforeSave()
+    {
+        if ($this->record->payments->isNotEmpty() && !(auth()->user()?->hasRole('admin') ?? false)) {
+            $this->haltProcess();
+        }
+
+        session(['old_status_payment' => $this->record->getOriginal('status')]);
+        $hasExistingAttachment = data_get($this->form->getRawState(), 'use_existing_attachments') ?? false;
+
+        if ($hasExistingAttachment) {
+            Cache::put('available_attachments', data_get($this->form->getRawState(), 'available_attachments'), 10);
+        }
+
+        AttachmentCreationService::createFromExisting($this->record->getOriginal('id'), 'payment_request_id');
+    }
 
     protected function getHeaderActions(): array
     {
@@ -38,7 +63,7 @@ class EditPaymentRequest extends EditRecord
                         ->map(fn($path) => asset($path))
                         ->all();
 
-                    if (empty($attachmentUrls)){
+                    if (empty($attachmentUrls)) {
                         Notification::make()
                             ->warning()
                             ->title('No Attachments Found')
@@ -80,50 +105,51 @@ class EditPaymentRequest extends EditRecord
         ];
     }
 
-
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['extra'] = data_get($this->form->getRawState(), 'extra');
 
-        if (! isset($data['total_amount'])) {
+        if (!isset($data['total_amount'])) {
             $data['total_amount'] = $data['requested_amount'];
         }
 
-        $data = (new CreatePaymentRequest())->persistAccountNo($data);
+        $data = (new CreatePaymentRequest())->normalizeAccountNumber($data);
 
         return $data;
     }
 
-    protected function beforeSave()
+    private function clearSessionData()
     {
-        if ($this->record->payments->isNotEmpty() && ! (auth()->user()?->hasRole('admin') ?? false)) {
-            $this->haltProcess();
-        }
-
-        session(['old_status_payment' => $this->record->getOriginal('status')]);
-        $hasExistingAttachment = data_get($this->form->getRawState(), 'use_existing_attachments') ?? false;
-
-        if ($hasExistingAttachment) {
-            Cache::put('available_attachments', data_get($this->form->getRawState(), 'available_attachments'), 10);
-        }
-
-        AttachmentCreationService::createFromExisting($this->record->getOriginal('id'), 'payment_request_id');
+        session()->forget('old_status_payment');
     }
 
-
-    protected function afterSave(): void
+    private function haltProcess(): void
     {
-        $record = $this->record;
+        Notification::make()
+            ->warning()
+            ->title('Record Locked: Payment Received')
+            ->persistent()
+            ->send();
 
-        $service = new PaymentRequestService();
-
-        $service->notifyAccountants($record, type: 'edit');
-
-        $this->sendStatusNotification($service);
-
-        $this->clearSessionData();
+        $this->halt();
     }
 
+    private function persistStatusChanger(): void
+    {
+        $statusChangeInfo = [
+            'changed_by' => auth()->user()->full_name ?? auth()->user()->first_name ?? 'BMS',
+            'changed_at' => now()->toDateTimeString(),
+            'changed_from' => session('old_status_payment') ?? 'N/A',
+            'changed_to' => $this->record['status'] ?? 'N/A'
+        ];
+
+        $extra = $this->record->extra ?? [];
+        $extra['statusChangeInfo'] = $statusChangeInfo;
+
+        $this->record->update([
+            'extra' => $extra
+        ]);
+    }
 
     private function sendStatusNotification($service)
     {
@@ -133,7 +159,8 @@ class EditPaymentRequest extends EditRecord
         if ($newStatus && $newStatus !== session('old_status_payment')) {
 
             $this->persistStatusChanger();
-            $allRecipients = User::getUsersByRole('accountant');
+            $allRecipients = User::getUsersByRole('accountant')
+                ->filter(fn($user) => strtolower($user->info['position'] ?? '') == 'snr');
 
             $madeBy = $this->record['user_id'] ?? null;
             $specificRecipient = !empty($madeBy) ? User::find($madeBy) : null;
@@ -145,38 +172,5 @@ class EditPaymentRequest extends EditRecord
 
             $service->notifyAccountants($this->record, type: $newStatus, status: true, accountants: $allRecipients);
         }
-    }
-
-    private function clearSessionData()
-    {
-        session()->forget('old_status_payment');
-    }
-
-
-    private function persistStatusChanger(): void
-    {
-        $statusChangeInfo = [
-            'changed_by' => auth()->user()->full_name,
-            'changed_at' => now()->toDateTimeString(),
-        ];
-
-        $extra = $this->record->extra ?? [];
-        $extra['statusChangeInfo'] = $statusChangeInfo;
-
-        $this->record->update([
-            'extra' => $extra
-        ]);
-    }
-
-
-    private function haltProcess(): void
-    {
-        Notification::make()
-            ->warning()
-            ->title('Record Locked: Payment Received')
-            ->persistent()
-            ->send();
-
-        $this->halt();
     }
 }

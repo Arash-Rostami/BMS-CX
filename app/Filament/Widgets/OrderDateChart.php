@@ -9,12 +9,14 @@ use Illuminate\Support\Facades\DB;
 
 class OrderDateChart extends ChartWidget
 {
-    use InteractsWithPageFilters, BaseOrderChart;
+    use InteractsWithPageFilters;
+    use BaseOrderChart;
 
     protected static ?string $heading = '📆 Monthly Order Distribution';
 
     protected static ?string $maxHeight = '250px';
 
+    protected static ?string $pollingInterval = null;
 
     protected function getData(): array
     {
@@ -22,14 +24,14 @@ class OrderDateChart extends ChartWidget
 
         $monthlyData = $this->getMonthlyOrderData();
 
-        $data = $filterType === 'quantity' ?
-            array_column($monthlyData, 'quantity') :
-            array_column($monthlyData, 'percentage');
+        $data = $filterType === 'quantity'
+            ? array_column($monthlyData, 'quantity')
+            : array_column($monthlyData, 'percentage');
 
+        $label = $filterType === 'quantity'
+            ? 'Quantity by Month'
+            : 'Percentage by Month';
 
-        $datasets = [];
-
-        $label = ($filterType === 'quantity') ? 'Quantity by Month' : 'Percentage by Month';
         $color = $this->getBackgroundColor();
 
         $datasets[] = [
@@ -61,25 +63,45 @@ class OrderDateChart extends ChartWidget
 
     protected function getFilters(): ?array
     {
-        return ['quantity' => 'Quantity', 'percentage' => 'Percentage'];
+        return [
+            'quantity' => 'Quantity',
+            'percentage' => 'Percentage',
+        ];
     }
 
-    private function getMonthlyOrderData()
+    protected function getType(): string
     {
+        return 'line';
+    }
 
+    private function buildMonthlyOrderSql(): string
+    {
+        return <<<SQL
+SELECT
+    MONTH(o.proforma_date) AS month,
+    SUM(
+        COALESCE(
+            od.final_quantity,
+            od.provisional_quantity,
+            od.buying_quantity,
+            0
+        )
+    ) AS quantity
+FROM orders o
+JOIN order_details od
+    ON o.order_detail_id = od.id
+WHERE 1=1
+  AND o.deleted_at IS NULL
+SQL;
+    }
+
+    private function getMonthlyOrderData(): array
+    {
         $bindings = [];
-        $query = "
-            SELECT
-                MONTH(o.proforma_date) as month,
-                SUM(COALESCE(od.final_quantity, od.provisional_quantity, od.buying_quantity, 0)) AS quantity
-            FROM orders o
-            JOIN order_details od ON o.order_detail_id = od.id
-            WHERE 1=1
-        ";
 
-        $query = $this->buildQuery($query, $bindings);
-
-        $query .= " GROUP BY month ORDER BY month";
+        $query = $this->buildMonthlyOrderSql();
+        $query = $this->buildQuery($query, $bindings)
+            . ' GROUP BY month ORDER BY month';
 
         $monthlyData = DB::select($query, $bindings);
 
@@ -100,15 +122,11 @@ class OrderDateChart extends ChartWidget
         $totalQuantity = array_sum(array_column($monthlyResults, 'quantity'));
 
         foreach ($monthlyResults as &$result) {
-            $result['percentage'] = $totalQuantity > 0 ? ($result['quantity'] / $totalQuantity) * 100 : 0;
+            $result['percentage'] = $totalQuantity > 0
+                ? ($result['quantity'] / $totalQuantity) * 100
+                : 0;
         }
 
         return $monthlyResults;
-    }
-
-
-    protected function getType(): string
-    {
-        return 'line';
     }
 }

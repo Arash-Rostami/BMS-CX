@@ -513,7 +513,7 @@ trait Table
             ->alignRight()
             ->grow(false)
             ->alignRight()
-            ->tooltip('⇄ Change status')
+            ->tooltip(fn() => (isUserPartner() or isUserJnrAccountant()) ? ' ' : '⇄ Change status')
             ->formatStateUsing(fn($state): string => self::$statusTexts[$state] ?? 'Unknown')
             ->icon(fn($state): string => self::$statusIcons[$state] ?? null)
             ->color(fn($state): string => self::$statusColors[$state] ?? null)
@@ -537,16 +537,37 @@ trait Table
                             ->required(),
                     ])
                     ->action(function (Model $record, array $data) {
-                        $record->update(['status' => $data['status']]);
-                        $service = new PaymentRequestService();
-                        $accountants = $record->user ? collect([$record->user]) : collect();
-                        $service->notifyAccountants($record, type: $data['status'], status: true, accountants: $accountants);
+                        $status = $data['status'];
+                        $statusChangeInfo = [
+                            'changed_by' => auth()->user()->full_name ?? auth()->user()->first_name ?? 'BMS',
+                            'changed_at' => now()->toDateTimeString(),
+                            'changed_from' => $record->getOriginal('status') ?? 'N/A',
+                            'changed_to' => $status ?? 'N/A',
+                        ];
+
+                        $extra = (array)($record->extra ?? []);
+                        $extra['statusChangeInfo'] = $statusChangeInfo;
+
+                        $record->update([
+                            'extra' => $extra,
+                            'status' => $status,
+                        ]);
+
+                        (new PaymentRequestService())->notifyAccountants(
+                            $record,
+                            type: $status,
+                            status: true,
+                            accountants: $record->user ? collect([$record->user]) : collect()
+                        );
+
                         Notification::make()
                             ->title('Status updated: ' . ucfirst($data['status']))
                             ->success()
                             ->send();
-                    })->hidden(isUserPartner() or isUserJnrAccountant()),
-            )->hidden(isUserPartner() or isUserJnrAccountant())
+                    })
+                    ->hidden(isUserPartner() or isUserJnrAccountant()),
+            )
+//            ->hidden(isUserPartner() or isUserJnrAccountant())
             ->badge();
     }
 

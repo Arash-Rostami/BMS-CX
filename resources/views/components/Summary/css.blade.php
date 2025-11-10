@@ -259,7 +259,16 @@
             background: linear-gradient(90deg, #10b981, #047857) !important;
         }
 
+
         /* Status Badges & Dividers */
+        .text-green-500 {
+            color: #22c55e !important;
+        }
+
+        .text-gray-500 {
+            color: dimgrey !important;
+        }
+
         .status-badge {
             margin-left: 0.5rem;
             padding: 0.25rem 0.5rem;
@@ -497,7 +506,7 @@
             min-width: 110px;
             color: white;
             background-color: #6466F1;
-            border-radius: 5%;
+            border-radius: 5px;
             text-align: center;
         }
 

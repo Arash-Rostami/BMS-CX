@@ -18,43 +18,11 @@ class PaymentRequestPolicy
     }
 
     /**
-     * Determine whether the user can view any models.
-     */
-    public function viewAny(User $user): bool
-    {
-        return AccessLevel::hasPermissionForModel('view', 'PaymentRequest');
-    }
-
-    /**
-     * Determine whether the user can view the model.
-     */
-    public function view(User $user, PaymentRequest $paymentRequest): bool
-    {
-        if ($paymentRequest->trashed()) {
-            return false;
-        }
-
-        return AccessLevel::hasPermissionForModel('view', 'PaymentRequest');
-    }
-
-    /**
      * Determine whether the user can create models.
      */
     public function create(User $user): bool
     {
         return AccessLevel::hasPermissionForModel('create', 'PaymentRequest');
-    }
-
-    /**
-     * Determine whether the user can update the model.
-     */
-    public function update(User $user, PaymentRequest $paymentRequest): bool
-    {
-        if ($paymentRequest->trashed()) {
-            return false;
-        }
-
-        return AccessLevel::hasPermissionForModel('edit', 'PaymentRequest');
     }
 
     /**
@@ -77,7 +45,19 @@ class PaymentRequestPolicy
         return AccessLevel::hasPermissionForModel('restore', 'PaymentRequest');
     }
 
+    /**
+     * Determine whether the user can update the model.
+     */
+    public function update(User $user, PaymentRequest $paymentRequest): bool
+    {
+        if ($paymentRequest->trashed()) {
+            return false;
+        }
 
+        return AccessLevel::hasPermissionForModel('edit', 'PaymentRequest');
+    }
+
+    //DISABLED OPTIONS
     public static function updateStatus(string $status, Model $record): bool
     {
         if (isUserAdmin()) {
@@ -93,10 +73,30 @@ class PaymentRequestPolicy
                 return true;  // Accountant CANNOT update any status
             }
 
-            if ($record->getOriginal('department_id') == 6) {
-                return !in_array($status, ['approved', 'rejected']);
-            }
             return !in_array($status, ['allowed', 'rejected']);
+        }
+
+        if (isUserMdr()) {
+            $userDep = cachedUser()->info['department'];
+            if ($record->getOriginal('department_id') == $userDep || $record->getOriginal('cost_center') == $userDep) {
+                return !in_array($status, ['allowed', 'rejected', 'cancelled']);
+            }
+
+            return true;
+        }
+
+        if (isUserMKHead()) {
+            if ($record->getOriginal('department_id') == 9 || $record->getOriginal('cost_center') == 9) {
+                return !in_array($status, ['allowed', 'rejected', 'cancelled']);
+            }
+            return true;
+        }
+
+        if (isUserPersoreHead()) {
+            if ($record->getOriginal('department_id') == 10 or $record->getOriginal('cost_center') == 10) {
+                return !in_array($status, ['rejected', 'processing', 'approved']);
+            }
+            return true;
         }
 
         if (isUserCXHead()) {
@@ -111,5 +111,25 @@ class PaymentRequestPolicy
         }
 
         return true; // All other roles CANNOT update any status as all options are disabled
+    }
+
+    /**
+     * Determine whether the user can view the model.
+     */
+    public function view(User $user, PaymentRequest $paymentRequest): bool
+    {
+        if ($paymentRequest->trashed()) {
+            return false;
+        }
+
+        return AccessLevel::hasPermissionForModel('view', 'PaymentRequest');
+    }
+
+    /**
+     * Determine whether the user can view any models.
+     */
+    public function viewAny(User $user): bool
+    {
+        return AccessLevel::hasPermissionForModel('view', 'PaymentRequest');
     }
 }

@@ -80,7 +80,7 @@ class SupplierSummary extends Component
 
     public function loadSupplierData()
     {
-        $this->proformasForSupplier = ProformaInvoice::select(['id', 'supplier_id', 'contract_number', 'proforma_number', 'reference_number'])
+        $this->proformasForSupplier = ProformaInvoice::select(['id', 'quantity', 'price', 'percentage', 'supplier_id', 'contract_number', 'proforma_number', 'reference_number'])
             ->where('supplier_id', $this->supplierId)
             ->with([
                 'supplier:id,name',
@@ -201,6 +201,7 @@ class SupplierSummary extends Component
                 'diff' => number_format($diff, 2),
                 'diff_status' => $this->getDiffStatus($diff),
                 'adjustment_record' => $adjustment,
+                'credit' => number_format(0, 2),
             ];
         }
         return array($currencyDiffBalances, $paymentSummaryTable);
@@ -214,6 +215,8 @@ class SupplierSummary extends Component
             $incompleteRequests = $proforma->orders
                 ->flatMap(fn($order) => $order->paymentRequests->where('status', '!=', 'completed'))
                 ->values();
+
+            list($totalRequestedByCurrency, $totalPaidByCurrencyForCredit) = $this->getCreditsUsed($proforma);
 
             foreach ($currencies as $currency) {
                 $expected = $data['expected'][$currency] ?? 0;
@@ -231,6 +234,9 @@ class SupplierSummary extends Component
                 $currencyDiffBalances[$currency]['total'] =
                     ($currencyDiffBalances[$currency]['total'] ?? 0) + $diff;
 
+                // Credits based on currency
+                $credit = $totalRequestedByCurrency->get($currency, 0) - $totalPaidByCurrencyForCredit->get($currency, 0);
+
                 $paymentSummaryTable[] = [
                     'id' => $proforma->id,
                     'type' => 'proforma',
@@ -244,10 +250,23 @@ class SupplierSummary extends Component
                     'expected_amount' => number_format($expected, 2),
                     'diff' => number_format($diff, 2),
                     'diff_status' => $this->getDiffStatus($diff),
+                    'credit' => number_format($credit, 2),
                 ];
             }
         }
         return array($currencyDiffBalances, $paymentSummaryTable);
+    }
+
+
+    private function getCreditsUsed(mixed $proforma): array
+    {
+        $allRequests = $proforma->orders->flatMap->paymentRequests->merge($proforma->associatedPaymentRequests)
+            ->filter(fn($pr) => ($pr->status ?? null) === 'completed');
+
+        return [
+            $allRequests->groupBy('currency')->map(fn($group) => $group->sum('requested_amount')),
+            $allRequests->flatMap->payments->groupBy('currency')->map(fn($group) => $group->sum('amount'))
+        ];
     }
 
     private function getDiffStatus(float $diff): string

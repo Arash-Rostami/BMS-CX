@@ -9,9 +9,7 @@ use Illuminate\Support\Collection;
 
 class SupplierSummaryService
 {
-    /**
-     * Calculate expected payments by currency for a proforma
-     */
+
     public function calculateExpectedPayments(ProformaInvoice $proforma): array
     {
         $expected = [];
@@ -22,11 +20,11 @@ class SupplierSummaryService
         }
 
         // Otherwise, calculate based on each order
-        foreach ($proforma->orders as $order) {
-            $orderDetail = $order->orderDetail;
-            if (!$orderDetail) continue;
-
-            $expected = $this->sumUpBalances($orderDetail, $expected, $order);
+        foreach ($proforma->orders->whereIn('order_status', ['closed', 'accounting_approved']) as $order) {
+            $bl = $order->doc?->BL_date ?? null;
+            if (!empty($bl) && $order->orderDetail) {
+                $expected = $this->sumUpBalances($order->orderDetail, $expected, $order);
+            }
         }
 
         return $expected;
@@ -58,7 +56,6 @@ class SupplierSummaryService
 
         // Process advance payments
         $this->processProformaPayments($proforma, $totals, $proformaWeight, $nonMatchingAmount);
-
         // Process order payments
         $this->processOrderPayments($proforma, $totals);
 
@@ -152,22 +149,80 @@ class SupplierSummaryService
         $this->syncSummaries($proformaIds, $allRows);
     }
 
+    protected function getAdjustmentFactor($proforma): mixed
+    {
+        $totalProformaQuantity = (float)$proforma->quantity;
+
+        if ($totalProformaQuantity <= 0) {
+            return 1.0;
+        }
+
+        $closedOrders = $proforma->orders
+            ->whereIn('order_status', ['accounting_approved', 'closed']);
+
+        $getOrderQuantity = fn($order) => $order->logistic?->net_weight
+            ?? $order->orderDetail?->final_quantity
+            ?? $order->orderDetail?->provisional_quantity
+            ?? $order->orderDetail?->buying_quantity
+            ?? 0;
+
+        $isLastOrder = fn($order) => (is_string($order->orderDetail?->extra)
+            ? json_decode($order->orderDetail->extra, true)
+            : $order->orderDetail?->extra)['lastOrder'] ?? false;
+
+        list($lastOrders, $regularOrders) = $closedOrders->partition($isLastOrder);
+
+        $closedOrderQuantity = $regularOrders->sum($getOrderQuantity);
+
+        if ($lastOrders->isNotEmpty()) {
+            $sumOfLastOrders = $lastOrders->sum($getOrderQuantity);
+            $remainder = $totalProformaQuantity - ($closedOrderQuantity + $sumOfLastOrders);
+            $closedOrderQuantity += $sumOfLastOrders + $remainder;
+        }
+
+        return $closedOrderQuantity > 0
+            ? min(1.0, $closedOrderQuantity / $totalProformaQuantity)
+            : 1.0;
+    }
+
+//    protected function getAdjustmentFactor($proforma): mixed
+//    {
+//        $totalProformaQuantity = (float)$proforma->quantity;
+//        $adjustmentFactor = 1.0;
+//
+//        if ($totalProformaQuantity > 0) {
+//            $closedOrderQuantity = $proforma->orders
+//                ->whereIn('order_status', ['accounting_approved', 'closed'])
+//                ->sum(function ($order) {
+//
+//
+//                    return $order->logistic?->net_weight
+//                        ?? $order->orderDetail?->final_quantity
+//                        ?? $order->orderDetail?->provisional_quantity
+//                        ?? $order->orderDetail?->buying_quantity
+//                        ?? 0;
+//                });
+//
+//            if ($closedOrderQuantity > 0) {
+//                $adjustmentFactor = min(1.0, $closedOrderQuantity / $totalProformaQuantity);
+//            }
+//        }
+//        return $adjustmentFactor;
+//    }
+
     protected function getProformaWeight(ProformaInvoice $proforma): int|float
     {
         return $proforma->price * $proforma->quantity * ($proforma->percentage / 100);
     }
 
-    /**
-     * Process order payments
-     */
+
     protected function processOrderPayments($proforma, array &$totals): void
     {
-        foreach ($proforma->orders as $order) {
-            foreach ($order->paymentRequests as $request) {
-                if ($request->status !== 'completed') {
-                    continue;
-                }
+        foreach ($proforma->orders->whereIn('order_status', ['closed', 'accounting_approved']) as $order) {
+            $bl = $order->doc?->BL_date ?? null;
+            if (empty($bl)) continue;
 
+            foreach ($order->paymentRequests->where('status', 'completed') as $request) {
                 foreach ($request->payments->whereNull('deleted_at') as $payment) {
                     $currency = $payment->currency;
                     $totals[$currency] = ($totals[$currency] ?? 0) + $payment->amount;
@@ -176,16 +231,15 @@ class SupplierSummaryService
         }
     }
 
-    /**
-     * Process advance payments with optimizations
-     */
     protected function processProformaPayments($proforma, array &$totals, float $proformaWeight, float &$nonMatchingAmount): void
     {
-        foreach ($proforma->associatedPaymentRequests as $request) {
-            if ($request->status !== 'completed') {
-                continue;
-            }
+        $adjustmentFactor = $this->getAdjustmentFactor($proforma);
 
+        if ($adjustmentFactor <= 0) {
+            return;
+        }
+
+        foreach ($proforma->associatedPaymentRequests->where('status', 'completed') as $request) {
             foreach ($request->payments->whereNull('deleted_at') as $payment) {
                 // Skip if payment is for different supplier
                 $firstRequest = $payment->paymentRequests->first();
@@ -193,24 +247,23 @@ class SupplierSummaryService
                     continue;
                 }
 
-
                 $currency = $payment->currency;
                 $amount = $payment->amount;
 
-                if ($payment->paymentRequests->contains(fn($pr) => $pr->associated_proforma_invoices_count > 1)) {
+                if ($payment->paymentRequests->contains(fn($pr) => $pr->associatedProformaInvoices->count() > 1)) {
                     $totalSum = $payment->paymentRequests->sum('requested_amount');
                     if ($totalSum > 0) {
                         $amount = $payment->amount * ($proformaWeight / $totalSum);
                     }
                 }
 
+                $amount *= $adjustmentFactor;
 
                 // Handle non-matching amounts
                 if ($nonMatchingAmount > 0) {
                     $amount -= $nonMatchingAmount;
                     $nonMatchingAmount = 0;
                 }
-
 
                 $totals[$currency] = ($totals[$currency] ?? 0) + $amount;
             }
@@ -224,7 +277,7 @@ class SupplierSummaryService
             ->where('status', 'completed')->whereNull('deleted_at');
 
         //  Sum requested_amount of those shared across >1 proforma
-        $sharedRequests = $allRequests->filter(fn($r) => $r->associated_proforma_invoices_count > 1);
+        $sharedRequests = $allRequests->filter(fn($r) => $r->associatedProformaInvoices->count() > 1);
         $totalSharedRequested = $sharedRequests->sum('requested_amount');
 
         foreach ($allRequests as $request) {

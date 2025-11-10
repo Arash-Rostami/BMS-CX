@@ -74,6 +74,28 @@ return new class extends Migration {
             $table->json('extra')->nullable();
             $table->timestamps();
             $table->softDeletes();
+
+            $table->index([
+                'department_id',
+                'type_of_payment',
+                'requested_amount',
+                'currency',
+                'proforma_invoice_number',
+                'order_id',
+                'contractor_id',
+                'deleted_at'
+            ], 'pr_duplicate_check_contractor');
+
+            $table->index([
+                'department_id',
+                'type_of_payment',
+                'requested_amount',
+                'currency',
+                'proforma_invoice_number',
+                'order_id',
+                'supplier_id',
+                'deleted_at'
+            ], 'pr_duplicate_check_supplier');
         });
     }
 

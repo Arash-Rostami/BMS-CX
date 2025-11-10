@@ -164,8 +164,9 @@ class CreatePayment extends CreateRecord
 
     private function handleCashTransaction($payment, $paymentRequests): void
     {
-        $pr = $paymentRequests->first(fn($pr) => strtolower(data_get($pr, 'extra.paymentMethod', '')) === 'cash'
-        );
+        if ($payment->bypass_cash_ledger || strtolower($payment->currency) === 'rial') return;
+
+        $pr = $paymentRequests->first(fn($pr) => strtolower(data_get($pr, 'extra.paymentMethod', '')) === 'cash');
 
         if (!$pr || ($amount = (float)$payment->amount) <= 0) return;
 

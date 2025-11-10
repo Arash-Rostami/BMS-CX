@@ -3,10 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\Core\PermissionResource\Pages\Admin;
-use App\Filament\Resources\PermissionResource\Pages;
-use App\Filament\Resources\PermissionResource\RelationManagers;
+use App\Filament\Resources\Core\PermissionResource\RelationManagers;
 use App\Models\Permission;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -15,7 +13,9 @@ use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+
 
 class PermissionResource extends Resource
 {
@@ -38,37 +38,6 @@ class PermissionResource extends Resource
             ]);
     }
 
-    public static function table(Table $table): Table
-    {
-
-        $table = self::configureCommonTableSettings($table);
-
-        return (getTableDesign() != 'classic')
-            ? self::getModernLayout($table)
-            : self::getClassicLayout($table);
-
-
-    }
-
-    private static function configureCommonTableSettings(Table $table): Table
-    {
-        return $table
-            ->filters([
-
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ExportBulkAction::make(),
-                ])
-            ])
-            ->defaultSort('id', 'desc');
-    }
-
     public static function getClassicLayout(Table $table): Table
     {
         return $table
@@ -78,6 +47,12 @@ class PermissionResource extends Resource
                 Admin::showAccessLevel(),
                 Admin::showTimeStamp()
             ])->striped();
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with('user');
     }
 
     public static function getModernLayout(Table $table): Table
@@ -112,5 +87,36 @@ class PermissionResource extends Resource
         return [
             'index' => Core\PermissionResource\Pages\ManagePermissions::route('/'),
         ];
+    }
+
+    public static function table(Table $table): Table
+    {
+
+        $table = self::configureCommonTableSettings($table);
+
+        return (getTableDesign() != 'classic')
+            ? self::getModernLayout($table)
+            : self::getClassicLayout($table);
+
+
+    }
+
+    private static function configureCommonTableSettings(Table $table): Table
+    {
+        return $table
+            ->filters([
+
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                    ExportBulkAction::make(),
+                ])
+            ])
+            ->defaultSort('id', 'desc');
     }
 }

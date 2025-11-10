@@ -17,7 +17,7 @@ class Department extends Model
 
 
     public static $filamentDetection = false;
-
+    public $timestamps = false;
     protected $fillable = [
         'name',
         'code',

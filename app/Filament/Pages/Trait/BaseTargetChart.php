@@ -19,13 +19,43 @@ trait BaseTargetChart
         ];
     }
 
+    protected function addMonthFilter(string &$query, array &$bindings, string $dateColumn): void
+    {
+        $filters = $this->getAllFilters();
+        if (!empty($filters['month']) && $filters['month'] !== 'all') {
+            $monthNumbers = is_array($filters['month']) ? $filters['month'] : [$filters['month']];
+
+            if (count($monthNumbers) > 0) {
+                $placeholders = implode(',', array_fill(0, count($monthNumbers), '?'));
+                $query .= " AND MONTH($dateColumn) IN ({$placeholders})";
+                $bindings = array_merge($bindings, $monthNumbers);
+
+                $monthNamesConditions = [];
+                foreach ($monthNumbers as $monthNumber) {
+                    $monthName = $this->generateMonthName((int)$monthNumber);
+                    $monthNamesConditions[] = "JSON_UNQUOTE(JSON_EXTRACT(t.month, '$.\"{$monthName}\"')) IS NOT NULL";
+                }
+                $query .= ' AND (' . implode(' OR ', $monthNamesConditions) . ')';
+            }
+        }
+    }
+
+    protected function buildMonthClause($months): string
+    {
+        if (!is_array($months)) $months = $months ? [$months] : [];
+
+        if (empty($months)) return '';
+
+        $ph = implode(',', array_fill(0, count($months), '?'));
+        return " AND MONTH(d.BL_date) IN ({$ph})";
+    }
+
     protected function buildQuery(string $query, array &$bindings, $order = false)
     {
         $filters = $this->getAllFilters();
 
-        $query .= " WHERE t.year = ?";
+        $query .= ' WHERE t.year = ?';
         $bindings[] = $filters['year'];
-
 
         if ($filters['category_id']) {
             if (is_array($filters['category_id'])) {
@@ -34,7 +64,7 @@ trait BaseTargetChart
                 $query .= " AND t.category_id IN ({$placeholders})";
                 $bindings = array_merge($bindings, $categoryIds);
             } else {
-                $query .= " AND t.category_id = ?";
+                $query .= ' AND t.category_id = ?';
                 $bindings[] = $filters['category_id'];
             }
         }
@@ -47,7 +77,7 @@ trait BaseTargetChart
                 $query .= " AND o.order_status IN ({$placeholders})"; // Assuming 'o' is the alias for orders table
                 $bindings = array_merge($bindings, $orderStatuses);
             } else {
-                $query .= " AND o.order_status = ?";
+                $query .= ' AND o.order_status = ?';
                 $bindings[] = $filters['order_status'];
             }
         } elseif ($filters['order_status']) {
@@ -80,54 +110,47 @@ trait BaseTargetChart
         return $query;
     }
 
-    protected function addMonthFilter(string &$query, array &$bindings, string $dateColumn): void
+    protected function generateMonthName(int $monthNumber): string
     {
-        $filters = $this->getAllFilters();
-        if (!empty($filters['month']) && $filters['month'] !== 'all') {
-            $monthNumbers = is_array($filters['month']) ? $filters['month'] : [$filters['month']];
-
-            if (count($monthNumbers) > 0) {
-                $placeholders = implode(',', array_fill(0, count($monthNumbers), '?'));
-                $query .= " AND MONTH($dateColumn) IN ({$placeholders})";
-                $bindings = array_merge($bindings, $monthNumbers);
-
-                $monthNamesConditions = [];
-                foreach ($monthNumbers as $monthNumber) {
-                    $monthName = $this->generateMonthName((int)$monthNumber);
-                    $monthNamesConditions[] = "JSON_UNQUOTE(JSON_EXTRACT(t.month, '$.\"{$monthName}\"')) IS NOT NULL";
-                }
-                $query .= " AND (" . implode(" OR ", $monthNamesConditions) . ")";
-            }
-        }
+        return strtolower(trim(date('F', mktime(0, 0, 0, $monthNumber, 1))));
     }
 
-    protected function processChartData($orders, $monthFilter)
+    protected function getBackgroundColor(): mixed
     {
-        $processedData = [];
-        foreach ($orders as $order) {
-            $targetQuantity = $order->modified_target_quantity ?? $order->target_quantity;
-
-            if ($monthFilter !== 'all' AND $monthFilter != null ) {
-                $monthFilterArray = is_array($monthFilter) ? $monthFilter : [$monthFilter];
-                $monthlyTargetQuantity = 0;
-                foreach ($monthFilterArray as $month) {
-                    $monthName = $this->generateMonthName((int)$month);
-                    $monthData = json_decode($order->month, true);
-                    $monthlyTargetQuantity += $monthData[$monthName] ?? 0;
-                }
-                $targetQuantity = $monthlyTargetQuantity;
-            }
-            $gapQuantity = ($order->realized_quantity ?? 0) - $targetQuantity;
-
-            $processedData[] = [
-                'category_name' => $order->category_name,
-                'realized_quantity' => $order->realized_quantity,
-                'target_quantity' => $targetQuantity ?? $orders->target_quantity,
-                'gap_quantity' => $gapQuantity,
-            ];
+        $key = str_replace('\\', '-', static::class);
+        if (isset(self::$bgColorCache[$key])) {
+            return self::$bgColorCache[$key];
         }
+        $cacheKey = 'widget-bg-color-' . $key;
+        self::$bgColorCache[$key] = Cache::remember($cacheKey, 300, function () {
+            return ColorTheme::getRandomColorForWidget();
+        });
+        return self::$bgColorCache[$key];
+    }
 
-        return $processedData;
+    protected function getOptions(): array
+    {
+        return [
+            'plugins' => [
+                'datalabels' => [
+                    'padding' => 6,
+                    'anchor' => 'end',
+                    'align' => 'center',
+                    'offset' => 10,
+                ],
+            ],
+            'animation' => [
+                'duration' => 1000,
+                'easing' => 'easeInOutQuad',
+            ],
+        ];
+    }
+
+    protected function normalizeYear($yearInput): int
+    {
+        return $yearInput !== 'all'
+            ? (int)$yearInput
+            : (int)date('Y');
     }
 
     protected function prepareChartData($data, $filterType, $nameCol)
@@ -200,39 +223,32 @@ trait BaseTargetChart
         ];
     }
 
-    protected function generateMonthName(int $monthNumber): string
+    protected function processChartData($orders, $monthFilter)
     {
-        return strtolower(trim(date('F', mktime(0, 0, 0, $monthNumber, 1))));
-    }
+        $processedData = [];
+        foreach ($orders as $order) {
+            $targetQuantity = $order->modified_target_quantity ?? $order->target_quantity;
 
-    protected function getBackgroundColor(): mixed
-    {
-        $key = str_replace('\\', '-', static::class);
-        if (isset(self::$bgColorCache[$key])) {
-            return self::$bgColorCache[$key];
+            if ($monthFilter !== 'all' and $monthFilter != null) {
+                $monthFilterArray = is_array($monthFilter) ? $monthFilter : [$monthFilter];
+                $monthlyTargetQuantity = 0;
+                foreach ($monthFilterArray as $month) {
+                    $monthName = $this->generateMonthName((int)$month);
+                    $monthData = json_decode($order->month, true);
+                    $monthlyTargetQuantity += $monthData[$monthName] ?? 0;
+                }
+                $targetQuantity = $monthlyTargetQuantity;
+            }
+            $gapQuantity = ($order->realized_quantity ?? 0) - $targetQuantity;
+
+            $processedData[] = [
+                'category_name' => $order->category_name,
+                'realized_quantity' => $order->realized_quantity,
+                'target_quantity' => $targetQuantity ?? $orders->target_quantity,
+                'gap_quantity' => $gapQuantity,
+            ];
         }
-        $cacheKey = 'widget-bg-color-' . $key;
-        self::$bgColorCache[$key] = Cache::remember($cacheKey, 300, function () {
-            return ColorTheme::getRandomColorForWidget();
-        });
-        return self::$bgColorCache[$key];
-    }
 
-    protected function getOptions(): array
-    {
-        return [
-            'plugins' => [
-                'datalabels' => [
-                    'padding' => 6,
-                    'anchor' => 'end',
-                    'align' => 'center',
-                    'offset' => 10,
-                ],
-            ],
-            'animation' => [
-                'duration' => 1000,
-                'easing' => 'easeInOutQuad',
-            ],
-        ];
+        return $processedData;
     }
 }

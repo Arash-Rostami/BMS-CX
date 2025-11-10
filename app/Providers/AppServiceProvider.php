@@ -13,6 +13,7 @@ use App\Models\Name;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentRequest;
+use App\Models\Permission;
 use App\Models\PortOfDelivery;
 use App\Models\Product;
 use App\Models\ProformaInvoice;
@@ -30,6 +31,7 @@ use App\Observers\NameObserver;
 use App\Observers\OrderObserver;
 use App\Observers\PaymentObserver;
 use App\Observers\PaymentRequestObserver;
+use App\Observers\PermissionObserver;
 use App\Observers\PortOfDeliveryObserver;
 use App\Observers\ProductObserver;
 use App\Observers\ProformaInvoiceObserver;
@@ -44,7 +46,6 @@ use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Columns\TextColumn;
 use Filament\View\PanelsRenderHook;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\View\View;
@@ -155,7 +156,9 @@ class AppServiceProvider extends ServiceProvider
         Order::observe(OrderObserver::class);
         Payment::observe(PaymentObserver::class);
         PaymentRequest::observe(PaymentRequestObserver::class);
+        Permission::observe(PermissionObserver::class);
         ProformaInvoice::observe(ProformaInvoiceObserver::class);
+
 
         // Master Data Observers
         Allocation::observe(AllocationObserver::class);

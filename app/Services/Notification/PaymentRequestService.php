@@ -12,8 +12,8 @@ class PaymentRequestService extends BaseService
 {
     protected const CX_DEPARTMENT_ID = 6;
     protected const MDR_POSITION = 'mdr';
+    protected const SNR_POSITION = 'snr';
     protected const ROLE_ACCOUNTANT = 'accountant';
-    protected const ROLE_MANAGER = 'manager';
     protected const PAYMENT_CASH = 'cash';
     protected const ALLOWED_STATUSES = ['approved'];
     private const ALLOWED_CURRENCIES = ['EURO', 'USD'];
@@ -26,10 +26,29 @@ class PaymentRequestService extends BaseService
     public function notifyAccountants($record, $type = 'new', $status = false, $accountants = null): void
     {
         $accountants = $this->getEligibleAccountants($accountants);
-        $recipients = $this->addManagementToAccountants($accountants, $status, $record['status']);
 
-        $this->notifyUsers($record, type: $type, status: $status, users: $recipients);
+        $this->notifyUsers($record, type: $type, status: $status, users: $accountants);
         $this->handleAdditionalNotifications($status, $type, $record, $accountants);
+    }
+
+    protected function addCxHeadIfNeeded($record, mixed $accountants): mixed
+    {
+        if ($record['department_id'] == self::CX_DEPARTMENT_ID) {
+            $head = User::getByDepAndPos(self::CX_DEPARTMENT_ID, self::MDR_POSITION) ?: collect();
+            $accountants = $accountants->merge($head);
+        }
+        return $accountants;
+    }
+
+
+    protected function filterAccountantsByPosition(mixed $accountants): mixed
+    {
+        return $accountants->filter(function ($user) {
+            if (strtolower($user->role) == self::ROLE_ACCOUNTANT) {
+                return strtolower($user->info['position'] ?? '') == self::SNR_POSITION;
+            }
+            return true;
+        });
     }
 
     protected function getEligibleAccountants(mixed $accountants): mixed
@@ -38,24 +57,12 @@ class PaymentRequestService extends BaseService
         return $this->filterAccountantsByPosition($accountants);
     }
 
-    protected function filterAccountantsByPosition(mixed $accountants): mixed
+    /**
+     * Override to display order relation information.
+     */
+    protected function getRecordDisplay($record): string
     {
-        return $accountants->filter(function ($user) {
-            if (strtolower($user->role) == self::ROLE_ACCOUNTANT) {
-                return strtolower($user->info['position'] ?? '') == self::MDR_POSITION;
-            }
-            return true;
-        });
-    }
-
-    protected function addManagementToAccountants(mixed $accountants, mixed $status, $recordStatus): mixed
-    {
-        $recipients = $accountants;
-        if ($status && in_array($recordStatus, self::ALLOWED_STATUSES)) {
-            $managers = User::getUsersByRole(self::ROLE_MANAGER) ?: collect();
-            $recipients = $accountants->merge($managers);
-        }
-        return $recipients;
+        return Admin::getOrderRelation($record);
     }
 
     protected function handleAdditionalNotifications(mixed $status, mixed $type, $record, mixed $accountants): void
@@ -74,32 +81,17 @@ class PaymentRequestService extends BaseService
         }
     }
 
-    protected function addCxHeadIfNeeded($record, mixed $accountants): mixed
-    {
-        if ($record['department_id'] == self::CX_DEPARTMENT_ID) {
-            $head = User::getByDepAndPos(self::CX_DEPARTMENT_ID, self::MDR_POSITION) ?: collect();
-            $accountants = $accountants->merge($head);
-        }
-        return $accountants;
-    }
-
-    protected function sendSMS($record, mixed $type, Operator $operator, mixed $accountants, $status = false): void
-    {
-        $message = $status ? $this->mapModelToSMSClass($record, $type, $status) : $this->mapModelToSMSClass($record, $type);
-        $operator->send($accountants, $message->print());
-    }
-
-    protected function isForCx($status, $record): bool
-    {
-        return $this->hasBaseConditions($status, $record) && $record['department_id'] == self::CX_DEPARTMENT_ID;
-    }
-
     protected function hasBaseConditions($status, $record): bool
     {
         return $status
             && in_array($record['status'], self::ALLOWED_STATUSES)
             && strtolower($record['extra']['paymentMethod'] ?? '') != self::PAYMENT_CASH
             && in_array($record['currency'], self::ALLOWED_CURRENCIES);
+    }
+
+    protected function isForCx($status, $record): bool
+    {
+        return $this->hasBaseConditions($status, $record) && $record['department_id'] == self::CX_DEPARTMENT_ID;
     }
 
     protected function isNonRial($status, $record): bool
@@ -114,11 +106,9 @@ class PaymentRequestService extends BaseService
         RetryableEmailService::dispatchEmail(get_class($record), ...$arguments);
     }
 
-    /**
-     * Override to display order relation information.
-     */
-    protected function getRecordDisplay($record): string
+    protected function sendSMS($record, mixed $type, Operator $operator, mixed $accountants, $status = false): void
     {
-        return Admin::getOrderRelation($record);
+        $message = $status ? $this->mapModelToSMSClass($record, $type, $status) : $this->mapModelToSMSClass($record, $type);
+        $operator->send($accountants, $message->print());
     }
 }

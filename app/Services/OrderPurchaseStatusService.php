@@ -17,34 +17,33 @@ class OrderPurchaseStatusService
         'declaration' => 'Customs',
         'final-loading-list' => 'In Transit',
     ];
+
+    private const PROTECTED_STATUSES = [
+        'cancelled',
+        'accounting_review',
+        'accounting_approved',
+        'accounting_rejected',
+    ];
     private static ?Collection $purchaseStatusesCache = null;
 
     public function updateStatusBasedOnAttachments(Order $order): void
     {
-        if (!$order->attachments()->exists()) return;
+        if (in_array($order->order_status, self::PROTECTED_STATUSES, true) || !$order->attachments()->exists()) {
+            return;
+        }
 
+        $order->loadMissing('doc');
         $attachments = $order->relationLoaded('attachments')
             ? $order->attachments
             : $order->attachments()->select('name')->get();
 
-        $allAttachmentNames = $attachments
-            ->pluck('name')
-            ->map(fn($name) => strtolower($name));
 
-        $updateData = [];
-        $wasClosed = ($order->order_status === 'closed');
-        $targetOrderStatus = $this->determineOrderStatus($allAttachmentNames);
-        $isNowClosed = ($targetOrderStatus === 'closed');
+        $isClosed = $this->determineOrderStatus($order, $attachments);
+        $updateData = ['order_status' => $isClosed ? 'closed' : 'processing'];
 
-        if (!$wasClosed && $isNowClosed) {
-            $updateData['order_status'] = 'closed';
-        } else {
-            if ($order->order_status !== $targetOrderStatus) {
-                $updateData['order_status'] = $targetOrderStatus;
-            }
-
+        if (!$isClosed) {
             $purchaseStatuses = $this->getPurchaseStatuses();
-            $targetPurchaseStatusName = $this->determinePurchaseStatus($allAttachmentNames);
+            $targetPurchaseStatusName = $this->determinePurchaseStatus($attachments);
             $targetPurchaseStatusId = $purchaseStatuses->get($targetPurchaseStatusName);
 
             if ($targetPurchaseStatusId && $order->purchase_status_id !== $targetPurchaseStatusId) {
@@ -57,17 +56,15 @@ class OrderPurchaseStatusService
         }
     }
 
-    private function determineOrderStatus(Collection $attachmentNames): string
+    private function determineOrderStatus(Order $order, Collection $attachments): bool
     {
-        return $attachmentNames->contains(fn($name) => Str::contains($name, 'final-invoice'))
-            ? 'closed'
-            : 'processing';
+        return !empty($order->doc?->BL_date) && $attachments->contains(fn($att) => Str::contains(mb_strtolower($att->name ?? ''), 'final-invoice'));
     }
 
-    private function determinePurchaseStatus(Collection $attachmentNames): string
+    private function determinePurchaseStatus(Collection $attachments): string
     {
         foreach (self::ORDERED_STATUS_MAP as $keyword => $statusName) {
-            if ($attachmentNames->contains(fn($name) => Str::contains($name, $keyword))) {
+            if ($attachments->contains(fn($att) => Str::contains(mb_strtolower($att->name ?? ''), $keyword))) {
                 return $statusName;
             }
         }

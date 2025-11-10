@@ -180,6 +180,17 @@ function isUserPartner()
     return optional(cachedUser())->role === 'partner';
 }
 
+function isUserMdr()
+{
+    $user = cachedUser();
+
+    if (!$user || !isset($user->role, $user->info['position'])) {
+        return false;
+    }
+
+    return $user->role == 'agent' && $user->info['position'] == 'mdr';
+}
+
 function isUserCXHead()
 {
     $user = cachedUser();
@@ -189,6 +200,28 @@ function isUserCXHead()
     }
 
     return $user->role === 'agent' && $user->info['department'] == 6 && $user->info['position'] == 'mdr';
+}
+
+function isUserPersoreHead()
+{
+    $user = cachedUser();
+
+    if (!$user || !isset($user->role, $user->info['department'], $user->info['position'])) {
+        return false;
+    }
+
+    return $user->role === 'agent' && $user->info['department'] == 10 && $user->info['position'] == 'mdr';
+}
+
+function isUserMKHead()
+{
+    $user = cachedUser();
+
+    if (!$user || !isset($user->role, $user->info['department'], $user->info['position'])) {
+        return false;
+    }
+
+    return $user->role === 'agent' && $user->info['department'] == 9 && $user->info['position'] == 'mdr';
 }
 
 function numberify($number)

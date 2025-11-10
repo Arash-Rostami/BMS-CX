@@ -16,7 +16,6 @@
                 if (darkModeIcon) darkModeIcon.textContent = isEnabled ? 'brightness_7' : 'brightness_4';
                 if (darkModeToggle) darkModeToggle.setAttribute('title', isEnabled ? 'Bright mode' : 'Dark mode');
                 localStorage.setItem('dark-mode', isEnabled ? 'enabled' : 'disabled');
-                reloadBotpress();
             };
 
             {{--let botId = @json(initializeBp('bot_id'));--}}

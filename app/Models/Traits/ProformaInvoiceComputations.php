@@ -169,26 +169,26 @@ trait ProformaInvoiceComputations
         $cacheKey = self::generateCacheKey('pi_total_quantity_', $month, $category_id, $year);
 
         return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month) {
-            $query = "SELECT SUM(quantity) AS total_quantity FROM proforma_invoices WHERE deleted_at IS NULL AND YEAR(proforma_date) = ?";
-            $bindings = [$year];
+        $query = "SELECT SUM(quantity) AS total_quantity FROM proforma_invoices WHERE deleted_at IS NULL AND status != 'rejected' AND YEAR(proforma_date) = ?";
+        $bindings = [$year];
 
-            if ($category_id) {
-                $query .= is_array($category_id) ? " AND category_id IN (" . implode(',', array_fill(0, count($category_id), '?')) . ")" : " AND category_id = ?";
-                $bindings = array_merge($bindings, (array)$category_id);
+        if ($category_id) {
+            $query .= is_array($category_id) ? " AND category_id IN (" . implode(',', array_fill(0, count($category_id), '?')) . ")" : " AND category_id = ?";
+            $bindings = array_merge($bindings, (array)$category_id);
+        }
+
+        if ($month && $month !== 'all') {
+            if (is_array($month)) {
+                $query .= " AND MONTH(proforma_date) IN (" . implode(',', array_fill(0, count($month), '?')) . ")";
+                $bindings = array_merge($bindings, $month);
+            } else {
+                $query .= " AND MONTH(proforma_date) = ?";
+                $bindings[] = $month;
             }
+        }
 
-            if ($month && $month !== 'all') {
-                if (is_array($month)) {
-                    $query .= " AND MONTH(proforma_date) IN (" . implode(',', array_fill(0, count($month), '?')) . ")";
-                    $bindings = array_merge($bindings, $month);
-                } else {
-                    $query .= " AND MONTH(proforma_date) = ?";
-                    $bindings[] = $month;
-                }
-            }
-
-            $result = DB::selectOne($query, $bindings);
-            return $result->total_quantity ?? 0;
+        $result = DB::selectOne($query, $bindings);
+        return $result->total_quantity ?? 0;
         });
     }
 
@@ -198,57 +198,60 @@ trait ProformaInvoiceComputations
             return 0;
         }
 
-        $cacheKey = self::generateCacheKey('pi_total_quantity_with_bl_date_', $month, $category_id, $year, $status);
+        $cacheKey = self::generateCacheKey('od_total_quantity_with_bl_date_', $month, $category_id, $year, $status);
 
         return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month, $status) {
-            $query = "
-            SELECT SUM(DISTINCT COALESCE(pi.quantity, 0)) AS total_quantity
-            FROM proforma_invoices pi
-            INNER JOIN orders o ON pi.id = o.proforma_invoice_id
-            INNER JOIN docs d ON o.doc_id = d.id
-            WHERE pi.deleted_at IS NULL AND d.BL_date IS NOT NULL AND o.purchase_status_id IN (6, 2)
-        ";
 
-            $bindings = [];
-            if ($year && $year !== 'all') {
-                $query .= " AND YEAR(d.BL_date) = ?";
-                $bindings[] = $year;
+        $bindings = [];
+        $quantitySelection = "COALESCE(od.final_quantity, od.provisional_quantity, od.buying_quantity, 0)";
+
+        $query = "
+        SELECT SUM(CASE WHEN YEAR(d.BL_date) = ? THEN $quantitySelection ELSE 0 END) AS total_quantity
+        FROM proforma_invoices pi
+        LEFT JOIN orders o ON pi.id = o.proforma_invoice_id AND o.deleted_at IS NULL
+        LEFT JOIN docs d ON o.doc_id = d.id
+        LEFT JOIN order_details od ON o.order_detail_id = od.id
+        WHERE pi.deleted_at IS NULL AND pi.status != 'rejected' AND o.purchase_status_id IN (6, 2)
+    ";
+
+        $bindings[] = (int)$year;
+
+        if ($category_id) {
+            if (is_array($category_id)) {
+                $placeholders = implode(',', array_fill(0, count($category_id), '?'));
+                $query .= " AND pi.category_id IN ($placeholders)";
+                $bindings = array_merge($bindings, $category_id);
+            } else {
+                $query .= " AND pi.category_id = ?";
+                $bindings[] = $category_id;
             }
+        }
 
-            if ($month && $month !== 'all') {
-                if (is_array($month)) {
-                    $placeholders = implode(',', array_fill(0, count($month), '?'));
-                    $query .= " AND MONTH(d.BL_date) IN ($placeholders)";
-                    $bindings = array_merge($bindings, $month);
-                } else {
-                    $query .= " AND MONTH(d.BL_date) = ?";
-                    $bindings[] = $month;
-                }
+
+        if ($month && $month !== 'all') {
+            if (is_array($month)) {
+                $placeholders = implode(',', array_fill(0, count($month), '?'));
+                $query .= " AND MONTH(d.BL_date) IN ($placeholders)";
+                $bindings = array_merge($bindings, $month);
+            } else {
+                $query .= " AND MONTH(d.BL_date) = ?";
+                $bindings[] = $month;
             }
+        }
 
-            if ($category_id) {
-                if (is_array($category_id)) {
-                    $placeholders = implode(',', array_fill(0, count($category_id), '?'));
-                    $query .= " AND pi.category_id IN ($placeholders)";
-                    $bindings = array_merge($bindings, $category_id);
-                } else {
-                    $query .= " AND pi.category_id = ?";
-                    $bindings[] = $category_id;
-                }
+
+        if (!empty($status)) {
+            if (is_array($status)) {
+                $query .= " AND o.order_status IN (" . implode(',', array_fill(0, count($status), '?')) . ")";
+                $bindings = array_merge($bindings, $status);
+            } else {
+                $query .= " AND o.order_status = ?";
+                $bindings[] = $status;
             }
+        }
 
-            if (!empty($status)) {
-                if (is_array($status)) {
-                    $query .= " AND o.order_status IN (" . implode(',', array_fill(0, count($status), '?')) . ")";
-                    $bindings = array_merge($bindings, $status);
-                } else {
-                    $query .= " AND o.order_status = ?";
-                    $bindings[] = $status;
-                }
-            }
-
-            $result = DB::selectOne($query, $bindings);
-            return $result->total_quantity ?? 0;
+        $result = DB::selectOne($query, $bindings);
+        return $result->total_quantity ?? 0;
         });
     }
 

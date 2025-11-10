@@ -68,6 +68,24 @@ trait DepartmentCache
         });
     }
 
+    public static function getGroupedDepartmentOptions(): array
+    {
+        return Cache::remember('grouped_department_options', 6000, function () {
+            return self::query()
+                ->orderByRaw('CASE WHEN id = 0 THEN 0 ELSE 1 END, name ASC')
+                ->get(['id', 'name'])
+                ->groupBy(function ($row) {
+                    $clean = preg_replace('/\s*\(.*\)\s*$/u', '', trim($row->name));
+                    return preg_match('/[A-Za-z]/', $clean) && $clean === mb_strtoupper($clean)
+                        ? '🏢 Companies:'
+                        : '🏛️ Departments:';
+                })
+                ->map(fn($items) => $items->pluck('name', 'id'))
+                ->sortKeysUsing(fn($a, $b) => $a === '🏢 Companies:' ? -1 : 1)
+                ->toArray();
+        });
+    }
+
     public static function getSimplifiedDepartments()
     {
         return Cache::remember('simplified_departments', 6000,

@@ -12,12 +12,20 @@ class OrderPaymentCalculationService
 {
     use Calculator, Project;
 
+    public static function addError($message)
+    {
+        $errors = Cache::get('errors', []);
+        $errors[] = ['message' => $message];
+
+        Cache::put('errors', $errors, 10);
+    }
+
     public static function processPaymentStub($get, $set, $record)
     {
         $part = $get('part');
 
         if (empty($part)) {
-            self::addError("Please select the part before attempting calculations.");
+            self::addError('Please select the part before attempting calculations.');
             return;
         }
 
@@ -27,8 +35,8 @@ class OrderPaymentCalculationService
         }
 
 
-        if($get('orderDetail.extra.manualComputation')){
-            self::addError("Manual computation enabled. Automatic calculations are off.");
+        if ($get('orderDetail.extra.manualComputation')) {
+            self::addError('Manual computation enabled. Automatic calculations are off.');
             return;
         }
 
@@ -46,13 +54,5 @@ class OrderPaymentCalculationService
         ];
 
         self::processOrders($record, $get, $details, $set);
-    }
-
-    public static function addError($message)
-    {
-        $errors = Cache::get('errors', []);
-        $errors[] = ['message' => $message];
-
-        Cache::put('errors', $errors, 5);
     }
 }

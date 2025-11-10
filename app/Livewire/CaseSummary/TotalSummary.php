@@ -129,6 +129,7 @@ class TotalSummary extends Component
         if (!$this->selectedProforma) return (object)[];
 
         $totalPaymentRequests = $this->calculateTotalPaymentRequests();
+        $totalRequestsPaidInUSD = $totalPaymentRequests['USD'] ?? 0;
         $totalPayments = $this->calculateTotalPayments();
 
         [$totalInitialPayment, $totalProvisionalTotal, $totalFinalTotal, $orderTotal] =
@@ -142,6 +143,7 @@ class TotalSummary extends Component
             'total_payment_requests_paid' => $this->formatCurrencyTotals($totalPaymentRequests),
             'total_payments_paid' => $this->formatCurrencyTotals($totalPayments),
             'payment_discrepancies' => $this->calculateDiscrepancies($totalPaymentRequests, $totalPayments),
+            'order_discrepancies' => $totalRequestsPaidInUSD - $orderTotal,
             'total_count' => $this->calculateTotalCounts(),
             'total_initial_payment' => $totalInitialPayment,
             'total_provisional_total' => $totalProvisionalTotal,

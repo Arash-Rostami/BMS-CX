@@ -14,6 +14,17 @@ class OrderGapProformaBlChart extends ChartWidget
 
     protected static ?string $maxHeight = '250px';
 
+    protected static ?string $pollingInterval = null;
+
+
+    public function getOrderGapData()
+    {
+        $bindings = [];
+        $query = $this->orderGapPrforomaBlSql();
+
+        return $this->processGapOrders($query, $bindings);
+    }
+
     protected function getData(): array
     {
         $filterType = $this->filter ?? 'quantity';
@@ -27,28 +38,30 @@ class OrderGapProformaBlChart extends ChartWidget
         return ['quantity' => 'Days', 'percentage' => 'Percentage'];
     }
 
-    public function getOrderGapData()
-    {
-        $bindings = [];
-        $query = "
-            SELECT
-                s.name AS supplier_name,
-                AVG(DATEDIFF(d.BL_date, o.proforma_date)) AS gap_days,
-                COUNT(*) AS order_count
-            FROM orders o
-            JOIN parties p ON o.party_id = p.id
-            JOIN suppliers s ON p.supplier_id = s.id
-            JOIN docs d ON o.doc_id = d.id
-            WHERE o.proforma_date IS NOT NULL
-              AND d.BL_date IS NOT NULL
-        ";
-
-        return $this->processGapOrders($query, $bindings);
-    }
-
     protected function getType(): string
     {
         return 'bar';
+    }
+
+    private function orderGapPrforomaBlSql(): string
+    {
+        return <<<SQL
+SELECT
+    s.name AS supplier_name,
+    AVG(DATEDIFF(d.BL_date, o.proforma_date)) AS gap_days,
+    COUNT(*) AS order_count
+FROM orders o
+JOIN parties p
+    ON o.party_id = p.id
+JOIN suppliers s
+    ON p.supplier_id = s.id
+JOIN docs d
+    ON o.doc_id = d.id
+WHERE o.proforma_date IS NOT NULL
+  AND o.deleted_at IS NULL
+  AND d.BL_date IS NOT NULL
+  AND o.purchase_status_id IN (2, 6)
+SQL;
     }
 }
 

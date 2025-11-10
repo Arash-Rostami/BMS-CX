@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Models\CostCalculation;
 use App\Services\ColorTheme;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
@@ -11,7 +10,6 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\MenuItem;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -77,16 +75,15 @@ class AdminPanelProvider extends PanelProvider
                     ->icon(fn() => isMenuTop() || isSimpleSidebar() ? 'heroicon-s-cpu-chip' : '')
             ])
             ->navigationItems([
-                NavigationItem::make('About us')
+                NavigationItem::make('case-summary')
                     ->label('Case Summary')
                     ->url(fn() => route('case-summary'), shouldOpenInNewTab: true)
-//                    ->visible(fn() => auth()->check() && (isUserAdmin() || isUserManager()))
                     ->icon('heroicon-c-magnifying-glass'),
-                NavigationItem::make('cost-overview')
-                    ->label('Cost Overview')
-                    ->url(fn() => route('cost-calculation'), shouldOpenInNewTab: true)
+//                NavigationItem::make('cost-overview')
+//                    ->label('Cost Overview')
+//                    ->url(fn() => route('cost-calculation'), shouldOpenInNewTab: true)
 //                    ->visible(fn() => auth()->check() && (isUserAdmin() || isUserManager()))
-                    ->icon('heroicon-o-calculator'),
+//                    ->icon('heroicon-o-calculator'),
             ])
             ->authMiddleware([
                 Authenticate::class,
@@ -110,6 +107,7 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationGroup('Core Data')
                     ->navigationLabel('Banners')
                     ->bannerManagerAccessPermission('banner-manager')
+                    ->persistsBannersInDatabase()
             ])
             ->sidebarCollapsibleOnDesktop()
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])

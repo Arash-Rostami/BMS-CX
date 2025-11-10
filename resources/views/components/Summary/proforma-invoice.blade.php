@@ -41,6 +41,14 @@
                 </div>
                 <pre>{{ $selectedProforma->proforma_date?->format('Y-m-d') ?? 'N/A' }}</pre>
             </div>
+
+            <div class="proforma-details-box">
+                <div class="font-medium" tooltip="Number of days passed since the proforma date.">
+                    <span class="material-icons-outlined">timer</span>
+                    Days Elapsed:
+                </div>
+                <pre class="text-lg font-bold">{{ $businessInsights->days_elapsed ?? 'N/A' }} days</pre>
+            </div>
             <div class="proforma-details-box">
                 <div class="font-medium">
                     <span class="material-icons-outlined">percent</span> Percentage:
@@ -101,14 +109,14 @@
                 </div>
                 <pre>{{ $selectedProforma->user?->first_name ?? 'N/A' }} | {{ $selectedProforma->assignee?->first_name ?? 'N/A' }}</pre>
             </div>
-{{--            <div class="proforma-details-box">--}}
-{{--                <div class="font-medium">--}}
-{{--                    <span class="material-icons-outlined">check_circle</span> Status:--}}
-{{--                </div>--}}
-{{--                <span class="status-badge {{ $selectedProforma->status == 'approved' ? 'approved' : 'pending' }}">--}}
-{{--          {{ ucfirst($selectedProforma->status == 'approved' ? 'ongoing' : $selectedProforma->status) }}--}}
-{{--        </span>--}}
-{{--            </div>--}}
+            {{--            <div class="proforma-details-box">--}}
+            {{--                <div class="font-medium">--}}
+            {{--                    <span class="material-icons-outlined">check_circle</span> Status:--}}
+            {{--                </div>--}}
+            {{--                <span class="status-badge {{ $selectedProforma->status == 'approved' ? 'approved' : 'pending' }}">--}}
+            {{--          {{ ucfirst($selectedProforma->status == 'approved' ? 'ongoing' : $selectedProforma->status) }}--}}
+            {{--        </span>--}}
+            {{--            </div>--}}
             @if ($selectedProforma->extra && isset($selectedProforma->extra['port']) && !empty($selectedProforma->extra['port']))
                 <div class="proforma-details-box">
                     <div class="font-medium">

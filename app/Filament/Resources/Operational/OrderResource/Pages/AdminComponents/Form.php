@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents;
 
+use App\Filament\Resources\OrderResource;
 use App\Models\Buyer;
 use App\Models\DeliveryTerm;
 use App\Models\Name;
@@ -23,6 +24,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
@@ -43,8 +45,7 @@ trait Form
     /**
      * @return Toggle
      */
-    public
-    static function getAllOrders(): Toggle
+    public static function getAllOrders(): Toggle
     {
         return Toggle::make('extra.allOrders')
             ->label(fn() => new HtmlString('<span title="Ignore shares, allocate all remaining pre-payments" class="text-primary-500 font-normal">All</span>'))
@@ -593,6 +594,26 @@ trait Form
         return DatePicker::make('extra.loading_startline')
             ->label(fn() => new HtmlString('<span class="grayscale">⌛ </span><span class="text-primary-500 font-normal">Delivery Time Start Date</span>'))
             ->native(false);
+    }
+
+    public static function getLock(): Placeholder
+    {
+        return Placeholder::make('locked_status')
+            ->label('')
+            ->content(fn(?Model $record) => OrderResource::isLocked($record)
+                ? new HtmlString('
+                            <div class="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                                </svg>
+                                <span class="text-red-800 font-medium">Record Locked - Accounting Approved</span>
+                                <span class="ml-auto px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                                  Access Restricted / Read-Only (Attachments Permitted)
+                                </span>
+                            </div>
+                ') : null)
+            ->visible(fn(?Model $record) => OrderResource::isLocked($record))
+            ->columnSpanFull();
     }
 
     /**

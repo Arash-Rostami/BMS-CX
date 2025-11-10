@@ -14,12 +14,12 @@ trait CxDashboard
     protected function getCxWidgets(): array
     {
         return [
-            OrderSupplierChart::class,
-            OrderDeliveryTermChart::class,
             OrderPurchaseStatusChart::class,
-            OrderDateChart::class,
             PurchaseQuantityChart::class,
+            OrderDateChart::class,
+            OrderDeliveryTermChart::class,
             OrderPackagingChart::class,
+            OrderSupplierChart::class,
         ];
     }
 }

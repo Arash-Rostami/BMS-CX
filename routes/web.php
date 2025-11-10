@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
+use Illuminate\Database\QueryException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 Route::get('/clear', function () {
     if (!Auth::check()) {
@@ -42,6 +45,14 @@ Route::get('/cache', function () {
 
     return 'All caches including Filament caches have been rebuilt successfully!';
 });
+
+
+
+
+Route::get('/error', function () {
+    return response()->view('errors.db-busy', [], 503);
+});
+
 
 
 Route::middleware(['web', 'custom_auth'])->group(function () {

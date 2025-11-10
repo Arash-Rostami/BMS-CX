@@ -4,6 +4,7 @@ namespace App\Models\Traits;
 
 use App\Models\Balance;
 use App\Models\PaymentRequest;
+use App\Services\Authorities\PaymentQueryService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -64,42 +65,7 @@ trait PaymentComputations
 
     public function scopeFilterByUserPaymentRequests(Builder $query, $user): Builder
     {
-        $departmentId = $user->info['department'] ?? null;
-        $position = $user->info['position'] ?? null;
-
-        if ($user->role === 'partner') {
-            return $query->whereHas('paymentRequests', function ($q) {
-                $q->whereIn('currency', ['USD', 'EURO'])
-                    ->whereNotNull('account_number')
-                    ->where('extra->paymentMethod', '<>', 'cash');
-            });
-        }
-
-        if ($user->role == 'accountant' && $position == 'jnr') {
-            return $query->whereHas('paymentRequests', function ($subQuery) use ($departmentId) {
-                $subQuery->where(function ($innerQuery) use ($departmentId) {
-                    $innerQuery->where('department_id', 6)
-                        ->orWhere('cost_center', 6)
-                        ->orWhere('department_id', $departmentId)
-                        ->orWhere('cost_center', $departmentId);
-                });
-            });
-        }
-
-        if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
-            return $query;
-        }
-
-        if ($position == 'jnr') {
-            return $query->whereHas('paymentRequests', fn($q) => $q->where('user_id', $user->id));
-        }
-
-        return $query->whereHas('paymentRequests', function ($subQuery) use ($departmentId) {
-            $subQuery->where(function ($innerQuery) use ($departmentId) {
-                $innerQuery->whereIn('department_id', [$departmentId, 0])
-                    ->orWhereIn('cost_center', [$departmentId, 0]);
-            });
-        });
+        return app(PaymentQueryService::class)->apply($query, $user);
     }
 
     public static function sumAmountsForCurrencies(array $currencies)

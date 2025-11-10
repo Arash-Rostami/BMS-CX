@@ -49,16 +49,6 @@ class CashTransactionResource extends Resource
             ]);
     }
 
-    public static function getNavigationBadge(): ?string
-    {
-        return 'New';
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'warning';
-    }
-
     public static function getPages(): array
     {
         return [

@@ -27,146 +27,33 @@ class Admin
 
     use Form, Table, Filter;
 
-    /**
-     * @return \Closure
-     */
-    public static function nameUploadedFile(): \Closure
+    public static function calculateEuroEquivalent(Get $get, Set $set, string $changedField): void
     {
-        return function (TemporaryUploadedFile $file, Get $get, ?Model $record, Livewire $livewire): string {
-            $name = $get('name') ?? $record->name;
-            $paymentRequest = isset($livewire->data['paymentRequests']['id'])
-                ? (is_array($livewire->data['paymentRequests']['id'])
-                    ? implode("-", $livewire->data['paymentRequests']['id'])
-                    : $livewire->data['paymentRequests']['id'])
-                : 'Unknown-Request';
+        $amount = $get('amount');
+        $euro = $get('equivalent_amount');
+        $rate = $get('exchange_rate');
 
-            // File extension
-            $extension = $file->getClientOriginalExtension();
-
-            // New filename with extension
-            $newFileName = sprintf('P-%s-%s-%s-%s', $paymentRequest, now()->format('YmdHis'), Str::random(5), $name);
-
-            // Sanitizing the file name
-            return Str::slug($newFileName, '-') . ".{$extension}";
-        };
-    }
-
-
-    public static function send(Model $record): void
-    {
-        $records = $record->paymentRequests?->map(fn($each) => $each->proforma_invoice_number ?? $each->reason->reason)->join(', ');
-
-        $record['records'] = $records;
-
-        (new PaymentService())->notifyAccountants($record, 'delete');
-    }
-
-
-    public static function getCustomizedDisplayName($record): string
-    {
-        if ($record->paymentRequests?->isNotEmpty()) {
-            return $record->paymentRequests->map(function ($paymentRequest) {
-                return $paymentRequest->getCustomizedDisplayName();
-            })->join('<br><br>');
+        if (!is_numeric($rate) || $rate <= 0) {
+            $set('equivalent_amount', null);
+            return;
         }
 
-        return 'N/A';
-    }
+        switch ($changedField) {
+            case 'equivalent_amount':
+                $set('amount', is_numeric($euro) ? round($euro * $rate, 2) : null);
+                break;
 
-    protected static function calculateTimeGap($createdAt, $deadline): string
-    {
-        $daysDifference = Carbon::parse($createdAt)->diffInDays($deadline);
-        return $daysDifference === 0 ? 'on the final day' : $daysDifference . ' days';
-    }
-
-
-    private static function calculateDiff(Model $record): float
-    {
-        $remainderSum = $record->extra['remainderSum'] ?? 0;
-        $recordState = $record->paymentRequests?->sum('requested_amount');
-
-        return ($record->extra != null)
-            ? ($recordState - $remainderSum) - $recordState
-            : $record->amount - $recordState;
-    }
-
-
-    public static function searchReasonInAllocationOrPaymentRequestModels(QueryBuilder $query, string $search): void
-    {
-        $query
-            ->whereHas('reason', function ($query) use ($search) {
-                $query->where('reason', 'like', "%{$search}%");
-            })
-            ->orWhereHas('paymentRequests', function ($query) use ($search) {
-                $query->where('proforma_invoice_number', 'like', "%{$search}%");
-            });
-    }
-
-    public static function fetchAmounts(?Model $record, $state = null): array
-    {
-        if (is_null($record)) {
-            return ['currency' => ' ', 'requestedAmount' => 0, 'totalAmount' => 0, 'remainingAmount' => 0];
+            case 'exchange_rate':
+                if (is_numeric($amount)) {
+                    $set('equivalent_amount', round($amount / $rate, 2));
+                } elseif (is_numeric($euro)) {
+                    $set('amount', round($euro * $rate, 2));
+                } else {
+                    $set('amount', null);
+                    $set('equivalent_amount', null);
+                }
+                break;
         }
-
-        $uniqueCurrency = $record->paymentRequests?->pluck('currency')->unique();
-        $currency = $uniqueCurrency->count() === 1 ? $uniqueCurrency->first() : ' ';
-
-
-        if ($record->paymentRequests->count() == 1) {
-            $requestedAmount = $record->paymentRequests?->sum('requested_amount') ?? 0;
-            $totalAmount = $record->paymentRequests?->sum('total_amount') ?? 0;
-        } else {
-            $requestedAmount = $state;
-            $totalAmount = $record->paymentRequests?->sum('total_amount') ?? 0;
-        }
-
-
-        $delta = data_get($record->extra, 'remainderSum', 0);
-
-        $remainder = match (data_get($record->extra, 'balanceStatus')) {
-            'debit' => ($totalAmount - $requestedAmount) + $delta,
-            'credit' => ($totalAmount - $requestedAmount) - $delta,
-            default => ($totalAmount - $requestedAmount),
-        };
-
-        $remainingAmount = number_format($remainder ?? 0, 2);
-
-        return [$currency, $requestedAmount, $totalAmount, $remainingAmount];
-    }
-
-    public static function updateRequestedAmount($state, Set $set): void
-    {
-        static $cachedPaymentRequests = [];
-        $stateKey = serialize($state);
-
-        if (!array_key_exists($stateKey, $cachedPaymentRequests)) {
-            $records = PaymentRequest::findMany($state)->keyBy('id');
-            $requestedAmount = 0.0;
-            $currencies = [];
-
-            foreach ($records as $each) {
-                $requestedAmount += (float)$each->requested_amount;
-                $currencies[] = $each->currency;
-            }
-            $cachedPaymentRequests[$stateKey] = [
-                'requestedAmount' => $requestedAmount,
-                'currencies' => $currencies,
-            ];
-        }
-
-        $paymentRequestData = $cachedPaymentRequests[$stateKey];
-
-        if ($paymentRequestData !== null) {
-            $uniqueCurrencies = array_unique($paymentRequestData['currencies']);
-
-            $set('amount', $paymentRequestData['requestedAmount']);
-
-            if (count($uniqueCurrencies) === 1) {
-                $set('currency', $uniqueCurrencies[0]);
-            }
-        }
-
-        static::checkAndNotifyForSupplierCredit($records);
     }
 
     public static function checkAndNotifyForSupplierCredit(Collection $records): void
@@ -205,4 +92,143 @@ class Admin
                 ])->send();
         }
     }
+
+    public static function fetchAmounts(?Model $record, $state = null): array
+    {
+        if (is_null($record)) {
+            return ['currency' => ' ', 'requestedAmount' => 0, 'totalAmount' => 0, 'remainingAmount' => 0];
+        }
+
+        $uniqueCurrency = $record->paymentRequests?->pluck('currency')->unique();
+        $currency = $uniqueCurrency->count() === 1 ? $uniqueCurrency->first() : ' ';
+
+
+        if ($record->paymentRequests->count() == 1) {
+            $requestedAmount = $record->paymentRequests?->sum('requested_amount') ?? 0;
+            $totalAmount = $record->paymentRequests?->sum('total_amount') ?? 0;
+        } else {
+            $requestedAmount = $state;
+            $totalAmount = $record->paymentRequests?->sum('total_amount') ?? 0;
+        }
+
+
+        $delta = data_get($record->extra, 'remainderSum', 0);
+
+        $remainder = match (data_get($record->extra, 'balanceStatus')) {
+            'debit' => ($totalAmount - $requestedAmount) + $delta,
+            'credit' => ($totalAmount - $requestedAmount) - $delta,
+            default => ($totalAmount - $requestedAmount),
+        };
+
+        $remainingAmount = number_format($remainder ?? 0, 2);
+
+        return [$currency, $requestedAmount, $totalAmount, $remainingAmount];
+    }
+
+    public static function getCustomizedDisplayName($record): string
+    {
+        if ($record->paymentRequests?->isNotEmpty()) {
+            return $record->paymentRequests->map(function ($paymentRequest) {
+                return $paymentRequest->getCustomizedDisplayName();
+            })->join('<br><br>');
+        }
+
+        return 'N/A';
+    }
+
+    /**
+     * @return \Closure
+     */
+    public static function nameUploadedFile(): \Closure
+    {
+        return function (TemporaryUploadedFile $file, Get $get, ?Model $record, Livewire $livewire): string {
+            $name = $get('name') ?? $record->name;
+            $paymentRequest = isset($livewire->data['paymentRequests']['id'])
+                ? (is_array($livewire->data['paymentRequests']['id'])
+                    ? implode("-", $livewire->data['paymentRequests']['id'])
+                    : $livewire->data['paymentRequests']['id'])
+                : 'Unknown-Request';
+
+            // File extension
+            $extension = $file->getClientOriginalExtension();
+
+            // New filename with extension
+            $newFileName = sprintf('P-%s-%s-%s-%s', $paymentRequest, now()->format('YmdHis'), Str::random(5), $name);
+
+            // Sanitizing the file name
+            return Str::slug($newFileName, '-') . ".{$extension}";
+        };
+    }
+
+    public static function searchReasonInAllocationOrPaymentRequestModels(QueryBuilder $query, string $search): void
+    {
+        $query
+            ->whereHas('reason', function ($query) use ($search) {
+                $query->where('reason', 'like', "%{$search}%");
+            })
+            ->orWhereHas('paymentRequests', function ($query) use ($search) {
+                $query->where('proforma_invoice_number', 'like', "%{$search}%");
+            });
+    }
+
+    public static function send(Model $record): void
+    {
+        $records = $record->paymentRequests?->map(fn($each) => $each->proforma_invoice_number ?? $each->reason->reason)->join(', ');
+
+        $record['records'] = $records;
+
+        (new PaymentService())->notifyAccountants($record, 'delete');
+    }
+
+    public static function updateRequestedAmount($state, Set $set): void
+    {
+        static $cachedPaymentRequests = [];
+        $stateKey = serialize($state);
+
+        if (!array_key_exists($stateKey, $cachedPaymentRequests)) {
+            $records = PaymentRequest::findMany($state)->keyBy('id');
+            $requestedAmount = 0.0;
+            $currencies = [];
+
+            foreach ($records as $each) {
+                $requestedAmount += (float)$each->requested_amount;
+                $currencies[] = $each->currency;
+            }
+            $cachedPaymentRequests[$stateKey] = [
+                'requestedAmount' => $requestedAmount,
+                'currencies' => $currencies,
+            ];
+        }
+
+        $paymentRequestData = $cachedPaymentRequests[$stateKey];
+
+        if ($paymentRequestData !== null) {
+            $uniqueCurrencies = array_unique($paymentRequestData['currencies']);
+
+            $set('amount', $paymentRequestData['requestedAmount']);
+
+            if (count($uniqueCurrencies) === 1) {
+                $set('currency', $uniqueCurrencies[0]);
+            }
+        }
+
+        static::checkAndNotifyForSupplierCredit($records);
+    }
+
+    protected static function calculateTimeGap($createdAt, $deadline): string
+    {
+        $daysDifference = Carbon::parse($createdAt)->diffInDays($deadline);
+        return $daysDifference === 0 ? 'on the final day' : $daysDifference . ' days';
+    }
+
+    private static function calculateDiff(Model $record): float
+    {
+        $remainderSum = $record->extra['remainderSum'] ?? 0;
+        $recordState = $record->paymentRequests?->sum('requested_amount');
+
+        return ($record->extra != null)
+            ? ($recordState - $remainderSum) - $recordState
+            : $record->amount - $recordState;
+    }
+
 }

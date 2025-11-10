@@ -10,6 +10,7 @@ use App\Models\Buyer;
 use App\Models\CashTransaction;
 use App\Models\Category;
 use App\Models\Contractor;
+use App\Models\ContractOverview;
 use App\Models\DeliveryTerm;
 use App\Models\Grade;
 use App\Models\Notification;
@@ -38,6 +39,7 @@ use App\Policies\BuyerPolicy;
 use App\Policies\CashTransactionPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\ContractorPolicy;
+use App\Policies\ContractOverviewPolicy;
 use App\Policies\DeliveryTermPolicy;
 use App\Policies\GradePolicy;
 use App\Policies\NotificationPolicy;
@@ -76,6 +78,7 @@ class AuthServiceProvider extends ServiceProvider
         CashTransaction::class => CashTransactionPolicy::class,
         Category::class => CategoryPolicy::class,
         Contractor::class => ContractorPolicy::class,
+        ContractOverview::class => ContractOverviewPolicy::class,
         DeliveryTerm::class => DeliveryTermPolicy::class,
         Grade::class => GradePolicy::class,
         Notification::class => NotificationPolicy::class,

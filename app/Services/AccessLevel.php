@@ -3,46 +3,60 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class AccessLevel
 {
-    private static ?User $loggedInUser = null;
+    private const CACHE_KEY_PREFIX = 'user_permissions_collection_';
+    private const CACHE_TTL = 864000;
 
-    public static function hasPermissionForModel($permission, $model)
+    private static ?User $user = null;
+    private static ?Collection $permissions = null;
+
+
+    public static function forgetUserPermissionsCache(int $userId): void
     {
-        $loggedUser = self::getAuthenticatedUser();
+        Cache::forget(self::CACHE_KEY_PREFIX . $userId);
 
-        if (!$loggedUser) {
-            return false;
+        if (self::$user?->id === $userId) {
+            self::$permissions = null;
+            self::$user = null;
         }
-
-        // Allow Admin to access every Module
-        if ($loggedUser->role == 'admin') {
-            return true;
-        }
-
-        // Generate a unique cache key
-        $cacheKey = 'permissions_' . $loggedUser->id . '_' . $model . '_' . $permission;
-
-        // Retrieve profile Permissions with caching
-        return Cache::remember($cacheKey, 60, function () use ($loggedUser, $permission, $model) {
-            return $loggedUser->permissions()
-                ->where(function ($query) use ($model) {
-                    $query->where('model', $model)->orWhere('model', 'All');
-                })
-                ->where(function ($query) use ($permission) {
-                    $query->where('permission', $permission)->orWhere('permission', 'all');
-                })
-                ->exists();
-        });
     }
 
-    private static function getAuthenticatedUser(): ?User
+    public static function hasPermissionForModel(string $permission, string $model): bool
     {
-        if (self::$loggedInUser === null) {
-            self::$loggedInUser = cachedUser();
-        }
-        return self::$loggedInUser;
+        $user = self::getAuthenticatedUser();
+
+        if (!$user) return false;
+        // Allow Admin to access every Module
+        if ($user->role === 'admin') return true;
+
+        // Retrieve profile Permissions with caching
+        return self::getAuthenticatedUserPermissions()->contains(
+            fn($p) => ($p->model === $model || $p->model === 'All') &&
+                ($p->permission === $permission || $p->permission === 'all')
+        );
+    }
+
+    private static function getAuthenticatedUser()
+    {
+        return self::$user ??= cachedUser();
+    }
+
+    private static function getAuthenticatedUserPermissions(): Collection
+    {
+        if (self::$permissions) return self::$permissions;
+
+        $user = self::getAuthenticatedUser();
+        if (!$user) return collect();
+
+        // Generate a unique cache key
+        return self::$permissions = Cache::remember(
+            self::CACHE_KEY_PREFIX . $user->id,
+            self::CACHE_TTL,
+            fn() => $user->permissions()->get(['permission', 'model'])
+        );
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Notification;
 
+use App\Models\Department;
 use App\Models\NotificationSubscription;
 use App\Notifications\FilamentNotification;
 use App\Notifications\OrderStatusNotification;
@@ -14,34 +15,52 @@ use App\Services\Notification\SMS\PaymentMessage;
 use App\Services\Notification\SMS\PaymentRequestMessage;
 use App\Services\Notification\SMS\ProformaInvoiceMessage;
 use App\Services\RetryableEmailService;
+use Illuminate\Support\Facades\Cache;
 
 abstract class BaseService
 {
+
+    private const PARVA_DEPARTMENTS = [6, 10, 17, 18, 21]; // CX, PERSORE, PERSOL, SOLSUN, MA(PA)
+    private const PEDRAM_SHARED = [17]; // PERSOL
     protected string $moduleName;
     protected string $resourceRouteName;
 
-
-    /**
-     * Get the display string for a record.
-     */
-    protected function getRecordDisplay($record): string
+    public function mapModelToNotificationClass($record, $type, $status = false)
     {
-        return $record->reference_number;
+        $modelClass = get_class($record);
+
+        return match ($modelClass) {
+            'App\Models\ProformaInvoice' => new ProformaInvoiceStatusNotification($record, $type),
+            'App\Models\Order' => new OrderStatusNotification($record, $type),
+            'App\Models\PaymentRequest' => new PaymentRequestStatusNotification($record, $type, $status),
+            'App\Models\Payment' => new PaymentStatusNotification($record, $type),
+        };
+    }
+
+    public function mapModelToSMSClass($record, $type, $status = false)
+    {
+        $modelClass = get_class($record);
+
+        return match ($modelClass) {
+            'App\Models\ProformaInvoice' => new ProformaInvoiceMessage($record, $type),
+            'App\Models\Order' => new OrderMessage($record, $type),
+            'App\Models\PaymentRequest' => new PaymentRequestMessage($record, $type, $status),
+            'App\Models\Payment' => new PaymentMessage($record, $type, $status),
+        };
     }
 
     /**
-     * Get the notification data array.
+     * Map notification type to activity preference key.
      */
-    protected function getNotificationData($record, string $type): array
+    public function mapNotificationTypeToActivity(string $type): string
     {
-        return [
-            'record' => $this->getRecordDisplay($record),
-            'type' => $type,
-            'module' => $this->moduleName,
-            'url' => $type == 'delete'
-                ? route("filament.admin.resources.{$this->resourceRouteName}.index")
-                : route("filament.admin.resources.{$this->resourceRouteName}.edit", ['record' => $record->id]),
+        $mapping = [
+            'new' => 'notify_create',
+            'edit' => 'notify_update',
+            'delete' => 'notify_delete',
         ];
+
+        return $mapping[$type] ?? 'notify_update';
     }
 
     /**
@@ -100,45 +119,6 @@ abstract class BaseService
     }
 
     /**
-     * Map notification type to activity preference key.
-     */
-    public function mapNotificationTypeToActivity(string $type): string
-    {
-        $mapping = [
-            'new' => 'notify_create',
-            'edit' => 'notify_update',
-            'delete' => 'notify_delete',
-        ];
-
-        return $mapping[$type] ?? 'notify_update';
-    }
-
-    public function mapModelToNotificationClass($record, $type, $status = false)
-    {
-        $modelClass = get_class($record);
-
-        return match ($modelClass) {
-            'App\Models\ProformaInvoice' => new ProformaInvoiceStatusNotification($record, $type),
-            'App\Models\Order' => new OrderStatusNotification($record, $type),
-            'App\Models\PaymentRequest' => new PaymentRequestStatusNotification($record, $type, $status),
-            'App\Models\Payment' => new PaymentStatusNotification($record, $type),
-        };
-    }
-
-    public function mapModelToSMSClass($record, $type, $status = false)
-    {
-        $modelClass = get_class($record);
-
-        return match ($modelClass) {
-            'App\Models\ProformaInvoice' => new ProformaInvoiceMessage($record, $type),
-            'App\Models\Order' => new OrderMessage($record, $type),
-            'App\Models\PaymentRequest' => new PaymentRequestMessage($record, $type, $status),
-            'App\Models\Payment' => new PaymentMessage($record, $type, $status),
-        };
-    }
-
-
-    /**
      * Fetch subscribed users for a given record, including module-level subscriptions, with caching.
      */
     protected function fetchSubscribedUsers($record)
@@ -155,12 +135,39 @@ abstract class BaseService
             $user->department = (int)$user->info['department'] ?? null;
             return $user;
         })->filter(function ($user) use ($recordDepartments, $recordCostCenters) {
-            return empty($recordDepartments) && empty($recordCostCenters)
-                ||
-                in_array($user->department, $recordDepartments)
-                ||
-                in_array($user->department, $recordCostCenters);
+            if (empty($recordDepartments) && empty($recordCostCenters)) {
+                return true;
+            }
+
+            if (!$this->isManager($user)) {
+                return in_array($user->department, $recordDepartments) || in_array($user->department, $recordCostCenters);
+            }
+
+            return $this->canManagerViewDepartment($user, $recordDepartments, $recordCostCenters);
         })->unique('id');
+    }
+
+    /**
+     * Get the notification data array.
+     */
+    protected function getNotificationData($record, string $type): array
+    {
+        return [
+            'record' => $this->getRecordDisplay($record),
+            'type' => $type,
+            'module' => $this->moduleName,
+            'url' => $type == 'delete'
+                ? route("filament.admin.resources.{$this->resourceRouteName}.index")
+                : route("filament.admin.resources.{$this->resourceRouteName}.edit", ['record' => $record->id]),
+        ];
+    }
+
+    /**
+     * Get the display string for a record.
+     */
+    protected function getRecordDisplay($record): string
+    {
+        return $record->reference_number;
     }
 
     /**
@@ -180,5 +187,33 @@ abstract class BaseService
             $recordCostCenters = [$record->cost_center];
         }
         return array($recordDepartments, $recordCostCenters);
+    }
+
+    private function canManagerViewDepartment($user, array $recordDepartments, array $recordCostCenters): bool
+    {
+        $allDepartments = array_merge($recordDepartments, $recordCostCenters);
+
+        if (strtolower($user->first_name) === 'parva') {
+            return !empty(array_intersect($allDepartments, self::PARVA_DEPARTMENTS));
+        }
+
+        $allDepartmentIds = $this->getAllDepartmentIds();
+
+        $pedramDepartments = array_merge(
+            array_diff($allDepartmentIds, self::PARVA_DEPARTMENTS),
+            self::PEDRAM_SHARED
+        );
+
+        return !empty(array_intersect($allDepartments, $pedramDepartments));
+    }
+
+    private function getAllDepartmentIds(): array
+    {
+        return Cache::remember('dpIdsNotification', now()->addDays(2), fn() => Department::pluck('id')->toArray());
+    }
+
+    private function isManager($user): bool
+    {
+        return $user->role == 'manager';
     }
 }

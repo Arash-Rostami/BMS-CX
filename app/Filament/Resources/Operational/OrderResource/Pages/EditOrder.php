@@ -18,6 +18,7 @@ use niklasravnsborg\LaravelPdf\Facades\Pdf;
 class EditOrder extends EditRecord
 {
     protected static string $resource = OrderResource::class;
+
     protected function afterSave(): void
     {
         if ($this->record instanceof Order) {
@@ -76,7 +77,7 @@ class EditOrder extends EditRecord
                 ->after(fn(Model $replica) => Admin::syncOrder($replica))
                 ->successRedirectUrl(fn(Model $replica): string => route('filament.admin.resources.orders.edit', ['record' => $replica->id,])),
             Actions\DeleteAction::make()
-                ->hidden(fn(?Model $record) => $record ? $record->paymentRequests->isNotEmpty() : false)
+                ->hidden(fn(?Model $record) => $record && ($record->paymentRequests->isNotEmpty() && OrderResource::isLocked($record)))
                 ->icon('heroicon-o-trash')
                 ->successNotification(fn(Model $record) => Admin::send($record)),
         ];

@@ -1,5 +1,69 @@
 <x-filament-panels::page>
     <div class="max-w-4xl mx-auto py-8 text-gray-900 dark:text-gray-200">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.11
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(September 11, 2025)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>Contract Overview Suite: New Contract Overview DB schema and holistic Contract Overview table (logs,
+                logistics, progression) with calibrated stats & filters.
+            </li>
+            <li>Order Status Automation: Auto Status Changer (Released ⇄ Shipped) and automated shipment-stage updates
+                for orders; workflow automation and status auditing.
+            </li>
+            <li>Document & Attachment UX: Document Upload checkbox for Order module, improved attachment views for
+                Contract Summary, delivery-term auto-selected attachments, and optimized attachment handling.
+            </li>
+            <li>Payment UI Enhancements: Final-payment red notice in Proforma Invoice & Order summaries; separate
+                currency columns & sums in Payment Request module.
+            </li>
+            <li>Lead Time & Contract Metrics: Released & Shipped quantities per contract report; Average Lead Time
+                metric and Lead Time module for orders.
+            </li>
+            <li>Error Handling & Reliability: Elegant Error Handling module deployed across CX BMS for graceful failure
+                handling.
+            </li>
+            <li>Data Integrity: Ensured data precision & consistency between logistics analytics and contract
+                statistics.
+            </li>
+            <li>Cash Management: Cash Ledger module launched for CX financial tracking.</li>
+            <li>Performance & Scalability: Final layer of system-wide caching, Load-More pagination, and server balance
+                optimizations to reduce memory pressure and speed up filters/tables.
+            </li>
+            <li>Security & Recovery: Defensive scripts, COAs vs. cyber incidents, cron-job optimizations and attachment
+                handling improvements to restore and harden performance.
+            </li>
+            <li>Application Maintenance & DB Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
+        <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.10
+            <span class="text-xl md:text-2xl lg:text-3xl font-normal">(June 03, 2025)</span>
+        </h1>
+        <ul class="list-disc list-inside bg-white dark:bg-gray-700 p-6 shadow-md dark:shadow-lg rounded-lg space-y-2">
+            <li>Supplier Balance & Credit Flow: Supplier Balance module setup (collective & individual) with opening
+                balances and supplier credit alerts/notifications.
+            </li>
+            <li>Partner Payment Streamlining: Rewired payment & payment-request flows and notifications to include
+                external partners (Chinese partners support).
+            </li>
+            <li>Payment Request Enhancements: Supplier Balance Notice & automated alerts added into Payment module.</li>
+            <li>Financial Summary Report: Launched Financial Summary Report (Payment Request & Payment summaries, PI &
+                Order summaries, document summary & export).
+            </li>
+            <li>Case Summary Improvements: Order-summary quantity accuracy and related Case Summary refinements;
+                mobile-first case summary view and search-index updates.
+            </li>
+            <li>Dashboard Optimizations: Target analytics & dashboard target visual improvements (target realization %
+                and multi-filter target stats).
+            </li>
+            <li>Proforma Review Status: Launched & set up Proforma Invoice Review Status and review-status workflows for
+                PI records.
+            </li>
+            <li>Operational Support & Training: CX record reviews, verification sessions, and handover guidance for
+                verified financial reports.
+            </li>
+            <li>Application Maintenance & DB Backup.</li>
+        </ul>
+        <hr class="my-8 dark:border-gray-600">
         <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-4 pt-2">Version 1.9
             <span class="text-xl md:text-2xl lg:text-3xl font-normal">(March 12, 2025)</span>
         </h1>

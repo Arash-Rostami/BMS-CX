@@ -3,13 +3,20 @@
 namespace App\Services\Notification;
 
 use App\Models\User;
-use App\Services\Notification\BaseService;
 use App\Services\Notification\SMS\Operator;
 
 class PaymentService extends BaseService
 {
+    protected const SNR_POSITION = 'snr';
     protected string $moduleName = 'payment';
     protected string $resourceRouteName = 'payments';
+
+    public function fetchPaymentRequestUsers($payment): mixed
+    {
+        $userIds = $payment->paymentRequests->pluck('user_id')->unique();
+
+        return User::whereIn('id', $userIds)->get();
+    }
 
     /**
      * Get the display string for a record.
@@ -25,7 +32,7 @@ class PaymentService extends BaseService
     public function notifyAccountants($record, $type = 'new'): void
     {
         $accountants = User::getUsersByRole('accountant');
-        $recipients = $accountants;
+        $recipients = $accountants->filter(fn($user) => strtolower($user->info['position'] ?? '') == self::SNR_POSITION);
 
         if ($type == 'new') {
             $paymentRequestUsers = $this->fetchPaymentRequestUsers($record);
@@ -39,12 +46,5 @@ class PaymentService extends BaseService
             $message = $this->mapModelToSMSClass($record, $type, status: true);
             $operator->send($paymentRequestUsers, $message->print());
         }
-    }
-
-    public function fetchPaymentRequestUsers($payment): mixed
-    {
-        $userIds = $payment->paymentRequests->pluck('user_id')->unique();
-
-        return User::whereIn('id', $userIds)->get();
     }
 }

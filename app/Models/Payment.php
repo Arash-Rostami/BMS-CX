@@ -16,12 +16,10 @@ class Payment extends Model
     use SoftDeletes;
     use QueryCacheable;
 
+    protected static $flushCacheOnUpdate = true;
     public $cacheFor = 43200;
     public $cacheDriver = 'file';
     public $cacheTags = ['payments_table'];
-    protected static $flushCacheOnUpdate = true;
-
-
     protected $fillable = [
         'reference_number',
         'payer',
@@ -31,9 +29,13 @@ class Payment extends Model
         'date',
         'notes',
         'extra',
+        'exchange_rate',
+        'equivalent_amount',
+        'bank_charges_currency',
+        'bank_charges',
         'user_id',
         'payment_request',
-        'order_id',
+        'bypass_cash_ledger',
     ];
 
     protected $casts = [

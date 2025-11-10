@@ -40,31 +40,31 @@ trait Project
         // Getting associated Pro forma Invoice for finding prepayment's share / total
         $associatedProformaInvoice = self::computeAssociatedProformaInvoiceDetails($record);
         if ($associatedProformaInvoice == null || $associatedProformaInvoice == 0) {
-            self::addError("Proforma invoice data is incomplete. Please check the record details and try again.");
+            self::addError('Proforma invoice data is incomplete. Please check the record details and try again.');
             return;
         }
 
         $details['initialQuantity'] = (float)$record->proformaInvoice?->quantity;
         if ($details['initialQuantity'] == 0) {
-            self::addError("Initial quantity is missing. Please ensure value is set for calculation.");
+            self::addError('Initial quantity is missing. Please ensure value is set for calculation.');
             return;
         }
         if ($details['provisionalQuantity'] == 0 || $details['provisionalPrice'] == 0) {
-            self::addError("Provisional quantity or price is missing. Please ensure value is set for calculation.");
+            self::addError('Provisional quantity or price is missing. Please ensure value is set for calculation.');
             return;
         }
 
         $details = self::computeAdjustedRatio($details, $associatedProformaInvoice, $totalProforma);
         if (!isset($details['pricePerUnit']) || $details['pricePerUnit'] <= 0 && !$details['hasUsedUpPrepayment']) {
-            self::addError("Calculation Error: Price per unit is zero or negative. Check the initial payment and quantity values.");
+            self::addError('Calculation Error: Price per unit is zero or negative. Check the initial payment and quantity values.');
             return;
         }
         if ($details['availableQuantity'] < 0) {
-            self::addError("Calculation Error: Available quantity computed as negative. Review initial and total quantities.");
+            self::addError('Calculation Error: Available quantity computed as negative. Review initial and total quantities.');
             return;
         }
         if ($details['payableQuantity'] < 0) {
-            self::addError("Calculation Error: Payable quantity computed as negative. This should not happen.");
+            self::addError('Calculation Error: Payable quantity computed as negative. This should not happen.');
             return;
         }
 

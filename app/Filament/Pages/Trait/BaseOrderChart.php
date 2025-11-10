@@ -22,32 +22,6 @@ trait BaseOrderChart
         ];
     }
 
-// DEPRECATED as they belonged to single filter QUERY
-//    protected function buildQuery($query, &$bindings)
-//    {
-//        $filters = $this->getAllFilters();
-//        $query .= " AND o.deleted_at IS NULL";
-//
-//        if ($filters['year'] && $filters['year'] !== 'all') {
-//            $query .= " AND YEAR(o.proforma_date) = ?";
-//            $bindings[] = $filters['year'];
-//        }
-//        if ($filters['month'] && $filters['month'] !== 'all') {
-//            $query .= " AND MONTH(o.proforma_date) = ?";
-//            $bindings[] = $filters['month'];
-//        }
-//        if ($filters['category_id']) {
-//            $query .= " AND o.category_id = ?";
-//            $bindings[] = $filters['category_id'];
-//        }
-//        if ($filters['order_status']) {
-//            $query .= " AND o.order_status = ?";
-//            $bindings[] = $filters['order_status'];
-//        }
-//
-//        return $query;
-//    }
-
     protected function buildQuery($query, &$bindings)
     {
         $filters = $this->getAllFilters();
@@ -93,24 +67,38 @@ trait BaseOrderChart
         return $query;
     }
 
-    protected function processOrders(array $orders, string $nameCol): array
+    protected function getBackgroundColor(): mixed
     {
-        $totalQuantity = 0;
-        foreach ($orders as $order) {
-            $totalQuantity += $order->quantity;
+        $key = str_replace('\\', '-', static::class);
+        if (isset(self::$bgColorCache[$key])) {
+            return self::$bgColorCache[$key];
         }
+        $cacheKey = 'widget-bg-color-' . $key;
+        self::$bgColorCache[$key] = Cache::remember($cacheKey, 300, function () {
+            return ColorTheme::getRandomColorForWidget();
+        });
+        return self::$bgColorCache[$key];
+    }
 
-        $result = [];
-        foreach ($orders as $order) {
-            $percentage = $totalQuantity > 0 ? ($order->quantity / $totalQuantity) * 100 : 0;
-            $result[] = [
-                $nameCol => $order->$nameCol ?? 'Unknown',
-                'quantity' => $order->quantity,
-                'percentage' => round($percentage, 2),
-            ];
-        }
-
-        return $result;
+    protected function getOptions(): array
+    {
+        return [
+            'plugins' => [
+                'datalabels' => [
+                    'formatter' => function ($value, $context) {
+                        return $value . '%';
+                    },
+                    'padding' => 6,
+                    'anchor' => 'end',
+                    'align' => 'center',
+                    'offset' => 10,
+                ],
+            ],
+            'animation' => [
+                'duration' => 1000,
+                'easing' => 'easeInOutQuad',
+            ],
+        ];
     }
 
     protected function prepareChartData($data, $filterType, $nameCol, $chartTypeOne = 'bar', $chartTypeTwo = 'line')
@@ -218,37 +206,23 @@ trait BaseOrderChart
         return $processedOrders;
     }
 
-    protected function getBackgroundColor(): mixed
+    protected function processOrders(array $orders, string $nameCol): array
     {
-        $key = str_replace('\\', '-', static::class);
-        if (isset(self::$bgColorCache[$key])) {
-            return self::$bgColorCache[$key];
+        $totalQuantity = 0;
+        foreach ($orders as $order) {
+            $totalQuantity += $order->quantity;
         }
-        $cacheKey = 'widget-bg-color-' . $key;
-        self::$bgColorCache[$key] = Cache::remember($cacheKey, 300, function () {
-            return ColorTheme::getRandomColorForWidget();
-        });
-        return self::$bgColorCache[$key];
-    }
 
-    protected function getOptions(): array
-    {
-        return [
-            'plugins' => [
-                'datalabels' => [
-                    'formatter' => function ($value, $context) {
-                        return $value . '%';
-                    },
-                    'padding' => 6,
-                    'anchor' => 'end',
-                    'align' => 'center',
-                    'offset' => 10,
-                ],
-            ],
-            'animation' => [
-                'duration' => 1000,
-                'easing' => 'easeInOutQuad',
-            ],
-        ];
+        $result = [];
+        foreach ($orders as $order) {
+            $percentage = $totalQuantity > 0 ? ($order->quantity / $totalQuantity) * 100 : 0;
+            $result[] = [
+                $nameCol => $order->$nameCol ?? 'Unknown',
+                'quantity' => $order->quantity,
+                'percentage' => round($percentage, 2),
+            ];
+        }
+
+        return $result;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models\Traits;
 
 use App\Models\Balance;
 use App\Models\User;
+use App\Services\Authorities\BalanceQueryService;
 use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
@@ -103,41 +104,7 @@ trait BalanceComputations
 
     public function scopeFilterByUserDepartment(Builder $query, $user): Builder
     {
-        $departmentId = $user->info['department'] ?? 0;
-        $position = $user->info['position'] ?? null;
-
-
-        if ($user->role === 'partner') {
-            return $query
-                ->whereIn('currency', ['USD', 'EURO'])
-                ->whereExists(function ($exists) {
-                    $exists->select(DB::raw(1))
-                        ->from('payments')
-                        ->join('payment_payment_request', 'payments.id', '=', 'payment_payment_request.payment_id')
-                        ->join('payment_requests', 'payment_payment_request.payment_request_id', '=', 'payment_requests.id')
-                        ->whereColumn('balances.currency', 'payments.currency')
-                        ->whereColumn('balances.payment', 'payments.amount')
-                        ->whereRaw('ABS(TIMESTAMPDIFF(SECOND, balances.created_at, payments.created_at)) <= 1')
-                        ->whereNotNull('payment_requests.account_number')
-                        ->where('payment_requests.extra->paymentMethod', '<>', 'cash')
-                        ->whereNull('payments.deleted_at')
-                        ->whereNull('payment_requests.deleted_at');
-                });
-        }
-
-        if ($user->role == 'accountant' && $position == 'jnr') {
-            return $query->whereIn('department_id', [6, $departmentId]);
-        }
-
-        if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
-            return $query;
-        }
-
-        if ($position == 'jnr') {
-            return $this->fetchAllUsersPaymentRequest($query, $user);
-        }
-
-        return $query->whereIn('department_id', [$departmentId, 0]);
+        return app(BalanceQueryService::class)->apply($query, $user);
     }
 
     protected function fetchAllUsersPaymentRequest(Builder $query, $user): Builder

@@ -64,6 +64,20 @@ trait Table
             ->badge();
     }
 
+    public static function showBankCharges(): TextColumn
+    {
+        return TextColumn::make('bank_charges')
+            ->label('Charges')
+            ->color('danger')
+            ->grow(false)
+            ->formatStateUsing(fn($state, Model $record) => $state && $record->bank_charges_currency
+                ? $record->bank_charges_currency . ' ' . number_format($state, 2)
+                : null)
+            ->sortable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->badge();
+    }
+
     public static function showContractBuyer(): TextColumn
     {
         return TextColumn::make('buyer')
@@ -129,6 +143,30 @@ trait Table
             ->formatStateUsing(fn($state) => $state ? Carbon::parse($state)->format('F j, Y') : null)
             ->sortable()
             ->searchable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->badge();
+    }
+
+    public static function showEuroEquivalent(): TextColumn
+    {
+        return TextColumn::make('equivalent_amount')
+            ->label('EUR')
+            ->color('success')
+            ->grow(false)
+            ->formatStateUsing(fn($state) => $state ? ' € ' . number_format($state, 2) : null)
+            ->sortable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->badge();
+    }
+
+    public static function showExchangeRate(): TextColumn
+    {
+        return TextColumn::make('exchange_rate')
+            ->label('Rate')
+            ->color('secondary')
+            ->grow(false)
+            ->formatStateUsing(fn($state) => $state ? number_format($state, 6) : null)
+            ->sortable()
             ->toggleable(isToggledHiddenByDefault: true)
             ->badge();
     }
@@ -446,6 +484,16 @@ trait Table
             ->visibility('public');
     }
 
+    public static function viewBankCharges(): TextEntry
+    {
+        return TextEntry::make('bank_charges')
+            ->label('Bank Charges')
+            ->formatStateUsing(fn($state, Model $record) => $state && $record->bank_charges_currency
+                ? $record->bank_charges_currency . ' ' . number_format($state, 2)
+                : 'N/A')
+            ->badge();
+    }
+
     /**
      * @return TextEntry
      */
@@ -492,6 +540,22 @@ trait Table
 
                 return !empty($departmentNames) ? implode(', ', $departmentNames) : null;
             })
+            ->badge();
+    }
+
+    public static function viewEuroEquivalent(): TextEntry
+    {
+        return TextEntry::make('equivalent_amount')
+            ->label('EUR Equivalent')
+            ->formatStateUsing(fn($state) => $state ? '€ ' . number_format($state, 2) : 'N/A')
+            ->badge();
+    }
+
+    public static function viewExchangeRate(): TextEntry
+    {
+        return TextEntry::make('exchange_rate')
+            ->label('Exchange Rate (USD/EUR)')
+            ->formatStateUsing(fn($state) => $state ? number_format($state, 6) : 'N/A')
             ->badge();
     }
 

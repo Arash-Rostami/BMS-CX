@@ -68,7 +68,7 @@ class ListOrders extends ListRecords
     {
         return DeleteAction::make()
             ->successNotification(fn(Model $record) => Admin::send($record))
-            ->hidden(fn(?Model $record) => $record?->paymentRequests->isNotEmpty());
+            ->hidden(fn(?Model $record) => $record?->paymentRequests->isNotEmpty() && OrderResource::isLocked($record));
     }
 
     public function buildDocumentSelectClauses(): array

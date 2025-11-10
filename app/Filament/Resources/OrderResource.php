@@ -54,6 +54,7 @@ class OrderResource extends Resource
 
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
+
     public static function configureCommonTableSettings(Table $table): Table
     {
         return (new ListOrders())->configureCommonTableSettings($table);
@@ -63,9 +64,11 @@ class OrderResource extends Resource
     {
         return $form
             ->schema([
+                Admin::getLock(),
                 Forms\Components\Group::make()
                     ->schema([
-                        Forms\Components\Section::make('Pro forma Invoice:')
+                        /*PI Details */
+                        Section::make('Pro forma Invoice:')
                             ->schema([
                                 Fieldset::make()
                                     ->schema([
@@ -80,17 +83,22 @@ class OrderResource extends Resource
                                         Admin::getProformaNumber(),
                                         Admin::getProformaDate(),
                                         Admin::getGrade(),
-                                    ])->columns(3),
+                                    ])
+                                    ->columns(3),
                             ])
-                            ->columns(2),
+                            ->columns(2)
+                            ->disabled(fn(?Model $record) => self::isLocked($record)),
                     ])->columnSpan(3),
                 Forms\Components\Group::make()
                     ->schema([
-                        Forms\Components\Section::make('Status:')
+                        /*Stage & Status*/
+                        Section::make('Status:')
                             ->schema([
                                 Admin::getPurchaseStatus(),
                                 Admin::getOrderStatus(),
-                            ])->columns(2),
+                            ])
+                            ->columns(2)
+                            ->disabled(fn(?Model $record) => self::isLocked($record)),
                         /*Parties Involved*/
                         Section::make(new HtmlString("Parties: <span class='red'>*</span>"))
                             ->relationship('party')
@@ -98,9 +106,11 @@ class OrderResource extends Resource
                             ->schema([
                                 Admin::getBuyer(),
                                 Admin::getSupplier(),
-                            ])->columns(2)
+                            ])
+                            ->columns(2)
                             ->columnSpanFull()
-                            ->collapsible(),
+                            ->collapsible()
+                            ->disabled(fn(?Model $record) => self::isLocked($record)),
                     ])->columnSpan(2),
 
                 Group::make()
@@ -113,6 +123,7 @@ class OrderResource extends Resource
                                     ->label('')
                                     ->tooltip('Compute')
                                     ->icon('heroicon-o-calculator')
+                                    ->hidden(fn(?Model $record) => self::isLocked($record))
                                     ->action(function (Get $get, Set $set, ?Model $record) {
                                         OrderPaymentCalculationService::processPaymentStub($get, $set, $record);
                                     })])
@@ -174,13 +185,13 @@ class OrderResource extends Resource
                                                 Admin::getHiddenPayableQuantity(),
                                                 // COMPONENT VIEW page
                                                 ComponentView::make('slip')
-                                                    ->view('filament.orders.financial-details'),
+                                                    ->view('filament.orders.financial-details')
                                             ])->columns(1),
                                     ])->columnSpan(2),
                             ])
                             ->columnSpanFull()
-                            ->columns(4),
-
+                            ->columns(4)
+                            ->disabled(fn(?Model $record) => self::isLocked($record)),
                     ])
                     ->columnSpanFull(),
 
@@ -239,7 +250,8 @@ class OrderResource extends Resource
                     ])->columns(4)
                     ->columnSpanFull()
                     ->collapsible()
-                    ->collapsed(),
+                    ->collapsed()
+                    ->disabled(fn(?Model $record) => self::isLocked($record)),
 
                 /*Documents Involved*/
                 Section::make('Shipping Docs:')
@@ -268,7 +280,8 @@ class OrderResource extends Resource
                     ])
                     ->columns(2)
                     ->collapsed()
-                    ->collapsible(),
+                    ->collapsible()
+                    ->disabled(fn(?Model $record) => self::isLocked($record)),
 
                 /* Auto-loaded Attachments Section */
                 Group::make()
@@ -282,7 +295,6 @@ class OrderResource extends Resource
                             ->columns(4)
                             ->visible(fn($get) => $get('use_existing_attachments')),
                     ])->columnSpanFull(),
-
 
                 /* Attachments Section */
                 Repeater::make('attachments')
@@ -344,7 +356,8 @@ class OrderResource extends Resource
                     ->addable(fn(Repeater $component, Get $get) => !(count($get('tags')) == 1))
                     ->columnSpanFull()
                     ->collapsible()
-                    ->collapsed(),
+                    ->collapsed()
+                    ->disabled(fn(?Model $record) => self::isLocked($record)),
             ])->columns(5);
     }
 
@@ -451,6 +464,12 @@ class OrderResource extends Resource
     public static function infolist(Infolist $infolist): Infolist
     {
         return (new ViewOrder())->infolist($infolist);
+    }
+
+    public static function isLocked($record)
+    {
+        return $record?->order_status === 'accounting_approved'
+            && !(auth()->user()?->hasRole('accountant') || auth()->user()?->hasRole('admin'));
     }
 
     public static function refreshComponent()

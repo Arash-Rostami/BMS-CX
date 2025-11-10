@@ -17,7 +17,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\HtmlString;
 
 
 class PaymentResource extends Resource
@@ -45,30 +44,45 @@ class PaymentResource extends Resource
             ->schema([
                 Group::make()
                     ->schema([
-                        Group::make()
+                        Section::make('General')
                             ->schema([
-                                Section::make('Payment Information')
+                                Group::make()
                                     ->schema([
                                         Admin::getPaymentRequest(),
-                                        Admin::getDate(),
-                                        Admin::getTransactionID(),
-                                        Admin::getNotes()
-                                    ])->columns(2)
-                                    ->collapsible()
-                            ])
-                            ->columnSpan(2),
-                        Group::make()
-                            ->schema([
-                                Section::make(new HtmlString('Payment Details  <span class="red"> *</span>'))
+                                        Admin::getNotes(),
+                                    ])->columnSpan(2),
+                                Group::make()
                                     ->schema([
                                         Admin::getCurrency(),
                                         Admin::getAmount(),
                                         Admin::getPayer(),
-                                    ])->collapsible()
-                            ])->columns(1),
+                                    ])->columnSpan(1),
+                            ])
+                            ->columns(3)
+                            ->columnSpan(3),
+
+                        Section::make('Details')
+                            ->schema([
+                                Group::make()
+                                    ->schema([
+                                        Admin::getExchangeRate(),
+                                        Admin::getEuroEquivalent(),
+                                        Admin::getBankChargesCurrency(),
+                                        Admin::getBankCharges(),
+                                    ])->columns(1),
+
+                                Group::make()
+                                    ->schema([
+                                        Admin::getDate(),
+                                        Admin::getTransactionID(),
+                                        Admin::getBypassCashLedger(),
+                                    ])->columns(1),
+                            ])
+                            ->columns(2)
+                            ->columnSpan(2),
                     ])
-                    ->columnSpanFull()
-                    ->columns(3),
+                    ->columns(5)
+                    ->columnSpanFull(),
 
                 /*Additional Attachments*/
                 Repeater::make('attachments')
@@ -191,7 +205,10 @@ class PaymentResource extends Resource
                 Admin::viewPayer(),
                 Admin::viewTransactionID(),
                 Admin::viewDate(),
-            ]);
+                Admin::viewExchangeRate(),
+                Admin::viewEuroEquivalent(),
+                Admin::viewBankCharges(),
+            ])->columns(3);
     }
 
     public static function shouldRegisterNavigation(): bool

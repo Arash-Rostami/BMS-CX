@@ -5,6 +5,7 @@ namespace App\Models\Traits;
 use App\Models\Allocation;
 use App\Models\PaymentRequest;
 use App\Models\User;
+use App\Services\Authorities\PaymentRequestQueryService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -159,37 +160,7 @@ trait PaymentRequestComputations
 
     public function scopeAuthorizedForUser($query, User $user)
     {
-        $department = $user->info['department'] ?? 0;
-        $position = $user->info['position'] ?? null;
-
-
-        if ($user->role === 'partner') {
-            return $query->whereIn('currency', ['USD', 'EURO'])
-                ->whereNotNull('account_number')
-                ->where('extra->paymentMethod', '<>', 'cash');
-        }
-
-        if ($user->role == 'accountant' && $position == 'jnr') {
-            return $query->where(function ($subQuery) use ($department) {
-                $subQuery->where('department_id', 6)
-                    ->orWhere('cost_center', 6)
-                    ->orWhere('department_id', $department)
-                    ->orWhere('cost_center', $department);
-            });
-        }
-
-        if (in_array($user->role, ['admin', 'manager', 'accountant'])) {
-            return $query;
-        }
-
-        if ($position == 'jnr') {
-            return $query->where('user_id', $user->id);
-        }
-
-        return $query->where(function ($subQuery) use ($department) {
-            $subQuery->whereIn('department_id', [$department, 0])
-                ->orWhereIn('cost_center', [$department, 0]);
-        });
+        return app(PaymentRequestQueryService::class)->apply($query, $user);
     }
 
     public static function searchBeneficiaries($query, $search): void
