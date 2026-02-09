@@ -35,10 +35,14 @@ class SmartPayment
             return;
         }
 
+        $totalAmount = $paymentRequests->sum(fn($pr) => $pr->adjustment_amount ?? $pr->requested_amount);
+
         $form->fill([
             'paymentRequests' => $paymentRequests->modelKeys(),
             'currency' => $currencies->first(),
-            'amount' => $paymentRequests->sum('requested_amount'),
+            'amount' => $totalAmount,
+            'calculated_max_amount' => $totalAmount,
+            'allowed_currencies' => $currencies->toArray(),
         ]);
 
         PaymentAdmin::checkAndNotifyForSupplierCredit($paymentRequests);
