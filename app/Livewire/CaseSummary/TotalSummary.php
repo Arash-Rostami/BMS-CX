@@ -484,8 +484,9 @@ class TotalSummary extends Component
     {
         $search = trim(strtolower($search));
 
-        return ProformaInvoice::select(['id', 'proforma_number', 'contract_number', 'reference_number'])
-            ->whereNull('deleted_at')
+        return ProformaInvoice::select([
+            'id', 'proforma_number', 'contract_number', 'reference_number', 'buyer_id', 'supplier_id', 'category_id', 'product_id', 'grade_id'
+        ])->whereNull('deleted_at')
             ->with(['buyer:id,name', 'supplier:id,name', 'category:id,name', 'product:id,name', 'grade:id,name'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {

@@ -89,7 +89,7 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->databaseNotifications()
-            ->databaseNotificationsPolling('60s')
+            ->databaseNotificationsPolling('300s')
             ->maxContentWidth(MaxWidth::Full)
             ->spa()
             ->brandName('BMS')

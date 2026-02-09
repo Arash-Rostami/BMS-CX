@@ -179,6 +179,7 @@ class FinancialSummary extends Component
                 if (!$currency) return collect();
 
                 return $order->paymentRequests
+                    ->filter(fn($req) => $req->reason_for_payment == 20)
                     ->filter(fn($req) => $req->currency === $currency)
                     ->flatMap(fn($req) => $req->payments->map(fn($pmt) => [
                         'pmt' => $pmt,

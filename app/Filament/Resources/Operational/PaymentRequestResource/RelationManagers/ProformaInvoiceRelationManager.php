@@ -6,8 +6,6 @@ use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\Admin;
 use App\Filament\Resources\Operational\ProformaInvoiceResource\Pages\ListProformaInvoices;
 use App\Filament\Resources\ProformaInvoiceResource;
-use App\Models\Order;
-use App\Models\ProformaInvoice;
 use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -20,55 +18,20 @@ class ProformaInvoiceRelationManager extends RelationManager
 {
     protected static string $relationship = 'proformaInvoices';
 
-    public function scrollLeft()
-    {
-        $this->dispatch('scrollLeft');
-    }
-
-    public function scrollRight()
-    {
-        $this->dispatch('scrollRight');
-    }
-
-    public function toggleFullScreen()
-    {
-        $this->dispatch('toggleFullScreen');
-    }
-
     public function clearTableSort()
     {
         $this->dispatch('clearTableSort');
     }
 
-    public function form(Form $form): Form
-    {
-        return $form->schema([]);
-    }
-
-    public function infolist(Infolist $infolist): Infolist
-    {
-        return ProformaInvoiceResource::infolist($infolist);
-    }
-
-    public function table(Table $table): Table
-    {
-        $ownRecord = $this->ownerRecord;
-
-        $table = self::configureCommonTableSettings($table, $ownRecord);
-
-        return (getTableDesign() != 'classic')
-            ? ProformaInvoiceResource::getModernLayout($table)
-            : ProformaInvoiceResource::getClassicLayout($table);
-    }
-
     public static function configureCommonTableSettings(Table $table, $ownRecord): Table
     {
         return $table
-            ->query(function () use ($ownRecord) {
-                return is_null($ownRecord->order_id)
-                    ? $ownRecord->associatedProformaInvoices()
-                    : $ownRecord->order->proformaInvoice();
-            })
+            ->query(fn() => (
+            is_null($ownRecord->order_id)
+                ? $ownRecord->associatedProformaInvoices()
+                : $ownRecord->order->proformaInvoice()
+            )->getQuery()->select('proforma_invoices.*')
+            )
             ->recordClasses(fn(Model $record) => isShadeSelected('proforma-table'))
             ->filters([
                 Admin::filterProforma(),
@@ -86,9 +49,44 @@ class ProformaInvoiceRelationManager extends RelationManager
             ])
             ->headerActions(
                 (isModernDesign())
-                    ? [ActionGroup::make( (new ListProformaInvoices())->getInvisibleTableHeaderActions())]
-                    :  (new ListProformaInvoices())->getInvisibleTableHeaderActions()
-            )
-            ->poll('30s');
+                    ? [ActionGroup::make((new ListProformaInvoices())->getInvisibleTableHeaderActions())]
+                    : (new ListProformaInvoices())->getInvisibleTableHeaderActions()
+            );
+    }
+
+    public function form(Form $form): Form
+    {
+        return $form->schema([]);
+    }
+
+    public function infolist(Infolist $infolist): Infolist
+    {
+        return ProformaInvoiceResource::infolist($infolist);
+    }
+
+    public function scrollLeft()
+    {
+        $this->dispatch('scrollLeft');
+    }
+
+    public function scrollRight()
+    {
+        $this->dispatch('scrollRight');
+    }
+
+    public function table(Table $table): Table
+    {
+        $ownRecord = $this->ownerRecord;
+
+        $table = self::configureCommonTableSettings($table, $ownRecord);
+
+        return (getTableDesign() != 'classic')
+            ? ProformaInvoiceResource::getModernLayout($table)
+            : ProformaInvoiceResource::getClassicLayout($table);
+    }
+
+    public function toggleFullScreen()
+    {
+        $this->dispatch('toggleFullScreen');
     }
 }

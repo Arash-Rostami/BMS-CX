@@ -18,6 +18,7 @@ class SupplierSummary extends Component
     public int $perPage = 10;
     public mixed $adjustments;
     public array $currencyDiffBalances = [];
+    public bool $includeNonFinalized = false;
 
     protected $listeners = ['refreshSupplierSummary' => 'refreshData'];
 
@@ -164,6 +165,12 @@ class SupplierSummary extends Component
         ]);
     }
 
+    public function toggleNonFinalized()
+    {
+        $this->includeNonFinalized = !$this->includeNonFinalized;
+        $this->refreshData();
+    }
+
     public function totalPages(): int
     {
         $totalItems = is_array($this->supplierPaymentSummaryTable)
@@ -198,10 +205,11 @@ class SupplierSummary extends Component
                 'paid_amount' => number_format($paid, 2),
                 'paid_currency' => $currency,
                 'expected_amount' => number_format($expected, 2),
-                'diff' => number_format($diff, 2),
+                'variance' => number_format($diff, 2),
                 'diff_status' => $this->getDiffStatus($diff),
                 'adjustment_record' => $adjustment,
                 'credit' => number_format(0, 2),
+                'balance' => number_format($diff, 2),
             ];
         }
         return array($currencyDiffBalances, $paymentSummaryTable);
@@ -221,21 +229,20 @@ class SupplierSummary extends Component
             foreach ($currencies as $currency) {
                 $expected = $data['expected'][$currency] ?? 0;
                 $paid = $data['paid'][$currency] ?? 0;
-                $diff = $paid - $expected;
+                $variance = $paid - $expected;
 
                 // Calculate adjusted diff for non-Rial currencies
-                $adjustedDiff = ($currency !== 'Rial' && $expected == 0)
-                    ? ($diff - $paid)
-                    : $diff;
+                $adjustedDiff = ($currency !== 'Rial' && $expected == 0) ? ($variance - $paid) : $variance;
 
                 // Update currency balances
                 $currencyDiffBalances[$currency]['adjusted'] =
                     ($currencyDiffBalances[$currency]['adjusted'] ?? 0) + $adjustedDiff;
                 $currencyDiffBalances[$currency]['total'] =
-                    ($currencyDiffBalances[$currency]['total'] ?? 0) + $diff;
+                    ($currencyDiffBalances[$currency]['total'] ?? 0) + $variance;
 
                 // Credits based on currency
                 $credit = $totalRequestedByCurrency->get($currency, 0) - $totalPaidByCurrencyForCredit->get($currency, 0);
+                $balance = $variance >= 0 ? ($variance - $credit) : ($variance + $credit);
 
                 $paymentSummaryTable[] = [
                     'id' => $proforma->id,
@@ -248,15 +255,15 @@ class SupplierSummary extends Component
                     'paid_amount' => number_format($paid, 2),
                     'paid_currency' => $currency,
                     'expected_amount' => number_format($expected, 2),
-                    'diff' => number_format($diff, 2),
-                    'diff_status' => $this->getDiffStatus($diff),
+                    'variance' => number_format($variance, 2),
+                    'diff_status' => $this->getDiffStatus($variance),
                     'credit' => number_format($credit, 2),
+                    'balance' => number_format($balance, 2),
                 ];
             }
         }
         return array($currencyDiffBalances, $paymentSummaryTable);
     }
-
 
     private function getCreditsUsed(mixed $proforma): array
     {
@@ -293,7 +300,7 @@ class SupplierSummary extends Component
             $this->cachedPaymentData[$proforma->id] = [
                 'proforma' => $proforma,
                 'expected' => $this->supplierSummaryService->calculateExpectedPayments($proforma),
-                'paid' => $this->supplierSummaryService->calculatePaidPayments($proforma),
+                'paid' => $this->supplierSummaryService->calculatePaidPayments($proforma, $this->includeNonFinalized),
             ];
         }
 

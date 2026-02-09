@@ -79,6 +79,7 @@ class ListPayments extends ListRecords
                 Admin::filterCostCenter(),
                 Admin::filterByPRCurrency(),
                 Admin::filterReason(),
+                Admin::filterStatus(),
                 Admin::filterMadeBy(),
                 AdminOrder::filterSoftDeletes(),
                 AdminOrder::filterCreatedAt(),
@@ -144,6 +145,7 @@ class ListPayments extends ListRecords
                 Admin::groupByPI(),
                 Admin::filterByPayer(),
                 Admin::groupBySupplier(),
+                Admin::groupByStatus(),
                 Admin::filterByTransferringDate(),
             ])
             ->poll('900s');
@@ -154,7 +156,7 @@ class ListPayments extends ListRecords
         return $table
             ->columns([
                 Admin::showID(),
-                Admin::showStatus(),
+                Admin::showPaymentStatus(),
                 Admin::showPaymentRequest(),
                 Admin::showContractBuyer(),
                 Admin::showPaymentRequestDep(),
@@ -172,6 +174,7 @@ class ListPayments extends ListRecords
                 Admin::showTimeGap(),
                 Admin::showPayer(),
                 Admin::showTransactionID(),
+                Admin::showStatus(),
                 Admin::showDate(),
                 Admin::showCreator(),
                 TableObserver::showMissingData(0, 1),
@@ -243,6 +246,7 @@ class ListPayments extends ListRecords
                         Admin::showPaymentRequestBeneficiary(),
                         Admin::showCurrency(),
                         Admin::showRequestedAmount(),
+                        Admin::showPaymentStatus(),
                         Admin::showStatus(),
                     ]),
                 ])->space(3),

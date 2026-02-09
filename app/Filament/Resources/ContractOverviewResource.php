@@ -50,6 +50,7 @@ class ContractOverviewResource extends Resource
                 Admin::showOrderPart(),
                 Admin::showPiDate(),
                 Admin::showCategory(),
+//                Admin::showGrade(),
                 Admin::showPiQuantity(),
                 Admin::showOrderQuantity(),
                 Admin::showBlDate(),

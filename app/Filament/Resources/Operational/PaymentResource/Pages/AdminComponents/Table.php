@@ -317,6 +317,36 @@ trait Table
             ->badge();
     }
 
+    public static function showPaymentStatus(): IconColumn
+    {
+        return IconColumn::make('status')
+            ->label('Confirmation')
+            ->grow(false)
+            ->getStateUsing(fn(?Model $record) => $record->status ?? 'unconfirmed')
+            ->tooltip(fn(?Model $record) => match ($record->status ?? 'unconfirmed') {
+                'confirmed' => 'Payment confirmed',
+                'unconfirmed' => 'Waiting confirmation',
+                'failed' => 'Transfer failed',
+                'refunded' => 'Refunded',
+                default => 'Unknown status',
+            })
+            ->icon(fn(string $state): string => match ($state) {
+                'confirmed' => 'heroicon-s-check-circle',
+                'unconfirmed' => 'heroicon-o-clock',
+                'failed' => 'heroicon-o-x-circle',
+                'refunded' => 'heroicon-o-arrow-uturn-left',
+                default => 'heroicon-o-question-mark-circle',
+            })
+            ->color(fn(string $state): string => match ($state) {
+                'confirmed' => 'success',
+                'unconfirmed' => 'warning',
+                'failed' => 'danger',
+                'refunded' => 'secondary',
+                default => 'gray',
+            })
+            ->sortable();
+    }
+
     /**
      * @return TextColumn
      */
@@ -334,7 +364,7 @@ trait Table
     public static function showStatus()
     {
         return IconColumn::make('process_status')
-            ->label('Status')
+            ->label('Process')
             ->grow(false)
             ->alignRight()
             ->getStateUsing(function (Model $record) {
@@ -649,6 +679,20 @@ trait Table
         return TextEntry::make('payment_request')
             ->label('Payment Type')
             ->formatStateUsing(fn(Model $record) => ucwords($record->paymentRequests->map(fn($pr) => $pr->type_of_payment)->join(', ')))
+            ->badge();
+    }
+
+    public static function viewStatus(): TextEntry
+    {
+        return TextEntry::make('status')
+            ->label('Status')
+            ->formatStateUsing(fn($state) => match ($state) {
+                'unconfirmed' => '⏳ Unconfirmed',
+                'confirmed' => '✅ Confirmed',
+                'failed' => '❌ Failed',
+                'refunded' => '↩️ Refunded',
+                default => ucfirst($state ?? 'N/A'),
+            })
             ->badge();
     }
 

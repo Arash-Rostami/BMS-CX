@@ -7,6 +7,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\IconPosition;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -206,9 +207,12 @@ trait Table
     {
         return TextColumn::make('quantity')
             ->color('info')
-            ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '⏲️ Qt: ' : '') . number_format($record->quantity ?? 0))
+            ->prefix(fn() => getTableDesign() === 'modern' ? '⏲️ Qt: ' : '')
+            ->numeric(decimalPlaces: 0)
+            ->suffix(' mt')
             ->grow(false)
-            ->toggleable(isToggledHiddenByDefault: true)
+            ->toggleable()
+            ->summarize(Sum::make()->label('Total Quantity (mt)'))
             ->searchable()
             ->sortable()
             ->badge();

@@ -184,6 +184,7 @@ class Admin
     {
         static $cachedPaymentRequests = [];
         $stateKey = serialize($state);
+        $records = collect();
 
         if (!array_key_exists($stateKey, $cachedPaymentRequests)) {
             $records = PaymentRequest::findMany($state)->keyBy('id');
@@ -197,20 +198,18 @@ class Admin
             $cachedPaymentRequests[$stateKey] = [
                 'requestedAmount' => $requestedAmount,
                 'currencies' => $currencies,
+                'records' => $records,
             ];
         }
 
         $paymentRequestData = $cachedPaymentRequests[$stateKey];
+        $records = $paymentRequestData['records'] ?? PaymentRequest::findMany($state);
+        $uniqueCurrencies = array_unique($paymentRequestData['currencies'] ?? []);
 
-        if ($paymentRequestData !== null) {
-            $uniqueCurrencies = array_unique($paymentRequestData['currencies']);
 
-            $set('amount', $paymentRequestData['requestedAmount']);
-
-            if (count($uniqueCurrencies) === 1) {
-                $set('currency', $uniqueCurrencies[0]);
-            }
-        }
+        $set('amount', $paymentRequestData['requestedAmount']);
+        $set('allowed_currencies', $uniqueCurrencies);
+        $set('currency', count($uniqueCurrencies) === 1 ? $uniqueCurrencies[0] : null);
 
         static::checkAndNotifyForSupplierCredit($records);
     }

@@ -76,14 +76,6 @@ class PaymentRequestPolicy
             return !in_array($status, ['allowed', 'rejected']);
         }
 
-        if (isUserMdr()) {
-            $userDep = cachedUser()->info['department'];
-            if ($record->getOriginal('department_id') == $userDep || $record->getOriginal('cost_center') == $userDep) {
-                return !in_array($status, ['allowed', 'rejected', 'cancelled']);
-            }
-
-            return true;
-        }
 
         if (isUserMKHead()) {
             if ($record->getOriginal('department_id') == 9 || $record->getOriginal('cost_center') == 9) {
@@ -103,6 +95,15 @@ class PaymentRequestPolicy
             if ($record->getOriginal('department_id') == 6 or $record->getOriginal('cost_center') == 6) {
                 return !in_array($status, ['allowed', 'rejected', 'cancelled']);
             }
+            return true;
+        }
+
+        if (isUserMdr()) {
+            $userDep = cachedUser()->info['department'];
+            if ($record->getOriginal('department_id') == $userDep || $record->getOriginal('cost_center') == $userDep) {
+                return !in_array($status, ['allowed', 'rejected', 'cancelled']);
+            }
+
             return true;
         }
 

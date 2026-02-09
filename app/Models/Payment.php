@@ -22,6 +22,7 @@ class Payment extends Model
     public $cacheTags = ['payments_table'];
     protected $fillable = [
         'reference_number',
+        'status',
         'payer',
         'amount',
         'currency',

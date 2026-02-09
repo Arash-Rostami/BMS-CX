@@ -4,7 +4,6 @@ namespace App\Models\Traits;
 
 use App\Services\AvatarMaker;
 use Filament\Panel;
-use Illuminate\Support\Facades\Cache;
 
 trait UserComputations
 {
@@ -16,6 +15,14 @@ trait UserComputations
     public function canAccessPanel(Panel $panel): bool
     {
         return in_array(substr(strrchr($this->email, '@'), 1), self::$allowedDomains);
+    }
+
+    public static function getByDepAndPos($department, $position)
+    {
+        return self::where('info->position', $position)
+            ->where('info->department', $department)
+            ->where('role', '!=', 'partner')
+            ->get();
     }
 
     public function getExtraValueAttribute($key)
@@ -40,24 +47,15 @@ trait UserComputations
         return trim("{$this->first_name} {$middleName} {$this->last_name}");
     }
 
+    public static function isUserAuthorizedForOrderStatus(): bool
+    {
+        if (!$user = auth()->user()) return false;
+
+        return $user->hasRole('admin') || $user->hasRole('manager') || isUserCXHead();
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
-    }
-
-    public static function getByDepAndPos($department, $position)
-    {
-        return self::where('info->position', $position)
-            ->where('info->department', $department)
-            ->where('role', '!=', 'partner')
-            ->get();
-    }
-
-    public static function isUserAuthorizedForOrderStatus()
-    {
-        if (auth()->user()) {
-            return in_array(auth()->user()->role, ['manager', 'admin']);
-        }
-        return false;
     }
 }

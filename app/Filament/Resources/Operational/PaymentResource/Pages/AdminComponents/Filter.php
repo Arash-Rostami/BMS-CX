@@ -197,6 +197,19 @@ trait Filter
             });
     }
 
+    public static function filterStatus()
+    {
+        return SelectFilter::make('status')
+            ->label('Status')
+            ->options([
+                'unconfirmed' => '⏳ Unconfirmed',
+                'confirmed' => '✅ Confirmed',
+                'failed' => '❌ Failed',
+                'refunded' => '↩️ Refunded'
+            ])
+            ->placeholder('All');
+    }
+
     public static function groupByBeneficiary(): Grouping
     {
         return Grouping::make('paymentRequests.beneficiary.name')
@@ -293,6 +306,23 @@ trait Filter
                 );
             });
     }
+
+    public static function groupByStatus(): Grouping
+    {
+        return Grouping::make('status')
+            ->collapsible()
+            ->label('Status')
+            ->getKeyFromRecordUsing(fn(Model $record): string => $record->status ?? 'unconfirmed')
+            ->getTitleFromRecordUsing(fn(Model $record): string => match ($record->status ?? 'unconfirmed') {
+                'confirmed' => '✅ Confirmed',
+                'unconfirmed' => '⏳ Unconfirmed',
+                'failed' => '❌ Failed',
+                'refunded' => '↩️ Refunded',
+                default => ucfirst($record->status ?? 'Unknown'),
+            })
+            ->orderQueryUsing(fn(Builder $query, string $direction): Builder => $query->orderBy('status', $direction));
+    }
+
 
     public static function groupBySupplier(): Grouping
     {

@@ -53,9 +53,11 @@ class PaymentResource extends Resource
                                     ])->columnSpan(2),
                                 Group::make()
                                     ->schema([
+                                        Admin::getAllowedCurrencies(),
                                         Admin::getCurrency(),
                                         Admin::getAmount(),
                                         Admin::getPayer(),
+                                        Admin::getStatus(),
                                     ])->columnSpan(1),
                             ])
                             ->columns(3)
@@ -204,6 +206,7 @@ class PaymentResource extends Resource
                 Admin::viewPaymentRequestDetail(),
                 Admin::viewPayer(),
                 Admin::viewTransactionID(),
+                Admin::viewStatus(),
                 Admin::viewDate(),
                 Admin::viewExchangeRate(),
                 Admin::viewEuroEquivalent(),

@@ -35,6 +35,7 @@ class CreatePayment extends CreateRecord
             0, (float)data_get($this->data, 'amount', 0) - $credit);
     }
 
+
     protected function afterCreate(): void
     {
         persistReferenceNumber($this->record, 'P');

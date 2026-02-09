@@ -30,13 +30,13 @@
                                         </span>
                                         <div class="text-gray-500">➟
                                             <span
-                                                    title="Contract No.">{{ $option->contract_number ?? 'No CT No.' }}</span>
+                                                title="Contract No.">{{ $option->contract_number ?? 'No CT No.' }}</span>
                                             <span class="mx-1"> ┆ </span>
                                             <span
-                                                    title="Reference No.">{{ $option->reference_number ?? 'No Ref. No.' }}</span>
+                                                title="Reference No.">{{ $option->reference_number ?? 'No Ref. No.' }}</span>
                                             <span class="mx-1"> ┆ </span>
                                             <span
-                                                    title="Supplier Name">{{ $option->supplier->name ?? 'No Supplier' }}</span>
+                                                title="Supplier Name">{{ $option->supplier->name ?? 'No Supplier' }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -150,5 +150,7 @@
             </div>
         @endif
     </div>
+{{--    <!-- AI Assistant -->--}}
+    <x-Summary.ai></x-Summary.ai>
 </div>
 

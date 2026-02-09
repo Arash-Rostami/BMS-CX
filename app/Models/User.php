@@ -4,16 +4,17 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Traits\UserComputations;
+use App\Models\Traits\UserInformation;
 use App\Models\Traits\UserRoles;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
+use Filament\Models\Contracts\HasName;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Models\Contracts\HasName;
-use Filament\Models\Contracts\HasAvatar;
 use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
@@ -24,15 +25,14 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar, 
     use Notifiable;
     use SoftDeletes;
     use UserRoles;
+    use UserInformation;
     use UserComputations;
     use QueryCacheable;
 
+    protected static $flushCacheOnUpdate = true;
     public $cacheFor = 86400;
     public $cacheDriver = 'file';
     public $cacheTags = ['users_table'];
-    protected static $flushCacheOnUpdate = true;
-
-
     protected $fillable = [
         'first_name',
         'middle_name',

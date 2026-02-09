@@ -10,9 +10,10 @@
             background-color: #f5f5f5;
             margin: 0;
             padding: 1px;
+            transform: scale(0.8);
         }
 
-        .monospace{
+        .monospace {
             font-family: monospace !important;
             font-size: 13px;
         }
@@ -30,10 +31,16 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 30px;
         }
 
-        .header img {
-            max-height: 50px;
+        .logo {
+            color: #2980b9;
+            font-size: 28px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
         }
 
         .header .details {
@@ -42,22 +49,14 @@
 
         .header .details h1 {
             font-size: 24px;
-            margin: 0;
+            margin: 0 0 10px 0;
             color: #2980b9;
-        }
-
-        .logo {
-            color: #2980b9;
-            font-size: 28px;
-            text-align: left;
-            font-weight: bold;
-            margin-bottom: 30px;
-            border-bottom: 1px solid #ddd;
         }
 
         .header .details div {
             font-size: 12px;
             color: #7f8c8d;
+            margin-bottom: 3px;
         }
 
         h3 {
@@ -65,30 +64,7 @@
             color: #2980b9;
             font-size: 16px;
             padding-bottom: .5em;
-        }
-
-        .details-section {
-            margin-bottom: 30px;
-        }
-
-        .details-section .label {
-            font-weight: bold;
-            color: #555;
-        }
-
-        .details-section .value {
-            color: #2c3e50;
-            font-family: monospace;
-        }
-
-        .beneficiary {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .beneficiary .beneficiary-details,
-        .beneficiary .bank-details {
-            width: 80%;
+            border-bottom: 1px solid #ddd;
         }
 
         .table {
@@ -97,19 +73,35 @@
             overflow: hidden;
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             page-break-inside: auto;
+            table-layout: fixed;
         }
 
-        .table th, .table td {
-            border: none;
-            border-bottom: 1px solid #eee; /* light divider */
+        .table th {
+            width: 35%;
+            background-color: #f2f2f2;
+            font-weight: bold;
+            color: #333;
             padding: 12px;
             text-align: left;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+
+        .table td {
+            width: 65%;
+            border: none;
+            border-bottom: 1px solid #eee;
+            padding: 12px;
+            text-align: left;
+            color: #2c3e50;
+            font-family: "Courier New", Courier, monospace;
+            vertical-align: top;
         }
 
         .table tr:nth-child(even) {
-            background-color: #fbfbfb; /* zebra stripe */
+            background-color: #fbfbfb;
         }
 
         .table tr:last-child th,
@@ -122,50 +114,31 @@
             page-break-after: auto;
         }
 
-        .table th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .table td.value {
-            font-family: "Courier New", Courier, monospace;
-            color: #2c3e50;
-        }
-
-        .table td pre.value {
-            margin: 0;
-        }
-
-        .total {
-            display: flex;
-            justify-content: flex-end;
+        .total-section {
             margin-top: 20px;
+            text-align: right;
         }
 
-        .total div {
-            width: 300px;
-        }
-
-        .total .label {
+        .total-label {
             font-weight: bold;
             font-size: 16px;
             color: #555;
+            margin-bottom: 5px;
         }
 
-        div.total + div {
+        .total-value {
             font-size: 16px;
             font-family: "Courier New", Courier, monospace;
             color: #2c3e50;
-            text-align: center;
         }
 
-
-        .footer, .final {
+        .footer {
             text-align: center;
             font-size: 12px;
             color: #7f8c8d;
-            margin-top: 20px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
         }
     </style>
 </head>
@@ -175,217 +148,292 @@
         <div class="logo">BMS</div>
         <div class="details">
             <h1>Payment Request</h1>
-            @if($record->reference_number)
+            @if($record->reference_number ?? null)
                 <div>Reference No.: {{ $record->reference_number }}</div>
             @endif
-            @if($record->sequential_id)
+            @if($record->sequential_id ?? null)
                 <div>Tracking Ref. No.: {{ $record->sequential_id }}</div>
             @endif
             <div>Print Date: {{ now()->format('M d, Y') }}</div>
-            @if($record->status)
+            @if($record->status ?? null)
                 <div>Status: {{ ucfirst($record->status) }}</div>
             @endif
         </div>
     </div>
 
     <h3>General Information</h3>
-    <div class="details-section">
-        <table class="table">
-            @if($record->department?->name)
-                <tr>
-                    <th>Department</th>
-                    <td>{{ $record->department->name }}</td>
-                </tr>
-            @endif
-
-            @if($record->extra['costCenter'] ?? $record->department?->name)
-                <tr>
-                    <th>Cost Center</th>
-                    <td>{{ $record->extra['costCenter'] ?? $record->department?->name }}</td>
-                </tr>
-            @endif
-
-            @if($record->reason?->reason)
-                <tr>
-                    <th>Reason for Payment</th>
-                    <td>{{ $record->reason->reason }}</td>
-                </tr>
-            @endif
-
-            @if($record->type_of_payment)
-                <tr>
-                    <th>Payment Type</th>
-                    <td>{{ ucfirst($record->type_of_payment) }}</td>
-                </tr>
-            @endif
-
-            @if($record->deadline)
-                <tr>
-                    <th>Deadline</th>
-                    <td>{{ $record->deadline->format('Y-m-d') }}</td>
-                </tr>
-            @endif
-
-            @if($record->purpose)
-                <tr>
-                    <th>Purpose</th>
-                    <td>{{ $record->purpose }}</td>
-                </tr>
-            @endif
-        </table>
-    </div>
+    <table class="table">
+        @if($record->department->name ?? null)
+            <tr>
+                <th>Department</th>
+                <td>{{ $record->department->name }}</td>
+            </tr>
+        @endif
+        @if($record->extra['costCenter'] ?? $record->department->name ?? null)
+            <tr>
+                <th>Cost Center</th>
+                <td>{{ $record->extra['costCenter'] ?? $record->department->name }}</td>
+            </tr>
+        @endif
+        @if($record->reason->reason ?? null)
+            <tr>
+                <th>Reason for Payment</th>
+                <td>{{ $record->reason->reason }}</td>
+            </tr>
+        @endif
+        @if($record->type_of_payment ?? null)
+            <tr>
+                <th>Payment Type</th>
+                <td>{{ ucfirst(str_replace('_', ' ', $record->type_of_payment)) }}</td>
+            </tr>
+        @endif
+        @if($record->deadline ?? null)
+            <tr>
+                <th>Deadline</th>
+                <td>{{ $record->deadline->format('Y-m-d') }}</td>
+            </tr>
+        @endif
+        @if($record->purpose ?? null)
+            <tr>
+                <th>Purpose</th>
+                <td>{{ $record->purpose }}</td>
+            </tr>
+        @endif
+    </table>
 
     <h3>Beneficiary Information</h3>
     <table class="table">
-        @if($record->supplier?->name && $record->beneficiary_name == 'supplier')
+        @if(($record->supplier->name ?? null) && ($record->beneficiary_name ?? null) == 'supplier')
             <tr>
                 <th>Supplier</th>
                 <td>{{ $record->supplier->name }}</td>
             </tr>
         @endif
-
-        @if($record->contractor?->name && $record->beneficiary_name == 'contractor')
+        @if(($record->contractor->name ?? null) && ($record->beneficiary_name ?? null) == 'contractor')
             <tr>
                 <th>Contractor</th>
                 <td>{{ $record->contractor->name }}</td>
             </tr>
         @endif
-
-        @if($record->payee?->name && $record->beneficiary_name == 'payee')
+        @if(($record->payee->name ?? null) && ($record->beneficiary_name ?? null) == 'payee')
             <tr>
                 <th>Beneficiary</th>
                 <td>{{ $record->payee->name }}</td>
             </tr>
         @endif
-        @if($record->recipient_name)
+        @if($record->recipient_name ?? null)
             <tr>
                 <th>Recipient Name</th>
                 <td>{{ $record->recipient_name }}</td>
             </tr>
         @endif
-
-        @if($record->beneficiary_address)
+        @if($record->beneficiary_address ?? null)
             <tr>
                 <th>Recipient Address</th>
                 <td>{{ $record->beneficiary_address }}</td>
             </tr>
         @endif
-
     </table>
 
-    <div class="bank-details">
-        <div class="details-section">
-            @if($record->bank_name)
-                <div><span class="label">Bank Name:</span> <span class="value">{{ $record->bank_name }}</span></div>
-            @endif
-
-            @if($record->bank_address)
-                <div><span class="label">Bank Address:</span> <span class="value">{{ $record->bank_address }}</span>
-                </div>
-            @endif
-
-            @if($record->extra['paymentMethod'])
-                <div>
-                    <span class="label">Payment Method: </span>
-                    <span class="value">
-            {{
-                ['sheba' => 'SHEBA','bank_account' => 'Bank Account','card_transfer' => 'Card Transfer','cash' => 'Cash'][$record->extra['paymentMethod']] ?? 'Undefined'
-            }}</span>
-                </div>
-            @endif
-
-
-            @if($record->account_number)
-                <div><span class="label">Account Number:</span> <span class="value">{{ $record->account_number }}</span>
-                </div>
-            @endif
-
-            @if($record->swift_code)
-                <div><span class="label">Swift Code:</span> <span class="value">{{ $record->swift_code }}</span></div>
-            @endif
-
-            @if($record->IBAN)
-                <div><span class="label">IBAN Code:</span> <span class="value">{{ $record->IBAN }}</span></div>
-            @endif
-
-            @if($record->IFSC)
-                <div><span class="label">IFSC Code:</span> <span class="value">{{ $record->IFSC }}</span></div>
-            @endif
-
-            @if($record->MICR)
-                <div><span class="label">MICR Code:</span> <span class="value">{{ $record->MICR }}</span></div>
-            @endif
-        </div>
-    </div>
+    <h3>Banking Details</h3>
+    <table class="table">
+        @if($record->bank_name ?? null)
+            <tr>
+                <th>Bank Name</th>
+                <td>{{ $record->bank_name }}</td>
+            </tr>
+        @endif
+        @if($record->bank_address ?? null)
+            <tr>
+                <th>Bank Address</th>
+                <td>{{ $record->bank_address }}</td>
+            </tr>
+        @endif
+        @if($record->extra['paymentMethod'] ?? null)
+            <tr>
+                <th>Payment Method</th>
+                <td>{{ ['sheba' => 'SHEBA', 'bank_account' => 'Bank Account', 'card_transfer' => 'Card Transfer', 'cash' => 'Cash'][$record->extra['paymentMethod']] ?? 'Undefined' }}</td>
+            </tr>
+        @endif
+        @if($record->account_number ?? null)
+            <tr>
+                <th>Account Number</th>
+                <td>{{ $record->account_number }}</td>
+            </tr>
+        @endif
+        @if($record->swift_code ?? null)
+            <tr>
+                <th>Swift Code</th>
+                <td>{{ $record->swift_code }}</td>
+            </tr>
+        @endif
+        @if($record->IBAN ?? null)
+            <tr>
+                <th>IBAN Code</th>
+                <td>{{ $record->IBAN }}</td>
+            </tr>
+        @endif
+        @if($record->IFSC ?? null)
+            <tr>
+                <th>IFSC Code</th>
+                <td>{{ $record->IFSC }}</td>
+            </tr>
+        @endif
+        @if($record->MICR ?? null)
+            <tr>
+                <th>MICR Code</th>
+                <td>{{ $record->MICR }}</td>
+            </tr>
+        @endif
+    </table>
 
     <h3>Payment Information</h3>
     <table class="table">
-        @if($record->requested_amount)
+        @if($record->currency ?? null)
             <tr>
-                <th class="label">Requested Amount</th>
-                <td class="value">{{ number_format($record->requested_amount, 2) }}</td>
+                <th>Currency</th>
+                <td>{{ $record->currency }}</td>
             </tr>
         @endif
-
-        @if($record->total_amount)
+        @if($record->requested_amount ?? null)
             <tr>
-                <th class="label">Total Amount</th>
-                <td class="value">{{ number_format($record->total_amount, 2) }}</td>
+                <th>Requested Amount</th>
+                <td>{{ number_format($record->requested_amount, 2) }}</td>
             </tr>
         @endif
-
-        @if($record->currency)
+        @if($record->total_amount ?? null)
             <tr>
-                <th class="label">Currency</th>
-                <td class="value">{{ $record->currency }}</td>
+                <th>Total Amount</th>
+                <td>{{ number_format($record->total_amount, 2) }}</td>
             </tr>
         @endif
-
-        @if($record->proforma_invoice_number)
+        @if($record->proforma_invoice_number ?? null)
             <tr>
-                <th class="label">Proforma Invoice Number</th>
-                <td class="value">{{ $record->proforma_invoice_number }}</td>
+                <th>Proforma Invoice Number</th>
+                <td>{{ $record->proforma_invoice_number }}</td>
             </tr>
         @endif
-
-        @if(in_array($record->type_of_payment, ['partial', 'balance', 'other']) && $record->order)
-            <tr>
-                <th class="label">Order</th>
-                <td class="value">
-                    {{ $record->order?->product?->name }}
-                    ({{ $record->order?->grade?->name ?? 'N/A' }})
-                    Part: {{ $record->order?->part }}
-                </td>
-            </tr>
-        @endif
-
-        @if($record->case_number)
+        @if($record->case_number ?? null)
             <tr>
                 <th>Case/Contract Number</th>
                 <td>{{ $record->case_number }}</td>
             </tr>
         @endif
-
-        @if($record->description)
+        @if(in_array($record->type_of_payment ?? '', ['partial', 'balance', 'other']) && ($record->order ?? null))
             <tr>
-                <th class="label">Description</th>
-                <td class="value">{{ $record->description }}</td>
+                <th>Order</th>
+                <td>
+                    {{ $record->order->product->name ?? 'N/A' }}
+                    ({{ $record->order->grade->name ?? 'N/A' }})
+                    Part: {{ $record->order->part ?? 'N/A' }}
+                </td>
+            </tr>
+            @if($record->order->invoice_number ?? null)
+                <tr>
+                    <th>Contract Number</th>
+                    <td>{{ $record->order->invoice_number }}</td>
+                </tr>
+            @endif
+        @endif
+        @if($record->description ?? null)
+            <tr>
+                <th>Description</th>
+                <td>{{ $record->description }}</td>
             </tr>
         @endif
     </table>
+    @php
+        $proformas = collect();
 
-    @if($record->requested_amount || $record->total_amount)
-        <div class="total">
-            <div class="label">Total Payable:</div>
-        </div>
-        <div class="value monospace">
-            {{ number_format($record->requested_amount ?? 0, 2) }} from total
-            of {{ number_format($record->total_amount ?? 0, 2) }}
+        if (in_array($record->type_of_payment ?? '', ['partial', 'balance', 'other'])) {
+            if ($record->order?->proformaInvoice) {
+                $proformas->push($record->order->proformaInvoice);
+            }
+        }
+        elseif (($record->type_of_payment ?? '') === 'advance') {
+            if ($record->associatedProformaInvoices?->isNotEmpty()) {
+                $proformas = $record->associatedProformaInvoices;
+            }
+        }
+    @endphp
+
+    @if($proformas->isNotEmpty())
+        <h3>Associated Proforma Invoice{{ $proformas->count() > 1 ? 's' : '' }}</h3>
+        @foreach($proformas as $pi)
+            <table class="table">
+                @if($pi->proforma_number ?? null)
+                    <tr>
+                        <th>Proforma Number</th>
+                        <td>{{ $pi->proforma_number }}</td>
+                    </tr>
+                @endif
+                @if($pi->proforma_date ?? null)
+                    <tr>
+                        <th>Proforma Date</th>
+                        <td>{{ $pi->proforma_date?->format('M d, Y') }}</td>
+                    </tr>
+                @endif
+                @if($pi->contract_number ?? null)
+                    <tr>
+                        <th>Contract Number</th>
+                        <td>{{ $pi->contract_number }}</td>
+                    </tr>
+                @endif
+                @if($pi->product?->name)
+                    <tr>
+                        <th>Product</th>
+                        <td>{{ $pi->product->name }}</td>
+                    </tr>
+                @endif
+                @if($pi->grade?->name)
+                    <tr>
+                        <th>Grade</th>
+                        <td>{{ $pi->grade->name }}</td>
+                    </tr>
+                @endif
+                @if($pi->quantity ?? null)
+                    <tr>
+                        <th>Quantity (mt)</th>
+                        <td>{{ number_format($pi->quantity, 2) }}</td>
+                    </tr>
+                @endif
+                @if($pi->price ?? null)
+                    <tr>
+                        <th>Unit Price</th>
+                        <td>{{ number_format($pi->price, 2) }}</td>
+                    </tr>
+                @endif
+                @if($pi->buyer?->name)
+                    <tr>
+                        <th>Buyer</th>
+                        <td>{{ $pi->buyer->name }}</td>
+                    </tr>
+                @endif
+                @if($pi->supplier?->name)
+                    <tr>
+                        <th>Supplier</th>
+                        <td>{{ $pi->supplier->name }}</td>
+                    </tr>
+                @endif
+            </table>
+        @endforeach
+    @endif
+
+
+    @if($record->requested_amount ?? $record->total_amount ?? null)
+        <div class="total-section">
+            <div class="total-label">Total Payable:</div>
+            <div class="total-value">
+                {{ number_format($record->requested_amount ?? 0, 2) }} {{ $record->currency ?? '' }}
+                @if(($record->requested_amount ?? 0) != ($record->total_amount ?? 0) && ($record->total_amount ?? null))
+                    from total of {{ number_format($record->total_amount, 2) }} {{ $record->currency ?? '' }}
+                @endif
+            </div>
         </div>
     @endif
 
     <div class="footer">
-        Created on {{ $record->created_at?->format('M d, Y') ?? 'Undefined' }}
+        Created on {{ $record->created_at ? $record->created_at->format('M d, Y') : 'Undefined' }}
         by {{ $record->extra['made_by'] ?? 'Undefined' }}
         <br>
         BMS print preview service

@@ -28,7 +28,6 @@ return [
 
     'storage' => env('STORAGE_LOCATION'),
 
-
     /*
     |--------------------------------------------------------------------------
     | Application Environment
@@ -182,7 +181,6 @@ return [
         App\Providers\RouteServiceProvider::class,
         App\Providers\TelescopeServiceProvider::class,
         niklasravnsborg\LaravelPdf\PdfServiceProvider::class
-
 
 
     ])->toArray(),

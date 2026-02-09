@@ -15,12 +15,6 @@ class PaymentRequest extends Model
     use SoftDeletes;
     use QueryCacheable;
 
-    public $cacheFor = 43200;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['payment_requests_table'];
-    protected static $flushCacheOnUpdate = true;
-
-
     public static array $typesOfPayment = [
         'advance' => 'Advance (First Installment)',
         'partial' => 'Partial (Next Installment)',
@@ -44,6 +38,10 @@ class PaymentRequest extends Model
         'completed' => '☑️ Completed',
         'cancelled' => '❌ Called off',
     ];
+    protected static $flushCacheOnUpdate = true;
+    public $cacheFor = 43200;
+    public $cacheDriver = 'file';
+    public $cacheTags = ['payment_requests_table'];
     protected $casts = [
         'deadline' => 'datetime',
         'extra' => 'json',

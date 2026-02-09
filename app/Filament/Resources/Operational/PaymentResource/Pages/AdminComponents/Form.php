@@ -21,6 +21,12 @@ use Illuminate\Support\HtmlString;
 
 trait Form
 {
+    public static function getAllowedCurrencies(): Hidden
+    {
+        return Hidden::make('allowed_currencies')
+            ->default([]);
+    }
+
     /**
      * @return TextInput
      */
@@ -94,6 +100,8 @@ trait Form
     {
         return Select::make('currency')
             ->options(showCurrencies())
+            ->disableOptionWhen(fn($value, Get $get) => !empty($allowed = $get('allowed_currencies') ?: []) && !in_array($value, $allowed))
+            ->reactive()
             ->disabled(fn($operation, $record) => $operation === 'edit' && (!$record || !auth()->user()->can('canEditInput', $record)))
             ->required()
             ->label(fn() => new HtmlString('<span class="grayscale"> 💱</span><span class="text-primary-500 font-normal">Currency</span>'));
@@ -108,9 +116,6 @@ trait Form
             ->disabled(fn($operation, $record) => $operation === 'edit' && (!$record || !auth()->user()->can('canEditInput', $record)))
             ->label(fn() => new HtmlString('<span class="grayscale">📆️ </span><span class="text-primary-500 font-normal">Transfer Date</span>'));
     }
-
-
-// Add to AdminComponents\Form trait
 
     public static function getEuroEquivalent(): TextInput
     {
@@ -189,6 +194,23 @@ trait Form
             ->required()
             ->columnSpanFull()
             ->label(fn() => new HtmlString('<span class="grayscale">💳  </span><span class="text-primary-500 font-normal">Payment Request</span>'));
+    }
+
+    public static function getStatus()
+    {
+        return Select::make('status')
+            ->options([
+                'unconfirmed' => '⏳ Unconfirmed',
+                'confirmed' => '✅ Confirmed',
+                'failed' => '❌ Failed',
+                'refunded' => '↩️ Refunded'
+            ])
+            ->default('unconfirmed')
+            ->required()
+            ->reactive()
+            ->label(fn() => new HtmlString('<span class="grayscale">✅ </span><span class="text-primary-500 font-normal">Status</span>'))
+            ->disabled(fn($operation, $record) => $operation === 'edit' && (!$record || !auth()->user()->can('canEditInput', $record)))
+            ->columnSpan(1);
     }
 
     /**

@@ -130,6 +130,22 @@ class Admin
             ->sortable();
     }
 
+    public static function showGrade(): TextColumn
+    {
+        return TextColumn::make('grade.name')
+            ->label('Grade')
+            ->sortable()
+            ->searchable(
+                query: function (Builder $query, string $search): Builder {
+                    $s = Str::lower(trim($search));
+                    if ($s === '') return $query;
+                    return $query->whereRaw('LOWER(grade_name) LIKE ?', ["%{$s}%"]);
+                },
+                isIndividual: true,
+                isGlobal: false
+            );
+    }
+
     public static function showOrderPart()
     {
         return TextColumn::make('order_part')

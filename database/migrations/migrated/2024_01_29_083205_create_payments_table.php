@@ -13,6 +13,7 @@ return new class extends Migration {
         Schema::create('payments', function (Blueprint $table) {
             $table->increments('id')->unsigned()->index();
             $table->string('reference_number')->nullable()->index();
+            $table->string('status', 100)->default('unconfirmed');
             $table->text('payer');
             $table->double('amount');
             $table->enum('currency', ['USD', 'EURO', 'Yuan', 'Dirham', 'Ruble', 'Rial'])->default('USD');

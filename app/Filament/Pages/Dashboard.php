@@ -3,18 +3,18 @@
 namespace App\Filament\Pages;
 
 
+use App\Filament\Pages\Trait\CxDashboard;
 use App\Filament\Pages\Trait\DashboardFilters;
+use App\Filament\Pages\Trait\FinanceDashboard;
+use App\Filament\Pages\Trait\TargetDashboard;
 use Filament\Forms\Form;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\FilamentInfoWidget;
-use App\Filament\Pages\Trait\CxDashboard;
-use App\Filament\Pages\Trait\TargetDashboard;
-use App\Filament\Pages\Trait\FinanceDashboard;
-use Filament\Actions\Action; // Import the Action class
-use Livewire\Livewire;     // Import the Livewire facade
+
+
 
 class Dashboard extends BaseDashboard
 {
@@ -24,20 +24,6 @@ class Dashboard extends BaseDashboard
     use FinanceDashboard;
     use TargetDashboard;
     use InteractsWithPageFilters;
-
-    protected function getHeaderWidgets(): array
-    {
-        return [
-            AccountWidget::class,
-        ];
-    }
-
-    protected function getFooterWidgets(): array
-    {
-        return [
-            FilamentInfoWidget::class,
-        ];
-    }
 
     public function filtersForm(Form $form): Form
     {
@@ -64,6 +50,20 @@ class Dashboard extends BaseDashboard
         }
 
         return $widgets;
+    }
+
+    protected function getFooterWidgets(): array
+    {
+        return [
+            FilamentInfoWidget::class,
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            AccountWidget::class,
+        ];
     }
 }
 

@@ -73,7 +73,7 @@ class Login extends SimplePage
         if (strtolower($user->status) != 'active') {
             Filament::auth()->logout();
             return throw ValidationException::withMessages([
-                'data.email' => 'Account Deactivated; Please contact the BMS administrator.',
+                'data.email' => '⛔ Account Deactivated; Please contact the BMS administrator.',
             ]);
         }
 

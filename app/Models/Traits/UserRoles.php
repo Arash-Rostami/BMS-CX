@@ -110,4 +110,6 @@ trait UserRoles
             return $query->get();
         });
     }
+
+
 }

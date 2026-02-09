@@ -46,7 +46,7 @@ class SupplierSummaryService
      * Calculate paid payments by currency for a ProformaInvoice.
      *
      */
-    public function calculatePaidPayments(ProformaInvoice $proforma): array
+    public function calculatePaidPayments(ProformaInvoice $proforma, $includeNonFinalized = false): array
     {
         $totals = [];
 
@@ -57,7 +57,7 @@ class SupplierSummaryService
         // Process advance payments
         $this->processProformaPayments($proforma, $totals, $proformaWeight, $nonMatchingAmount);
         // Process order payments
-        $this->processOrderPayments($proforma, $totals);
+        $this->processOrderPayments($proforma, $totals, $includeNonFinalized);
 
         return $totals;
     }
@@ -79,7 +79,9 @@ class SupplierSummaryService
         foreach ($currencies as $currency) {
             $e = $expected[$currency] ?? 0.0;
             $p = $paid    [$currency] ?? 0.0;
-            $d = $p - $e;
+            $v = $p - $e;
+            $d = ($currency !== 'Rial' && $e == 0) ? ($v - $paid) : $v;
+
             $status = $d > 0
                 ? 'Overpaid'
                 : ($d < 0 ? 'Underpaid' : 'Settled');
@@ -185,30 +187,6 @@ class SupplierSummaryService
             : 1.0;
     }
 
-//    protected function getAdjustmentFactor($proforma): mixed
-//    {
-//        $totalProformaQuantity = (float)$proforma->quantity;
-//        $adjustmentFactor = 1.0;
-//
-//        if ($totalProformaQuantity > 0) {
-//            $closedOrderQuantity = $proforma->orders
-//                ->whereIn('order_status', ['accounting_approved', 'closed'])
-//                ->sum(function ($order) {
-//
-//
-//                    return $order->logistic?->net_weight
-//                        ?? $order->orderDetail?->final_quantity
-//                        ?? $order->orderDetail?->provisional_quantity
-//                        ?? $order->orderDetail?->buying_quantity
-//                        ?? 0;
-//                });
-//
-//            if ($closedOrderQuantity > 0) {
-//                $adjustmentFactor = min(1.0, $closedOrderQuantity / $totalProformaQuantity);
-//            }
-//        }
-//        return $adjustmentFactor;
-//    }
 
     protected function getProformaWeight(ProformaInvoice $proforma): int|float
     {
@@ -216,12 +194,14 @@ class SupplierSummaryService
     }
 
 
-    protected function processOrderPayments($proforma, array &$totals): void
+    protected function processOrderPayments($proforma, array &$totals, bool $includeNonFinalized): void
     {
-        foreach ($proforma->orders->whereIn('order_status', ['closed', 'accounting_approved']) as $order) {
-            $bl = $order->doc?->BL_date ?? null;
-            if (empty($bl)) continue;
+        $orders = $proforma->orders
+            ->when(!$includeNonFinalized, fn($col) => $col->whereIn('order_status', ['closed', 'accounting_approved'])
+                ->filter(fn($order) => !empty($order->doc?->BL_date))
+            );
 
+        foreach ($orders as $order) {
             foreach ($order->paymentRequests->where('status', 'completed') as $request) {
                 foreach ($request->payments->whereNull('deleted_at') as $payment) {
                     $currency = $payment->currency;

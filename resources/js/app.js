@@ -4,5 +4,5 @@ import.meta.glob([
     '../fonts/**',
 ]);
 import './connectionStatus';
-// import './tweaks';
+import './tweaks';
 

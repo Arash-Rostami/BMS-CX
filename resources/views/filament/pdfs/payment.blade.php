@@ -10,9 +10,10 @@
             background-color: #f5f5f5;
             margin: 0;
             padding: 1px;
+            transform: scale(0.8);
         }
 
-        .monospace{
+        .monospace {
             font-family: monospace !important;
             font-size: 13px;
         }
@@ -30,10 +31,16 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 30px;
         }
 
-        .header img {
-            max-height: 50px;
+        .logo {
+            color: #2980b9;
+            font-size: 28px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
         }
 
         .header .details {
@@ -42,22 +49,14 @@
 
         .header .details h1 {
             font-size: 24px;
-            margin: 0;
+            margin: 0 0 10px 0;
             color: #2980b9;
-        }
-
-        .logo {
-            color: #2980b9;
-            font-size: 28px;
-            text-align: left;
-            font-weight: bold;
-            margin-bottom: 30px;
-            border-bottom: 1px solid #ddd;
         }
 
         .header .details div {
             font-size: 12px;
             color: #7f8c8d;
+            margin-bottom: 3px;
         }
 
         h3 {
@@ -65,30 +64,7 @@
             color: #2980b9;
             font-size: 16px;
             padding-bottom: .5em;
-        }
-
-        .details-section {
-            margin-bottom: 30px;
-        }
-
-        .details-section .label {
-            font-weight: bold;
-            color: #555;
-        }
-
-        .details-section .value {
-            color: #2c3e50;
-            font-family: monospace;
-        }
-
-        .beneficiary {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .beneficiary .beneficiary-details,
-        .beneficiary .bank-details {
-            width: 80%;
+            border-bottom: 1px solid #ddd;
         }
 
         .table {
@@ -97,19 +73,35 @@
             overflow: hidden;
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             page-break-inside: auto;
+            table-layout: fixed;
         }
 
-        .table th, .table td {
-            border: none;
-            border-bottom: 1px solid #eee; /* light divider */
+        .table th {
+            width: 35%;
+            background-color: #f2f2f2;
+            font-weight: bold;
+            color: #333;
             padding: 12px;
             text-align: left;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+
+        .table td {
+            width: 65%;
+            border: none;
+            border-bottom: 1px solid #eee;
+            padding: 12px;
+            text-align: left;
+            color: #2c3e50;
+            font-family: "Courier New", Courier, monospace;
+            vertical-align: top;
         }
 
         .table tr:nth-child(even) {
-            background-color: #fbfbfb; /* zebra stripe */
+            background-color: #fbfbfb;
         }
 
         .table tr:last-child th,
@@ -122,175 +114,130 @@
             page-break-after: auto;
         }
 
-        .table th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .table td.value {
-            font-family: "Courier New", Courier, monospace;
-            color: #2c3e50;
-        }
-
-        .table td pre.value {
-            margin: 0;
-        }
-
-        .total {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 20px;
-        }
-
-        .total div {
-            width: 300px;
-        }
-
-        .total .label {
-            font-weight: bold;
-            font-size: 16px;
-            color: #555;
-        }
-
-        div.total + div {
-            font-size: 16px;
-            font-family: "Courier New", Courier, monospace;
-            color: #2c3e50;
-            text-align: center;
-        }
-
-
-        .footer, .final {
+        .footer {
             text-align: center;
             font-size: 12px;
             color: #7f8c8d;
-            margin-top: 20px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <!-- Header -->
     <div class="header">
         <div class="logo">BMS</div>
         <div class="details">
             <h1>Payment Details</h1>
-            @if($record->reference_number)
+            @if($record->reference_number ?? null)
                 <div>Reference #: {{ $record->reference_number }}</div>
             @endif
             <div>Print Date: {{ now()->format('M d, Y') }}</div>
         </div>
     </div>
 
-    <!-- Payment Information -->
     <h3>Payment Information</h3>
     <table class="table">
-        @if($record->paymentRequests->isNotEmpty())
+        @if($record->paymentRequests->isNotEmpty() ?? false)
             <tr>
-                <th class="label">Payment Request</th>
-                <td class="value">{{ implode(', ', $record->paymentRequests->pluck('reference_number')->toArray()) }}</td>
+                <th>Payment Request</th>
+                <td>{{ implode(', ', $record->paymentRequests->pluck('reference_number')->toArray()) }}</td>
             </tr>
         @endif
-        @if($record->currency)
+        @if($record->currency ?? null)
             <tr>
-                <th class="label">Currency</th>
-                <td class="value">{{ $record->currency }}</td>
+                <th>Currency</th>
+                <td>{{ $record->currency }}</td>
             </tr>
         @endif
-        @if($record->amount)
+        @if($record->amount ?? null)
             <tr>
-                <th class="label">Amount</th>
-                <td class="value">{{ number_format($record->amount, 2) }}</td>
+                <th>Amount</th>
+                <td>{{ number_format($record->amount, 2) }}</td>
             </tr>
         @endif
-        @if($record->payer)
+        @if($record->payer ?? null)
             <tr>
-                <th class="label">Payer</th>
-                <td class="value">{{ $record->payer }}</td>
+                <th>Payer</th>
+                <td>{{ $record->payer }}</td>
             </tr>
         @endif
     </table>
 
-    <!-- Additional Payment Information -->
     <h3>Additional Information</h3>
     <table class="table">
-        @if($record->paymentRequests->first()?->department?->name)
+        @if($record->paymentRequests->first()->department->name ?? null)
             <tr>
-                <th class="label">Department</th>
-                <td class="value">{{ $record->paymentRequests->first()->department->name }}</td>
+                <th>Department</th>
+                <td>{{ $record->paymentRequests->first()->department->name }}</td>
             </tr>
         @endif
-
-        @if($record->paymentRequests->first()?->costCenter?->code)
+        @if($record->paymentRequests->first()->costCenter->code ?? null)
             <tr>
-                <th class="label">Cost Center</th>
-                <td class="value">{{ $record->paymentRequests->first()->costCenter->code }}</td>
+                <th>Cost Center</th>
+                <td>{{ $record->paymentRequests->first()->costCenter->code }}</td>
             </tr>
         @endif
-
-        @if($record->paymentRequests->first()?->recipient_name)
+        @if($record->paymentRequests->first()->recipient_name ?? null)
             <tr>
-                <th class="label">Beneficiary Name</th>
-                <td class="value">{{ ucfirst($record->paymentRequests->first()->recipient_name) }}</td>
+                <th>Beneficiary Name</th>
+                <td>{{ ucfirst($record->paymentRequests->first()->recipient_name) }}</td>
             </tr>
         @endif
-
-        @if($record->paymentRequests->first()?->requested_amount)
+        @if($record->paymentRequests->first()->requested_amount ?? null)
             <tr>
-                <th class="label">Requested Amount</th>
-                <td class="value">{{ number_format($record->paymentRequests->first()->requested_amount, 2) }}</td>
+                <th>Requested Amount</th>
+                <td>{{ number_format($record->paymentRequests->first()->requested_amount, 2) }}</td>
             </tr>
         @endif
-
-        @if($record->paymentRequests->first()?->deadline)
+        @if($record->paymentRequests->first()->deadline ?? null)
             <tr>
-                <th class="label">Deadline</th>
-                <td class="value">{{ optional($record->paymentRequests->first()->deadline)->format('M d, Y') }}</td>
+                <th>Deadline</th>
+                <td>{{ $record->paymentRequests->first()->deadline->format('M d, Y') }}</td>
             </tr>
         @endif
-
-        <tr>
-            <th class="label">Process Status</th>
-            <td class="value">{{ $record->process_status }}</td>
-        </tr>
-
-        @if($record->transaction_id)
+        @if($record->process_status ?? null)
             <tr>
-                <th class="label">Transaction ID</th>
-                <td class="value">{{ $record->transaction_id }}</td>
+                <th>Process Status</th>
+                <td>{{ $record->process_status }}</td>
             </tr>
         @endif
-        @if($record->date)
+        @if($record->transaction_id ?? null)
             <tr>
-                <th class="label">Transfer Date</th>
-                <td class="value">{{ $record->date->format('M d, Y') }}</td>
+                <th>Transaction ID</th>
+                <td>{{ $record->transaction_id }}</td>
             </tr>
         @endif
-        @if($record->extra['remainderSum'] ?? false)
+        @if($record->date ?? null)
             <tr>
-                <th class="label">Remainder Sum</th>
-                <td class="value">{{ number_format($record->extra['remainderSum'], 2) }}</td>
+                <th>Transfer Date</th>
+                <td>{{ $record->date->format('M d, Y') }}</td>
             </tr>
         @endif
-        @if($record->extra['balanceStatus'] ?? false)
+        @if($record->extra['remainderSum'] ?? null)
             <tr>
-                <th class="label">Balance Status</th>
-                <td class="value">{{ ucfirst($record->extra['balanceStatus']) }}</td>
+                <th>Remainder Sum</th>
+                <td>{{ number_format($record->extra['remainderSum'], 2) }}</td>
             </tr>
         @endif
-        @if($record->notes)
+        @if($record->extra['balanceStatus'] ?? null)
             <tr>
-                <th class="label">Notes</th>
-                <td class="value">{{ $record->notes }}</td>
+                <th>Balance Status</th>
+                <td>{{ ucfirst($record->extra['balanceStatus']) }}</td>
+            </tr>
+        @endif
+        @if($record->notes ?? null)
+            <tr>
+                <th>Notes</th>
+                <td>{{ $record->notes }}</td>
             </tr>
         @endif
     </table>
-    <div></div>
-
 
     <div class="footer">
-        Made on {{ optional($record->created_at)->format('M d, Y') }} by {{ optional($record->user)->fullName }}
+        Made on {{ $record->created_at ? $record->created_at->format('M d, Y') : 'Undefined' }}
+        by {{ $record->user->fullName ?? 'Undefined' }}
         <br>
         BMS print preview service
     </div>

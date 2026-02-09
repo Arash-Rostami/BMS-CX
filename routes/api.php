@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AiSearchController;
 use App\Http\Controllers\BotController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -32,3 +33,6 @@ Route::middleware(['web', 'admin'])
         Route::get('/insert-bulk', [BotController::class, 'insertTables']);
         Route::get('/delete-bulk', [BotController::class, 'deleteTables']);
     });
+
+Route::post('/ai/query', [AiSearchController::class, 'context'])
+    ->middleware('ai.auth');

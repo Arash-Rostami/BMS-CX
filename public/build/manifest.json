@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-xeR5uOYy.css",
+    "file": "assets/app-EO3mklR6.css",
     "isEntry": true,
     "src": "resources/css/app.css"
   },
@@ -53,6 +53,10 @@
   "resources/fonts/Roboto.woff2": {
     "file": "assets/Roboto-zkSvWxgI.woff2",
     "src": "resources/fonts/Roboto.woff2"
+  },
+  "resources/fonts/material-icon-outlined.woff2": {
+    "file": "assets/material-icon-outlined-2YYhrxAP.woff2",
+    "src": "resources/fonts/material-icon-outlined.woff2"
   },
   "resources/images/avatars/accountant.png": {
     "file": "assets/accountant-1v_ASmZN.png",
@@ -239,7 +243,7 @@
     "src": "resources/images/stats/transit.png"
   },
   "resources/js/app.js": {
-    "file": "assets/app-PJsjoUJA.js",
+    "file": "assets/app-i4U88SHa.js",
     "isEntry": true,
     "src": "resources/js/app.js"
   }
