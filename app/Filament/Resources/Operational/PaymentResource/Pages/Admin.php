@@ -191,7 +191,7 @@ class Admin
             $currencies = [];
 
             foreach ($records as $each) {
-                $requestedAmount += (float)$each->requested_amount;
+                $requestedAmount += (float)($each->adjustment_amount ?? $each->requested_amount);
                 $currencies[] = $each->currency;
             }
             $cachedPaymentRequests[$stateKey] = [

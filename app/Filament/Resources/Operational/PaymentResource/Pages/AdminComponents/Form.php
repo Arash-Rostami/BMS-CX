@@ -32,6 +32,23 @@ trait Form
             ->disabled(fn($operation, $record) => $operation === 'edit' && (!$record || !auth()->user()->can('canEditInput', $record)))
             ->required()
             ->numeric()
+            ->live(debounce: 1000)
+            ->afterStateUpdated(function ($state, Get $get) {
+                $paymentRequests = $get('paymentRequests');
+                if (empty($paymentRequests)) return;
+
+                $records = \App\Models\PaymentRequest::findMany($paymentRequests);
+                $expectedAmount = $records->sum(fn($pr) => $pr->adjustment_amount ?? $pr->requested_amount);
+
+                if ($state > $expectedAmount) {
+                    \Filament\Notifications\Notification::make()
+                        ->warning()
+                        ->title('Amount exceeds Payable Amount')
+                        ->body("The entered amount ({$state}) is greater than the expected payable amount ({$expectedAmount}). Please verify.")
+                        ->persistent()
+                        ->send();
+                }
+            })
             ->hint(fn(Get $get) => is_numeric($get('amount')) ? showDelimiter($get('amount'), $get('currency')) : $get('amount'));
     }
 

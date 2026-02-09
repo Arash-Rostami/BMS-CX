@@ -327,6 +327,21 @@
             </tr>
         @endif
 
+        @if($record->adjustment_amount)
+            <tr>
+                <th class="label">Adjustment / Credit</th>
+                <td class="value" style="color: {{ ($record->adjustment_amount - $record->requested_amount) < 0 ? 'green' : 'red' }}">
+                    {{ number_format($record->adjustment_amount - $record->requested_amount, 2) }}
+                </td>
+            </tr>
+            <tr style="background-color: #e8f5e9;">
+                <th class="label" style="font-size: 1.1em; color: #2e7d32;">Net Payable Amount</th>
+                <td class="value" style="font-weight: bold; font-size: 1.1em; color: #2e7d32;">
+                    {{ number_format($record->adjustment_amount, 2) }}
+                </td>
+            </tr>
+        @endif
+
         @if($record->total_amount)
             <tr>
                 <th class="label">Total Amount</th>
@@ -379,8 +394,13 @@
             <div class="label">Total Payable:</div>
         </div>
         <div class="value monospace">
-            {{ number_format($record->requested_amount ?? 0, 2) }} from total
-            of {{ number_format($record->total_amount ?? 0, 2) }}
+            @if($record->adjustment_amount)
+                <span style="font-weight: bold; color: #2e7d32;">{{ number_format($record->adjustment_amount, 2) }}</span>
+                (Adjusted from {{ number_format($record->requested_amount, 2) }})
+            @else
+                {{ number_format($record->requested_amount ?? 0, 2) }}
+            @endif
+            from total of {{ number_format($record->total_amount ?? 0, 2) }}
         </div>
     @endif
 

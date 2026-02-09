@@ -26,6 +26,22 @@ trait Table
     /**
      * @return TextColumn
      */
+    public static function showAdjustmentAmount(): TextColumn
+    {
+        return TextColumn::make('adjustment_amount')
+            ->label('Adjustment Amount')
+            ->grow(false)
+            ->state(fn(?Model $record) => $record->adjustment_amount)
+            ->sortable()
+            ->toggleable(isToggledHiddenByDefault: false)
+            ->color('warning')
+            ->formatStateUsing(fn($state, $record) => $state ? number_format($state) . ' ' . $record->currency : '')
+            ->badge();
+    }
+
+    /**
+     * @return TextColumn
+     */
     public static function showAccountNumber(): TextColumn
     {
         return TextColumn::make('account_number')
@@ -648,6 +664,18 @@ trait Table
             ->sortable()
             ->searchable()
             ->toggleable(isToggledHiddenByDefault: !isModernDesign())
+            ->badge();
+    }
+
+    /**
+     * @return TextEntry
+     */
+    public static function viewAdjustmentAmount(): TextEntry
+    {
+        return TextEntry::make('adjustment_amount')
+            ->label('Adjustment Amount')
+            ->formatStateUsing(fn($state, $record) => $state ? number_format($state) . ' ' . $record->currency : '')
+            ->copyable()
             ->badge();
     }
 
