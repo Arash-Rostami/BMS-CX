@@ -227,18 +227,25 @@ class Admin
             });
     }
 
+    public static function getStatusChangeInfo($from, $to, $user = null): array
+    {
+        return [
+            'changed_by' => $user ?? auth()->user()?->full_name ?? auth()->user()?->first_name ?? 'System',
+            'changed_at' => now()->toDateTimeString(),
+            'changed_from' => $from ?? 'N/A',
+            'changed_to' => $to,
+        ];
+    }
+
     public static function updateStatus(Model $record, string $status, ?string $user = null): void
     {
         if ($record->status === $status) return;
 
-        $user = $user ?? auth()->user()?->full_name ?? auth()->user()?->first_name ?? 'System';
-
-        $statusChangeInfo = [
-            'changed_by' => $user,
-            'changed_at' => now()->toDateTimeString(),
-            'changed_from' => $record->getOriginal('status') ?? 'N/A',
-            'changed_to' => $status,
-        ];
+        $statusChangeInfo = self::getStatusChangeInfo(
+            $record->getOriginal('status'),
+            $status,
+            $user
+        );
 
         $extra = (array)($record->extra ?? []);
         $extra['statusChangeInfo'] = $statusChangeInfo;

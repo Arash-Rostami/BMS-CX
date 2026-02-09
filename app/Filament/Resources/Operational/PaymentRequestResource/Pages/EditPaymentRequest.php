@@ -136,12 +136,10 @@ class EditPaymentRequest extends EditRecord
 
     private function persistStatusChanger(): void
     {
-        $statusChangeInfo = [
-            'changed_by' => auth()->user()->full_name ?? auth()->user()->first_name ?? 'BMS',
-            'changed_at' => now()->toDateTimeString(),
-            'changed_from' => session('old_status_payment') ?? 'N/A',
-            'changed_to' => $this->record['status'] ?? 'N/A'
-        ];
+        $statusChangeInfo = Admin::getStatusChangeInfo(
+            session('old_status_payment'),
+            $this->record['status']
+        );
 
         $extra = $this->record->extra ?? [];
         $extra['statusChangeInfo'] = $statusChangeInfo;
