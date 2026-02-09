@@ -123,10 +123,10 @@ class CreatePayment extends CreateRecord
         $remainder = $targetAmount - $totalPaid;
         $credit = $data['credit'] ?? 0;
 
-        $paymentRequest->update([
-            'status' => (($data['share'] ?? $totalPaid) + $credit) >= $targetAmount
-                ? 'completed' : 'processing',
-        ]);
+        \App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin::updateStatus(
+            $paymentRequest,
+            (($data['share'] ?? $totalPaid) + $credit) >= $targetAmount ? 'completed' : 'processing'
+        );
 
         if (!$data['loop']) {
             $this->createBalance($paymentRequest, $data);

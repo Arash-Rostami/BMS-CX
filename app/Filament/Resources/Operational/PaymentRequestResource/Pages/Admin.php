@@ -165,9 +165,9 @@ class Admin
             ])
             ->visible(fn($record) => $record->status === 'pending')
             ->action(function (Model $record) {
-                $record->update(['status' => 'allowed']);
+                self::updateStatus($record, 'allowed');
                 Notification::make()
-                    ->title('Status Updated: Approved')
+                    ->title('Status Updated: Allowed')
                     ->success()
                     ->send();
             });
@@ -183,7 +183,7 @@ class Admin
             ->tooltip('Managerial approval received')
             ->visible(fn($record) => $record->status === 'pending')
             ->action(function (Model $record) {
-                $record->update(['status' => 'approved']);
+                self::updateStatus($record, 'approved');
                 Notification::make()
                     ->title('Status Updated: Approved')
                     ->success()
@@ -201,7 +201,7 @@ class Admin
             ->tooltip('Payment in progress')
             ->visible(fn($record) => $record->status === 'pending')
             ->action(function (Model $record) {
-                $record->update(['status' => 'processing']);
+                self::updateStatus($record, 'processing');
                 Notification::make()
                     ->title('Status Updated: In process')
                     ->success()
@@ -219,12 +219,41 @@ class Admin
             ->tooltip('Payment request denied')
             ->visible(fn($record) => $record->status === 'pending')
             ->action(function (Model $record) {
-                $record->update(['status' => 'rejected']);
+                self::updateStatus($record, 'rejected');
                 Notification::make()
                     ->title('Status Updated: Rejected')
                     ->success()
                     ->send();
             });
+    }
+
+    public static function updateStatus(Model $record, string $status, ?string $user = null): void
+    {
+        if ($record->status === $status) return;
+
+        $user = $user ?? auth()->user()?->full_name ?? auth()->user()?->first_name ?? 'System';
+
+        $statusChangeInfo = [
+            'changed_by' => $user,
+            'changed_at' => now()->toDateTimeString(),
+            'changed_from' => $record->getOriginal('status') ?? 'N/A',
+            'changed_to' => $status,
+        ];
+
+        $extra = (array)($record->extra ?? []);
+        $extra['statusChangeInfo'] = $statusChangeInfo;
+
+        $record->update([
+            'extra' => $extra,
+            'status' => $status,
+        ]);
+
+        (new PaymentRequestService())->notifyAccountants(
+            $record,
+            type: $status,
+            status: true,
+            accountants: $record->user ? collect([$record->user]) : collect()
+        );
     }
 
     public static function changeBgColor(Model $record): string

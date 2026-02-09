@@ -553,28 +553,7 @@ trait Table
                             ->required(),
                     ])
                     ->action(function (Model $record, array $data) {
-                        $status = $data['status'];
-                        $statusChangeInfo = [
-                            'changed_by' => auth()->user()->full_name ?? auth()->user()->first_name ?? 'BMS',
-                            'changed_at' => now()->toDateTimeString(),
-                            'changed_from' => $record->getOriginal('status') ?? 'N/A',
-                            'changed_to' => $status ?? 'N/A',
-                        ];
-
-                        $extra = (array)($record->extra ?? []);
-                        $extra['statusChangeInfo'] = $statusChangeInfo;
-
-                        $record->update([
-                            'extra' => $extra,
-                            'status' => $status,
-                        ]);
-
-                        (new PaymentRequestService())->notifyAccountants(
-                            $record,
-                            type: $status,
-                            status: true,
-                            accountants: $record->user ? collect([$record->user]) : collect()
-                        );
+                        \App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin::updateStatus($record, $data['status']);
 
                         Notification::make()
                             ->title('Status updated: ' . ucfirst($data['status']))
