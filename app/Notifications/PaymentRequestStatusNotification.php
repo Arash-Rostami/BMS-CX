@@ -19,6 +19,9 @@ class PaymentRequestStatusNotification extends Notification implements ShouldQue
     public string|bool $status;
     public string $state;
     public string $deadline;
+    public ?string $requested_amount = null;
+    public ?string $adjustment_amount = null;
+    public ?string $currency = null;
 
     public function __construct($record, $type = 'new', $status = false)
     {
@@ -32,6 +35,9 @@ class PaymentRequestStatusNotification extends Notification implements ShouldQue
             : null;
         $this->type = $type;
         $this->status = $status;
+        $this->requested_amount = $record->requested_amount;
+        $this->adjustment_amount = $record->adjustment_amount;
+        $this->currency = $record->currency;
     }
 
 
@@ -156,12 +162,22 @@ class PaymentRequestStatusNotification extends Notification implements ShouldQue
     public function showPartnerMessage(): MailMessage
     {
         $user = ($this->state == 'approved') ? 'Parva' : 'Jouhanna';
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('🤝  Payment Request Made & Updated')
             ->greeting('Greetings,')
             ->line("Please be informed that payment request **{$this->reference_number}** related to **{$this->invoice}** has a new update.")
-            ->line("Current status: **{$this->state}**.")
-            ->line("Confirmed by: dear  **{$user}**.")
+            ->line("Current status: **{$this->state}**.");
+
+        if ($this->adjustment_amount) {
+            $currency = $this->currency ?? '';
+            $adjusted = number_format((float)$this->adjustment_amount, 2);
+            $requested = number_format((float)$this->requested_amount, 2);
+
+            $mail->line("💰 **Net Payable Amount:** {$adjusted} {$currency}")
+                ->line("(Originally requested: {$requested} {$currency})");
+        }
+
+        return $mail->line("Confirmed by: dear  **{$user}**.")
             ->line("Please ensure payment is completed by **{$this->deadline}** as per the requested timeline.")
             ->line('Thank you for your attention.')
             ->line('If you have any questions, please reach out to us.');

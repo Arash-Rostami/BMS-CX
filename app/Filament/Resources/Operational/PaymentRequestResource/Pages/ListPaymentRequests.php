@@ -89,6 +89,7 @@ class ListPaymentRequests extends ListRecords
                 AdminOrder::filterCreatedAt(),
                 Admin::filterByCaseNumber(),
                 Admin::filterByPaymentMethod(),
+                Admin::filterByAdjustmentAmount(),
                 AdminOrder::filterSoftDeletes(),
             ], layout: FiltersLayout::Modal)
             ->filtersFormWidth(MaxWidth::FiveExtraLarge)
@@ -199,6 +200,7 @@ class ListPaymentRequests extends ListRecords
             Admin::showType(),
             Admin::showReasonForPayment(),
             Admin::showPayableAmount(),
+            Admin::showAdjustmentAmount(),
             Admin::showCurrency(),
             Admin::showAmount(),
             Admin::showBankName(),
@@ -321,6 +323,7 @@ class ListPaymentRequests extends ListRecords
                         ])->grow(false),
                         Stack::make([
                             Admin::showPayableAmount(),
+                            Admin::showAdjustmentAmount(),
                             Admin::showAccountNumber(),
                         ])->grow(false),
                         Admin::showPart(),

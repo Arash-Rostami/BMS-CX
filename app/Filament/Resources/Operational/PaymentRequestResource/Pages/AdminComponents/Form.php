@@ -38,6 +38,21 @@ trait Form
     /**
      * @return TextInput
      */
+    public static function getAdjustmentAmount(): TextInput
+    {
+        return TextInput::make('adjustment_amount')
+            ->label(fn() => new HtmlString('<span class="grayscale">💳 </span><span class="text-primary-500 font-normal">Adjustment Amount</span>'))
+            ->numeric()
+            ->live(debounce: 1000)
+            ->placeholder('Final amount to pay (if different)')
+            ->helperText('If set, this amount overrides the Payable Amount for payment purposes (e.g. for credit/debit adjustments).')
+            ->disabled(fn($operation) => self::isEditingDisabled($operation))
+            ->hint(fn(Get $get) => is_numeric($get('adjustment_amount')) ? showDelimiter($get('adjustment_amount'), $get('currency')) : $get('adjustment_amount'));
+    }
+
+    /**
+     * @return TextInput
+     */
     public static function getAccountNumber(): TextInput
     {
         return TextInput::make('account_number')
