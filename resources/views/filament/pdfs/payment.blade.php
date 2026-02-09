@@ -243,6 +243,15 @@
             </tr>
         @endif
 
+        @if($record->paymentRequests->first()?->adjustment_amount)
+            <tr>
+                <th class="label" style="font-size: 1.1em; color: #2e7d32;">Net Payable / Adjusted</th>
+                <td class="value" style="font-weight: bold; font-size: 1.1em; color: #2e7d32;">
+                    {{ number_format($record->paymentRequests->first()->adjustment_amount, 2) }}
+                </td>
+            </tr>
+        @endif
+
         @if($record->paymentRequests->first()?->deadline)
             <tr>
                 <th class="label">Deadline</th>
