@@ -433,7 +433,7 @@ trait Table
         return TextColumn::make('logistic.net_weight')
             ->label('Net Weight')
             ->color('secondary')
-            ->toggleable(isToggledHiddenByDefault: true)
+            ->toggleable()
             ->sortable();
     }
 
@@ -580,7 +580,7 @@ trait Table
             ->color('secondary')
             ->grow(false)
             ->searchable()
-            ->toggleable(isToggledHiddenByDefault: true)
+            ->toggleable()
             ->sortable()
             ->color('secondary');
     }
@@ -780,7 +780,7 @@ trait Table
             ->color('secondary')
             ->searchable()
             ->sortable()
-            ->toggleable(isToggledHiddenByDefault: true)
+            ->toggleable()
             ->color('secondary');
     }
 

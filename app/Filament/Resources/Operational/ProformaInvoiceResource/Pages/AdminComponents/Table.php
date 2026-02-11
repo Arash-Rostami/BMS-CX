@@ -103,7 +103,7 @@ trait Table
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'Gr: ' : '') . optional($record->grade)->name ?? null)
             ->tooltip('Grade')
             ->searchable()
-            ->toggleable(isToggledHiddenByDefault: true)
+            ->toggleable()
             ->sortable();
     }
 
@@ -147,7 +147,7 @@ trait Table
             ->color('info')
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '💰 Pri: ' : '') . number_format($record->price ?? 0))
             ->searchable()
-            ->toggleable(isToggledHiddenByDefault: true)
+            ->toggleable()
             ->grow(false)
             ->sortable()
             ->badge();
@@ -165,6 +165,7 @@ trait Table
             ->iconPosition(IconPosition::Before)
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? 'Pr: ' : '') . optional($record->product)->name ?? null)
             ->badge()
+            ->toggleable()
             ->searchable()
             ->sortable();
     }
@@ -229,7 +230,7 @@ trait Table
             ->color('secondary')
             ->state(fn(Model $record) => (getTableDesign() === 'modern' ? '🚢 Part(s): ' : '') . $record->part)
             ->searchable()
-            ->toggleable(isToggledHiddenByDefault: true)
+            ->toggleable()
             ->sortable();
     }
 

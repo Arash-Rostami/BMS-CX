@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action as TableAction;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
@@ -54,37 +55,6 @@ class Admin
         'cancelled' => 'secondary',
     ];
 
-    public static function getOrderRelation(Model $record)
-    {
-        if (!isset($record->proforma_invoice_number)) {
-            return PaymentRequest::showAmongAllReasons($record->reason_for_payment);
-        }
-
-        if (isset($record->order_id) && $record->order_id != null) {
-            return "{$record->order->invoice_number} ({$record->reference_number})";
-        }
-
-        return $record->proforma_invoice_number;
-    }
-
-    public static function nameUploadedFile(): \Closure
-    {
-        return function (TemporaryUploadedFile $file, Get $get, ?Model $record): string {
-
-            $name = $get('name') ?? $file->getClientOriginalName();
-            $number = $livewire->data['requested_amount'] ?? 'NoRequestedAmt';
-
-            // File extension
-            $extension = $file->getClientOriginalExtension();
-
-            // New filename with extension
-            $newFileName = sprintf('PR-%s-%s-%s-%s', $number, now()->format('YmdHis'), Str::random(5), $name);
-
-            // Sanitizing the file name
-            return Str::slug($newFileName, '-') . ".{$extension}";
-        };
-    }
-
     /**
      * Computes the total and requested amounts for given proforma invoices.
      */
@@ -110,48 +80,6 @@ class Admin
         ];
     }
 
-    public static function syncPaymentRequest(Model $replica): void
-    {
-        persistReferenceNumber($replica, 'PR');
-        (new PaymentRequestService())->notifyAccountants($replica);
-    }
-
-    public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
-    {
-        if ($records->isEmpty()) return;
-        $records->loadMissing('payments');
-
-        [$recordsNotDeleted, $recordsToDelete] = $records->partition(fn($record) => $record->payments->isNotEmpty());
-
-        // Delete the records that have no paymentRequests
-        if ($recordsToDelete->isNotEmpty()) {
-            $recordsToDelete->each(function (Model $record) {
-                $record->delete();
-                self::send($record);
-            });
-        }
-
-        if ($recordsNotDeleted->isNotEmpty()) {
-            $recordNames = $recordsNotDeleted->pluck('reference_number')->join(', ');
-            Notification::make()
-                ->title('Some records were not deleted')
-                ->body("The following records could not be deleted because they have payments: $recordNames.")
-                ->warning()
-                ->persistent()
-                ->send();
-        } else {
-            Notification::make()
-                ->title('Records deleted successfully')
-                ->success()
-                ->send();
-        }
-    }
-
-    public static function send(Model $record): void
-    {
-        (new PaymentRequestService())->notifyAccountants($record, type: 'delete');
-    }
-
     public static function allowRecord(): TableAction
     {
         return TableAction::make('allow')
@@ -165,9 +93,9 @@ class Admin
             ])
             ->visible(fn($record) => $record->status === 'pending')
             ->action(function (Model $record) {
-                $record->update(['status' => 'allowed']);
+                self::updateStatus($record, 'allowed');
                 Notification::make()
-                    ->title('Status Updated: Approved')
+                    ->title('Status Updated: Allowed')
                     ->success()
                     ->send();
             });
@@ -183,7 +111,7 @@ class Admin
             ->tooltip('Managerial approval received')
             ->visible(fn($record) => $record->status === 'pending')
             ->action(function (Model $record) {
-                $record->update(['status' => 'approved']);
+                self::updateStatus($record, 'approved');
                 Notification::make()
                     ->title('Status Updated: Approved')
                     ->success()
@@ -191,40 +119,19 @@ class Admin
             });
     }
 
-    public static function processRecord(): TableAction
+    public static function calculateTotals($column, $value, $id)
     {
-        return TableAction::make('process')
-            ->disabled(fn() => !(auth()->user()->role == 'manager' || auth()->user()->role == 'admin'))
-            ->label('Process')
-            ->color('warning')
-            ->icon('heroicon-s-clock')
-            ->tooltip('Payment in progress')
-            ->visible(fn($record) => $record->status === 'pending')
-            ->action(function (Model $record) {
-                $record->update(['status' => 'processing']);
-                Notification::make()
-                    ->title('Status Updated: In process')
-                    ->success()
-                    ->send();
-            });
-    }
+        if (!$id) return '';
 
-    public static function rejectRecord(): TableAction
-    {
-        return TableAction::make('reject')
-//            ->disabled(fn() => (auth()->user()->role == 'partner' || auth()->user()->role == 'agent'))
-            ->label('Reject')
-            ->color('danger')
-            ->icon('heroicon-s-x-circle')
-            ->tooltip('Payment request denied')
-            ->visible(fn($record) => $record->status === 'pending')
-            ->action(function (Model $record) {
-                $record->update(['status' => 'rejected']);
-                Notification::make()
-                    ->title('Status Updated: Rejected')
-                    ->success()
-                    ->send();
-            });
+        return PaymentRequest::where($column, $value)
+            ->whereNull('deleted_at')
+            ->whereIn('status', ['processing', 'allowed', 'approved', 'completed'])
+            ->whereHas('order', fn($query) => $query->where('proforma_invoice_id', $id))
+            ->selectRaw('currency, SUM(requested_amount) as total')
+            ->groupBy('currency')
+            ->get()
+            ->map(fn($item) => number_format($item->total) . ' ' . $item->currency)
+            ->implode(' | ');
     }
 
     public static function changeBgColor(Model $record): string
@@ -241,21 +148,6 @@ class Admin
         return now()->isAfter($record->deadline)
             ? 'bg-past-deadline'
             : $shade;
-    }
-
-    public static function calculateTotals($column, $value, $id)
-    {
-        if (!$id) return '';
-
-        return PaymentRequest::where($column, $value)
-            ->whereNull('deleted_at')
-            ->whereIn('status', ['processing', 'allowed', 'approved', 'completed'])
-            ->whereHas('order', fn($query) => $query->where('proforma_invoice_id', $id))
-            ->selectRaw('currency, SUM(requested_amount) as total')
-            ->groupBy('currency')
-            ->get()
-            ->map(fn($item) => number_format($item->total) . ' ' . $item->currency)
-            ->implode(' | ');
     }
 
     public static function fetchBankAccountDetails($get, $state, $set): void
@@ -289,68 +181,142 @@ class Admin
         }
     }
 
-    protected static function showRemainingDays(?Model $record): string
+    public static function getOrderRelation(Model $record)
     {
-        if (empty($record?->deadline)) return 'No deadline set';
-
-
-        $deadline = Carbon::parse($record->deadline);
-
-        if ($deadline->isToday()) {
-            return 'Deadline is today';
+        if (!isset($record->proforma_invoice_number)) {
+            return PaymentRequest::showAmongAllReasons($record->reason_for_payment);
         }
 
-        if ($deadline->isFuture()) {
-            $days = now()->diffInDays($deadline);
-            return $days === 1
-                ? '1 day left'
-                : "{$days} days left";
+        if (isset($record->order_id) && $record->order_id != null) {
+            return "{$record->order->invoice_number} ({$record->reference_number})";
         }
 
-        return 'Deadline passed';
+        return $record->proforma_invoice_number;
     }
 
-
-    protected static function getOrderOptions($get, $set): array
+    public static function nameUploadedFile(): \Closure
     {
-        $proformaNumber = $get('proforma_invoice_number');
-        $total = $get('extra.collectivePayment') ?? $set('extra.collectivePayment', 0);
-        $part = $get('part');
+        return function (TemporaryUploadedFile $file, Get $get, ?Model $record): string {
 
+            $name = $get('name') ?? $file->getClientOriginalName();
+            $number = $livewire->data['requested_amount'] ?? 'NoRequestedAmt';
 
-        if (!$proformaNumber || $total != 0 || empty($part)) {
-            return [];
+            // File extension
+            $extension = $file->getClientOriginalExtension();
+
+            // New filename with extension
+            $newFileName = sprintf('PR-%s-%s-%s-%s', $number, now()->format('YmdHis'), Str::random(5), $name);
+
+            // Sanitizing the file name
+            return Str::slug($newFileName, '-') . ".{$extension}";
+        };
+    }
+
+    public static function processRecord(): TableAction
+    {
+        return TableAction::make('process')
+            ->disabled(fn() => !(auth()->user()->role == 'manager' || auth()->user()->role == 'admin'))
+            ->label('Process')
+            ->color('warning')
+            ->icon('heroicon-s-clock')
+            ->tooltip('Payment in progress')
+            ->visible(fn($record) => $record->status === 'pending')
+            ->action(function (Model $record) {
+                self::updateStatus($record, 'processing');
+                Notification::make()
+                    ->title('Status Updated: In process')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    public static function rejectRecord(): TableAction
+    {
+        return TableAction::make('reject')
+//            ->disabled(fn() => (auth()->user()->role == 'partner' || auth()->user()->role == 'agent'))
+            ->label('Reject')
+            ->color('danger')
+            ->icon('heroicon-s-x-circle')
+            ->tooltip('Payment request denied')
+            ->visible(fn($record) => $record->status === 'pending')
+            ->action(function (Model $record) {
+                self::updateStatus($record, 'rejected');
+                Notification::make()
+                    ->title('Status Updated: Rejected')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    public static function send(Model $record): void
+    {
+        (new PaymentRequestService())->notifyAccountants($record, type: 'delete');
+    }
+
+    public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
+    {
+        if ($records->isEmpty()) return;
+        $records->loadMissing('payments');
+
+        [$recordsNotDeleted, $recordsToDelete] = $records->partition(fn($record) => $record->payments->isNotEmpty());
+
+        // Delete the records that have no paymentRequests
+        if ($recordsToDelete->isNotEmpty()) {
+            $recordsToDelete->each(function (Model $record) {
+                $record->delete();
+                self::send($record);
+            });
         }
 
-        $relationMap = [
-            'BL' => 'doc',
-            'BN' => 'logistic',
-            'PR/GR' => 'product',
+        if ($recordsNotDeleted->isNotEmpty()) {
+            $recordNames = $recordsNotDeleted->pluck('reference_number')->join(', ');
+            Notification::make()
+                ->title('Some records were not deleted')
+                ->body("The following records could not be deleted because they have payments: $recordNames.")
+                ->warning()
+                ->persistent()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('Records deleted successfully')
+                ->success()
+                ->send();
+        }
+    }
+
+    public static function syncPaymentRequest(Model $replica): void
+    {
+        persistReferenceNumber($replica, 'PR');
+        (new PaymentRequestService())->notifyAccountants($replica);
+    }
+
+    public static function updateStatus(Model $record, string $status, ?string $user = null): void
+    {
+        if ($record->status === $status) return;
+
+        $user = $user ?? auth()->user()?->full_name ?? auth()->user()?->first_name ?? 'BMS';
+
+        $statusChangeInfo = [
+            'changed_by' => $user,
+            'changed_at' => now()->toDateTimeString(),
+            'changed_from' => $record->getOriginal('status') ?? 'N/A',
+            'changed_to' => $status,
         ];
 
-        if (!isset($relationMap[$part])) {
-            return [];
-        }
+        $extra = (array)($record->extra ?? []);
+        $extra['statusChangeInfo'] = $statusChangeInfo;
 
-        return Order::with($relationMap[$part])
-            ->whereRelation('proformaInvoice', 'proforma_number', $proformaNumber)
-            ->get()
-            ->mapWithKeys(fn(Order $order) => [
-                $order->id => static::formatOrderDisplay($order, $part)
-            ])
-            ->toArray();
-    }
+        $record->update([
+            'extra' => $extra,
+            'status' => $status,
+        ]);
 
-    protected static function formatOrderDisplay(Order $order, string $part): string
-    {
-        return match ($part) {
-            'BL' => $order->doc?->BL_number ?? 'N/A',
-            'BN' => $order->logistic?->booking_number ? $order->logistic->booking_number . ' (' . ($order->logistic->portOfDelivery?->name ?? 'Unknown Port') . ')' : 'N/A',
-            'REF' => $order->reference_number ?? 'N/A',
-            'PN' => $order->invoice_number ? $order->invoice_number . ' (Part ' . $order->part . ')' : 'N/A',
-            'PR/GR' => $order->product?->name ? $order->product->name . ' (' . $order->grade?->name . ' - Part ' . $order->part . ')' : 'N/A',
-            default => 'Unknown Part',
-        };
+        (new PaymentRequestService())->notifyAccountants(
+            $record,
+            type: $status,
+            status: true,
+            accountants: $record->user ? collect([$record->user]) : collect()
+        );
     }
 
     protected static function calculateOrderFinancials($state): array
@@ -387,15 +353,94 @@ class Admin
         return ['total' => $total, 'requested' => $requested, 'currency' => $currency];
     }
 
-    private static function concatenateSum(?Model $record): string
+    protected static function formatOrderDisplay(Order $order, string $part): string
     {
-        if (empty($record)) return '';
+        return match ($part) {
+            'BL' => $order->doc?->BL_number ?? 'N/A',
+            'BN' => $order->logistic?->booking_number ? $order->logistic->booking_number . ' (' . ($order->logistic->portOfDelivery?->name ?? 'Unknown Port') . ')' : 'N/A',
+            'REF' => $order->reference_number ?? 'N/A',
+            'PN' => $order->invoice_number ? $order->invoice_number . ' (Part ' . $order->part . ')' : 'N/A',
+            'PR/GR' => $order->product?->name ? $order->product->name . ' (' . $order->grade?->name . ' - Part ' . $order->part . ')' : 'N/A',
+            default => 'Unknown Part',
+        };
+    }
+
+    protected static function getOrderOptions($get, $set): array
+    {
+        $proformaNumber = $get('proforma_invoice_number');
+        $total = $get('extra.collectivePayment') ?? $set('extra.collectivePayment', 0);
+        $part = $get('part');
 
 
-        $currency = $record->currency ?: 'USD';
+        if (!$proformaNumber || $total != 0 || empty($part)) {
+            return [];
+        }
+
+        $relationMap = [
+            'BL' => 'doc',
+            'BN' => 'logistic',
+            'PR/GR' => 'product',
+        ];
+
+        if (!isset($relationMap[$part])) {
+            return [];
+        }
+
+        return Order::with($relationMap[$part])
+            ->whereRelation('proformaInvoice', 'proforma_number', $proformaNumber)
+            ->get()
+            ->mapWithKeys(fn(Order $order) => [
+                $order->id => static::formatOrderDisplay($order, $part)
+            ])
+            ->toArray();
+    }
+
+    protected static function showRemainingDays(?Model $record): string
+    {
+        if (empty($record?->deadline)) return 'No deadline set';
+
+
+        $deadline = Carbon::parse($record->deadline);
+
+        if ($deadline->isToday()) {
+            return 'Deadline is today';
+        }
+
+        if ($deadline->isFuture()) {
+            $days = now()->diffInDays($deadline);
+            return $days === 1
+                ? '1 day left'
+                : "{$days} days left";
+        }
+
+        return 'Deadline passed';
+    }
+
+
+    private static function concatenateSum(?Model $record): HtmlString|string
+    {
+        if (!$record) return '';
+
+        $currency = $record->currency ?? 'USD';
         $requested = number_format($record->requested_amount ?? 0);
-        $total = number_format($record->total_amount ?? 0);
+        $adjRaw = $record->adjustment_amount;
 
-        return sprintf('💰 %s %s/%s', $currency, $requested, $total);
+        if ($adjRaw === null) {
+            return new HtmlString("<span class='font-medium'>$currency $requested</span>");
+        }
+
+        $adjustment = number_format($adjRaw);
+        $icon = $adjRaw > ($record->requested_amount ?? 0) ? '📈' : '📉';
+
+        return new HtmlString(sprintf(
+            '<div class="flex items-center gap-2">
+            <span class="font-bold">%s</span>
+            <span class="text-gray-400" style="text-decoration-line: line-through;">%s</span>
+            <span>👉</span>
+            <span class="font-bold">%s</span>
+            <span class="text-xs">%s</span>
+        </div>',
+            $currency, $requested, $adjustment, $icon
+        ));
     }
 }

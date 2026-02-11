@@ -10,6 +10,7 @@ use App\Services\Notification\PaymentService;
 use App\Services\SmartPayment;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
 
 
 class CreatePayment extends CreateRecord
@@ -94,11 +95,14 @@ class CreatePayment extends CreateRecord
         foreach ($paymentRequests as $paymentRequest) {
             $data['amount'] = (float)$data['amount'];
             $data['previousPayments'] = $paymentRequest->payments->sum('amount');
-            $data['totalRequestedAmount'] += $paymentRequest->requested_amount;
+            $targetAmount = $paymentRequest->adjustment_amount ?? $paymentRequest->requested_amount;
+            $data['totalRequestedAmount'] += $targetAmount;
+
 
             $processedData = $this->processPayments($data, $paymentRequest);
             $data['remainder'] = $processedData['remainder'];
-            $data['share'] = $data['amount'] - $paymentRequest->requested_amount;
+            $data['share'] = $data['amount'] - $targetAmount;
+
         }
 
         $remainder = $data['totalRequestedAmount'] - ($data['amount'] + ($data['previousPayments'] - $data['sumOfOtherPR']));
@@ -116,16 +120,18 @@ class CreatePayment extends CreateRecord
     {
         $data['sumOfOtherPR'] = $paymentRequest->payments
             ->flatMap(fn($payment) => $payment->paymentRequests->where('id', '!=', $paymentRequest->id))
-            ->sum('requested_amount');
+            ->sum(fn($pr) => $pr->adjustment_amount ?? $pr->requested_amount);
 
         $totalPaid = ($data['previousPayments'] - $data['sumOfOtherPR']) + $data['amount'];
-        $remainder = $paymentRequest->requested_amount - $totalPaid;
+        $targetAmount = $paymentRequest->adjustment_amount ?? $paymentRequest->requested_amount;
+        $remainder = $targetAmount - $totalPaid;
         $credit = $data['credit'] ?? 0;
 
-        $paymentRequest->update([
-            'status' => (($data['share'] ?? $totalPaid) + $credit) >= $paymentRequest->requested_amount
-                ? 'completed' : 'processing',
-        ]);
+
+        Admin::updateStatus($paymentRequest,
+            (($data['share'] ?? $totalPaid) + $credit) >= $targetAmount ? 'completed' : 'processing'
+        );
+
 
         if (!$data['loop']) {
             $this->createBalance($paymentRequest, $data);

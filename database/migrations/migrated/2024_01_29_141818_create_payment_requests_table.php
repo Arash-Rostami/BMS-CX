@@ -40,7 +40,8 @@ return new class extends Migration {
             $table->enum('status', self::$status)->default('pending');
             // Amounts and Deadline
             $table->enum('currency', self::$currencies)->default('USD');
-            $table->double('requested_amount'); // Consider renaming to "requested_amount" for clarity
+            $table->double('requested_amount');
+            $table->double('adjustment_amount')->nullable();
             $table->double('total_amount');
             $table->timestamp('deadline');
             // Description and Beneficiary Details

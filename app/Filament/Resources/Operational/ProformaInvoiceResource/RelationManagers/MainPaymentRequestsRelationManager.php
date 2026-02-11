@@ -13,7 +13,6 @@ use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use Livewire\Component;
 
 class MainPaymentRequestsRelationManager extends RelationManager
 {
@@ -23,68 +22,13 @@ class MainPaymentRequestsRelationManager extends RelationManager
 
     protected static ?string $title = 'Payment Requests ( PI ⭐)';
 
-    public bool $showExtendedColumns = true;
+    public bool $showExtendedColumns = false;
 
     public bool $showActionsAhead = true;
-
-
-    public function toggleExtendedColumns()
-    {
-        return true;
-    }
-
-    public function scrollLeft()
-    {
-        $this->dispatch('scrollLeft');
-    }
-
-    public function scrollRight()
-    {
-        $this->dispatch('scrollRight');
-    }
-
-    public function toggleFullScreen()
-    {
-        $this->dispatch('toggleFullScreen');
-    }
 
     public function clearTableSort()
     {
         $this->dispatch('clearTableSort');
-    }
-
-    public function moveActionsToStart()
-    {
-        $this->showActionsAhead = !$this->showActionsAhead;
-        $this->dispatch('$refresh');
-    }
-
-    public function resetActionsToEnd()
-    {
-        $this->showActionsAhead = !$this->showActionsAhead;
-        $this->dispatch('$refresh');
-    }
-
-
-    public function form(Form $form): Form
-    {
-        return $form
-            ->schema([]);
-    }
-
-    public function infolist(Infolist $infolist): Infolist
-    {
-        return PaymentRequestResource::infolist($infolist);
-    }
-
-    public function table(Table $table): Table
-    {
-        $btnPosition = $this->showActionsAhead;
-        $table = self::configureCommonTableSettings($table, $btnPosition);
-
-        return (getTableDesign() != 'classic')
-            ? PaymentRequestResource::getModernLayout($table)
-            : PaymentRequestResource::getClassicLayout($table);
     }
 
     public static function configureCommonTableSettings(Table $table, $btnPosition): Table
@@ -96,19 +40,14 @@ class MainPaymentRequestsRelationManager extends RelationManager
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make()
                         ->icon('heroicon-m-arrow-top-right-on-square')
-                        ->url(function (?Model $record) {
-                            if (!$record || !$record->id) {
-                                return null;
-                            }
-                            return PaymentRequestResource::getUrl('edit', ['record' => $record->id]);
-                        }, shouldOpenInNewTab: true),
+                        ->url(fn(?Model $record) => $record?->id ? PaymentRequestResource::getUrl('edit', ['record' => $record->id]) : null, true),
                     Tables\Actions\Action::make('smartPayment')
                         ->label('Smart Payment')
                         ->hidden(fn(?Model $record) => $record->status == 'completed')
                         ->icon('heroicon-o-credit-card')
                         ->color('warning')
                         ->openUrlInNewTab()
-                        ->url(fn($livewire, ?Model $record) => route('filament.admin.resources.payments.create', ['id' => [$record->id], 'module' => 'payment-request'])),
+                        ->url(fn(?Model $record) => $record?->id ? route('filament.admin.resources.payments.create', ['id' => [$record->id], 'module' => 'payment-request']) : null),
                 ])
             ], position: $btnPosition ? ActionsPosition::BeforeCells : ActionsPosition::AfterCells)
             ->headerActions(
@@ -127,5 +66,64 @@ class MainPaymentRequestsRelationManager extends RelationManager
                 ))
             ->
             poll('30s');
+    }
+
+    public function form(Form $form): Form
+    {
+        return $form
+            ->schema([]);
+    }
+
+    public function infolist(Infolist $infolist): Infolist
+    {
+        return PaymentRequestResource::infolist($infolist);
+    }
+
+    public function moveActionsToStart()
+    {
+        $this->showActionsAhead = !$this->showActionsAhead;
+        $this->dispatch('$refresh');
+    }
+
+    public function resetActionsToEnd()
+    {
+        $this->showActionsAhead = !$this->showActionsAhead;
+        $this->dispatch('$refresh');
+    }
+
+    public function scrollLeft()
+    {
+        $this->dispatch('scrollLeft');
+    }
+
+    public function scrollRight()
+    {
+        $this->dispatch('scrollRight');
+    }
+
+    public function table(Table $table): Table
+    {
+        $ownRecord = $this->ownerRecord;
+        $btnPosition = $this->showActionsAhead;
+        $table = self::configureCommonTableSettings($table, $ownRecord, $btnPosition);
+
+        $listPaymentRequests = new ListPaymentRequests();
+        $listPaymentRequests->showExtendedColumns = (bool)$this->showExtendedColumns;
+
+        return (getTableDesign() != 'classic')
+            ? $listPaymentRequests->getModernLayout($table)
+            : $listPaymentRequests->getClassicLayout($table);
+    }
+
+
+    public function toggleExtendedColumns()
+    {
+        $this->showExtendedColumns = !$this->showExtendedColumns;
+        $this->dispatch('$refresh');
+    }
+
+    public function toggleFullScreen()
+    {
+        $this->dispatch('toggleFullScreen');
     }
 }

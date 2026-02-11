@@ -86,6 +86,16 @@
                             <pre>{{ number_format($paymentRequest->requested_amount, 2) }}</pre>
                         </div>
                     </div>
+                    @if($paymentRequest->adjustment_amount)
+                        <div class="proforma-details-box">
+                            <div class="font-medium"><span class="material-icons-outlined text-green-600">price_check</span>
+                               Adjusted Amount:
+                            </div>
+                            <div class="flex items-center">
+                                <pre class="font-bold text-green-700">{{ number_format($paymentRequest->adjustment_amount, 2) }}</pre>
+                            </div>
+                        </div>
+                    @endif
                     <div class="proforma-details-box">
                         <div class="font-medium"><span class="material-icons-outlined">credit_card</span> Total Amount:
                         </div>

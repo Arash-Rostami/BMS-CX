@@ -15,6 +15,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
@@ -38,7 +39,20 @@ trait Form
             ->disabled(fn($operation, $record) => $operation === 'edit' && (!$record || !auth()->user()->can('canEditInput', $record)))
             ->required()
             ->numeric()
-            ->hint(fn(Get $get) => is_numeric($get('amount')) ? showDelimiter($get('amount'), $get('currency')) : $get('amount'));
+            ->hint(fn(Get $get) => is_numeric($get('amount')) ? showDelimiter($get('amount'), $get('currency')) : $get('amount'))
+            ->live(debounce: 1000)
+            ->afterStateUpdated(function ($state, Get $get) {
+                $maxAllowed = (float)$get('calculated_max_amount');
+
+                if ($state > $maxAllowed) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Amount inconsistency!')
+                        ->body("The entered amount ({$state}) is greater than the adjusted expected amount ({$maxAllowed}). Please verify.")
+                        ->persistent()
+                        ->send();
+                }
+            });
     }
 
     /**
@@ -142,6 +156,18 @@ trait Form
             ->live(debounce: 500)
             ->afterStateUpdated(fn($state, Get $get, Set $set) => self::calculateEuroEquivalent($get, $set, 'exchange_rate'))
             ->hint('USD ⇄ EUR');
+    }
+
+    public static function getMaxAllowedAmount(): Hidden
+    {
+        return Hidden::make('calculated_max_amount')
+            ->dehydrated(false)
+            ->afterStateHydrated(function (Set $set, ?Model $record) {
+                if ($record) {
+                    $total = $record->paymentRequests->sum(fn($pr) => $pr->adjustment_amount ?? $pr->requested_amount);
+                    $set('calculated_max_amount', $total);
+                }
+            });
     }
 
     /**

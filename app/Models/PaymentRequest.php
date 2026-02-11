@@ -55,6 +55,7 @@ class PaymentRequest extends Model
         'status',
         'currency',
         'requested_amount',
+        'adjustment_amount',
         'total_amount',
         'deadline',
         'description',

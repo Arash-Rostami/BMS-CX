@@ -301,6 +301,21 @@
                 <td>{{ number_format($record->requested_amount, 2) }}</td>
             </tr>
         @endif
+        @if($record->adjustment_amount)
+            <tr>
+                <th class="label">Credit/Debit</th>
+                <td class="value"
+                    style="color: {{ ($record->adjustment_amount - $record->requested_amount) < 0 ? 'green' : 'red' }}">
+                    {{ number_format($record->adjustment_amount - $record->requested_amount, 2) }}
+                </td>
+            </tr>
+            <tr style="background-color: #e8f5e9;">
+                <th class="label" style="font-size: 1.1em; color: #2e7d32;">Adjusted Amount</th>
+                <td class="value" style="font-weight: bold; font-size: 1.1em; color: #2e7d32;">
+                    {{ number_format($record->adjustment_amount, 2) }}
+                </td>
+            </tr>
+        @endif
         @if($record->total_amount ?? null)
             <tr>
                 <th>Total Amount</th>

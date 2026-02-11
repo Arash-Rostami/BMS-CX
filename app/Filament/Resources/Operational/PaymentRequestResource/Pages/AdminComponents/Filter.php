@@ -14,10 +14,19 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group as Grouping;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Filament\Tables\Filters\Filter as TableFilter;
+
 
 
 trait Filter
 {
+
+    public static function filterByAdjustmentAmount(): TableFilter
+    {
+        return TableFilter::make('has_adjustment')
+            ->label('Has Adjustment')
+            ->query(fn(Builder $query) => $query->whereNotNull('adjustment_amount')->where('adjustment_amount', '!=', 0));
+    }
     public static function filterByBankName(): SelectFilter
     {
         return SelectFilter::make('bank_name')

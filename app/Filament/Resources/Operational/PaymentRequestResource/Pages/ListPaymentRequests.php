@@ -85,11 +85,12 @@ class ListPaymentRequests extends ListRecords
                 Admin::filterByContractor(),
                 Admin::filterByBeneficiary(),
                 Admin::filterByUpcomingDeadline(),
-                Admin::filterByStatus(),
                 AdminOrder::filterCreatedAt(),
+                Admin::filterByStatus(),
                 Admin::filterByCaseNumber(),
                 Admin::filterByPaymentMethod(),
                 AdminOrder::filterSoftDeletes(),
+                Admin::filterByAdjustmentAmount(),
             ], layout: FiltersLayout::Modal)
             ->filtersFormWidth(MaxWidth::FiveExtraLarge)
             ->filtersFormColumns(6)
@@ -199,8 +200,9 @@ class ListPaymentRequests extends ListRecords
             Admin::showType(),
             Admin::showReasonForPayment(),
             Admin::showPayableAmount(),
-            Admin::showCurrency(),
             Admin::showAmount(),
+            Admin::showAdjustmentAmount(),
+            Admin::showCurrency(),
             Admin::showBankName(),
             Admin::showBeneficiaryName(),
             Admin::showRecipientName(),
@@ -416,7 +418,7 @@ class ListPaymentRequests extends ListRecords
     {
         $this->showExtendedColumns = !$this->showExtendedColumns;
         $this->resetPage();
-
+        $this->dispatch('refreshTable');
     }
 
     public function toggleFullScreen()

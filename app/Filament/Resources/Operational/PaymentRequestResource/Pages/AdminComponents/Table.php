@@ -404,11 +404,11 @@ trait Table
     {
         $col = TextColumn::make('requested_amount')
             ->label('Payable Amount')
-            ->color('warning')
+            ->color('info')
             ->grow(false)
             ->state(fn(?Model $record) => self::concatenateSum($record))
             ->sortable()
-            ->toggleable(isToggledHiddenByDefault: !isModernDesign())
+            ->toggleable()
             ->badge();
 //
 //        if (request()->url() === route('filament.admin.resources.payment-requests.index')) {
@@ -419,6 +419,19 @@ trait Table
 //            );
 //        }
         return $col;
+    }
+
+    public static function showAdjustmentAmount(): TextColumn
+    {
+        return TextColumn::make('adjustment_amount')
+            ->label('Adjustment Amount')
+            ->grow(false)
+            ->state(fn(?Model $record) => $record->adjustment_amount)
+            ->sortable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->color('warning')
+            ->formatStateUsing(fn($state, $record) => $state ? number_format($state) . ' ' . $record->currency : '')
+            ->badge();
     }
 
     /**
@@ -537,29 +550,7 @@ trait Table
                             ->required(),
                     ])
                     ->action(function (Model $record, array $data) {
-                        $status = $data['status'];
-                        $statusChangeInfo = [
-                            'changed_by' => auth()->user()->full_name ?? auth()->user()->first_name ?? 'BMS',
-                            'changed_at' => now()->toDateTimeString(),
-                            'changed_from' => $record->getOriginal('status') ?? 'N/A',
-                            'changed_to' => $status ?? 'N/A',
-                        ];
-
-                        $extra = (array)($record->extra ?? []);
-                        $extra['statusChangeInfo'] = $statusChangeInfo;
-
-                        $record->update([
-                            'extra' => $extra,
-                            'status' => $status,
-                        ]);
-
-                        (new PaymentRequestService())->notifyAccountants(
-                            $record,
-                            type: $status,
-                            status: true,
-                            accountants: $record->user ? collect([$record->user]) : collect()
-                        );
-
+                       self::updateStatus($record, $data['status']);
                         Notification::make()
                             ->title('Status updated: ' . ucfirst($data['status']))
                             ->success()
@@ -947,6 +938,16 @@ trait Table
     {
         return TextEntry::make('recipient_name')
             ->label('Recipient Name')
+            ->color('secondary')
+            ->copyable()
+            ->badge();
+    }
+
+    public static function viewTotalAmount(): TextEntry
+    {
+        return TextEntry::make('total_amount')
+            ->label('Total Amount')
+            ->numeric()
             ->color('secondary')
             ->copyable()
             ->badge();

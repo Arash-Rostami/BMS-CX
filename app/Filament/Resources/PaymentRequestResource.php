@@ -228,6 +228,7 @@ class PaymentRequestResource extends Resource
                                             Section::make(new HtmlString('Payment Details  <span class="red"> *</span>'))
                                                 ->schema([
                                                     Admin::getPayableAmount(),
+                                                    Admin::getAdjustmentAmount(),
                                                     Admin::getTotalAmount(),
                                                     Admin::getDeadline(),
                                                     Admin::getCaseNumber(),
@@ -354,6 +355,7 @@ class PaymentRequestResource extends Resource
                                     Section::make(new HtmlString('Payment Details  <span class="red"> *</span>'))
                                         ->schema([
                                             Admin::getPayableAmount(),
+                                            Admin::getAdjustmentAmount(),
                                             Admin::getTotalAmount(),
                                             Admin::getDeadline(),
                                             Admin::getCaseNumber(),
@@ -499,6 +501,7 @@ class PaymentRequestResource extends Resource
                                 Admin::viewBeneficiaryName(),
                                 Admin::viewRecipientName(),
                                 Admin::viewAmount(),
+                                Admin::viewTotalAmount(),
                                 Admin::viewDeadline(),
                                 Admin::viewBankName(),
                                 Admin::viewAccountNumber(),

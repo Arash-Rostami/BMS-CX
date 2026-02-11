@@ -192,7 +192,7 @@ class Admin
             $currencies = [];
 
             foreach ($records as $each) {
-                $requestedAmount += (float)$each->requested_amount;
+                $requestedAmount += (float)($each->adjustment_amount ?? $each->requested_amount);
                 $currencies[] = $each->currency;
             }
             $cachedPaymentRequests[$stateKey] = [
@@ -206,8 +206,8 @@ class Admin
         $records = $paymentRequestData['records'] ?? PaymentRequest::findMany($state);
         $uniqueCurrencies = array_unique($paymentRequestData['currencies'] ?? []);
 
-
         $set('amount', $paymentRequestData['requestedAmount']);
+        $set('calculated_max_amount', $paymentRequestData['requestedAmount']);
         $set('allowed_currencies', $uniqueCurrencies);
         $set('currency', count($uniqueCurrencies) === 1 ? $uniqueCurrencies[0] : null);
 

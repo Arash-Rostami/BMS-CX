@@ -51,7 +51,7 @@ trait Table
                     default => '⚖️ Balance',
                 };
             })
-            ->toggleable(isToggledHiddenByDefault: true)
+            ->toggleable(isToggledHiddenByDefault: false)
             ->grow(false)
             ->color(function (Model $record) {
                 $diff = self::calculateDiff($record);
@@ -447,22 +447,13 @@ trait Table
         return TextColumn::make('total_amount_display')
             ->label('Total')
             ->color('secondary')
-            ->getStateUsing(function ($record) {
-                $paymentRequests = $record->paymentRequests;
-
-                if ($paymentRequests->isEmpty()) {
-                    return 'N/A';
-                }
-
-                $total = $paymentRequests->sum('total_amount');
-                $requested = $paymentRequests->sum('requested_amount');
-                $remaining = $total - $requested;
-
-                $totalFormatted = number_format($total, 2);
-                $remainingFormatted = number_format($remaining, 2);
-
-                return "{$totalFormatted} ┆ Remaining: {$remainingFormatted}";
-            })
+            ->getStateUsing(fn($record) => with($record->paymentRequests, fn($prs) => $prs->isEmpty()
+                ? 'N/A'
+                : number_format($prs->sum('total_amount'), 2) . ' ┆ Remaining: ' . number_format(
+                    $prs->sum('total_amount') - $prs->sum(fn($p) => $p->adjustment_amount ?? $p->requested_amount ?? 0),
+                    2
+                )
+            ))
             ->grow(false)
             ->badge();
     }
