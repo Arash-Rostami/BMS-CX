@@ -108,6 +108,7 @@ class NotificationResource extends Resource
     {
         return $table
             ->modifyQueryUsing(fn(Builder $query) => $query->filterByUserRole(auth()->user()))
+            ->deferLoading()
             ->groups([
                 Admin::groupByName(),
                 Admin::groupByType()

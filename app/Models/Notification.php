@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Models\Traits\NotificationComputations;
 use Exception;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
@@ -12,16 +11,16 @@ use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Notification extends Model
 {
-    use HasFactory;
     use Notifiable;
     use NotificationComputations;
     use SoftDeletes;
     use QueryCacheable;
 
-    public $cacheFor = 300;
+    protected static $flushCacheOnUpdate = true;
+    public $cacheFor = 900;
     public $cacheDriver = 'file';
     public $cacheTags = ['notifications_table'];
-    protected static $flushCacheOnUpdate = true;
+
 
     protected $table = 'notifications';
 

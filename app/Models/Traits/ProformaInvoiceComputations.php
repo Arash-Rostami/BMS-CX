@@ -44,11 +44,13 @@ trait ProformaInvoiceComputations
 
     public static function getApproved()
     {
-        return self::where('status', 'approved')
-            ->with('product', 'category', 'buyer')
-            ->orderBy('id', 'desc')
-            ->get()
-            ->pluck('formatted_value', 'id');
+        return Cache::remember('approved_proformas', 900, function () {
+            return self::where('status', 'approved')
+                ->with('product', 'category', 'buyer')
+                ->orderBy('id', 'desc')
+                ->get()
+                ->pluck('formatted_value', 'id');
+        });
     }
 
     public function getDaysPassedAttribute()
@@ -58,24 +60,28 @@ trait ProformaInvoiceComputations
 
     public static function getDistinctProformaNumbers()
     {
-        return self::distinct('proforma_number')
-            ->pluck('proforma_number')
-            ->mapWithKeys(fn($item) => [$item => $item]);
+        return Cache::remember('distinct_proforma_numbers', now()->addHours(24), function () {
+            return self::distinct('proforma_number')
+                ->pluck('proforma_number')
+                ->mapWithKeys(fn($item) => [$item => $item]);
+        });
     }
 
     public static function getFormattedProformaNumbers()
     {
-        return self::with(['product', 'grade'])
-            ->get()
-            ->mapWithKeys(fn($pi) => [
-                $pi->id => sprintf(
-                    '%s (%s - %s) 💢 Ref: %s',
-                    $pi->proforma_number,
-                    optional($pi->product)->name ?: 'Undefined Product',
-                    optional($pi->grade)->name ?: 'Undefined Grade',
-                    $pi->reference_number
-                )
-            ]);
+        return Cache::remember('formatted_proforma_numbers', 900, function () {
+            return self::with(['product', 'grade'])
+                ->get()
+                ->mapWithKeys(fn($pi) => [
+                    $pi->id => sprintf(
+                        '%s (%s - %s) 💢 Ref: %s',
+                        $pi->proforma_number,
+                        optional($pi->product)->name ?: 'Undefined Product',
+                        optional($pi->grade)->name ?: 'Undefined Grade',
+                        $pi->reference_number
+                    )
+                ]);
+        });
     }
 
     public function getFormattedValueAttribute()
@@ -169,26 +175,26 @@ trait ProformaInvoiceComputations
         $cacheKey = self::generateCacheKey('pi_total_quantity_', $month, $category_id, $year);
 
         return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month) {
-        $query = "SELECT SUM(quantity) AS total_quantity FROM proforma_invoices WHERE deleted_at IS NULL AND status != 'rejected' AND YEAR(proforma_date) = ?";
-        $bindings = [$year];
+            $query = "SELECT SUM(quantity) AS total_quantity FROM proforma_invoices WHERE deleted_at IS NULL AND status != 'rejected' AND YEAR(proforma_date) = ?";
+            $bindings = [$year];
 
-        if ($category_id) {
-            $query .= is_array($category_id) ? " AND category_id IN (" . implode(',', array_fill(0, count($category_id), '?')) . ")" : " AND category_id = ?";
-            $bindings = array_merge($bindings, (array)$category_id);
-        }
-
-        if ($month && $month !== 'all') {
-            if (is_array($month)) {
-                $query .= " AND MONTH(proforma_date) IN (" . implode(',', array_fill(0, count($month), '?')) . ")";
-                $bindings = array_merge($bindings, $month);
-            } else {
-                $query .= " AND MONTH(proforma_date) = ?";
-                $bindings[] = $month;
+            if ($category_id) {
+                $query .= is_array($category_id) ? " AND category_id IN (" . implode(',', array_fill(0, count($category_id), '?')) . ")" : " AND category_id = ?";
+                $bindings = array_merge($bindings, (array)$category_id);
             }
-        }
 
-        $result = DB::selectOne($query, $bindings);
-        return $result->total_quantity ?? 0;
+            if ($month && $month !== 'all') {
+                if (is_array($month)) {
+                    $query .= " AND MONTH(proforma_date) IN (" . implode(',', array_fill(0, count($month), '?')) . ")";
+                    $bindings = array_merge($bindings, $month);
+                } else {
+                    $query .= " AND MONTH(proforma_date) = ?";
+                    $bindings[] = $month;
+                }
+            }
+
+            $result = DB::selectOne($query, $bindings);
+            return $result->total_quantity ?? 0;
         });
     }
 
@@ -202,10 +208,10 @@ trait ProformaInvoiceComputations
 
         return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($year, $category_id, $month, $status) {
 
-        $bindings = [];
-        $quantitySelection = "COALESCE(od.final_quantity, od.provisional_quantity, od.buying_quantity, 0)";
+            $bindings = [];
+            $quantitySelection = "COALESCE(od.final_quantity, od.provisional_quantity, od.buying_quantity, 0)";
 
-        $query = "
+            $query = "
         SELECT SUM(CASE WHEN YEAR(d.BL_date) = ? THEN $quantitySelection ELSE 0 END) AS total_quantity
         FROM proforma_invoices pi
         LEFT JOIN orders o ON pi.id = o.proforma_invoice_id AND o.deleted_at IS NULL
@@ -214,44 +220,44 @@ trait ProformaInvoiceComputations
         WHERE pi.deleted_at IS NULL AND pi.status != 'rejected' AND o.purchase_status_id IN (6, 2)
     ";
 
-        $bindings[] = (int)$year;
+            $bindings[] = (int)$year;
 
-        if ($category_id) {
-            if (is_array($category_id)) {
-                $placeholders = implode(',', array_fill(0, count($category_id), '?'));
-                $query .= " AND pi.category_id IN ($placeholders)";
-                $bindings = array_merge($bindings, $category_id);
-            } else {
-                $query .= " AND pi.category_id = ?";
-                $bindings[] = $category_id;
+            if ($category_id) {
+                if (is_array($category_id)) {
+                    $placeholders = implode(',', array_fill(0, count($category_id), '?'));
+                    $query .= " AND pi.category_id IN ($placeholders)";
+                    $bindings = array_merge($bindings, $category_id);
+                } else {
+                    $query .= " AND pi.category_id = ?";
+                    $bindings[] = $category_id;
+                }
             }
-        }
 
 
-        if ($month && $month !== 'all') {
-            if (is_array($month)) {
-                $placeholders = implode(',', array_fill(0, count($month), '?'));
-                $query .= " AND MONTH(d.BL_date) IN ($placeholders)";
-                $bindings = array_merge($bindings, $month);
-            } else {
-                $query .= " AND MONTH(d.BL_date) = ?";
-                $bindings[] = $month;
+            if ($month && $month !== 'all') {
+                if (is_array($month)) {
+                    $placeholders = implode(',', array_fill(0, count($month), '?'));
+                    $query .= " AND MONTH(d.BL_date) IN ($placeholders)";
+                    $bindings = array_merge($bindings, $month);
+                } else {
+                    $query .= " AND MONTH(d.BL_date) = ?";
+                    $bindings[] = $month;
+                }
             }
-        }
 
 
-        if (!empty($status)) {
-            if (is_array($status)) {
-                $query .= " AND o.order_status IN (" . implode(',', array_fill(0, count($status), '?')) . ")";
-                $bindings = array_merge($bindings, $status);
-            } else {
-                $query .= " AND o.order_status = ?";
-                $bindings[] = $status;
+            if (!empty($status)) {
+                if (is_array($status)) {
+                    $query .= " AND o.order_status IN (" . implode(',', array_fill(0, count($status), '?')) . ")";
+                    $bindings = array_merge($bindings, $status);
+                } else {
+                    $query .= " AND o.order_status = ?";
+                    $bindings[] = $status;
+                }
             }
-        }
 
-        $result = DB::selectOne($query, $bindings);
-        return $result->total_quantity ?? 0;
+            $result = DB::selectOne($query, $bindings);
+            return $result->total_quantity ?? 0;
         });
     }
 

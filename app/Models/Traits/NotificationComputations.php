@@ -9,14 +9,15 @@ trait NotificationComputations
 {
     public function scopeFilterByUserRole(Builder $query, $user): Builder
     {
-        return $query->when(
-            $user->role !== 'admin',
-            fn(Builder $q) => $q->where(function ($subQuery) use ($user) {
-                $fullName = $user->first_name . ' ' . $user->last_name;
-                // receiver or sender
-                $subQuery->where('notifiable_id', $user->id)->orWhere('data->title', 'like', "%from {$fullName}%");
-            })
-        );
+        if ($user->role === 'admin') return $query;
+
+        $userId = $user->id;
+        $search = "%from {$user->first_name} {$user->last_name}%";
+
+        return $query->where(function (Builder $q) use ($userId, $search) {
+            $q->where('notifiable_id', $userId)
+                ->orWhere('data->title', 'like', $search);
+        });
     }
 
     protected function createdAt(): Attribute

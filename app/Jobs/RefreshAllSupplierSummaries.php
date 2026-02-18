@@ -43,12 +43,10 @@ class RefreshAllSupplierSummaries implements ShouldQueue
                         ]);
                     }
 
-                    sleep(2);
+                    sleep(1);
                 });
         } finally {
-
             DB::disconnect('mysql');
-            gc_collect_cycles();
         }
     }
 }

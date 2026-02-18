@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Models\Traits\PaymentComputations;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Rennokki\QueryCache\Traits\QueryCacheable;
@@ -11,7 +10,6 @@ use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Payment extends Model
 {
-    use HasFactory;
     use PaymentComputations;
     use SoftDeletes;
     use QueryCacheable;
