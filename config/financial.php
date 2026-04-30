@@ -29,7 +29,7 @@ return [
         ],
         [
             'min_days' => 151,
-            'max_days' => null, // null represents no upper limit (151+)
+            'max_days' => null,
             'rate' => 0.04,
         ],
     ],

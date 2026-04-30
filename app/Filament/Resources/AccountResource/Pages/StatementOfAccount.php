@@ -51,7 +51,7 @@ class StatementOfAccount extends Page
 
         $transactions = $ledgers->union($settlements)
             ->orderBy('transaction_date')
-            ->orderBy('event_type') // Just a secondary sort
+            ->orderBy('event_type')
             ->orderBy('id')
             ->get();
 
@@ -63,8 +63,8 @@ class StatementOfAccount extends Page
             } elseif ($transaction->event_type === 'receipt' || $transaction->event_type === 'settlement') {
                 $runningBalance -= $transaction->credit;
             }
-            // Add interest to the balance if needed, or track separately depending on accounting preference.
-            // Usually, accrued interest increases the debt:
+
+
             $runningBalance += $transaction->accrued_interest;
 
             $transaction->running_balance = $runningBalance;

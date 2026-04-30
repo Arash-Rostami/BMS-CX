@@ -167,7 +167,7 @@ class SettlementResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+
         ];
     }
 

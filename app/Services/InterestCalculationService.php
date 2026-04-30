@@ -19,6 +19,7 @@ class InterestCalculationService
             $activeLedgers = LedgerEntry::where('account_id', $account->id)
                 ->where('is_settled', false)
                 ->orderBy('transaction_date', 'asc')
+                ->orderBy('id', 'asc')
                 ->lockForUpdate()
                 ->get();
 
@@ -33,9 +34,21 @@ class InterestCalculationService
                 }
 
                 $lastEventDateObj = Carbon::parse($lastEventDate);
-                $durationDays = $lastEventDateObj->diffInDays($paymentDate, false);
+                $ledgerDateObj = Carbon::parse($ledger->transaction_date);
 
-                $accruedInterest = $this->calculateInterest($ledger->remaining_principal, $durationDays, $ledger->rate_matrix_snapshot);
+                $startDay = clone $ledgerDateObj;
+                $startDayDiff = $startDay->diffInDays($lastEventDateObj, false);
+
+                $endDay = clone $ledgerDateObj;
+                $endDayDiff = $endDay->diffInDays($paymentDate, false);
+
+                $durationDays = $endDayDiff - $startDayDiff;
+
+                $accruedInterest = $this->calculateInterest($ledger->remaining_principal, $startDayDiff, $endDayDiff, $ledger->rate_matrix_snapshot);
+
+                if ($ledger->type === 'receipt') {
+                    $accruedInterest = -abs($accruedInterest);
+                }
 
                 $ledger->unpaid_interest += $accruedInterest;
 
@@ -102,35 +115,37 @@ class InterestCalculationService
         });
     }
 
-    public function calculateInterest(float $principal, int $durationDays, array $rateMatrix): float
+    public function calculateInterest(float $principal, int $startDay, int $endDay, array $rateMatrix): float
     {
-        if ($durationDays < 0) {
-            $firstTierRate = $rateMatrix[0]['rate'];
-            return $principal * $durationDays * ($firstTierRate / 30);
-        }
+        $durationDays = $endDay - $startDay;
 
         if ($durationDays == 0 || $principal <= 0) {
             return 0;
         }
 
+        if ($durationDays < 0) {
+            $firstTierRate = $rateMatrix[0]['rate'];
+            return $principal * $durationDays * ($firstTierRate / 30);
+        }
+
         $totalInterest = 0;
-        $daysRemaining = $durationDays;
-        $currentDay = 1;
+        $currentStart = max(1, $startDay + 1);
 
         foreach ($rateMatrix as $tier) {
-            if ($daysRemaining <= 0) {
+            if ($currentStart > $endDay) {
                 break;
             }
 
-            $tierMax = $tier['max_days'];
-            $rate = $tier['rate'];
+            $tierMax = $tier['max_days'] ?? PHP_INT_MAX;
 
-            $daysInThisTier = $tierMax === null ? $daysRemaining : min($daysRemaining, $tierMax - $currentDay + 1);
+            if ($currentStart <= $tierMax) {
+                $calcEnd = min($endDay, $tierMax);
+                $daysInTier = $calcEnd - $currentStart + 1;
 
-            if ($daysInThisTier > 0) {
-                $totalInterest += $principal * $daysInThisTier * ($rate / 30);
-                $daysRemaining -= $daysInThisTier;
-                $currentDay += $daysInThisTier;
+                if ($daysInTier > 0) {
+                    $totalInterest += $principal * $daysInTier * ($tier['rate'] / 30);
+                    $currentStart = $calcEnd + 1;
+                }
             }
         }
 

@@ -38,7 +38,7 @@ class SettlementsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('deducted_from_principal')->numeric(decimalPlaces: 3),
             ])
             ->filters([
-                //
+
             ])
             ->headerActions([
             ])

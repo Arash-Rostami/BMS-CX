@@ -25,14 +25,14 @@ class CreateSettlement extends CreateRecord
             $data['settlement_exchange_rate'] ?? null
         );
 
-        // Filament expects a model to be returned.
-        // We will return the latest settlement created for this account.
+
+
         $latestSettlement = \App\Models\Settlement::whereHas('ledgerEntry', function($query) use ($account) {
             $query->where('account_id', $account->id);
         })->latest('id')->first();
 
-        // If no settlement was created (e.g. overpayment only), return an empty one or a dummy.
-        // But since this is a create page, we should return something to satisfy the type hint.
+
+
         return $latestSettlement ?? new \App\Models\Settlement();
     }
 
