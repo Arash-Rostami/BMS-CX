@@ -12,7 +12,6 @@ class ContractorObserver
     public function deleted(Contractor $contractor): void
     {
         SmartCacheManager::invalidate('Contractor');
-        Contractor::flushQueryCache();
     }
 
     public function restored(Contractor $contractor): void
@@ -23,6 +22,5 @@ class ContractorObserver
     public function saved(Contractor $contractor): void
     {
         SmartCacheManager::invalidate('Contractor');
-        Contractor::flushQueryCache();
     }
 }

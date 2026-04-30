@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
 class User extends Authenticatable implements FilamentUser, HasName, HasAvatar, CanResetPassword
@@ -27,12 +26,8 @@ class User extends Authenticatable implements FilamentUser, HasName, HasAvatar, 
     use UserRoles;
     use UserInformation;
     use UserComputations;
-    use QueryCacheable;
 
-    protected static $flushCacheOnUpdate = true;
-    public $cacheFor = 86400;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['users_table'];
+
     protected $fillable = [
         'first_name',
         'middle_name',

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Tag extends Model
 {
-    use HasFactory, TagComputations;
+    use  TagComputations;
 
     public static $filamentDetection = false;
 

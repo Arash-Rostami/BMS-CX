@@ -9,16 +9,15 @@ use App\Http\Controllers\UserController;
 use App\Livewire\CaseSummary\TotalSummary;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
-
-use Illuminate\Database\QueryException;
-use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 Route::get('/clear', function () {
     if (!Auth::check()) {
         abort(403, 'Unauthorized');
     }
+
+    Cache::store('redis')->flush();
 
     Artisan::call('cache:clear');
     Artisan::call('config:clear');
@@ -26,6 +25,7 @@ Route::get('/clear', function () {
     Artisan::call('view:clear');
     Artisan::call('filament:clear-cached-components');
     Artisan::call('optimize:clear');
+
 
     return response()->json([
         'message' => 'All caches including Filament caches have been cleared successfully!',
@@ -47,12 +47,9 @@ Route::get('/cache', function () {
 });
 
 
-
-
 Route::get('/error', function () {
     return response()->view('errors.db-busy', [], 503);
 });
-
 
 
 Route::middleware(['web', 'custom_auth'])->group(function () {

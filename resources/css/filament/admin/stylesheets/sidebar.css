@@ -1,47 +1,48 @@
 .fi-sidebar-group-collapse-button svg.fi-icon-btn-icon {
     fill: #606060;
-    transition: fill 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-    border-radius: 6px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    transition: fill 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s cubic-bezier(0.2, 0, 0, 1);
+    border-radius: 12px;
+    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
     outline: none;
     cursor: pointer;
 }
 
 .fi-sidebar-group-collapse-button:hover svg.fi-icon-btn-icon {
     fill: #505050;
-    border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
     outline: none;
-    /*background-color: #e8e8e8;*/
     background-color: lightgrey;
     @apply dark:bg-neutral-700;
 }
 
 .fi-sidebar-group-collapse-button:active svg.fi-icon-btn-icon {
     fill: #404040;
-    /*background-color: #d8d8d8;*/
     background-color: lightgrey;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
     @apply dark:bg-neutral-800;
-    /* Dark mode active background */
 }
 
 button[title="Collapse sidebar"], button[title="Expand sidebar"] {
     fill: none;
     stroke: #808080;
-    transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+    transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1);
     padding: 8px;
-    border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
     outline: none;
     cursor: pointer;
+    min-height: 36px;
+    min-width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-
 
 button[title="Collapse sidebar"]:hover, button[title="Expand sidebar"]:hover {
     background-color: #e8e8e8;
     color: #707070;
-    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.15);
+    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
     @apply dark:bg-neutral-700;
 }
 
@@ -50,9 +51,8 @@ button[title="Collapse sidebar"]:focus-visible, button[title="Expand sidebar"]:f
 }
 
 button[title="Collapse sidebar"]:active, button[title="Expand sidebar"]:active {
-    /*background-color: #d0d0d0;*/
     background-color: lightgrey;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
     @apply dark:bg-neutral-800;
 }
 
@@ -64,35 +64,38 @@ button[title="Collapse sidebar"] .fi-icon-btn-icon, button[title="Expand sidebar
 
 .fi-sidebar-group-label {
     border-bottom: 1px solid rgb(148, 148, 148, 0.8);
-    padding-bottom: 6px;
-    margin-bottom: 4px;
-    @apply dark:border-primary-600
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+    font-size: 0.875rem;
+    @apply dark:border-primary-600;
 }
 
 .btn {
     @apply shadow-2xl;
+    border-radius: 12px;
 }
 
 svg.fi-sidebar-item-icon {
-    @apply font-extrabold
+    @apply font-extrabold;
 }
 
 .fi-sidebar-item {
     border: none;
-    margin: 0;
+    margin: 0 0 2px 0;
     padding: 0;
-    transition: background-color 0.2s ease, color 0.2s ease, border-radius 0.2s ease;
-    border-radius: 8px;
+    transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), border-radius 0.2s cubic-bezier(0.2, 0, 0, 1);
+    border-radius: 12px;
 }
 
 .fi-sidebar-item:hover {
     background-color: lightgrey;
-    border-radius: 8px;
-    @apply dark:bg-gray-800
+    border-radius: 12px;
+    @apply dark:bg-gray-800;
 }
 
 .fi-sidebar-item-active > a {
     @apply bg-primary-600;
+    border-radius: 12px;
 }
 
 .fi-sidebar-item-active > a > svg,

@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages;
 
 use App\Filament\Resources\PaymentRequestResource;
 use App\Services\AttachmentCreationService;
-use App\Services\Notification\PaymentRequestService;
 use App\Services\SmartPaymentRequest;
 use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Notification;
@@ -54,7 +53,7 @@ class CreatePaymentRequest extends CreateRecord
     {
         persistReferenceNumber($this->record, 'PR');
         AttachmentCreationService::createFromExisting($this->record->id, 'payment_request_id');
-        (new PaymentRequestService())->notifyAccountants($this->record);
+//        (new PaymentRequestService())->notifyAccountants($this->record);
     }
 
     protected function afterFill(): void

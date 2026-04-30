@@ -12,7 +12,6 @@ class PortOfDeliveryObserver
     public function saved(PortOfDelivery $portOfDelivery): void
     {
         SmartCacheManager::invalidate('PortOfDelivery');
-        PortOfDelivery::flushQueryCache();
     }
 
     public function deleted(PortOfDelivery $portOfDelivery): void
@@ -23,6 +22,5 @@ class PortOfDeliveryObserver
     public function restored(PortOfDelivery $portOfDelivery): void
     {
         SmartCacheManager::invalidate('PortOfDelivery');
-        PortOfDelivery::flushQueryCache();
     }
 }

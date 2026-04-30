@@ -46,7 +46,7 @@ class CreatePayment extends CreateRecord
         $this->record['records'] = $records;
 
         $this->handleCashTransaction($this->record, $paymentRequests);
-        (new PaymentService())->notifyAccountants($this->record);
+//        (new PaymentService())->notifyAccountants($this->record);
     }
 
     protected function afterFill(): void

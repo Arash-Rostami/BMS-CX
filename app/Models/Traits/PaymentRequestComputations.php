@@ -6,7 +6,7 @@ use App\Models\Allocation;
 use App\Models\PaymentRequest;
 use App\Models\User;
 use App\Services\Authorities\PaymentRequestQueryService;
-use Illuminate\Support\Facades\Cache;
+use App\Services\SmartCacheManager;
 use Illuminate\Support\Facades\DB;
 
 trait PaymentRequestComputations
@@ -59,7 +59,7 @@ trait PaymentRequestComputations
 
     public static function getMadeByOptions(): array
     {
-        return Cache::remember('payment_request_made_by_options', 900, function () {
+        return SmartCacheManager::remember('PaymentRequest', ['type' => 'made_by_options'], 15, function () {
             return self::query()
                 ->select('extra')
                 ->distinct()
@@ -135,8 +135,9 @@ trait PaymentRequestComputations
     public static function getTabCounts(): array
     {
         $userId = auth()->id();
+        $filters = ['user_id' => $userId, 'type' => 'tab_counts'];
 
-        return Cache::remember("payment_request_tab_counts_{$userId}", 900, function () use ($userId) {
+        return SmartCacheManager::remember('PaymentRequest', $filters, 15, function () {
             return self::select(
                 DB::raw('COUNT(*) as total'),
                 DB::raw('COUNT(CASE WHEN status = "pending" THEN 1 END) as pending_count'),
@@ -178,9 +179,9 @@ trait PaymentRequestComputations
 
     public static function showApproved($orderId)
     {
-        $cacheKey = 'approved_payment_requests_' . $orderId;
+        $filters = ['order_id' => $orderId, 'type' => 'approved_list'];
 
-        return Cache::remember($cacheKey, 60, function () use ($orderId) {
+        return SmartCacheManager::remember('PaymentRequest', $filters, 1, function () use ($orderId) {
             return self::whereNotIn('status', ['cancelled', 'rejected', 'completed'])
                 ->where('order_id', $orderId)
                 ->pluck('type_of_payment', 'id')

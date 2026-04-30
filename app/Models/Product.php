@@ -3,20 +3,11 @@
 namespace App\Models;
 
 use App\Models\Traits\ProductComputations;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Product extends Model
 {
-    use HasFactory;
     use ProductComputations;
-    use QueryCacheable;
-
-    public $cacheFor = 86400;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['products_table'];
-    protected static $flushCacheOnUpdate = true;
 
     protected $fillable = ['name', 'description', 'user_id', 'category_id'];
 

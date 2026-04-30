@@ -7,28 +7,17 @@ use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
-use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Notification extends Model
 {
     use Notifiable;
     use NotificationComputations;
     use SoftDeletes;
-    use QueryCacheable;
-
-    protected static $flushCacheOnUpdate = true;
-    public $cacheFor = 900;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['notifications_table'];
 
 
     protected $table = 'notifications';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
+
     protected $fillable = [
         'id',
         'type',

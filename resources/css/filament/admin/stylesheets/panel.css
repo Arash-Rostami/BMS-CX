@@ -56,6 +56,28 @@ html, body, * {
 
 }
 
+.fi-section,
+.fi-page,
+.fi-page-wrapper,
+.fi-simple-page,
+.fi-main,
+.fi-page-header {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+.fi-dropdown-panel, .fi-dropdown-list {
+    display: block;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto!important;
+    overflow-x: hidden;
+}
+
+.fi-dropdown-list {
+    display: block;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto!important;
+}
 
 ::-webkit-scrollbar {
     width: 8px;

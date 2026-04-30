@@ -3,21 +3,13 @@
 namespace App\Models;
 
 use App\Models\Traits\TargetComputations;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
 class Target extends Model
 {
-    use HasFactory;
     use TargetComputations;
-    use QueryCacheable;
-
-    protected static $flushCacheOnUpdate = true;
-    public $cacheFor = 86400;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['target_table'];
 
 
     protected $fillable = [

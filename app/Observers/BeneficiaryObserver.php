@@ -13,7 +13,6 @@ class BeneficiaryObserver
     public function deleted(Beneficiary $beneficiary): void
     {
         SmartCacheManager::invalidate('Beneficiary');
-        Beneficiary::flushQueryCache();
     }
 
     public function restored(Beneficiary $beneficiary): void
@@ -24,6 +23,5 @@ class BeneficiaryObserver
     public function saved(Beneficiary $beneficiary): void
     {
         SmartCacheManager::invalidate('Beneficiary');
-        Beneficiary::flushQueryCache();
     }
 }

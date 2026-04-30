@@ -1,3 +1,32 @@
+// // show table minus of summary in red color
+// window.addEventListener('DOMContentLoaded', () => {
+//     if (!/orders|proforma-invoices/.test(location.href)) return;
+//
+//     const interval = setInterval(() => {
+//         if (!/orders|proforma-invoices/.test(location.href)) {
+//             clearInterval(interval);
+//             return;
+//         }
+//
+//         document.querySelectorAll('.fi-ta-text-summary span').forEach(s => {
+//             // 🚫 already processed → skip
+//             if (s.querySelector('span[style*="color:red"]')) return;
+//
+//             const text = s.textContent;
+//             const replaced = text.replace(
+//                 /-\d[\d,]*(\.\d+)?/g,
+//                 m => `<span style="color:red">${m}</span>`
+//             );
+//
+//             // only update if something actually changed
+//             if (replaced !== text) {
+//                 s.innerHTML = replaced;
+//             }
+//         });
+//
+//     }, 500);
+// });
+
 
 // overlay logic
 window.addEventListener('DOMContentLoaded', function () {

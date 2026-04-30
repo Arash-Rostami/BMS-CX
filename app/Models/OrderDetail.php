@@ -3,25 +3,20 @@
 namespace App\Models;
 
 use App\Models\Traits\OrderDetailComputations;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class OrderDetail extends Model
 {
-    use HasFactory;
     use SoftDeletes;
     use OrderDetailComputations;
-    use QueryCacheable;
 
-    public $cacheFor = 43200;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['order_details_table'];
-    protected static $flushCacheOnUpdate = true;
 
     public static bool $filamentDetection = false;
+
     protected $table = 'order_details';
+
     protected $fillable = [
         'buying_quantity',
         'provisional_quantity',

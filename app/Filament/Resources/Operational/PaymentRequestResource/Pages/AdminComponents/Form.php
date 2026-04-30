@@ -595,7 +595,7 @@ trait Form
                         $department = $get('department_id');
                         $paymentMethod = $get('extra.paymentMethod');
 
-                        if ($currency === 'Rial' && $value < 200000000 && $department != 6) {
+                        if ($currency === 'Rial' && $value < 200000000 && !in_array($department, [6, 10])) {
                             $fail('🚫 The requested amount must be at least 200,000,000 Rials.');
                         }
                         if ($currency === 'Rial' && $paymentMethod === 'card_transfer' && $value > 100000000) {

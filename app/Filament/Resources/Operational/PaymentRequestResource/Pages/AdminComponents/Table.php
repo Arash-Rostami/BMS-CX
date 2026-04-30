@@ -502,17 +502,13 @@ trait Table
      */
     public static function showRequestMaker(): TextColumn
     {
-        return TextColumn::make('extra.made_by')
-            ->label('Made By')
+        return TextColumn::make('user.fullName')
+            ->label('Created By')
             ->tooltip(fn(Model $record) => $record->created_at)
             ->color('secondary')
             ->toggleable(isToggledHiddenByDefault: true)
-            ->searchable(query: function (Builder $query, string $search): Builder {
-                return $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.made_by')) LIKE ?", ["%{$search}%"]);
-            })
-            ->sortable(query: function (Builder $query, string $direction) {
-                $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(extra, '$.made_by')) $direction");
-            })
+            ->searchable(['first_name', 'middle_name', 'last_name'], isIndividual: true)
+            ->sortable(['first_name', 'last_name'])
             ->badge();
     }
 

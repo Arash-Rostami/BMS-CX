@@ -2,24 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Party extends Model
 {
-    use HasFactory;
     use SoftDeletes;
-    use QueryCacheable;
 
-    public $cacheFor = 86400;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['parties_table'];
-    protected static $flushCacheOnUpdate = true;
 
     public static bool $filamentDetection = false;
     public static string $filamentName = 'PART';
+
     protected $fillable = [
         'user_id',
         'packaging_id',
@@ -30,21 +23,6 @@ class Party extends Model
     protected $casts = [
         'extra' => 'json',
     ];
-
-    protected static function booted()
-    {
-        static::creating(function ($party) {
-            $party->user_id = auth()->id();
-        });
-    }
-
-    /**
-     * Get the packaging associated with the party.
-     */
-    public function packaging()
-    {
-        return $this->belongsTo(Packaging::class);
-    }
 
     /**
      * Get the buyer associated with the party.
@@ -63,6 +41,14 @@ class Party extends Model
     }
 
     /**
+     * Get the packaging associated with the party.
+     */
+    public function packaging()
+    {
+        return $this->belongsTo(Packaging::class);
+    }
+
+    /**
      * Get the supplier associated with the party.
      */
     public function supplier()
@@ -76,5 +62,12 @@ class Party extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($party) {
+            $party->user_id = auth()->id();
+        });
     }
 }

@@ -26,7 +26,7 @@ class Admin
     {
         return SelectFilter::make('info->department')
             ->label('Department')
-            ->options(Department::getAllDepartmentCodes());
+            ->options(Department::getDepartmentOptions());
     }
 
     /**
@@ -426,10 +426,28 @@ class Admin
     protected static function getCountryFromIp(string $state): string
     {
         return Cache::remember("country_{$state}", now()->addMinutes(10), function () use ($state) {
-            $response = Http::timeout(30)->get('http://ip-api.com/json/' . $state);
-            return $response->successful() && $response->json('status') === 'success'
-                ? $response->json('country')
-                : 'Unidentified IP';
+            $ip = filter_var($state, FILTER_VALIDATE_IP) ? $state : gethostbyname($state);
+
+            if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+                return 'Unknown';
+            }
+
+            exec("ping -c 1 {$ip} > /dev/null", $output, $returnVar);
+            if ($returnVar !== 0) return 'Unidentified IP';
+
+
+            try {
+                $response = Http::timeout(10)->get("http://ip-api.com/json/{$ip}");
+
+                if ($response->successful()) {
+                    $data = $response->json();
+                    return $data['country'] ?? 'Unknown Country';
+                } else {
+                    return 'Unknown';
+                }
+            } catch (\Exception $e) {
+                return 'Unknown';
+            }
         });
     }
 }

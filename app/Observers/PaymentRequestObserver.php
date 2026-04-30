@@ -9,20 +9,23 @@ class PaymentRequestObserver
 {
     public $afterCommit = true;
 
+    public function created(PaymentRequest $paymentRequest): void
+    {
+        SmartCacheManager::invalidate('PaymentRequest');
+    }
+
+    public function updated(PaymentRequest $paymentRequest): void
+    {
+        SmartCacheManager::invalidate('PaymentRequest');
+    }
+
     public function deleted(PaymentRequest $paymentRequest): void
     {
         SmartCacheManager::invalidate('PaymentRequest');
-        PaymentRequest::flushQueryCache();
     }
 
     public function restored(PaymentRequest $paymentRequest): void
     {
         SmartCacheManager::invalidate('PaymentRequest');
-    }
-
-    public function saved(PaymentRequest $paymentRequest): void
-    {
-        SmartCacheManager::invalidate('PaymentRequest');
-        PaymentRequest::flushQueryCache();
     }
 }

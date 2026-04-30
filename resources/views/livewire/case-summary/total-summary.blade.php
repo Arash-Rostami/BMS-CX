@@ -9,34 +9,46 @@
         </button>
     </div>
     <div class="content-wrapper">
-        <div class="search-container relative mb-6">
-            <div class="relative mb-6">
-                <input type="search" wire:model.live.debounce.500ms="search"
-                       placeholder="Search by Proforma, Contract, Reference, Buyer, Supplier, ..."
-                       class="search-input">
+        <div class="search-container mb-6 flex flex-col gap-4">
+            <!-- Search -->
+            <div class="relative w-full">
+                <input
+                    type="search"
+                    wire:model.live.debounce.500ms="search"
+                    placeholder="Search by Proforma, Contract, Reference, Buyer, Supplier, ..."
+                    class="search-input w-full pr-10"
+                />
+
                 <div wire:loading wire:target="search" class="spinner-container">
                     <div class="spinner"></div>
                 </div>
+
                 @if (!empty($proformaOptions))
                     <ul class="search-results">
                         @foreach($proformaOptions as $option)
-                            <li wire:click="selectProforma({{ $option->id }})"
-                                class="search-result-item">
+                            <li
+                                wire:click="selectProforma({{ $option->id }})"
+                                class="search-result-item"
+                            >
                                 <div class="flex items-center">
                                     <span class="material-icons-outlined mr-2">search</span>
                                     <div class="flex flex-col">
-                                        <span class="font-semibold" title="Proforma Invoice No.">
-                                            {{ $option->proforma_number }}
-                                        </span>
-                                        <div class="text-gray-500">➟
-                                            <span
-                                                title="Contract No.">{{ $option->contract_number ?? 'No CT No.' }}</span>
-                                            <span class="mx-1"> ┆ </span>
-                                            <span
-                                                title="Reference No.">{{ $option->reference_number ?? 'No Ref. No.' }}</span>
-                                            <span class="mx-1"> ┆ </span>
-                                            <span
-                                                title="Supplier Name">{{ $option->supplier->name ?? 'No Supplier' }}</span>
+                                <span class="font-semibold" title="Proforma Invoice No.">
+                                    {{ $option->proforma_number }}
+                                </span>
+                                        <div class="text-gray-500">
+                                            ➟
+                                            <span title="Contract No.">
+                                        {{ $option->contract_number ?? 'No CT No.' }}
+                                    </span>
+                                            <span class="mx-1">┆</span>
+                                            <span title="Reference No.">
+                                        {{ $option->reference_number ?? 'No Ref. No.' }}
+                                    </span>
+                                            <span class="mx-1">┆</span>
+                                            <span title="Supplier Name">
+                                        {{ $option->supplier->name ?? 'No Supplier' }}
+                                    </span>
                                         </div>
                                     </div>
                                 </div>
@@ -44,6 +56,27 @@
                         @endforeach
                     </ul>
                 @endif
+            </div>
+
+            <!-- Filter -->
+            <div class="contract-filter-shell transition-all duration-200 {{ $selectedProforma ? 'opacity-100' : 'opacity-0 pointer-events-none select-none' }}">
+                <span class="material-icons-outlined contract-filter-icon">filter_list</span>
+
+                <input
+                    type="search"
+                    id="contract-filter"
+                    placeholder="Filter contract details..."
+                    class="contract-filter-input"
+                >
+
+                <button
+                    type="button"
+                    id="contract-filter-clear"
+                    class="contract-filter-clear hidden"
+                    aria-label="Clear filter"
+                >
+                    ✕
+                </button>
             </div>
         </div>
     </div>
@@ -150,7 +183,7 @@
             </div>
         @endif
     </div>
-{{--    <!-- AI Assistant -->--}}
+    {{--    <!-- AI Assistant -->--}}
     <x-Summary.ai></x-Summary.ai>
 </div>
 

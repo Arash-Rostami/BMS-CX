@@ -27,7 +27,7 @@ class EditPaymentRequest extends EditRecord
 
         $service = new PaymentRequestService();
 
-        $service->notifyAccountants($record, type: 'edit');
+//        $service->notifyAccountants($record, type: 'edit');
 
         $this->sendStatusNotification($service);
 
@@ -170,7 +170,7 @@ class EditPaymentRequest extends EditRecord
                 $allRecipients->push($specificRecipient);
             }
 
-            $service->notifyAccountants($this->record, type: $newStatus, status: true, accountants: $allRecipients);
+//            $service->notifyAccountants($this->record, type: $newStatus, status: true, accountants: $allRecipients);
         }
     }
 }

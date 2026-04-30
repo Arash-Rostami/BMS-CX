@@ -13,7 +13,6 @@ class AllocationObserver
     public function deleted(Allocation $allocation): void
     {
         SmartCacheManager::invalidate('Allocation');
-        Allocation::flushQueryCache();
     }
 
     public function restored(Allocation $allocation): void
@@ -24,6 +23,5 @@ class AllocationObserver
     public function saved(Allocation $allocation): void
     {
         SmartCacheManager::invalidate('Allocation');
-        Allocation::flushQueryCache();
     }
 }

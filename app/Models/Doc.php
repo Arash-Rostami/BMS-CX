@@ -3,24 +3,18 @@
 namespace App\Models;
 
 use App\Models\Traits\DocCache;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Doc extends Model
 {
-    use HasFactory;
     use SoftDeletes;
     use DocCache;
 
-    use QueryCacheable;
 
     public static bool $filamentDetection = false;
-    protected static $flushCacheOnUpdate = true;
-    public $cacheFor = 86400;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['docs_table'];
+
+
     protected $fillable = [
         'voyage_number',
         'declaration_number',

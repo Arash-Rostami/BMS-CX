@@ -207,6 +207,7 @@ class OrderResource extends Resource
                                         Admin::getPackaging(),
                                         Admin::getDeliveryTerm(),
                                         Admin::getShippingLine(),
+                                        Admin::getShippingLineSec(),
                                         Admin::getPortOfDelivery(),
                                         Admin::getLoadingStartLine(),
                                         Admin::getLoadingDeadline(),

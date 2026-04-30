@@ -2,38 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
-use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Allocation extends Model
 {
-    use HasFactory;
-    use QueryCacheable;
-
-    public $cacheFor = 86400;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['allocations_table'];
-    protected static $flushCacheOnUpdate = true;
 
     protected $fillable = ['reason', 'department', 'extra'];
 
     protected $casts = [
         'extra' => 'json',
     ];
-
-
-    public static function reasonsForDepartment(string $department): array
-    {
-        $cacheKey = 'reasons_for_department_' . $department;
-
-        return Cache::remember($cacheKey, 60, function () use ($department) {
-            return self::where('department', $department)
-                ->pluck('reason', 'id')
-                ->toArray();
-        });
-    }
 
     public static function getUniqueReasonsForCPS(string $department): array
     {
@@ -43,6 +22,17 @@ class Allocation extends Model
             return self::whereIn('department', [$department, 'all'])
                 ->selectRaw('MIN(id) as id, reason')
                 ->groupBy('reason')
+                ->pluck('reason', 'id')
+                ->toArray();
+        });
+    }
+
+    public static function reasonsForDepartment(string $department): array
+    {
+        $cacheKey = 'reasons_for_department_' . $department;
+
+        return Cache::remember($cacheKey, 60, function () use ($department) {
+            return self::where('department', $department)
                 ->pluck('reason', 'id')
                 ->toArray();
         });

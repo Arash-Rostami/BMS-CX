@@ -19,6 +19,16 @@ trait DepartmentCache
         });
     }
 
+    public static function getDepartmentOptions(): array
+    {
+        return Cache::remember('department_options', 6000, function () {
+            return self::query()
+                ->orderByRaw('CASE WHEN id = 0 THEN 0 ELSE 1 END, name ASC')
+                ->pluck('name', 'id')
+                ->toArray();
+        });
+    }
+
     public static function getAllDepartmentNames()
     {
         $cacheKey = 'all_department_names';

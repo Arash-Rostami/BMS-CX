@@ -287,7 +287,7 @@ class Admin
     public static function syncPaymentRequest(Model $replica): void
     {
         persistReferenceNumber($replica, 'PR');
-        (new PaymentRequestService())->notifyAccountants($replica);
+//        (new PaymentRequestService())->notifyAccountants($replica);
     }
 
     public static function updateStatus(Model $record, string $status, ?string $user = null): void

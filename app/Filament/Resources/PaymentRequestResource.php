@@ -50,7 +50,6 @@ class PaymentRequestResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'reference_number';
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
-    private static ?int $newRequestsCount = null;
     protected $listeners = ['fillFormData'];
 
     public static function configureCommonTableSettings(Table $table): Table
@@ -202,7 +201,7 @@ class PaymentRequestResource extends Resource
                                                                     if (str_contains($arguments['item'], 'record')) {
                                                                         return AttachmentDeletionService::validateAttachmentExists($component, $arguments['item'], $operation, $action, $record);
                                                                     }
-                                                                    return new HtmlString("<span>Of course, it is an empty attachment.</span>");
+                                                                    return new HtmlString('<span>Of course, it is an empty attachment.</span>');
                                                                 })
                                                                 ->modalSubmitActionLabel('Confirm')
                                                                 ->modalWidth(MaxWidth::Medium)
@@ -339,7 +338,7 @@ class PaymentRequestResource extends Resource
                                                             if (str_contains($arguments['item'], 'record')) {
                                                                 return AttachmentDeletionService::validateAttachmentExists($component, $arguments['item'], $operation, $action, $record);
                                                             }
-                                                            return new HtmlString("<span>Of course, it is an empty attachment.</span>");
+                                                            return new HtmlString('<span>Of course, it is an empty attachment.</span>');
                                                         })
                                                         ->modalSubmitActionLabel('Confirm')
                                                         ->modalWidth(MaxWidth::Medium)
@@ -443,20 +442,15 @@ class PaymentRequestResource extends Resource
 
     public static function getNewRequestsCount(): int
     {
-        if (self::$newRequestsCount !== null) {
-            return self::$newRequestsCount;
-        }
-
         $user = auth()->user();
         $filters = ['user_id' => $user->id, 'type' => 'pending_count'];
 
-        return self::$newRequestsCount =
-            SmartCacheManager::remember('PaymentRequest', $filters, 15, function () use ($user) {
-                return static::getModel()::query()
-                    ->authorizedForUser($user)
-                    ->where('status', 'pending')
-                    ->count();
-            });
+        return SmartCacheManager::remember('PaymentRequest', $filters, 15, function () use ($user) {
+            return static::getModel()::query()
+                ->authorizedForUser($user)
+                ->where('status', 'pending')
+                ->count();
+        });
     }
 
     public static function getPages(): array

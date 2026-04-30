@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Models\Traits\AttachmentComputations;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\File;
@@ -13,16 +12,11 @@ use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Attachment extends Model
 {
-    use HasFactory;
     use SoftDeletes;
     use AttachmentComputations;
-    use QueryCacheable;
 
     public static bool $filamentDetection = false;
-    protected static $flushCacheOnUpdate = true;
-    public $cacheFor = 86400;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['attachments_table'];
+
 
 
     protected $fillable = [

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Models\Traits\DepartmentCache;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -13,8 +12,6 @@ use Illuminate\Support\Facades\Cache;
 class Department extends Model
 {
     use DepartmentCache;
-    use HasFactory;
-
 
     public static $filamentDetection = false;
     public $timestamps = false;

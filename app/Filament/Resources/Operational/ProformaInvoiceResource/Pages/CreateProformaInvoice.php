@@ -29,7 +29,7 @@ class CreateProformaInvoice extends CreateRecord
     {
         persistReferenceNumber($this->record, 'PI');
 
-        (new ProformaInvoiceService())->notifyAgents($this->record);
+//        (new ProformaInvoiceService())->notifyAgents($this->record);
 
         AttachmentCreationService::createFromExisting($this->record->id);
     }

@@ -13,18 +13,15 @@ class BuyerObserver
     public function deleted(Buyer $buyer): void
     {
         SmartCacheManager::invalidate('Buyer');
-        Buyer::flushQueryCache();
     }
 
     public function restored(Buyer $buyer): void
     {
         SmartCacheManager::invalidate('Buyer');
-        Buyer::flushQueryCache();
     }
 
     public function saved(Buyer $buyer): void
     {
         SmartCacheManager::invalidate('Buyer');
-        Buyer::flushQueryCache();
     }
 }

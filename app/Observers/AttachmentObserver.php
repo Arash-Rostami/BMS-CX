@@ -16,7 +16,6 @@ class AttachmentObserver
     public function deleted(Attachment $attachment)
     {
         $attachment->forceDelete();
-        Attachment::flushQueryCache();
     }
 
     /**
@@ -27,13 +26,5 @@ class AttachmentObserver
         if (!$attachment->isUsedElsewhere() && $attachment->file_path && File::exists(public_path($attachment->file_path))) {
             Storage::disk('filament')->delete($attachment->file_path);
         }
-    }
-
-    /**
-     * Handle the Attachment "created" event.
-     */
-    public function saved(Attachment $attachment): void
-    {
-        Attachment::flushQueryCache();
     }
 }

@@ -439,31 +439,6 @@ class ListPaymentRequests extends ListRecords
         $this->resetPage();
     }
 
-    protected function getCachedPaymentRequestIds()
-    {
-        $filters = [
-            'activeTab' => $this->activeTab ?: 'all',
-            'monthly_data_pr' => $this->getTableFilterState('monthly_data_pr') ?? 'default',
-        ];
-
-        return SmartCacheManager::remember('PaymentRequest', $filters, (4 * 60), function () {
-            $query = self::getOriginalTable();
-
-            if (is_null($this->getTableFilterState('monthly_data_pr'))) {
-                $query->where('created_at', '>=', now()->subMonths(1)->startOfMonth());
-            }
-
-            if ($this->activeTab) {
-                $activeTabConfig = collect($this->getTabDefinitions())->firstWhere('value', $this->activeTab);
-                if ($activeTabConfig) {
-                    $query->where($activeTabConfig['column'], $activeTabConfig['value']);
-                }
-            }
-
-            return $query->pluck('id');
-        });
-    }
-
     protected function getHeaderActions(): array
     {
         return [
@@ -478,6 +453,9 @@ class ListPaymentRequests extends ListRecords
                 ->color('secondary')
                 ->action(function () {
                     SmartCacheManager::invalidate('PaymentRequest');
+                    $this->dispatch('refreshPage');
+                    $this->dispatch('refreshTabFilters');
+
                     Notification::make()
                         ->title('Cache Cleared')
                         ->body('The payment request data has been refreshed.')
@@ -511,8 +489,7 @@ class ListPaymentRequests extends ListRecords
 
     protected function getTableQuery(): Builder
     {
-        return PaymentRequest::query()
-            ->whereIn('id', $this->getCachedPaymentRequestIds())
+        $query = PaymentRequest::query()
             ->with([
                 'contractor',
                 'costCenter',
@@ -529,11 +506,20 @@ class ListPaymentRequests extends ListRecords
                 'supplierSummaries',
                 'user',
             ]);
-    }
 
-    private static function getOriginalTable()
-    {
-        return static::getResource()::getEloquentQuery();
+        if (is_null($this->getTableFilterState('monthly_data_pr'))) {
+            $query->where('created_at', '>=', now()->subMonths(1)->startOfMonth());
+        }
+
+        if ($this->activeTab) {
+            $activeTabConfig = collect($this->getTabDefinitions())->firstWhere('value', $this->activeTab);
+
+            if ($activeTabConfig) {
+                $query->where($activeTabConfig['column'], $activeTabConfig['value']);
+            }
+        }
+
+        return $query;
     }
 
     private function getTabDefinitions(): array

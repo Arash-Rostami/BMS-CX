@@ -73,7 +73,7 @@ class EditProformaInvoice extends EditRecord
     {
         $service = new ProformaInvoiceService();
 
-        $service->notifyAgents($this->record, 'edit');
+//        $service->notifyAgents($this->record, 'edit');
 
         $this->sendStatusNotification($service);
 
@@ -91,7 +91,7 @@ class EditProformaInvoice extends EditRecord
                 ? 'processing'
                 : ($newStatus === 'fulfilled' ? 'completed' : $newStatus);
 
-            $service->notifyAgents($this->record, type: $status, status: true);
+//            $service->notifyAgents($this->record, type: $status, status: true);
         }
     }
 

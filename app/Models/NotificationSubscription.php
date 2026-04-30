@@ -2,12 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class NotificationSubscription extends Model
 {
-    use HasFactory;
 
     protected $fillable = [
         'user_id',
@@ -21,13 +19,13 @@ class NotificationSubscription extends Model
         'notify_delete',
     ];
 
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
     public function notifiable()
     {
         return $this->morphTo();
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

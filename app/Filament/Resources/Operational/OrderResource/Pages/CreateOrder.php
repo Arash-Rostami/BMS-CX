@@ -27,7 +27,7 @@ class CreateOrder extends CreateRecord
             $statusService->updateStatusBasedOnAttachments($this->record);
         }
 
-        (new OrderService())->notifyAgents($this->record);
+//        (new OrderService())->notifyAgents($this->record);
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array

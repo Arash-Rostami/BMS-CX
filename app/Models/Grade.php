@@ -3,32 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Rennokki\QueryCache\Traits\QueryCacheable;
 
 class Grade extends Model
 {
-    use HasFactory;
-    use QueryCacheable;
 
-    public $cacheFor = 86400;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['grades_table'];
-    protected static $flushCacheOnUpdate = true;
 
     protected $fillable = ['name', 'description', 'user_id', 'product_id'];
 
-    protected static function booted()
+    public function orders()
     {
-        static::creating(function ($post) {
-            $post->user_id = auth()->id();
-        });
+        return $this->hasMany(Order::class);
     }
 
-    public function scopeFilterByProduct(Builder $query, array|int|null|string $productId = null): Builder
+    public function product()
     {
-        return $query->when($productId, fn(Builder $q) => $q->whereIn('product_id', (array)$productId));
+        return $this->belongsTo(Product::class);
     }
 
     public function proformaInvoices()
@@ -36,14 +26,15 @@ class Grade extends Model
         return $this->hasMany(ProformaInvoice::class);
     }
 
-    public function orders()
+    public function scopeFilterByProduct(Builder $query, array|int|null|string $productId = null): Builder
     {
-        return $this->hasMany(Order::class);
+        return $query->when($productId, fn(Builder $q) => $q->whereIn('product_id', (array)$productId));
     }
 
-
-    public function product()
+    protected static function booted()
     {
-        return $this->belongsTo(Product::class);
+        static::creating(function ($post) {
+            $post->user_id = auth()->id();
+        });
     }
 }

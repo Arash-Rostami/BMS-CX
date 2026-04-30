@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\PortOfDelivery;
 use App\Models\Product;
 use App\Models\PurchaseStatus;
+use App\Models\ShippingLine;
 use App\Models\Supplier;
 use App\Models\Tag;
 use App\Services\SmartCacheManager;
@@ -104,6 +105,24 @@ trait Filter
                     ->options(function () {
                         return SmartCacheManager::remember('PortOfDelivery', ['type' => 'select_options'], 720, function () {
                             return PortOfDelivery::orderBy('name')->pluck('name', 'id')->all();
+                        });
+                    })
+                    ->multiple(),
+                SelectConstraint::make('logistic.shippingLine.id')
+                    ->label('Forwarder')
+                    ->icon('heroicon-s-globe-alt')
+                    ->options(function () {
+                        return SmartCacheManager::remember('ShippingLines', ['type' => 'select_options'], 720, function () {
+                            return ShippingLine::orderBy('name')->pluck('name', 'id')->all();
+                        });
+                    })
+                    ->multiple(),
+                SelectConstraint::make('logistic.shippingLineSec.id')
+                    ->label('Shipping Line')
+                    ->icon('heroicon-o-ticket')
+                    ->options(function () {
+                        return SmartCacheManager::remember('ShippingLinesSec', ['type' => 'select_options'], 720, function () {
+                            return ShippingLine::orderBy('name')->pluck('name', 'id')->all();
                         });
                     })
                     ->multiple(),

@@ -542,7 +542,7 @@ trait Table
     public static function showPaymentRequests(): TextColumn
     {
         return TextColumn::make('payment_requests_count')
-            ->formatStateUsing(fn($state, $record) => 'PR Total: ' . ((int) $state))
+            ->formatStateUsing(fn($state, $record) => 'PR Total: ' . ((int)$state))
             ->alignRight()
             ->color(fn($state) => $state == 'PR Total: 0' ? 'secondary' : 'warning')
             ->tooltip('No of Payment Requests')
@@ -776,13 +776,26 @@ trait Table
     static function showShippingLine(): TextColumn
     {
         return TextColumn::make('logistic.shippingLine.name')
-            ->label('Shipping Line')
+            ->label('Forwarder')
             ->color('secondary')
             ->searchable()
             ->sortable()
             ->toggleable()
             ->color('secondary');
     }
+
+    public
+    static function showShippingLineSec(): TextColumn
+    {
+        return TextColumn::make('logistic.shippingLineSec.name')
+            ->label('Shipping Line')
+            ->color('secondary')
+            ->searchable()
+            ->sortable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->color('secondary');
+    }
+
 
     /**
      * @return TextColumn

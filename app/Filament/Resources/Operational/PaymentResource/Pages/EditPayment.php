@@ -62,6 +62,6 @@ class EditPayment extends EditRecord
 
         $this->record['records'] = $records;
 
-        (new PaymentService)->notifyAccountants($this->record, 'edit');
+//        (new PaymentService)->notifyAccountants($this->record, 'edit');
     }
 }

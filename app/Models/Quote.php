@@ -3,14 +3,13 @@
 namespace App\Models;
 
 use App\Models\Traits\QuoteComputations;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Quote extends Model
 {
 
-    use HasFactory, SoftDeletes, QuoteComputations;
+    use SoftDeletes, QuoteComputations;
 
     protected $fillable = [
         'container_number',

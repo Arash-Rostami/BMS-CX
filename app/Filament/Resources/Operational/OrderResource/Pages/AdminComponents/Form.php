@@ -1044,13 +1044,41 @@ trait Form
     /**
      * @return Select
      */
-    public
-    static function getShippingLine(): Select
+    public static function getShippingLine(): Select
     {
         return Select::make('shipping_line_id')
             ->options(fn() => Cache::remember('shipping_line_options', 3600, fn() => ShippingLine::pluck('name', 'id')->toArray()))
             ->searchable()
-            ->label(fn() => new HtmlString('<span class="grayscale">⛵ </span><span class="text-primary-500 font-normal">Shipping Company (Cargo Carrier)</span>'))
+            ->label(fn() => new HtmlString('<span class="grayscale">⛵ </span><span class="text-primary-500 font-normal">Forwarder</span>'))
+            ->createOptionForm([
+                TextInput::make('name')
+                    ->required()
+                    ->maxLength(255)
+                    ->dehydrateStateUsing(fn(?string $state) => strtoupper($state)),
+                MarkdownEditor::make('description')
+                    ->maxLength(65535)
+                    ->disableAllToolbarButtons()
+            ])
+            ->createOptionUsing(function (array $data): int {
+                return ShippingLine::create($data)->getKey();
+            })
+            ->createOptionAction(function (Action $action) {
+                return $action
+                    ->modalHeading('Create new Cargo carrier (shipping co)')
+                    ->modalButton('Create')
+                    ->modalWidth('lg');
+            });
+    }
+
+    /**
+     * @return Select
+     */
+    public static function getShippingLineSec(): Select
+    {
+        return Select::make('shipping_line_sec_id')
+            ->options(fn() => Cache::remember('shipping_line_options', 3600, fn() => ShippingLine::pluck('name', 'id')->toArray()))
+            ->searchable()
+            ->label(fn() => new HtmlString('<span class="grayscale">⛵ </span><span class="text-primary-500 font-normal">Shipping Line </span>'))
             ->createOptionForm([
                 TextInput::make('name')
                     ->required()

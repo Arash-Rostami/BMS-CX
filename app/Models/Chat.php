@@ -5,12 +5,11 @@ namespace App\Models;
 use App\Events\ChatMessageCreated;
 use App\Events\ChatMessageUpdated;
 use App\Models\Traits\ChatComputations;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Chat extends Model
 {
-    use HasFactory, ChatComputations;
+    use ChatComputations;
 
     public static $filamentDetection = false;
 
@@ -28,6 +27,16 @@ class Chat extends Model
         'extra' => 'json'
     ];
 
+    public function record()
+    {
+        return $this->morphTo();
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($chat) {
@@ -38,15 +47,5 @@ class Chat extends Model
         static::updated(function ($chat) {
             event(new ChatMessageUpdated($chat));
         });
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-
-    public function record()
-    {
-        return $this->morphTo();
     }
 }

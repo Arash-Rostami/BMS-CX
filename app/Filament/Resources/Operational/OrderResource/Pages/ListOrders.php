@@ -241,6 +241,7 @@ class ListOrders extends ListRecords
                 Admin::showDeliveryTerm(),
                 Admin::showPackaging(),
                 Admin::showShippingLine(),
+                Admin::showShippingLineSec(),
                 Admin::showLoadingStartline(),
                 Admin::showLoadingDeadline(),
                 Admin::showEtd(),

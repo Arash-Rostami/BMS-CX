@@ -92,6 +92,75 @@
             margin-left: 0.75rem;
         }
 
+        mark.filter-highlight {
+            background: linear-gradient(120deg, #fde047 0%, #fde047 100%);
+            color: #111827;
+            border-radius: 2px;
+            padding: 0 2px;
+            font-weight: 700;
+            box-decoration-break: clone;
+            -webkit-box-decoration-break: clone;
+        }
+
+        .dark-mode mark.filter-highlight {
+            background: linear-gradient(120deg, #facc15 0%, #facc15 100%);
+            color: #0f172a;
+        }
+
+
+        .contract-filter-icon {
+            position: absolute;
+            left: 0.875rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.25rem;
+            color: #9ca3af;
+            pointer-events: none;
+            transition: color 0.2s ease;
+            z-index: 2;
+        }
+
+        .contract-filter-shell {
+            position: relative;
+            width: 100%;
+            max-width: 34rem;
+            margin-left: auto;
+        }
+
+        .contract-filter-input {
+            width: 100%;
+            padding: 0.75rem 2.5rem 0.75rem 2.5rem;
+            color: #1f2937;
+            background-color: #f9fafb;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+
+        .contract-filter-input:hover {
+            background-color: #f3f4f6;
+        }
+
+        .contract-filter-input:focus {
+            border-color: transparent;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+        }
+
+        .contract-filter-clear {
+            position: absolute;
+            right: 0.875rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            transition: color 0.2s ease;
+        }
+
+        .contract-filter-clear:hover {
+            color: #4b5563;
+        }
+
         /* Navigation */
         .nav-tabs {
             margin-top: 1.5rem;
@@ -899,31 +968,66 @@
 
         /* Animations */
         @keyframes draw-border {
-            0% { background-size: 0 2px, 2px 0, 0 2px, 2px 0; }
-            25% { background-size: 100% 2px, 2px 0, 0 2px, 2px 0; }
-            50% { background-size: 100% 2px, 2px 100%, 0 2px, 2px 0; }
-            75% { background-size: 100% 2px, 2px 100%, 100% 2px, 2px 0; }
-            100% { background-size: 100% 2px, 2px 100%, 100% 2px, 2px 100%; }
+            0% {
+                background-size: 0 2px, 2px 0, 0 2px, 2px 0;
+            }
+            25% {
+                background-size: 100% 2px, 2px 0, 0 2px, 2px 0;
+            }
+            50% {
+                background-size: 100% 2px, 2px 100%, 0 2px, 2px 0;
+            }
+            75% {
+                background-size: 100% 2px, 2px 100%, 100% 2px, 2px 0;
+            }
+            100% {
+                background-size: 100% 2px, 2px 100%, 100% 2px, 2px 100%;
+            }
         }
 
         @keyframes spin {
-            0% { transform: translate(-50%, -50%) rotate(0deg); }
-            100% { transform: translate(-50%, -50%) rotate(360deg); }
+            0% {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
         }
 
         @keyframes cw-pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.9; }
-            100% { transform: scale(1); opacity: 1; }
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.9;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         @keyframes color-spectrum {
-            0% { color: #60a5fa; }
-            20% { color: #a78bfa; }
-            40% { color: #f472b6; }
-            60% { color: #fbbf24; }
-            80% { color: #34d399; }
-            100% { color: #60a5fa; }
+            0% {
+                color: #60a5fa;
+            }
+            20% {
+                color: #a78bfa;
+            }
+            40% {
+                color: #f472b6;
+            }
+            60% {
+                color: #fbbf24;
+            }
+            80% {
+                color: #34d399;
+            }
+            100% {
+                color: #60a5fa;
+            }
         }
 
         /* Media Queries */
@@ -1066,6 +1170,29 @@
 
         body.dark-mode .search-result-item .material-icons-outlined {
             color: #999;
+        }
+
+        body.dark-mode .contract-filter-input {
+            color: lightgrey;
+            background-color: #333;
+            border-color: #555;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+        }
+
+        body.dark-mode .contract-filter-input:hover {
+            background-color: #3a3a3a;
+        }
+
+        body.dark-mode .contract-filter-input:focus {
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.22);
+        }
+
+        body.dark-mode .contract-filter-clear {
+            color: #9ca3af;
+        }
+
+        body.dark-mode .contract-filter-clear:hover {
+            color: #e5e7eb;
         }
 
         body.dark-mode .spinner {

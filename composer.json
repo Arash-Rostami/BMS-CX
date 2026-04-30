@@ -25,6 +25,7 @@
         "lara-zeus/delia": "^1.0",
         "lara-zeus/popover": "^1.0",
         "laravel/framework": "^10.10",
+        "laravel/horizon": "^5.44",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "livewire/livewire": "^3.3",

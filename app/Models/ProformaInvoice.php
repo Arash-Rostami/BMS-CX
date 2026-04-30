@@ -3,25 +3,17 @@
 namespace App\Models;
 
 use App\Models\Traits\ProformaInvoiceComputations;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
-use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
 class ProformaInvoice extends Model
 {
-    use HasFactory;
     use Notifiable;
     use ProformaInvoiceComputations;
     use SoftDeletes;
-    use QueryCacheable;
 
-    protected static $flushCacheOnUpdate = true;
-    public $cacheFor = 86400;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['proforma_invoices_table'];
     protected $table = 'proforma_invoices';
 
     protected $fillable = [

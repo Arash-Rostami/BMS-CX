@@ -27,7 +27,7 @@ class EditOrder extends EditRecord
         }
 
         $service = new OrderService();
-        $service->notifyAgents($this->record, 'edit');
+//        $service->notifyAgents($this->record, 'edit');
     }
 
 

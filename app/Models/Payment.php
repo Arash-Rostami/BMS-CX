@@ -5,19 +5,13 @@ namespace App\Models;
 use App\Models\Traits\PaymentComputations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
 class Payment extends Model
 {
     use PaymentComputations;
     use SoftDeletes;
-    use QueryCacheable;
 
-    protected static $flushCacheOnUpdate = true;
-    public $cacheFor = 43200;
-    public $cacheDriver = 'file';
-    public $cacheTags = ['payments_table'];
     protected $fillable = [
         'reference_number',
         'status',

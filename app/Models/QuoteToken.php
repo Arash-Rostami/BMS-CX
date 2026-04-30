@@ -2,15 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class QuoteToken extends Model
 {
-    use HasFactory;
 
     public static $filamentDetection = false;
-
 
     protected $fillable = [
         'token',
@@ -26,9 +23,10 @@ class QuoteToken extends Model
     }
 
     // Relationships (potential)
-    public function quoteRequest()
+
+    public function quote()
     {
-        return $this->belongsTo(QuoteRequest::class);
+        return $this->belongsTo(Quote::class);
     }
 
     public function quoteProvider()
@@ -36,8 +34,8 @@ class QuoteToken extends Model
         return $this->belongsTo(QuoteProvider::class);
     }
 
-    public function quote()
+    public function quoteRequest()
     {
-        return $this->belongsTo(Quote::class);
+        return $this->belongsTo(QuoteRequest::class);
     }
 }

@@ -3,12 +3,10 @@
 namespace App\Models;
 
 use App\Models\Traits\NameCache;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Name extends Model
 {
-    use HasFactory;
     use NameCache;
 
     public static $filamentDetection = false;
@@ -20,15 +18,15 @@ class Name extends Model
         'extra' => 'array'
     ];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($name) {
             $name->user_id = auth()->id();
         });
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
     }
 }
