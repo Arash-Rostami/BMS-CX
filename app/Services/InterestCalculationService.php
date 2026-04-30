@@ -47,11 +47,12 @@ class InterestCalculationService
                 $accruedInterest = $this->calculateInterest($ledger->remaining_principal, $startDayDiff, $endDayDiff, $ledger->rate_matrix_snapshot);
 
                 if ($ledger->type === 'receipt') {
-                    $accruedInterest = -abs($accruedInterest);
+                    $ledger->unpaid_interest -= abs($accruedInterest);
+                    $ledger->save();
+                    continue;
                 }
 
                 $ledger->unpaid_interest += $accruedInterest;
-
                 $deductedFromInterest = 0;
                 $deductedFromPrincipal = 0;
 
