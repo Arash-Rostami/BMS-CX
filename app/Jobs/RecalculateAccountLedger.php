@@ -72,14 +72,15 @@ class RecalculateAccountLedger implements ShouldQueue
                 $query->where('account_id', $account->id);
             })->where('transaction_date', '>=', $this->fromDate)->delete();
 
-            $groupedSettlements = $settlementsToReplay->groupBy(function($item) {
-                return $item->transaction_date->format('Y-m-d');
-            });
-
-            foreach ($groupedSettlements as $date => $settlementsOnDate) {
-                $totalBasePayment = $settlementsOnDate->sum('settlement_amount');
-                if ($totalBasePayment > 0) {
-                     $calculator->processPayment($account, $totalBasePayment, $date);
+            foreach ($settlementsToReplay as $settlement) {
+                if ($settlement->settlement_amount > 0) {
+                    $calculator->processPayment(
+                        $account,
+                        $settlement->settlement_amount,
+                        $settlement->transaction_date->format('Y-m-d'),
+                        $settlement->foreign_settlement_amount,
+                        $settlement->settlement_exchange_rate
+                    );
                 }
             }
         });
