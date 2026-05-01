@@ -19,6 +19,7 @@ class AccountStatement extends Model
         'debit' => 'decimal:3',
         'credit' => 'decimal:3',
         'accrued_interest' => 'decimal:3',
+        'running_balance' => 'decimal:3',
     ];
 
     public function account()

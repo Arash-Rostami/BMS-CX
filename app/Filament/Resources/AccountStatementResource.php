@@ -49,6 +49,9 @@ class AccountStatementResource extends Resource
                 Tables\Columns\TextColumn::make('accrued_interest')
                     ->numeric(decimalPlaces: 3)
                     ->sortable(),
+                Tables\Columns\TextColumn::make('running_balance')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable(),
             ])
             ->defaultSort('transaction_date', 'asc')
             ->filters([
