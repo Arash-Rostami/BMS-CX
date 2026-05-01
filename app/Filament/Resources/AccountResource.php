@@ -101,7 +101,7 @@ class AccountResource extends Resource
                 Tables\Actions\Action::make('statementOfAccount')
                     ->label('Statement of Account')
                     ->icon('heroicon-o-document-text')
-                    ->url(fn (Account $record): string => static::getUrl('statement', ['record' => $record])),
+                    ->url(fn (Account $record): string => AccountStatementResource::getUrl('index', ['tableFilters[account_id][value]' => $record->id])),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -113,7 +113,6 @@ class AccountResource extends Resource
     public static function getRelations(): array
     {
         return [
-
         ];
     }
 
@@ -123,7 +122,6 @@ class AccountResource extends Resource
             'index' => Pages\ListAccounts::route('/'),
             'create' => Pages\CreateAccount::route('/create'),
             'edit' => Pages\EditAccount::route('/{record}/edit'),
-            'statement' => Pages\StatementOfAccount::route('/{record}/statement'),
         ];
     }
 }
