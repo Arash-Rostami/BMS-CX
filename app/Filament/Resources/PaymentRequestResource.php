@@ -368,7 +368,9 @@ class PaymentRequestResource extends Resource
                                             Admin::getMICRCode(),
                                         ])
                                         ->columnSpan(2)
-                                        ->collapsible()
+                                        ->collapsible(),
+                                    Admin::getCreditAdjustmentSection()
+                                        ->columnSpan(2),
                                 ])->columns(6)
                             ])
                             ->hidden(fn(string $operation, Get $get) => ($operation === 'create' && $get('department_id') != 6))

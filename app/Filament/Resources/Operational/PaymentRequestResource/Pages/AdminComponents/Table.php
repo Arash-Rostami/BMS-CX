@@ -429,7 +429,19 @@ trait Table
             ->state(fn(?Model $record) => $record->adjustment_amount)
             ->sortable()
             ->toggleable(isToggledHiddenByDefault: true)
-            ->color('warning')
+            ->color(function (?Model $record, $state) {
+                if (!$state) return 'warning';
+                $creditToUse = data_get($record, 'extra.credit_to_use');
+                return ($creditToUse && $state > 0 && $state != $record->requested_amount) ? 'success' : 'warning';
+            })
+            ->tooltip(function (?Model $record, $state) {
+                if (!$state) return null;
+                $creditToUse = data_get($record, 'extra.credit_to_use');
+                if ($creditToUse && $state > 0 && $state != $record->requested_amount) {
+                    return 'Original: ' . number_format($record->requested_amount ?? 0, 2) . ' | Deduction: ' . number_format($creditToUse, 2);
+                }
+                return null;
+            })
             ->formatStateUsing(fn($state, $record) => $state ? number_format($state) . ' ' . $record->currency : '')
             ->badge();
     }

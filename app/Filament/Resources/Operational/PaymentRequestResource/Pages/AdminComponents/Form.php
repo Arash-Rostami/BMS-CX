@@ -401,6 +401,48 @@ trait Form
     /**
      * @return Select
      */
+    public static function getCreditAdjustmentSection(): \Filament\Forms\Components\Section
+    {
+        return \Filament\Forms\Components\Section::make(new HtmlString('Credit Adjustment <span class="grayscale">💰</span>'))
+            ->schema([
+                \Filament\Forms\Components\TextInput::make('extra.credit_to_use')
+                    ->label(fn() => new HtmlString('<span class="grayscale">💳 </span><span class="text-primary-500 font-normal">Credit to Use</span>'))
+                    ->numeric()
+                    ->live(debounce: 1000)
+                    ->placeholder('Enter credit amount')
+                    ->hint(function (Get $get) {
+                        $credit = (double)$get('extra.available_supplier_credit');
+                        $currency = $get('currency') ?? '';
+                        return $credit > 0 ? "Available Credit: " . number_format($credit, 2) . " " . $currency : "No credit available";
+                    })
+                    ->hintColor(fn(Get $get) => (double)$get('extra.available_supplier_credit') > 0 ? 'success' : 'gray')
+                    ->afterStateUpdated(function ($state, Get $get, Set $set) {
+                        $requested = (double)$get('requested_amount');
+                        $creditToUse = (double)$state;
+                        $set('adjustment_amount', (double)($requested - $creditToUse));
+                    })
+                    ->rules([
+                        function (Get $get) {
+                            return function (string $attribute, $value, $fail) use ($get) {
+                                $creditToUse = (double)$value;
+                                $availableCredit = (double)$get('extra.available_supplier_credit');
+                                $requestedAmount = (double)$get('requested_amount');
+
+                                if ($creditToUse > $availableCredit) {
+                                    $fail('🚫 The credit to use cannot exceed the available supplier credit.');
+                                }
+                                if ($creditToUse > $requestedAmount) {
+                                    $fail('🚫 The credit to use cannot exceed the payable amount.');
+                                }
+                            };
+                        },
+                    ])
+                    ->disabled(fn($operation) => self::isEditingDisabled($operation)),
+            ])
+            ->collapsible()
+            ->collapsed();
+    }
+
     public static function getCurrency(): Select
     {
         return Select::make('currency')
@@ -409,7 +451,23 @@ trait Form
                 $departmentId = $get('department_id');
                 return in_array($departmentId, [2, 5, 6, 8, 10, 21, 22, 23]) ? showCurrencies() : ['Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')];
             })
-            ->afterStateUpdated(fn($state, Set $set) => ($state != 'Rial') ? $set('extra.paymentMethod', 'bank_account') : $set('extra.paymentMethod', ''))
+            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                ($state != 'Rial') ? $set('extra.paymentMethod', 'bank_account') : $set('extra.paymentMethod', '');
+                if ($get('supplier_id') && $state) {
+                    $credit = \App\Models\SupplierSummary::where('supplier_id', $get('supplier_id'))
+                        ->where('currency', $state)
+                        ->where('diff', '>', 0)
+                        ->sum('diff');
+                    $set('extra.available_supplier_credit', (double)$credit);
+                    if ($get('extra.credit_to_use')) {
+                        $requested = (double)$get('requested_amount');
+                        $creditToUse = (double)$get('extra.credit_to_use');
+                        $set('adjustment_amount', (double)($requested - $creditToUse));
+                    }
+                } else {
+                    $set('extra.available_supplier_credit', 0);
+                }
+            })
             ->required()
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">💱  </span><span class="text-primary-500 font-normal">Currency</span>'));
@@ -586,6 +644,12 @@ trait Form
                         ->body('For amount more than 500M Rial, Sheba is recommended for better assurance. Please choose another payment method.')
                         ->persistent()
                         ->send();
+                }
+
+                if ($get('extra.credit_to_use')) {
+                    $requested = (double)$state;
+                    $creditToUse = (double)$get('extra.credit_to_use');
+                    $set('adjustment_amount', (double)($requested - $creditToUse));
                 }
             })
             ->rules([
@@ -847,6 +911,23 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"> 🤝</span><span class="text-primary-500 font-normal">Supplier</span>'))
             ->relationship('supplier', 'name')
             ->searchable()
+            ->live()
+            ->afterStateUpdated(function ($state, Get $get, Set $set) {
+                if ($state && $get('currency')) {
+                    $credit = \App\Models\SupplierSummary::where('supplier_id', $state)
+                        ->where('currency', $get('currency'))
+                        ->where('diff', '>', 0)
+                        ->sum('diff');
+                    $set('extra.available_supplier_credit', (double)$credit);
+                    if ($get('extra.credit_to_use')) {
+                        $requested = (double)$get('requested_amount');
+                        $creditToUse = (double)$get('extra.credit_to_use');
+                        $set('adjustment_amount', (double)($requested - $creditToUse));
+                    }
+                } else {
+                    $set('extra.available_supplier_credit', 0);
+                }
+            })
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->createOptionForm([
                 TextInput::make('name')
