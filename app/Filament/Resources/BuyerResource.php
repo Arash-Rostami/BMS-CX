@@ -20,8 +20,6 @@ class BuyerResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-arrow-down-on-square-stack';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
     public static function form(Form $form): Form
     {
         return $form
@@ -34,6 +32,11 @@ class BuyerResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
     }
 
     public static function getPages(): array

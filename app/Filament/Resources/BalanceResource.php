@@ -2,8 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Operational\BalanceResource\Pages\Admin;
-use App\Filament\Resources\Operational\BalanceResource\RelationManagers;
+use App\Filament\Resources\Financial\BalanceResource\Pages\Admin;
 use App\Filament\Resources\Operational\OrderResource\Pages\Admin as AdminOrder;
 use App\Models\Balance;
 use App\Services\SmartCacheManager;
@@ -23,7 +22,6 @@ class BalanceResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-scale';
 
-    protected static ?string $navigationGroup = 'Operational Data';
 
     protected static ?int $navigationSort = 6;
 
@@ -144,10 +142,15 @@ class BalanceResource extends Resource
         return 'primary';
     }
 
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.second_category');
+    }
+
     public static function getPages(): array
     {
         return [
-            'index' => Operational\BalanceResource\Pages\ManageBalances::route('/'),
+            'index' => Financial\BalanceResource\Pages\ManageBalances::route('/'),
         ];
     }
 

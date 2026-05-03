@@ -6,7 +6,6 @@ use App\Filament\Resources\GradeResource\Pages;
 use App\Filament\Resources\GradeResource\RelationManagers;
 use App\Filament\Resources\Master\GradeResource\Pages\Admin;
 use App\Models\Grade;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -21,9 +20,6 @@ class GradeResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-m-ellipsis-horizontal-circle';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
-
     public static function form(Form $form): Form
     {
         return $form
@@ -32,6 +28,28 @@ class GradeResource extends Resource
                 Admin::getName(),
                 Admin::getDescription(),
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\GradeResource\Pages\ManageGrades::route('/'),
+        ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 
     public static function table(Table $table): Table
@@ -68,22 +86,5 @@ class GradeResource extends Resource
                     ->label('Product')
                     ->collapsible(),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\GradeResource\Pages\ManageGrades::route('/'),
-        ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !isSimpleSidebar();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

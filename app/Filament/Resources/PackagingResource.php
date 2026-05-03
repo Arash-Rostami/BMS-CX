@@ -2,21 +2,16 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Master\PackagingResource\Pages\Admin;
 use App\Filament\Resources\PackagingResource\Pages;
 use App\Filament\Resources\PackagingResource\RelationManagers;
-use App\Filament\Resources\Master\PackagingResource\Pages\Admin;
 use App\Models\Packaging;
-use Filament\Forms;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class PackagingResource extends Resource
@@ -27,8 +22,6 @@ class PackagingResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Packaging';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
     public static function form(Form $form): Form
     {
         return $form
@@ -36,6 +29,28 @@ class PackagingResource extends Resource
                 Admin::getName(),
                 Admin::getDescription()
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\PackagingResource\Pages\ManagePackagings::route('/'),
+        ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 
     public static function table(Table $table): Table
@@ -66,22 +81,5 @@ class PackagingResource extends Resource
                     ExportBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\PackagingResource\Pages\ManagePackagings::route('/'),
-        ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !isSimpleSidebar();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

@@ -6,7 +6,6 @@ use App\Filament\Resources\ContractorResource\Pages;
 use App\Filament\Resources\ContractorResource\RelationManagers;
 use App\Filament\Resources\Master\ContractorResource\Pages\Admin;
 use App\Models\Contractor;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -21,8 +20,6 @@ class ContractorResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-m-arrow-up-on-square-stack';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
     public static function form(Form $form): Form
     {
         return $form
@@ -30,6 +27,23 @@ class ContractorResource extends Resource
                 Admin::getName(),
                 Admin::getDescription(),
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\ContractorResource\Pages\ManageContractors::route('/'),
+        ];
     }
 
     public static function table(Table $table): Table
@@ -44,7 +58,7 @@ class ContractorResource extends Resource
                 ]),
                 Admin::showTimeStamp()
             ])
-            ->filters([ ])
+            ->filters([])
             ->contentGrid([
                 'md' => 2,
                 'xl' => 3,
@@ -60,16 +74,5 @@ class ContractorResource extends Resource
                     ExportBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\ContractorResource\Pages\ManageContractors::route('/'),
-        ];
-    }
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

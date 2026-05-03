@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Operational\ContractOverviewResource\Pages;
-use App\Filament\Resources\Operational\ContractOverviewResource\Pages\Admin;
+use App\Filament\Resources\Dashboard\ContractOverviewResource\Pages\Admin;
+use App\Filament\Resources\Dashboard\ContractOverviewResource\Pages\ListContractOverviews;
 use App\Models\ContractOverview;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Resource;
@@ -28,7 +28,7 @@ class ContractOverviewResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => Pages\ListContractOverviews::route('/')];
+        return ['index' => ListContractOverviews::route('/')];
     }
 
     public static function getRelations(): array

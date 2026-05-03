@@ -22,8 +22,6 @@ class TargetResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-flag';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
     public static function form(Form $form): Form
     {
         return $form
@@ -59,6 +57,11 @@ class TargetResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
     }
 
     public static function getPages(): array

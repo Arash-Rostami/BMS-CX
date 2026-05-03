@@ -42,8 +42,6 @@ class OrderResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
 
-    protected static ?string $navigationGroup = 'Operational Data';
-
 
     protected static ?int $navigationSort = 3;
 
@@ -53,7 +51,6 @@ class OrderResource extends Resource
 
 
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
-
 
     public static function configureCommonTableSettings(Table $table): Table
     {
@@ -420,6 +417,11 @@ class OrderResource extends Resource
         return Cache::remember($cacheKey, now()->addMinutes(15), function () {
             return static::getModel()::count();
         });
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.first_category');
     }
 
     public static function getPages(): array

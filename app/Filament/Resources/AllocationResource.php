@@ -21,8 +21,11 @@ class AllocationResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-c-cube-transparent';
 
-    protected static ?string $navigationGroup = 'Master Data';
 
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
 
     public static function form(Form $form): Form
     {

@@ -2,8 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Operational\CashTransactionResource\Pages\Admin;
-use App\Filament\Resources\Operational\CashTransactionResource\RelationManagers;
+use App\Filament\Resources\Financial\CashTransactionResource\Pages\Admin;
 use App\Models\CashTransaction;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -25,11 +24,11 @@ class CashTransactionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
 
-    protected static ?string $navigationGroup = 'Operational Data';
 
     protected static ?int $navigationSort = 8;
 
     protected static ?string $pollingInterval = null;
+
 
     public static function form(Form $form): Form
     {
@@ -49,10 +48,15 @@ class CashTransactionResource extends Resource
             ]);
     }
 
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.second_category');
+    }
+
     public static function getPages(): array
     {
         return [
-            'index' => Operational\CashTransactionResource\Pages\ManageCashTransactions::route('/'),
+            'index' => Financial\CashTransactionResource\Pages\ManageCashTransactions::route('/'),
         ];
     }
 

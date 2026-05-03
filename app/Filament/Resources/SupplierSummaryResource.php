@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\Operational\SupplierSummaryResource\Pages\Admin;
+use App\Filament\Resources\Financial\SupplierSummaryResource\Pages\Admin;
 use App\Models\SupplierSummary;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -22,7 +22,6 @@ class SupplierSummaryResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
 
-    protected static ?string $navigationGroup = 'Operational Data';
 
     protected static ?int $navigationSort = 7;
 
@@ -38,7 +37,7 @@ class SupplierSummaryResource extends Resource
             ->defaultGroup('supplier.name')
             ->paginated([10, 20, 30])
             ->filters([Admin::filterByProformaInvoice(), Admin::filterBySupplier(), Admin::filterByAdjustment()],
-            layout: Tables\Enums\FiltersLayout::Modal)
+                layout: Tables\Enums\FiltersLayout::Modal)
             ->filtersFormColumns(2)
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -123,10 +122,15 @@ class SupplierSummaryResource extends Resource
         return 'secondary';
     }
 
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.second_category');
+    }
+
     public static function getPages(): array
     {
         return [
-            'index' => Operational\SupplierSummaryResource\Pages\ManageSupplierSummaries::route('/'),
+            'index' => Financial\SupplierSummaryResource\Pages\ManageSupplierSummaries::route('/'),
         ];
     }
 

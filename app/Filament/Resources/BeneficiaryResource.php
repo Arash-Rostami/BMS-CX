@@ -6,20 +6,13 @@ use App\Filament\Resources\BeneficiaryResource\Pages;
 use App\Filament\Resources\BeneficiaryResource\RelationManagers;
 use App\Filament\Resources\Master\BeneficiaryResource\Pages\Admin;
 use App\Models\Beneficiary;
-use Filament\Forms\Components\Radio;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
-use Filament\Forms\Get;
 use Filament\Resources\Resource;
-use Filament\Support\Enums\IconPosition;
 use Filament\Tables;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class BeneficiaryResource extends Resource
@@ -28,14 +21,11 @@ class BeneficiaryResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-identification';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
-
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Admin::getType() ,
+                Admin::getType(),
                 Admin::getEconomicType(),
                 Admin::getName(),
                 Admin::getNationalId(),
@@ -44,6 +34,23 @@ class BeneficiaryResource extends Resource
                 Admin::getExtra(),
                 Admin::getVat()
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\BeneficiaryResource\Pages\ManageBeneficiaries::route('/'),
+        ];
     }
 
     public static function table(Table $table): Table
@@ -84,17 +91,5 @@ class BeneficiaryResource extends Resource
                     ExportBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\BeneficiaryResource\Pages\ManageBeneficiaries::route('/'),
-        ];
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

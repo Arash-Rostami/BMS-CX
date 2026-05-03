@@ -6,7 +6,6 @@ use App\Filament\Resources\DeliveryTermResource\Pages;
 use App\Filament\Resources\DeliveryTermResource\RelationManagers;
 use App\Filament\Resources\Master\DeliveryTermResource\Pages\Admin;
 use App\Models\DeliveryTerm;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -22,8 +21,6 @@ class DeliveryTermResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
     public static function form(Form $form): Form
     {
         return $form
@@ -31,6 +28,28 @@ class DeliveryTermResource extends Resource
                 Admin::getName(),
                 Admin::getDescription()
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\DeliveryTermResource\Pages\ManageDeliveryTerms::route('/'),
+        ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 
     public static function table(Table $table): Table
@@ -65,22 +84,5 @@ class DeliveryTermResource extends Resource
                     ExportBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\DeliveryTermResource\Pages\ManageDeliveryTerms::route('/'),
-        ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !isSimpleSidebar();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

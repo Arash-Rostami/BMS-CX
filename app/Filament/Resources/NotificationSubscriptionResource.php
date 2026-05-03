@@ -20,12 +20,10 @@ class NotificationSubscriptionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-envelope';
 
-    protected static ?string $navigationGroup = 'Operational Data';
 
     protected static ?int $navigationSort = 11;
 
     protected static ?string $pollingInterval = null;
-
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -49,6 +47,23 @@ class NotificationSubscriptionResource extends Resource
                     ])
                     ->columnSpan('full'),
             ]);
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.first_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Operational\NotificationSubscriptionResource\Pages\ManageNotificationSubscriptions::route('/'),
+        ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 
     public static function table(Table $table): Table
@@ -83,17 +98,5 @@ class NotificationSubscriptionResource extends Resource
                         ->visible(fn() => in_array(auth()->user()->role, ['admin', 'manager']) || auth()->user()->user_id === auth()->user()->id),
                 ]),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Operational\NotificationSubscriptionResource\Pages\ManageNotificationSubscriptions::route('/'),
-        ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !isSimpleSidebar();
     }
 }

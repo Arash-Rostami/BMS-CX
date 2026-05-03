@@ -23,8 +23,6 @@ class PermissionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static ?string $navigationGroup = 'Core Data';
-
     public static function form(Form $form): Form
     {
         return $form
@@ -80,6 +78,11 @@ class PermissionResource extends Resource
                 'md' => 2,
                 'xl' => 2,
             ]);
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.fourth_category');
     }
 
     public static function getPages(): array

@@ -21,12 +21,16 @@ class NotificationResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-bell-alert';
 
-    protected static ?string $navigationGroup = 'Operational Data';
 
     protected static ?int $navigationSort = 12;
 
     protected static ?string $pollingInterval = null;
     public ?string $tableSortColumn = 'notifiable_id';
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.first_category');
+    }
 
     public static function form(Form $form): Form
     {

@@ -2,18 +2,16 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Master\PortOfDeliveryResource\Pages\Admin;
 use App\Filament\Resources\PortOfDeliveryResource\Pages;
 use App\Filament\Resources\PortOfDeliveryResource\RelationManagers;
-use App\Filament\Resources\Master\PortOfDeliveryResource\Pages\Admin;
 use App\Models\PortOfDelivery;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\Layout\Panel;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class PortOfDeliveryResource extends Resource
@@ -26,9 +24,6 @@ class PortOfDeliveryResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Ports of Delivery';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
-
     public static function form(Form $form): Form
     {
         return $form
@@ -36,6 +31,28 @@ class PortOfDeliveryResource extends Resource
                 Admin::getName(),
                 Admin::getDescription()
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\PortOfDeliveryResource\Pages\ManagePortOfDeliveries::route('/'),
+        ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 
     public static function table(Table $table): Table
@@ -68,21 +85,5 @@ class PortOfDeliveryResource extends Resource
                     ExportBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\PortOfDeliveryResource\Pages\ManagePortOfDeliveries::route('/'),
-        ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !isSimpleSidebar();
-    }
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

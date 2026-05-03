@@ -2,21 +2,14 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\ProductResource\Pages;
-use App\Filament\Resources\ProductResource\RelationManagers;
 use App\Filament\Resources\Master\ProductResource\Pages\Admin;
 use App\Models\Product;
-use Filament\Forms;
-
 use Filament\Forms\Form;
-
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\Layout\Panel;
-use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class ProductResource extends Resource
@@ -24,8 +17,6 @@ class ProductResource extends Resource
     protected static ?string $model = Product::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-squares-2x2';
-
-    protected static ?string $navigationGroup = 'Master Data';
 
     public static function form(Form $form): Form
     {
@@ -35,6 +26,28 @@ class ProductResource extends Resource
                 Admin::getName(),
                 Admin::getDescription(),
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\ProductResource\Pages\ManageProducts::route('/'),
+        ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 
     public
@@ -72,21 +85,5 @@ class ProductResource extends Resource
                     ->label('Category')
                     ->collapsible(),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\ProductResource\Pages\ManageProducts::route('/'),
-        ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !isSimpleSidebar();
-    }
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

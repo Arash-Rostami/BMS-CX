@@ -2,11 +2,10 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Master\PurchaseStatusResource\Pages\Admin;
 use App\Filament\Resources\PurchaseStatusResource\Pages;
 use App\Filament\Resources\PurchaseStatusResource\RelationManagers;
-use App\Filament\Resources\Master\PurchaseStatusResource\Pages\Admin;
 use App\Models\PurchaseStatus;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -22,11 +21,7 @@ class PurchaseStatusResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-m-arrow-path-rounded-square';
 
     protected static ?string $pluralModelLabel = 'Stages';
-
-    protected static ?string $navigationGroup = 'Master Data';
-
     protected static ?string $navigationLabel = 'Stages';
-
 
     public static function form(Form $form): Form
     {
@@ -35,6 +30,28 @@ class PurchaseStatusResource extends Resource
                 Admin::getTitle(),
                 Admin::getDescription(),
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\PurchaseStatusResource\Pages\ManagePurchaseStatuses::route('/'),
+        ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 
     public static function table(Table $table): Table
@@ -64,23 +81,5 @@ class PurchaseStatusResource extends Resource
                     ExportBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\PurchaseStatusResource\Pages\ManagePurchaseStatuses::route('/'),
-        ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !isSimpleSidebar();
-    }
-
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

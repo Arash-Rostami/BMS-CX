@@ -17,7 +17,7 @@ Route::get('/clear', function () {
         abort(403, 'Unauthorized');
     }
 
-    Cache::store('redis')->flush();
+//    Cache::store('redis')->flush();
 
     Artisan::call('cache:clear');
     Artisan::call('config:clear');

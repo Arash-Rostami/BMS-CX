@@ -24,9 +24,6 @@ class ShippingLineResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Shipping Companies';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
-
     public static function form(Form $form): Form
     {
         return $form
@@ -34,6 +31,23 @@ class ShippingLineResource extends Resource
                 Admin::getName(),
                 Admin::getDescription()
             ]);
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\ShippingLineResource\Pages\ManageShippingLines::route('/'),
+        ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return !isSimpleSidebar();
     }
 
     public static function table(Table $table): Table
@@ -64,18 +78,5 @@ class ShippingLineResource extends Resource
                     ExportBulkAction::make(),
                 ]),
             ]);
-    }
-
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\ShippingLineResource\Pages\ManageShippingLines::route('/'),
-        ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return !isSimpleSidebar();
     }
 }

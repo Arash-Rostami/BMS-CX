@@ -41,7 +41,6 @@ class PaymentRequestResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static ?string $navigationGroup = 'Operational Data';
     protected static ?array $badgeData = null;
 
     protected static ?int $navigationSort = 4;
@@ -51,6 +50,11 @@ class PaymentRequestResource extends Resource
     protected static ?string $recordTitleAttribute = 'reference_number';
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
     protected $listeners = ['fillFormData'];
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.first_category');
+    }
 
     public static function configureCommonTableSettings(Table $table): Table
     {

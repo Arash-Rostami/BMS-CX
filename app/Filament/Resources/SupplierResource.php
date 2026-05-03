@@ -6,7 +6,6 @@ use App\Filament\Resources\Master\SupplierResource\Pages\Admin;
 use App\Filament\Resources\SupplierResource\Pages;
 use App\Filament\Resources\SupplierResource\RelationManagers;
 use App\Models\Supplier;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -21,9 +20,6 @@ class SupplierResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-arrow-up-on-square-stack';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
-
     public static function form(Form $form): Form
     {
         return $form
@@ -31,6 +27,23 @@ class SupplierResource extends Resource
                 Admin::getName(),
                 Admin::getDescription(),
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\SupplierResource\Pages\ManageSuppliers::route('/'),
+        ];
     }
 
     public static function table(Table $table): Table
@@ -45,7 +58,7 @@ class SupplierResource extends Resource
                 ]),
                 Admin::showTimeStamp()
             ])
-            ->filters([ ])
+            ->filters([])
             ->contentGrid([
                 'md' => 2,
                 'xl' => 3,
@@ -61,17 +74,5 @@ class SupplierResource extends Resource
                     ExportBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\SupplierResource\Pages\ManageSuppliers::route('/'),
-        ];
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 }

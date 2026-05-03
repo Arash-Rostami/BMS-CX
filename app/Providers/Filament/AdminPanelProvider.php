@@ -63,15 +63,19 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationGroups([
                 NavigationGroup::make()
-                    ->label('Operational Data')
+                    ->label(config('nav.first_category'))
                     ->icon(fn() => isMenuTop() || isSimpleSidebar() ? 'heroicon-o-rocket-launch' : ''),
 
                 NavigationGroup::make()
-                    ->label('Master Data')
+                    ->label(config('nav.second_category'))
+                    ->icon(fn() => isMenuTop() || isSimpleSidebar() ? 'heroicon-o-banknotes' : ''),
+
+                NavigationGroup::make()
+                    ->label(config('nav.third_category'))
                     ->icon(fn() => isMenuTop() || isSimpleSidebar() ? 'heroicon-c-square-3-stack-3d' : ''),
 
                 NavigationGroup::make()
-                    ->label('Core Data')
+                    ->label(config('nav.fourth_category'))
                     ->icon(fn() => isMenuTop() || isSimpleSidebar() ? 'heroicon-s-cpu-chip' : '')
             ])
             ->navigationItems([
@@ -104,7 +108,7 @@ class AdminPanelProvider extends PanelProvider
                 SimpleLightBoxPlugin::make(),
                 ThemesPlugin::make(),
                 BannerPlugin::make()
-                    ->navigationGroup('Core Data')
+                    ->navigationGroup(config('nav.fourth_category'))
                     ->navigationLabel('Banners')
                     ->bannerManagerAccessPermission('banner-manager')
                     ->persistsBannersInDatabase()

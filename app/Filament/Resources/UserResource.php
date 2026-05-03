@@ -32,7 +32,6 @@ class UserResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
-    protected static ?string $navigationGroup = 'Core Data';
     protected static ?string $recordTitleAttribute = 'first_name';
 
     public ?string $tableSortColumn = 'email';
@@ -167,6 +166,11 @@ class UserResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.fourth_category');
     }
 
     public static function getPages(): array

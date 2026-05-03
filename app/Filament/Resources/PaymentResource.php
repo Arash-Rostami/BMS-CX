@@ -25,13 +25,17 @@ class PaymentResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
 
-    protected static ?string $navigationGroup = 'Operational Data';
 
     protected static ?int $navigationSort = 5;
 
     protected static ?string $pollingInterval = null;
 
     protected static ?string $recordTitleAttribute = 'reference_number';
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.first_category');
+    }
 
     public static function configureCommonTableSettings(Table $table): Table
     {

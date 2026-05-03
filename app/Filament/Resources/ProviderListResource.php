@@ -6,7 +6,6 @@ use App\Filament\Resources\Master\ProviderListResource\Pages\Admin;
 use App\Filament\Resources\ProviderListResource\Pages;
 use App\Filament\Resources\ProviderListResource\RelationManagers;
 use App\Models\ProviderList;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
@@ -23,9 +22,6 @@ class ProviderListResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-s-queue-list';
 
-    protected static ?string $navigationGroup = 'Master Data';
-
-
     public static function form(Form $form): Form
     {
         return $form
@@ -33,6 +29,23 @@ class ProviderListResource extends Resource
                 Admin::getName(),
                 Admin::getRecipients(),
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'secondary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.third_category');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Master\ProviderListResource\Pages\ManageProviderLists::route('/'),
+        ];
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -75,18 +88,6 @@ class ProviderListResource extends Resource
                     ExportBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Master\ProviderListResource\Pages\ManageProviderLists::route('/'),
-        ];
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'secondary';
     }
 
 }

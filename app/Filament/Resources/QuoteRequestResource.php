@@ -25,10 +25,13 @@ class QuoteRequestResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-pencil-square';
 
-    protected static ?string $navigationGroup = 'Operational Data';
 
     protected static ?int $navigationSort = 9;
 
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.first_category');
+    }
     public static function configureCommonTableSettings(Table $table): Table
     {
         return $table

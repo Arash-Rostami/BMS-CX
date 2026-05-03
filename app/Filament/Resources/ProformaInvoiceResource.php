@@ -38,9 +38,6 @@ class ProformaInvoiceResource extends Resource
     protected static ?string $navigationLabel = 'Pro forma Invoices';
 
 
-    protected static ?string $navigationGroup = 'Operational Data';
-
-
     protected static ?string $recordTitleAttribute = 'reference_number';
 
 
@@ -50,7 +47,6 @@ class ProformaInvoiceResource extends Resource
 
 
     protected static ?string $pollingInterval = null;
-
 
     public static function form(Form $form): Form
     {
@@ -211,6 +207,11 @@ class ProformaInvoiceResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         return self::getNewRequests() > 0 ? 'danger' : 'primary';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return config('nav.first_category');
     }
 
     public static function getNavigationLabel(): string
