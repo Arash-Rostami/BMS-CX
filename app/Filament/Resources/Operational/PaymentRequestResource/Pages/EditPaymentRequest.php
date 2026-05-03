@@ -118,6 +118,38 @@ class EditPaymentRequest extends EditRecord
         return $data;
     }
 
+
+    protected function getListeners(): array
+    {
+        return [
+            'applySupplierCreditTotal' => 'handleApplySupplierCreditTotal',
+            'showManualCredit' => 'handleShowManualCredit',
+        ];
+    }
+
+    public function handleApplySupplierCreditTotal(): void
+    {
+        $credit = (double)data_get($this->data, 'extra.available_supplier_credit', 0);
+        $requested = (double)data_get($this->data, 'requested_amount', 0);
+
+        $creditToUse = min($credit, $requested);
+
+        $this->data['extra']['credit_to_use'] = $creditToUse;
+        $this->data['extra']['show_manual_credit'] = false;
+        $this->data['adjustment_amount'] = (double)($requested - $creditToUse);
+
+        Notification::make()
+            ->title('Credit Applied')
+            ->body('Successfully applied ' . number_format($creditToUse, 2) . ' credit.')
+            ->success()
+            ->send();
+    }
+
+    public function handleShowManualCredit(): void
+    {
+        $this->data['extra']['show_manual_credit'] = true;
+    }
+
     private function clearSessionData()
     {
         session()->forget('old_status_payment');

@@ -359,6 +359,7 @@ class PaymentRequestResource extends Resource
                                         ->schema([
                                             Admin::getPayableAmount(),
                                             Admin::getAdjustmentAmount(),
+                                            Admin::getCreditToUse(),
                                             Admin::getTotalAmount(),
                                             Admin::getDeadline(),
                                             Admin::getCaseNumber(),
@@ -368,9 +369,7 @@ class PaymentRequestResource extends Resource
                                             Admin::getMICRCode(),
                                         ])
                                         ->columnSpan(2)
-                                        ->collapsible(),
-                                    Admin::getCreditAdjustmentSection()
-                                        ->columnSpan(2),
+                                        ->collapsible()
                                 ])->columns(6)
                             ])
                             ->hidden(fn(string $operation, Get $get) => ($operation === 'create' && $get('department_id') != 6))
