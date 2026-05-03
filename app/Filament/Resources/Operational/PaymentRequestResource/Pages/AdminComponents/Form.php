@@ -290,7 +290,20 @@ trait Form
             ->placeholder('Final amount (adjust for credits/debits)')
             ->tooltip('If set, this amount overrides the Payable Amount for payment purposes (e.g. for credit/debit adjustments).')
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
-            ->hint(fn(Get $get) => is_numeric($get('adjustment_amount')) ? showDelimiter($get('adjustment_amount'), $get('currency')) : $get('adjustment_amount'));
+            ->hint(fn(Get $get) => is_numeric($get('adjustment_amount')) ? showDelimiter($get('adjustment_amount'), $get('currency')) : $get('adjustment_amount'))
+            ->hintAction(
+                \Filament\Forms\Components\Actions\Action::make('toggle_manual_credit')
+                    ->label(fn(Get $get) => $get('extra.show_manual_credit') ? 'Hide Credit Input' : 'Use Credit')
+                    ->icon('heroicon-m-banknotes')
+                    ->color('info')
+                    ->action(function (Set $set, Get $get) {
+                        $set('extra.show_manual_credit', !$get('extra.show_manual_credit'));
+                        if (!$get('extra.show_manual_credit')) {
+                            $set('extra.credit_to_use', null);
+                            $set('adjustment_amount', null);
+                        }
+                    })
+            );
     }
 
     /**
@@ -401,6 +414,38 @@ trait Form
     /**
      * @return Select
      */
+    public static function getCreditToUse(): \Filament\Forms\Components\TextInput
+    {
+        return \Filament\Forms\Components\TextInput::make('extra.credit_to_use')
+            ->label(fn() => new HtmlString('<span class="grayscale">💳 </span><span class="text-primary-500 font-normal">Credit to Use</span>'))
+            ->numeric()
+            ->live(debounce: 1000)
+            ->placeholder('Enter credit amount')
+            ->hidden(fn(Get $get) => !$get('extra.show_manual_credit'))
+            ->afterStateUpdated(function ($state, Get $get, Set $set) {
+                $requested = (double)$get('requested_amount');
+                $creditToUse = (double)$state;
+                $set('adjustment_amount', (double)($requested - $creditToUse));
+            })
+            ->rules([
+                function (Get $get) {
+                    return function (string $attribute, $value, $fail) use ($get) {
+                        $creditToUse = (double)$value;
+                        $availableCredit = (double)$get('extra.available_supplier_credit');
+                        $requestedAmount = (double)$get('requested_amount');
+
+                        if ($creditToUse > $availableCredit && $availableCredit > 0) {
+                            $fail('🚫 The credit to use cannot exceed the available supplier credit.');
+                        }
+                        if ($creditToUse > $requestedAmount) {
+                            $fail('🚫 The credit to use cannot exceed the payable amount.');
+                        }
+                    };
+                },
+            ])
+            ->disabled(fn($operation) => self::isEditingDisabled($operation));
+    }
+
     public static function getCurrency(): Select
     {
         return Select::make('currency')
@@ -409,7 +454,49 @@ trait Form
                 $departmentId = $get('department_id');
                 return in_array($departmentId, [2, 5, 6, 8, 10, 21, 22, 23]) ? showCurrencies() : ['Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')];
             })
-            ->afterStateUpdated(fn($state, Set $set) => ($state != 'Rial') ? $set('extra.paymentMethod', 'bank_account') : $set('extra.paymentMethod', ''))
+            ->afterStateUpdated(function ($state, Set $set, Get $get, \Livewire\Component $livewire) {
+                ($state != 'Rial') ? $set('extra.paymentMethod', 'bank_account') : $set('extra.paymentMethod', '');
+                if ($get('supplier_id') && $state) {
+                    $credit = \App\Models\SupplierSummary::where('supplier_id', $get('supplier_id'))
+                        ->where('currency', $state)
+                        ->where('diff', '>', 0)
+                        ->sum('diff');
+                    $set('extra.available_supplier_credit', (double)$credit);
+
+                    if ($credit > 0) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Available Supplier Credit')
+                            ->body('Supplier has ' . number_format($credit, 2) . ' ' . $state . ' credit available. Do you want to apply it?')
+                            ->warning()
+                            ->persistent()
+                            ->actions([
+                                \Filament\Notifications\Actions\Action::make('apply_total')
+                                    ->button()
+                                    ->label('Apply Total')
+                                    ->color('success')
+                                    ->dispatch('applySupplierCreditTotal'),
+                                \Filament\Notifications\Actions\Action::make('enter_manually')
+                                    ->button()
+                                    ->label('Enter Manually')
+                                    ->color('warning')
+                                    ->dispatch('showManualCredit'),
+                                \Filament\Notifications\Actions\Action::make('dismiss')
+                                    ->color('gray')
+                                    ->label('Dismiss')
+                                    ->close(),
+                            ])
+                            ->send();
+                    }
+
+                    if ($get('extra.credit_to_use')) {
+                        $requested = (double)$get('requested_amount');
+                        $creditToUse = (double)$get('extra.credit_to_use');
+                        $set('adjustment_amount', (double)($requested - $creditToUse));
+                    }
+                } else {
+                    $set('extra.available_supplier_credit', 0);
+                }
+            })
             ->required()
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">💱  </span><span class="text-primary-500 font-normal">Currency</span>'));
@@ -586,6 +673,12 @@ trait Form
                         ->body('For amount more than 500M Rial, Sheba is recommended for better assurance. Please choose another payment method.')
                         ->persistent()
                         ->send();
+                }
+
+                if ($get('extra.credit_to_use')) {
+                    $requested = (double)$state;
+                    $creditToUse = (double)$get('extra.credit_to_use');
+                    $set('adjustment_amount', (double)($requested - $creditToUse));
                 }
             })
             ->rules([
@@ -847,6 +940,66 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"> 🤝</span><span class="text-primary-500 font-normal">Supplier</span>'))
             ->relationship('supplier', 'name')
             ->searchable()
+            ->live()
+            ->afterStateUpdated(function ($state, Get $get, Set $set, \Livewire\Component $livewire) {
+                if ($state && $get('currency')) {
+                    $credit = \App\Models\SupplierSummary::where('supplier_id', $state)
+                        ->where('currency', $get('currency'))
+                        ->where('diff', '>', 0)
+                        ->sum('diff');
+                    $set('extra.available_supplier_credit', (double)$credit);
+
+                    if ($credit > 0) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Available Supplier Credit')
+                            ->body('Supplier has ' . number_format($credit, 2) . ' ' . $get('currency') . ' credit available. Do you want to apply it?')
+                            ->warning()
+                            ->persistent()
+                            ->actions([
+                                \Filament\Notifications\Actions\Action::make('apply_total')
+                                    ->button()
+                                    ->label('Apply Total')
+                                    ->color('success')
+                                    ->dispatch('applySupplierCreditTotal'),
+                                \Filament\Notifications\Actions\Action::make('enter_manually')
+                                    ->button()
+                                    ->label('Enter Manually')
+                                    ->color('warning')
+                                    ->dispatch('showManualCredit'),
+                                \Filament\Notifications\Actions\Action::make('dismiss')
+                                    ->color('gray')
+                                    ->label('Dismiss')
+                                    ->close(),
+                            ])
+                            ->send();
+                    }
+
+                    if ($get('extra.credit_to_use')) {
+                        $requested = (double)$get('requested_amount');
+                        $creditToUse = (double)$get('extra.credit_to_use');
+                        $set('adjustment_amount', (double)($requested - $creditToUse));
+                    }
+                } else {
+                    $set('extra.available_supplier_credit', 0);
+                }
+            })
+            ->hintAction(
+                \Filament\Forms\Components\Actions\Action::make('view_credit_log')
+                    ->label('Log')
+                    ->icon('heroicon-m-document-text')
+                    ->color('info')
+                    ->modalHeading('Supplier Credit Transactions')
+                    ->modalContent(function (Get $get) {
+                        $transactions = \App\Models\SupplierSummary::where('supplier_id', $get('supplier_id'))
+                            ->where('currency', $get('currency'))
+                            ->where('diff', '>', 0)
+                            ->get();
+                        return view('filament.resources.payment-request-resource.credit-log', ['transactions' => $transactions, 'currency' => $get('currency')]);
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close')
+                    ->visible(fn(Get $get) => $get('supplier_id') && $get('currency') && (double)$get('extra.available_supplier_credit') > 0)
+            )
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->createOptionForm([
                 TextInput::make('name')

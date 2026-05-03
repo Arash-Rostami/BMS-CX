@@ -359,6 +359,7 @@ class PaymentRequestResource extends Resource
                                         ->schema([
                                             Admin::getPayableAmount(),
                                             Admin::getAdjustmentAmount(),
+                                            Admin::getCreditToUse(),
                                             Admin::getTotalAmount(),
                                             Admin::getDeadline(),
                                             Admin::getCaseNumber(),
