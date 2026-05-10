@@ -10,6 +10,7 @@ use App\Models\Name;
 use App\Models\Order;
 use App\Models\PaymentRequest;
 use App\Models\ProformaInvoice;
+use App\Models\SupplierSummary;
 use App\Models\User;
 use App\Policies\PaymentRequestPolicy;
 use App\Rules\EnglishAlphabet;
@@ -17,6 +18,7 @@ use App\Rules\UniqueTitleInPaymentRequest;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Radio;
@@ -25,19 +27,17 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Livewire\Component as Livewire;
-use Wallo\FilamentSelectify\Components\ButtonGroup;
+
 
 trait Form
 {
-    /**
-     * @return TextInput
-     */
     public static function getAccountNumber(): TextInput
     {
         return TextInput::make('account_number')
@@ -49,9 +49,78 @@ trait Form
             ->visible(fn($get) => $get('extra.paymentMethod') === 'bank_account');
     }
 
-    /**
-     * @return Select
-     */
+    public static function getAdditionalBankDetailsToggle(): Toggle
+    {
+        return Toggle::make('extra.show_more_bank_details')
+            ->label('Supplementary Banking Details')
+            ->helperText('Enable to specify additional routing identifiers (e.g., IBAN, IFSC, MICR) typically required for cross-border transactions.')
+            ->live()
+            ->afterStateUpdated(fn(Set $set, $state) => !$state
+                ? collect(['IBAN', 'IFSC', 'MICR'])->each(fn($f) => $set($f, null))
+                : null
+            );
+    }
+
+    public static function getAdjustmentAmount(): Group
+    {
+        return Group::make([
+            Toggle::make('extra.show_manual_credit')
+                ->label('Enable Credit Adjustment')
+                ->helperText('Enter allocated credit to automatically calculate the adjustment, or manually specify the net adjustment amount.')
+                ->afterStateHydrated(fn (Toggle $component, ?Model $record) => $component->state(
+                    data_get($record, 'extra.show_manual_credit') || data_get($record, 'extra.credit_to_use') > 0
+                ))
+                ->live()
+                ->afterStateUpdated(function (Set $set, $state) {
+                    if (!$state) {
+                        $set('extra.credit_to_use', null);
+                        $set('adjustment_amount', null);
+                    }
+                }),
+
+            TextInput::make('extra.credit_to_use')
+                ->label(fn() => new HtmlString('<span class="grayscale">💳 </span><span class="text-primary-500 font-normal">Allocated Credit</span>'))
+                ->numeric()
+                ->live(debounce: 1000)
+                ->placeholder('Enter credit amount')
+                ->hidden(fn(Get $get) => !$get('extra.show_manual_credit'))
+                ->hint(fn(Get $get) => is_numeric($get('extra.credit_to_use')) ? showDelimiter($get('extra.credit_to_use'), $get('currency')) : $get('extra.credit_to_use'))
+                ->tooltip('This reduces the payable amount and recalculates the adjustment (Automatic).')
+                ->afterStateUpdated(function ($state, Get $get, Set $set) {
+                    $requested = (double)$get('requested_amount');
+                    $creditToUse = (double)$state;
+                    $set('adjustment_amount', (double)($requested - $creditToUse));
+                })
+                ->rules([
+                    function (Get $get) {
+                        return function (string $attribute, $value, $fail) use ($get) {
+                            $creditToUse = (double)$value;
+                            $availableCredit = (double)$get('extra.available_supplier_credit');
+                            $requestedAmount = (double)$get('requested_amount');
+
+                            if ($creditToUse > $availableCredit && $availableCredit > 0) {
+                                $fail('🚫 The credit to use cannot exceed the available supplier credit.');
+                            }
+                            if ($creditToUse > $requestedAmount) {
+                                $fail('🚫 The credit to use cannot exceed the payable amount.');
+                            }
+                        };
+                    },
+                ])
+                ->disabled(fn($operation) => self::isEditingDisabled($operation)),
+
+            TextInput::make('adjustment_amount')
+                ->label(fn() => new HtmlString('<span class="grayscale">🎚️ </span><span class="text-primary-500 font-normal">Adjustment Amount</span>'))
+                ->numeric()
+                ->live(debounce: 1000)
+                ->placeholder('Enter final adjusted payable (Credit/Debit)')
+                ->tooltip('This replaces the payable amount when applying credits or adjustments (Manual)')
+                ->disabled(fn($operation) => self::isEditingDisabled($operation))
+                ->visible(fn(Get $get) => $get('extra.show_manual_credit'))
+                ->hint(fn(Get $get) => is_numeric($get('adjustment_amount')) ? showDelimiter($get('adjustment_amount'), $get('currency')) : $get('adjustment_amount')),
+        ]);
+    }
+
     public static function getAllProformaInvoicesOrOrders(): Select
     {
         return Select::make('source_proforma_invoice')
@@ -79,16 +148,12 @@ trait Form
             ->searchable();
     }
 
-    /**
-     * @return Section
-     */
     public static function getAttachmentFile(): Section
     {
         return Section::make()
             ->schema([
                 FileUpload::make('file_path')
                     ->label('')
-                    ->image()
                     ->hint(fn(?Model $record) => $record ? $record->getCreatedAtBy() : 'To add an attachment, save the record.')
                     ->getUploadedFileNameForStorageUsing(self::nameUploadedFile())
                     ->previewable(true)
@@ -107,9 +172,6 @@ trait Form
             ]);
     }
 
-    /**
-     * @return Select
-     */
     public static function getAttachmentFileName(): Select
     {
         return Select::make('name')
@@ -145,9 +207,6 @@ trait Form
             ->columnSpanFull();
     }
 
-    /**
-     * @return Toggle
-     */
     public static function getAttachmentToggle(): Toggle
     {
         return Toggle::make('use_existing_attachments')
@@ -161,9 +220,6 @@ trait Form
             ->live();
     }
 
-    /**
-     * @return MarkdownEditor
-     */
     public static function getBankAddress(): MarkdownEditor
     {
         return MarkdownEditor::make('bank_address')
@@ -174,9 +230,6 @@ trait Form
             ->placeholder('optional');
     }
 
-    /**
-     * @return TextInput
-     */
     public static function getBankName(): TextInput
     {
         return TextInput::make('bank_name')
@@ -188,24 +241,21 @@ trait Form
             ->reactive();
     }
 
-    /**
-     * @return ButtonGroup
-     */
-    public static function getBeneficiary(): ButtonGroup
+    public static function getBeneficiary(): ToggleButtons
     {
-        return ButtonGroup::make('beneficiary_name')
+        return ToggleButtons::make('beneficiary_name')
             ->label(fn() => new HtmlString('<span class="grayscale">✒️  </span><span class="text-primary-500 font-normal">Beneficiary</span>'))
             ->options(fn(Get $get) => $get('type_of_payment') == 'advance' ? ['supplier' => 'Supplier'] : ['supplier' => 'Supplier', 'contractor' => 'Contractor'])
+            ->inline()
+            ->grouped()
             ->live()
             ->columnSpan(1)
-            ->disabled(fn($operation) => self::isEditingDisabled($operation))
+            ->disabled(fn(string $operation) => self::isEditingDisabled($operation))
             ->default('supplier')
+            ->extraAttributes(['style' => 'margin: auto!important'])
             ->required(fn(Get $get) => $get('department_id') == 6);
     }
 
-    /**
-     * @return MarkdownEditor
-     */
     public static function getBeneficiaryAddress(): MarkdownEditor
     {
         return MarkdownEditor::make('beneficiary_address')
@@ -216,9 +266,6 @@ trait Form
             ->placeholder('optional');
     }
 
-    /**
-     * @return Select
-     */
     public static function getCPSReasons(): Select
     {
         return Select::make('reason_for_payment')
@@ -232,9 +279,9 @@ trait Form
             })
             ->required()
             ->reactive()
-            ->disabled(fn(Get $get) => $get('department_id') == 6)
             ->hidden(fn(Get $get) => $get('department_id') == 6)
             ->required()
+            ->disabled(fn(Get $get) => $get('department_id') == 6)
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">🎯</span><span class="text-primary-500 font-normal">Reason for Allocation</span>'));
     }
@@ -267,9 +314,6 @@ trait Form
             ->visible(fn($get) => $get('extra.paymentMethod') === 'card_transfer');
     }
 
-    /**
-     * @return TextInput
-     */
     public static function getCaseNumber(): TextInput
     {
         return TextInput::make('case_number')
@@ -280,22 +324,6 @@ trait Form
             ->columnSpan(1);
     }
 
-
-    public static function getAdjustmentAmount(): TextInput
-    {
-        return TextInput::make('adjustment_amount')
-            ->label(fn() => new HtmlString('<span class="grayscale">🎚️ </span><span class="text-primary-500 font-normal">Adjustment Amount</span>'))
-            ->numeric()
-            ->live(debounce: 1000)
-            ->placeholder('Final amount (adjust for credits/debits)')
-            ->tooltip('If set, this amount overrides the Payable Amount for payment purposes (e.g. for credit/debit adjustments).')
-            ->disabled(fn($operation) => self::isEditingDisabled($operation))
-            ->hint(fn(Get $get) => is_numeric($get('adjustment_amount')) ? showDelimiter($get('adjustment_amount'), $get('currency')) : $get('adjustment_amount'));
-    }
-
-    /**
-     * @return RichEditor
-     */
     public static function getChatContent(): RichEditor
     {
         return RichEditor::make('message')
@@ -316,9 +344,6 @@ trait Form
             ->required();
     }
 
-    /**
-     * @return Select
-     */
     public static function getChatMentionedUsers(): Select
     {
         return Select::make('mentions')
@@ -331,27 +356,18 @@ trait Form
             ->placeholder(fn(?Model $record) => ($record && $record->mentions) ? '' : 'Choose users to mention in the message');
     }
 
-    /**
-     * @return Hidden
-     */
     public static function getChatModule(): Hidden
     {
         return Hidden::make('record_type')
             ->default('payment_request');
     }
 
-    /**
-     * @return Hidden
-     */
     public static function getChatRecord(): Hidden
     {
         return Hidden::make('record_id')
             ->default(fn(Livewire $livewire) => data_get($livewire, 'data.id'));
     }
 
-    /**
-     * @return Select
-     */
     public static function getContractor(): Select
     {
         return Select::make('contractor_id')
@@ -360,7 +376,6 @@ trait Form
             ->visible(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'contractor')
             ->required(fn(Get $get): bool => $get('department_id') == 6 && $get('beneficiary_name') == 'contractor')
             ->label(fn() => new HtmlString('<span class="grayscale">🤝 </span><span class="text-primary-500 font-normal">Contractor</span>'))
-            ->relationship('contractor', 'name')
             ->searchable()
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->createOptionForm([
@@ -381,9 +396,6 @@ trait Form
             });
     }
 
-    /**
-     * @return Select
-     */
     public static function getCostCenter(): Select
     {
         return Select::make('cost_center')
@@ -391,33 +403,34 @@ trait Form
             ->required()
             ->reactive()
             ->default('all')
-            ->disabled(fn(Get $get) => $get('department_id') == 6)
             ->default(auth()->user()->info['department'] ?? '')
             ->hidden(fn(Get $get) => $get('department_id') == 6)
+            ->disabled(fn(Get $get) => $get('department_id') == 6)
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">↗️  </span><span class="text-primary-500 font-normal">Cost Center</span>'));
     }
 
-    /**
-     * @return Select
-     */
     public static function getCurrency(): Select
     {
         return Select::make('currency')
             ->reactive()
             ->options(function (callable $get) {
                 $departmentId = $get('department_id');
-                return in_array($departmentId, [2, 5, 6, 8, 10, 21, 22, 23]) ? showCurrencies() : ['Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')];
+
+                return in_array($departmentId, [2, 5, 6, 8, 10, 21, 22, 23])
+                    ? showCurrencies()
+                    : ['Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')];
             })
-            ->afterStateUpdated(fn($state, Set $set) => ($state != 'Rial') ? $set('extra.paymentMethod', 'bank_account') : $set('extra.paymentMethod', ''))
+            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                $set('extra.paymentMethod', $state !== 'Rial' ? 'bank_account' : '');
+
+                self::updateSupplierCreditState($set, $get, $get('supplier_id'), $state);
+            })
             ->required()
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">💱  </span><span class="text-primary-500 font-normal">Currency</span>'));
     }
 
-    /**
-     * @return DatePicker
-     */
     public static function getDeadline(): DatePicker
     {
         return DatePicker::make('deadline')
@@ -431,12 +444,10 @@ trait Form
             ->closeOnDateSelection()
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->minDate(fn($operation, Get $get) => $operation == 'create' ? now()->subDays(1) : null)
+            ->format('Y-m-d 12:00:00')
             ->native(false);
     }
 
-    /**
-     * @return Select
-     */
     public static function getDepartment(): Select
     {
         return Select::make('department_id')
@@ -452,9 +463,6 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">🏟️ </span><span class="text-primary-500 font-normal">Department</span>'));
     }
 
-    /**
-     * @return MarkdownEditor
-     */
     public static function getDescription(): MarkdownEditor
     {
         return MarkdownEditor::make('description')
@@ -463,47 +471,36 @@ trait Form
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->disableAllToolbarButtons()
             ->placeholder('optional')
-            ->columnSpanFull();
+            ->columnSpan(2);
     }
 
-    /**
-     * @return TextInput
-     */
     public static function getIBANCode(): TextInput
     {
         return TextInput::make('IBAN')
             ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">IBAN</span>'))
             ->placeholder('optional')
-            ->visible(fn(Get $get) => $get('currency') != 'Rial')
+            ->visible(fn(Get $get) => $get('currency') != 'Rial' && ($get('extra.show_more_bank_details') || filled($get('IBAN'))))
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->maxLength(255);
     }
 
-    /**
-     * @return TextInput
-     */
     public static function getIFSCCode(): TextInput
     {
         return TextInput::make('IFSC')
             ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">IFSC</span>'))
-            ->placeholder('')
             ->placeholder('optional')
-            ->visible(fn(Get $get) => $get('currency') != 'Rial')
+            ->visible(fn(Get $get) => $get('currency') != 'Rial' && ($get('extra.show_more_bank_details') || filled($get('IFSC'))))
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->maxLength(255);
     }
 
-    /**
-     * @return TextInput
-     */
     public static function getMICRCode(): TextInput
     {
         return TextInput::make('MICR')
             ->label(fn() => new HtmlString('<span class="grayscale"># </span><span class="text-primary-500 font-normal">MICR</span>'))
             ->placeholder('optional')
             ->numeric()
-            ->visible(fn(Get $get) => $get('currency') != 'Rial')
-            ->placeholder('optional')
+            ->visible(fn(Get $get) => $get('currency') != 'Rial' && ($get('extra.show_more_bank_details') || filled($get('MICR'))))
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->maxLength(255);
     }
@@ -526,7 +523,7 @@ trait Form
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->live()
             ->label(fn() => new HtmlString('<span class="grayscale">🔢 </span><span class="text-primary-500 font-normal">Order</span>'))
-            ->columnSpan(2)
+            ->columnSpan(1)
             ->validationMessages([
                 'required_if' => 'This field is required when the payment scope is based on the part.'
             ]);
@@ -542,6 +539,7 @@ trait Form
                 'PN' => 'Project No. (Part)',
                 'PR/GR' => 'Product (Grade)'
             ])
+            ->columnSpan(1)
             ->requiredIf('extra.collectivePayment', 0)
             ->visible(fn(Get $get) => $get('extra.collectivePayment') == 0 && $get('type_of_payment') != 'advance')
             ->disabled(fn($operation) => $operation == 'edit')
@@ -553,9 +551,6 @@ trait Form
             ]);
     }
 
-    /**
-     * @return TextInput
-     */
     public static function getPayableAmount(): TextInput
     {
         return TextInput::make('requested_amount')
@@ -565,6 +560,7 @@ trait Form
             ->required()
             ->placeholder('The amount to pay')
             ->afterStateUpdated(function ($state, Get $get, Set $set) {
+
                 $currency = $get('currency');
                 $paymentMethod = $get('extra.paymentMethod');
 
@@ -586,6 +582,12 @@ trait Form
                         ->body('For amount more than 500M Rial, Sheba is recommended for better assurance. Please choose another payment method.')
                         ->persistent()
                         ->send();
+                }
+
+                if ($get('extra.credit_to_use')) {
+                    $requested = (double)$state;
+                    $creditToUse = (double)$get('extra.credit_to_use');
+                    $set('adjustment_amount', (double)($requested - $creditToUse));
                 }
             })
             ->rules([
@@ -611,9 +613,6 @@ trait Form
             ->hint(fn(Get $get) => is_numeric($get('requested_amount')) ? showDelimiter($get('requested_amount'), $get('currency')) : $get('requested_amount'));
     }
 
-    /**
-     * @return Select
-     */
     public static function getPayee(): Select
     {
         return Select::make('payee_id')
@@ -667,9 +666,6 @@ trait Form
             ->afterStateUpdated(fn($state, Set $set, Get $get) => self::fetchBankAccountDetails($get, $state, $set));
     }
 
-    /**
-     * @return Select
-     */
     public static function getProformaInvoiceNumber(): Select
     {
         return Select::make('proforma_invoice_number')
@@ -677,18 +673,13 @@ trait Form
             ->required(fn(Get $get) => $get('department_id') == 6)
             ->live()
             ->disabled(fn($operation, Get $get) => $operation == 'edit' || $get('type_of_payment') == 'advance')
-            ->afterStateUpdated(function (Get $get, Set $set, ?string $old, ?string $state) {
-                $set('part', []);
-            })
+            ->afterStateUpdated(function (Get $get, Set $set, ?string $old, ?string $state) { $set('part', []); })
             ->visible(fn(Get $get) => $get('type_of_payment') != 'advance')
-            ->columnSpan(2)
+            ->columnSpan(1)
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->label(fn() => new HtmlString('<span class="grayscale">🛒 </span><span class="text-primary-500 font-normal">Pro forma Invoice</span>'));
     }
 
-    /**
-     * @return Select
-     */
     public static function getProformaInvoiceNumbers(): Select
     {
         return Select::make('proforma_invoice_numbers')
@@ -707,25 +698,14 @@ trait Form
             ->live()
             ->getOptionLabelFromRecordUsing(fn(Model $record) => $record->showSearchResult())
             ->searchingMessage('⌕')
-//            ->getSearchResultsUsing(function (string $search): array {
-//                if (!ProformaInvoice::hasMatchingProformaNumber($search)) {
-//                    return ['No results found'];
-//                }
-//                return ProformaInvoice::getProformaInvoicesWithSearch($search)
-//                    ->mapWithKeys(fn($invoice) => self::showSearchResults($invoice))
-//                    ->toArray() ?: ['No results found'];
-//            })
             ->searchable(['reference_number', 'proforma_number'])
             ->disabled(fn($operation) => $operation == 'edit')
             ->visible(fn(Get $get) => $get('type_of_payment') == 'advance')
             ->multiple()
-            ->columnSpan(2)
+            ->columnSpan(1)
             ->label(fn() => new HtmlString('<span class="grayscale">🛒 </span><span class="text-primary-500 font-normal">Pro forma Invoice</span>'));
     }
 
-    /**
-     * @return Select
-     */
     public static function getProformaInvoicesAttachments(): Select
     {
         return Select::make('available_attachments')
@@ -748,9 +728,6 @@ trait Form
             });
     }
 
-    /**
-     * @return MarkdownEditor
-     */
     public static function getPurpose(): MarkdownEditor
     {
         return MarkdownEditor::make('purpose')
@@ -759,14 +736,11 @@ trait Form
             ->requiredIf('reason_for_payment', '26')
             ->disableAllToolbarButtons()
             ->hidden(fn(Get $get): bool => $get('reason_for_payment') != 26)
-            ->columnSpanFull()
+            ->columnSpan(2)
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->placeholder('Please specify the purpose of payment request');
     }
 
-    /**
-     * @return TextInput
-     */
     public static function getRecipientName(): TextInput
     {
         return TextInput::make('recipient_name')
@@ -793,9 +767,6 @@ trait Form
             ->visible(fn($get) => $get('extra.paymentMethod') === 'sheba');
     }
 
-    /**
-     * @return Select
-     */
     public static function getSourceSelection(): Select
     {
         return Select::make('source_type')
@@ -810,9 +781,6 @@ trait Form
             ->columnSpan(1);
     }
 
-    /**
-     * @return Radio
-     */
     public static function getStatus(): Radio
     {
         return Radio::make('status')
@@ -835,9 +803,6 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale">🛑 </span><span class="text-primary-500 font-normal">Status</span>'));
     }
 
-    /**
-     * @return Select
-     */
     public static function getSupplier(): Select
     {
         return Select::make('supplier_id')
@@ -847,6 +812,28 @@ trait Form
             ->label(fn() => new HtmlString('<span class="grayscale"> 🤝</span><span class="text-primary-500 font-normal">Supplier</span>'))
             ->relationship('supplier', 'name')
             ->searchable()
+            ->live()
+            ->afterStateUpdated(function ($state, Get $get, Set $set) { self::updateSupplierCreditState($set, $get, $state, $get('currency')); })
+            ->hintAction(
+                Action::make('view_credit_log')
+                    ->label('Log')
+                    ->icon('heroicon-m-document-text')
+                    ->color('warning')
+                    ->modalHeading('Supplier Credit Balance')
+                    ->modalContent(function (Get $get) {
+                        $transactions = SupplierSummary::where('supplier_id', $get('supplier_id'))
+                            ->where('currency', $get('currency'))
+                            ->where('diff', '>', 0)
+                            ->get();
+
+                        return view('filament.resources.payment-request-resource.credit-log', [
+                            'transactions' => $transactions, 'currency' => $get('currency')
+                        ]);
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close')
+                    ->visible(fn(Get $get) => $get('supplier_id') && $get('currency') && (double)$get('extra.available_supplier_credit') > 0)
+            )
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->createOptionForm([
                 TextInput::make('name')
@@ -865,9 +852,6 @@ trait Form
             });
     }
 
-    /**
-     * @return TextInput
-     */
     public static function getSwiftCode(): TextInput
     {
         return TextInput::make('swift_code')
@@ -878,9 +862,6 @@ trait Form
             ->maxLength(255);
     }
 
-    /**
-     * @return TextInput
-     */
     public static function getTotalAmount(): TextInput
     {
         return TextInput::make('total_amount')
@@ -899,41 +880,34 @@ trait Form
             ->hint(fn(Get $get) => is_numeric($get('total_amount')) ? showDelimiter($get('total_amount'), $get('currency')) : $get('total_amount'));
     }
 
-    /**
-     * @return ButtonGroup
-     */
-    public static function getTotalOrPart(): ButtonGroup
+    public static function getTotalOrPart(): ToggleButtons
     {
-        return ButtonGroup::make('extra.collectivePayment')
+        return ToggleButtons::make('extra.collectivePayment')
             ->label(fn() => new HtmlString('<span class="grayscale">🔍 </span><span class="text-primary-500 font-normal">Scope</span>'))
-            ->options([1 => 'Total', 0 => 'Part'])
-            ->disabled(fn($operation, Get $get) => $operation == 'edit' or $get('type_of_payment') == 'advance' or $get('type_of_payment') == '')
+            ->options([1 => 'Contract-wide', 0 => 'Order-level'])
+            ->grouped()
             ->default(1)
             ->beforeStateDehydrated(fn() => 1)
-            ->afterStateUpdated(fn($state, Set $set) => ($state != 1) ? $set('type_of_payment', 'balance') : $set('type_of_payment', 'advance'))
+            ->afterStateUpdated(fn($state, Set $set) => $set('type_of_payment', $state != 1 ? 'balance' : 'advance'))
             ->hidden(fn(Get $get) => $get('department_id') != 6)
             ->live()
-            ->disabled(fn($operation) => self::isEditingDisabled($operation))
+            ->disabled(fn(string $operation, Get $get) => $operation === 'edit' || in_array($get('type_of_payment'), ['advance', '']) || self::isEditingDisabled($operation))
             ->columnSpan(1)
-            ->required(fn($get) => $get('type_of_payment') != 'advance');
+            ->extraAttributes(['style' => 'margin: auto!important'])
+            ->required(fn(Get $get) => $get('type_of_payment') !== 'advance');
     }
 
-    /**
-     * @return Select
-     */
     public static function getType(): Select
     {
         return Select::make('reason_for_payment')
             ->options(Allocation::reasonsForDepartment('cx'))
             ->live()
+            ->columnSpan(1)
             ->disabled(fn($operation) => self::isEditingDisabled($operation))
             ->required(fn(Get $get) => $get('department_id') == 6)
             ->label(fn() => new HtmlString('<span class="grayscale">⭕  </span><span class="text-primary-500 font-normal">Allocation for</span>'));
     }
 
-    /**
-     * @return Select
-     */
     public static function getTypeOfPayment(): Select
     {
         return Select::make('type_of_payment')

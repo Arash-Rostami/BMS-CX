@@ -10,14 +10,18 @@ class AccountStatement extends Model
     public $incrementing = false;
     public $timestamps = false;
     protected $table = 'account_statements';
-    protected $guarded = ['*'];
+    protected $primaryKey = 'statement_id';
+    protected $keyType = 'string';
+    protected $guarded = [];
 
     protected $casts = [
         'transaction_date' => 'date',
-        'debit' => 'decimal:3',
-        'credit' => 'decimal:3',
-        'accrued_interest' => 'decimal:3',
-        'running_balance' => 'decimal:3',
+        'debit' => 'decimal:6',
+        'credit' => 'decimal:6',
+        'applied_credit' => 'decimal:6',
+        'accrued_interest' => 'decimal:6',
+        'net_movement' => 'decimal:6',
+        'running_balance' => 'decimal:6',
     ];
 
     public function account(): BelongsTo
@@ -27,6 +31,6 @@ class AccountStatement extends Model
 
     public function ledgerEntry(): BelongsTo
     {
-        return $this->belongsTo(LedgerEntry::class, 'original_id');
+        return $this->belongsTo(LedgerEntry::class, 'ledger_entry_id');
     }
 }

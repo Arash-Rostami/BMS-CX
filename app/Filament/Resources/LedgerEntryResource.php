@@ -4,21 +4,24 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\Financial\LedgerEntryResource\Pages\Admin;
 use App\Filament\Resources\Financial\LedgerEntryResource\Pages\CreateLedgerEntry;
-use App\Filament\Resources\Financial\LedgerEntryResource\Pages\EditLedgerEntry;
 use App\Filament\Resources\Financial\LedgerEntryResource\Pages\ListLedgerEntries;
 use App\Filament\Resources\Financial\LedgerEntryResource\Pages\ViewLedgerEntry;
 use App\Filament\Resources\Financial\LedgerEntryResource\RelationManagers\SettlementsRelationManager;
 use App\Models\LedgerEntry;
+use App\Services\InterestCalculationService;
 use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Section as InfoSection;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\Layout\Split;
@@ -26,6 +29,7 @@ use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
@@ -52,12 +56,31 @@ class LedgerEntryResource extends Resource
             ->actions([
                 ActionGroup::make([
                     ViewAction::make(),
-                    EditAction::make(),
+                    EditAction::make()
+                        ->visible(fn($record) => !$record->is_settled && $record->description !== InterestCalculationService::OVERPAYMENT_DESCRIPTION)
+                        ->requiresConfirmation()
+                        ->modalHeading('Edit Loan Ledger')
+                        ->modalDescription('This will trigger a synchronous chronological recalculation of all subsequent ledger entries and settlements for the account attached.')
+                        ->modalSubmitActionLabel('Yes, edit and recalculate')
+                        ->modalWidth(MaxWidth::FourExtraLarge)
+                        ->using(fn(Model $record, array $data) => Admin::updateAndRecalculate($record, $data)),
+                    DeleteAction::make()
+                        ->visible(fn($record) => !$record->is_settled && $record->description !== InterestCalculationService::OVERPAYMENT_DESCRIPTION)
+                        ->requiresConfirmation()
+                        ->modalHeading('Delete Loan Ledger')
+                        ->modalDescription('This will delete the ledger and all attached settlements, then recalculate the account timeline.')
+                        ->modalSubmitActionLabel('Yes, delete and recalculate')
+                        ->action(function (Model $record): void {
+                            if ($record->settlements()->exists()) {
+                                Notification::make()->danger()->title('Cannot delete')->body('This ledger has settlement history. Delete its settlements first.')->send();
+                                return;
+                            }
+                            Admin::deleteAndRecalculate($record);
+                        }),
                 ]),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
                     ExportBulkAction::make()->exports([ExcelExport::make()->fromTable()])
                 ])
             ])
@@ -72,6 +95,7 @@ class LedgerEntryResource extends Resource
             ->defaultSort('transaction_date', 'desc')
             ->paginated([15, 30, 50]);
     }
+
 
     public static function form(Form $form): Form
     {
@@ -101,6 +125,25 @@ class LedgerEntryResource extends Resource
                         ])
                         ->columns(3)
                         ->description('⚡Readonly fields are auto-calculated.'),
+                    // ==========  ATTACHMENTS  ==========
+                    Section::make('Attachments')
+                        ->schema([
+                            Repeater::make('attachments')
+                                ->relationship('attachments')
+                                ->hiddenLabel()
+                                ->schema([
+                                    Hidden::make('id'),
+                                    Admin::getFileUpload(),
+                                    Admin::getAttachmentTitle(),
+                                ])
+                                ->defaultItems(0)
+                                ->columns(2)
+                                ->addActionLabel('➕')
+                                ->columnSpanFull()
+                                ->collapsible()
+                                ->deletable()
+                                ->collapsed(),
+                        ])->columns(1),
                 ])->columnSpan(3),
             ])
             ->columns(3);
@@ -116,6 +159,7 @@ class LedgerEntryResource extends Resource
                 Admin::showPrincipalAmountBase(),
                 Admin::showRemainingPrincipal(),
                 Admin::showUnpaidInterest(),
+                Admin::showAppliedCreditAmount(),
                 Admin::showIsSettled(),
                 Admin::showCreator(),
             ])
@@ -126,6 +170,7 @@ class LedgerEntryResource extends Resource
     {
         $query = parent::getEloquentQuery()
             ->with([
+                'attachments',
                 'account',
                 'settlements',
                 'user',
@@ -156,6 +201,7 @@ class LedgerEntryResource extends Resource
                         Admin::showPrincipalAmountBase(),
                         Admin::showRemainingPrincipal(),
                         Admin::showUnpaidInterest(),
+                        Admin::showAppliedCreditAmount(),
                     ])->columnSpanFull(true),
                     Admin::showCreator(),
 
@@ -174,7 +220,6 @@ class LedgerEntryResource extends Resource
             'index' => ListLedgerEntries::route('/'),
             'create' => CreateLedgerEntry::route('/create'),
             'view' => ViewLedgerEntry::route('/{record}'),
-            'edit' => EditLedgerEntry::route('/{record}/edit'),
         ];
     }
 
@@ -206,6 +251,7 @@ class LedgerEntryResource extends Resource
                     Admin::viewTotalDisbursedBase(),
                     Admin::viewRemainingPrincipal(),
                     Admin::viewUnpaidInterest(),
+                    Admin::viewAppliedCreditAmount(),
                     Admin::viewCreator(),
                 ])
                 ->columns(3)

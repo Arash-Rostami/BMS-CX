@@ -50,6 +50,24 @@ class EditPaymentRequest extends EditRecord
         AttachmentCreationService::createFromExisting($this->record->getOriginal('id'), 'payment_request_id');
     }
 
+    protected function getListeners(): array
+    {
+        return [
+            'applySupplierCreditTotal' => 'handleApplySupplierCreditTotal',
+            'showManualCredit' => 'handleShowManualCredit',
+        ];
+    }
+
+    public function handleApplySupplierCreditTotal(): void
+    {
+        Admin::handleApplySupplierCreditTotal($this);
+    }
+
+    public function handleShowManualCredit(): void
+    {
+        Admin::handleShowManualCredit($this);
+    }
+
     protected function getHeaderActions(): array
     {
         return [

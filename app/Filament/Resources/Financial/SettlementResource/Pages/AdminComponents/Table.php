@@ -7,16 +7,25 @@ use Filament\Tables\Columns\TextColumn;
 
 trait Table
 {
-
     public static function showAccount(): TextColumn
     {
         return TextColumn::make('ledgerEntry.account.name')
-            ->label('Account')
+            ->label('Account (Ledger Account)')
             ->sortable()
             ->grow(false)
             ->searchable()
             ->badge()
             ->color('primary');
+    }
+
+    public static function showCounterInterestApplied(): TextColumn
+    {
+        return TextColumn::make('counter_interest_applied')
+            ->label('Counter Interest')
+            ->numeric(decimalPlaces: 2)
+            ->default(0)
+            ->color('success')
+            ->sortable();
     }
 
     public static function showCurrencyType(): TextColumn
@@ -33,7 +42,7 @@ trait Table
     public static function showDeductedFromInterest(): TextColumn
     {
         return TextColumn::make('deducted_from_interest')
-            ->label('Interest Deducted')
+            ->label('Interest Taken (Deducted)')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->grow(false)
@@ -44,7 +53,7 @@ trait Table
     public static function showDeductedFromPrincipal(): TextColumn
     {
         return TextColumn::make('deducted_from_principal')
-            ->label('Principal Deducted')
+            ->label('Principal Taken (Deducted)')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->grow(false)
@@ -55,7 +64,7 @@ trait Table
     public static function showSettlementAmount(): TextColumn
     {
         return TextColumn::make('settlement_amount')
-            ->label('Settlement (Base)')
+            ->label('Base (Settlement Amount)')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->grow(false)
@@ -66,6 +75,7 @@ trait Table
     public static function showTransactionDate(): TextColumn
     {
         return TextColumn::make('transaction_date')
+            ->label('Date (Transaction Date)')
             ->date()
             ->grow(false)
             ->sortable()
@@ -77,9 +87,19 @@ trait Table
     public static function viewAccount(): TextEntry
     {
         return TextEntry::make('ledgerEntry.account.name')
-            ->label('Account')
+            ->label('Account (Ledger Account)')
             ->badge()
             ->color('primary');
+    }
+
+    public static function viewCounterInterestApplied(): TextEntry
+    {
+        return TextEntry::make('counter_interest_applied')
+            ->label('Counter Interest')
+            ->numeric(decimalPlaces: 2)
+            ->default(0)
+            ->color('success')
+            ->helperText('Interest offset applied from surplus receipt credit — reduces borrower\'s interest burden.');
     }
 
     public static function viewCurrencyType(): TextEntry
@@ -93,6 +113,7 @@ trait Table
     public static function viewDeductedFromInterest(): TextEntry
     {
         return TextEntry::make('deducted_from_interest')
+            ->label('Interest Taken (Deducted)')
             ->numeric(decimalPlaces: 3)
             ->badge()
             ->color('warning');
@@ -101,6 +122,7 @@ trait Table
     public static function viewDeductedFromPrincipal(): TextEntry
     {
         return TextEntry::make('deducted_from_principal')
+            ->label('Principal Taken (Deducted)')
             ->numeric(decimalPlaces: 3)
             ->badge()
             ->color('success');
@@ -109,7 +131,7 @@ trait Table
     public static function viewExchangeRate(): TextEntry
     {
         return TextEntry::make('settlement_exchange_rate')
-            ->label('Exchange Rate')
+            ->label('Rate (Exchange Rate)')
             ->numeric(decimalPlaces: 6)
             ->badge()
             ->color('secondary');
@@ -118,7 +140,7 @@ trait Table
     public static function viewForeignAmount(): TextEntry
     {
         return TextEntry::make('foreign_settlement_amount')
-            ->label('Foreign Amount')
+            ->label('Money (Foreign Amount)')
             ->numeric(decimalPlaces: 3)
             ->badge()
             ->color('secondary');
@@ -127,7 +149,7 @@ trait Table
     public static function viewSettlementAmount(): TextEntry
     {
         return TextEntry::make('settlement_amount')
-            ->label('Settlement (Base)')
+            ->label('Base (Settlement Amount)')
             ->numeric(decimalPlaces: 3)
             ->badge()
             ->color('info');
@@ -136,6 +158,7 @@ trait Table
     public static function viewTransactionDate(): TextEntry
     {
         return TextEntry::make('transaction_date')
+            ->label('Date (Transaction Date)')
             ->date()
             ->badge()
             ->color('secondary');

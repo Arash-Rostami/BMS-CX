@@ -6,6 +6,7 @@ use App\Filament\Resources\SettlementResource;
 use App\Models\Account;
 use App\Models\Settlement;
 use App\Services\InterestCalculationService;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,22 +23,27 @@ class CreateSettlement extends CreateRecord
     {
         $account = Account::findOrFail($data['account_id']);
 
-        $calculator = new InterestCalculationService();
-        $calculator->processPayment(
+        $createdIds = (new InterestCalculationService())->processPayment(
             $account,
             $data['settlement_amount'],
             $data['transaction_date'],
             $data['foreign_settlement_amount'] ?? null,
             $data['settlement_exchange_rate'] ?? null,
-            $data['currency_type'] ?? "USD",
+            $data['currency_type'] ?? 'USD',
+            auth()->id(),
         );
 
+        if (empty($createdIds)) {
+            Notification::make()
+                ->warning()
+                ->title('No settlements created')
+                ->body('The payment was recorded as overpayment because all loans are already settled.')
+                ->send();
 
-        $latestSettlement = Settlement::whereHas('ledgerEntry', function ($query) use ($account) {
-            $query->where('account_id', $account->id);
-        })->latest('id')->first();
+            $this->redirect($this->getResource()::getUrl('index'));
+            return $account;
+        }
 
-
-        return $latestSettlement ?? new Settlement();
+        return Settlement::find($createdIds[0]);
     }
 }

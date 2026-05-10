@@ -3,6 +3,7 @@
 return [
     'base_currency' => 'USD',
     'exchange_rate_mode' => 'divide',
+    'commission_rate'   => 0.0005,
     'interest_tiers' => [
         [
             'min_days' => 1,

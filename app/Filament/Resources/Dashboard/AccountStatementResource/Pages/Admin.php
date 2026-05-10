@@ -12,13 +12,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
-
 class Admin
 {
     public static function filterAccount(): SelectFilter
     {
         return SelectFilter::make('account_id')
-            ->label('Account')
+            ->label('Account (Ledger Account)')
             ->relationship('account', 'name')
             ->searchable()
             ->preload();
@@ -27,7 +26,7 @@ class Admin
     public static function filterLedger(): SelectFilter
     {
         return SelectFilter::make('original_id')
-            ->label('Ledger record')
+            ->label('Ledger (Loan Ledger)')
             ->relationship('ledgerEntry', 'description')
             ->searchable()
             ->preload();
@@ -36,7 +35,7 @@ class Admin
     public static function filterTransactionDate(): FilamentFilter
     {
         return FilamentFilter::make('transaction_date')
-            ->label('Date')
+            ->label('Date (Transaction Date)')
             ->form([
                 Grid::make(2)->schema([
                     DatePicker::make('created_from')->native(false)->placeholder('From'),
@@ -64,42 +63,58 @@ class Admin
     public static function showAccruedInterest(): TextColumn
     {
         return TextColumn::make('accrued_interest')
+            ->label('Interest (Accrued)')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->badge()
             ->color('warning')
             ->summarize([
-                Sum::make()->numeric(decimalPlaces: 3)->label('Total'),
+                Sum::make()->numeric(decimalPlaces: 3)->label('Total Interest'),
             ]);
+    }
+
+    public static function showAppliedCredit(): TextColumn
+    {
+        return TextColumn::make('applied_credit')
+            ->label('Adjustment (Applied Credit)')
+            ->numeric(decimalPlaces: 2)
+            ->default(0)
+            ->color('warning')
+            ->placeholder('—')
+            ->toggleable()
+            ->tooltip('Credit used at disbursement — reduces the amount owed.');
     }
 
     public static function showCredit(): TextColumn
     {
         return TextColumn::make('credit')
+            ->label('In (Credit Received)')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->badge()
             ->color('success')
             ->summarize([
-                Sum::make()->numeric(decimalPlaces: 3)->label('Total Received'),
+                Sum::make()->numeric(decimalPlaces: 3)->label('Total In'),
             ]);
     }
 
     public static function showDebit(): TextColumn
     {
         return TextColumn::make('debit')
+            ->label('Out (Debit Sent)')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->badge()
             ->color('danger')
             ->summarize([
-                Sum::make()->numeric(decimalPlaces: 3)->label('Total Disbursed'),
+                Sum::make()->numeric(decimalPlaces: 3)->label('Total Out'),
             ]);
     }
 
     public static function showDescription(): TextColumn
     {
         return TextColumn::make('description')
+            ->label('Description')
             ->wrap()
             ->searchable(isIndividual: true);
     }
@@ -107,6 +122,7 @@ class Admin
     public static function showEventType(): TextColumn
     {
         return TextColumn::make('event_type')
+            ->label('Type')
             ->badge()
             ->color(fn(string $state): string => match ($state) {
                 'disbursement' => 'danger',
@@ -129,6 +145,7 @@ class Admin
     public static function showRunningBalance(): TextColumn
     {
         return TextColumn::make('running_balance')
+            ->label('Balance (Running Balance)')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->badge()
@@ -138,6 +155,7 @@ class Admin
     public static function showTransactionDate(): TextColumn
     {
         return TextColumn::make('transaction_date')
+            ->label('Date (Transaction Date)')
             ->date()
             ->sortable()
             ->badge()

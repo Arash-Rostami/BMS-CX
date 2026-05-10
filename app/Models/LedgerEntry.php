@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class LedgerEntry extends Model
 {
@@ -14,6 +15,7 @@ class LedgerEntry extends Model
         'amount_foreign_currency' => 'decimal:6',
         'exchange_rate' => 'decimal:6',
         'principal_amount_base' => 'decimal:6',
+        'applied_credit_amount' => 'decimal:6',
         'commission_amount' => 'decimal:6',
         'total_disbursed_base' => 'decimal:6',
         'rate_matrix_snapshot' => 'array',
@@ -27,6 +29,11 @@ class LedgerEntry extends Model
         return $this->belongsTo(Account::class);
     }
 
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
+    }
+
     public function settlements()
     {
         return $this->hasMany(Settlement::class);
@@ -35,5 +42,14 @@ class LedgerEntry extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($entry) {
+            if (empty($entry->rate_matrix_snapshot)) {
+                $entry->rate_matrix_snapshot = config('financial.interest_tiers', []);
+            }
+        });
     }
 }

@@ -7,6 +7,8 @@ use App\Filament\Resources\Financial\SettlementResource\Pages\CreateSettlement;
 use App\Filament\Resources\Financial\SettlementResource\Pages\ListSettlements;
 use App\Models\Settlement;
 use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Section as InfoSection;
@@ -16,7 +18,6 @@ use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\Layout\Split;
@@ -34,8 +35,8 @@ class SettlementResource extends Resource
     protected static ?string $model = Settlement::class;
     protected static ?string $navigationIcon = 'heroicon-o-arrow-uturn-left';
     protected static ?string $navigationLabel = 'Loan Settlement';
-    protected static ?string $modelLabel = 'Load Settlement';
-    protected static ?string $pluralModelLabel = 'Load Settlements';
+    protected static ?string $modelLabel = 'Loan Settlement';
+    protected static ?string $pluralModelLabel = 'Loan Settlements';
 
 
     public static function form(Form $form): Form
@@ -60,6 +61,25 @@ class SettlementResource extends Resource
                         ->columns(3)
                         ->description('Provide foreign amount and rate to auto-calculate base, or enter base directly for base-currency settlements.'),
                 ])->columnSpanFull(),
+                // ==========  ATTACHMENTS  ==========
+                Section::make('Attachments')
+                    ->schema([
+                        Repeater::make('attachments')
+                            ->relationship('attachments')
+                            ->hiddenLabel()
+                            ->schema([
+                                Hidden::make('id'),
+                                Admin::getFileUpload(),
+                                Admin::getAttachmentTitle(),
+                            ])
+                            ->defaultItems(0)
+                            ->columns(2)
+                            ->addActionLabel('➕')
+                            ->columnSpanFull()
+                            ->collapsible()
+                            ->deletable()
+                            ->collapsed(),
+                    ])->columns(1),
             ]);
     }
 
@@ -71,6 +91,7 @@ class SettlementResource extends Resource
             Admin::showSettlementAmount(),
             Admin::showDeductedFromInterest(),
             Admin::showDeductedFromPrincipal(),
+            Admin::showCounterInterestApplied(),
         ])->striped();
     }
 
@@ -78,6 +99,7 @@ class SettlementResource extends Resource
     {
         return parent::getEloquentQuery()
             ->with([
+                'attachments',
                 'ledgerEntry',
                 'ledgerEntry.account',
             ]);
@@ -99,6 +121,7 @@ class SettlementResource extends Resource
                         Admin::showSettlementAmount(),
                         Admin::showDeductedFromInterest(),
                         Admin::showDeductedFromPrincipal(),
+                        Admin::showCounterInterestApplied(),
                     ])->columnSpanFull(true),
 
                 ])
@@ -143,6 +166,7 @@ class SettlementResource extends Resource
                     Admin::viewSettlementAmount(),
                     Admin::viewDeductedFromInterest(),
                     Admin::viewDeductedFromPrincipal(),
+                    Admin::viewCounterInterestApplied(),
                 ])
                 ->columnSpanFull()
                 ->columns(3)
@@ -197,7 +221,6 @@ class SettlementResource extends Resource
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
                     ExportBulkAction::make()->exports([ExcelExport::make()->fromTable()])
                 ])
             ])

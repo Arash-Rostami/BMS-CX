@@ -177,7 +177,7 @@ class Admin
 
         $record['records'] = $records;
 
-        (new PaymentService())->notifyAccountants($record, 'delete');
+//        (new PaymentService())->notifyAccountants($record, 'delete');
     }
 
     public static function updateRequestedAmount($state, Set $set): void

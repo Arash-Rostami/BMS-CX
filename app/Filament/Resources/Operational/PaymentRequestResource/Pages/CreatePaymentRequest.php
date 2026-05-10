@@ -29,6 +29,11 @@ class CreatePaymentRequest extends CreateRecord
     public bool $isCreating = false;
     protected array $queryString = ['id', 'module', 'type'];
 
+    public function handleApplySupplierCreditTotal(): void
+    {
+        Admin::handleApplySupplierCreditTotal($this);
+    }
+
     public function handleConfirmDuplicate(): void
     {
         if ($this->isCreating) return;
@@ -36,6 +41,11 @@ class CreatePaymentRequest extends CreateRecord
         $this->duplicateConfirmed = true;
         $this->isCreating = true;
         $this->create();
+    }
+
+    public function handleShowManualCredit(): void
+    {
+        Admin::handleShowManualCredit($this);
     }
 
     public function normalizeAccountNumber(array $data): array
@@ -65,6 +75,8 @@ class CreatePaymentRequest extends CreateRecord
     {
         return array_merge(parent::getListeners(), [
             'confirmDuplicateCreate' => 'handleConfirmDuplicate',
+            'applySupplierCreditTotal' => 'handleApplySupplierCreditTotal',
+            'showManualCredit' => 'handleShowManualCredit',
         ]);
     }
 

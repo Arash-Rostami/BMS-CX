@@ -6,6 +6,8 @@ use App\Filament\Resources\Financial\SettlementResource\Pages\AdminComponents\Fi
 use App\Filament\Resources\Financial\SettlementResource\Pages\AdminComponents\Form;
 use App\Filament\Resources\Financial\SettlementResource\Pages\AdminComponents\Table;
 use App\Jobs\RecalculateAccountLedger;
+use App\Models\LedgerEntry;
+use App\Models\Settlement;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
@@ -13,7 +15,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Admin
 {
-    use Form, Table, Filter;
+    use Filter;
+    use Form;
+    use Table;
 
 
     /**
@@ -34,9 +38,30 @@ class Admin
             ? $foreign / $rate
             : $foreign * $rate;
 
-        $set('settlement_amount', number_format($base, 3, '.', ''));
+        $set('settlement_amount', round($base, 6));
     }
 
+    public static function updateAndRecalculate(Model $record, array $data): Model
+    {
+        $accountId = $record->ledgerEntry->account_id;
+        $recalcDate = min($record->getOriginal('transaction_date'), $data['transaction_date']);
+        $ledgerEntryId = $record->ledger_entry_id;
+
+        $record->update($data);
+
+        RecalculateAccountLedger::dispatchSync($accountId, $recalcDate);
+
+        // Return the replacement settlement created by replay, not the deleted corpse
+        $replacement = Settlement::where('ledger_entry_id', $ledgerEntryId)
+            ->where('transaction_date', $data['transaction_date'])
+            ->first();
+
+        Notification::make()->title('Loan Ledger timeline successfully recalculated')
+            ->success()
+            ->send();
+
+        return $replacement ?? new Settlement();
+    }
 
     public static function deleteAndRecalculate(Model $record): void
     {
@@ -47,20 +72,8 @@ class Admin
 
         RecalculateAccountLedger::dispatchSync($accountId, $recalcDate);
 
-        Notification::make()->title('Ledger timeline successfully recalculated')->success()->send();
-    }
-
-    public static function updateAndRecalculate(Model $record, array $data): Model
-    {
-        $accountId = $record->ledgerEntry->account_id;
-        $recalcDate = min($record->getOriginal('transaction_date'), $data['transaction_date']);
-
-        $record->update($data);
-
-        RecalculateAccountLedger::dispatchSync($accountId, $recalcDate);
-
-        Notification::make()->title('Ledger timeline successfully recalculated')->success()->send();
-
-        return $record;
+        Notification::make()->title('Loan Ledger timeline successfully recalculated')
+            ->success()
+            ->send();
     }
 }

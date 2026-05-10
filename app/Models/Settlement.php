@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Settlement extends Model
 {
-
     protected $guarded = [];
 
     protected $casts = [
@@ -18,10 +18,16 @@ class Settlement extends Model
         'accrued_interest_in_period' => 'decimal:6',
         'deducted_from_interest' => 'decimal:6',
         'deducted_from_principal' => 'decimal:6',
+        'counter_interest_applied' => 'decimal:6',
     ];
+
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
+    }
 
     public function ledgerEntry()
     {
-        return $this->belongsTo(LedgerEntry::class);
+        return $this->belongsTo(LedgerEntry::class, 'ledger_entry_id');
     }
 }

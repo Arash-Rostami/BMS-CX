@@ -14,7 +14,6 @@ return new class extends Migration {
             $table->increments('id')->unsigned()->index();
             $table->string('name')->nullable()->index();
             $table->string('file_path')->nullable()->index();
-            $table->json('extra')->nullable();
             // Foreign keys
             $table->integer('user_id')->unsigned()->index()->nullable();
             $table->integer('order_id')->unsigned()->index()->nullable();
@@ -26,6 +25,11 @@ return new class extends Migration {
             $table->foreign('payment_id')->references('id')->on('payments');
             $table->foreign('payment_request_id')->references('id')->on('payment_requests');
             $table->foreign('proforma_invoice_id')->references('id')->on('proforma_invoices');
+
+            $table->string('attachable_type')->nullable();
+            $table->unsignedInteger('attachable_id')->nullable();
+
+            $table->index(['attachable_type', 'attachable_id'], 'attachable_index');
             $table->timestamps();
             $table->softDeletes();
         });

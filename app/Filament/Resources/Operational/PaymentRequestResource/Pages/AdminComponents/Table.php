@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Operational\PaymentRequestResource\Pages\AdminC
 
 use App\Models\PaymentRequest;
 use App\Policies\PaymentRequestPolicy;
-use App\Services\Notification\PaymentRequestService;
 use Carbon\Carbon;
 use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\TextEntry;
@@ -60,6 +59,19 @@ trait Table
             ->sortable()
             ->toggleable(isToggledHiddenByDefault: true)
             ->searchable()
+            ->badge();
+    }
+
+    public static function showAdjustmentAmount(): TextColumn
+    {
+        return TextColumn::make('adjustment_amount')
+            ->label('Adjustment Amount')
+            ->grow(false)
+            ->state(fn(?Model $record) => $record->adjustment_amount)
+            ->sortable()
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->color('warning')
+            ->formatStateUsing(fn($state, $record) => $state ? number_format($state) . ' ' . $record->currency : '')
             ->badge();
     }
 
@@ -402,35 +414,25 @@ trait Table
      */
     public static function showPayableAmount(): TextColumn
     {
-        $col = TextColumn::make('requested_amount')
+        return TextColumn::make('requested_amount')
             ->label('Payable Amount')
             ->color('info')
             ->grow(false)
             ->state(fn(?Model $record) => self::concatenateSum($record))
             ->sortable()
             ->toggleable()
-            ->badge();
-//
-//        if (request()->url() === route('filament.admin.resources.payment-requests.index')) {
-//            $col->summarize(
-//                Summarizer::make()
-//                    ->label('Total Requested Amount')
-//                    ->using(fn(QueryBuilder $query) => self::calculateRequestedAmountSum($query))
-//            );
-//        }
-        return $col;
-    }
+            ->tooltip(function (?Model $record, $state) {
+                if (!$record || !$state) return null;
 
-    public static function showAdjustmentAmount(): TextColumn
-    {
-        return TextColumn::make('adjustment_amount')
-            ->label('Adjustment Amount')
-            ->grow(false)
-            ->state(fn(?Model $record) => $record->adjustment_amount)
-            ->sortable()
-            ->toggleable(isToggledHiddenByDefault: true)
-            ->color('warning')
-            ->formatStateUsing(fn($state, $record) => $state ? number_format($state) . ' ' . $record->currency : '')
+                $payable = $record->requested_amount ?? 0;
+                $credit = data_get($record, 'extra.credit_to_use', 0);
+
+                if ($credit > 0) {
+                    return 'Original Payable: ' . number_format($payable, 2) . ' | Credit Applied: -' . number_format($credit, 2);
+                }
+
+                return null;
+            })
             ->badge();
     }
 
@@ -488,7 +490,6 @@ trait Table
         return TextColumn::make('order.reference_number')
             ->label('PI-/O- Ref. No.')
             ->grow(false)
-//            ->searchable()
             ->state(fn(Model $record) => $record->order?->reference_number ? $record->order->reference_number : ($record->department->code != 'CX' ? '🌐' : $record->associatedProformaInvoices->pluck('reference_number')))
             ->tooltip(fn(Model $record) => ($record->department->code != 'CX' ? 'Not related to this department' : 'Ref. No. of PI'))
             ->sortable()
@@ -546,7 +547,7 @@ trait Table
                             ->required(),
                     ])
                     ->action(function (Model $record, array $data) {
-                       self::updateStatus($record, $data['status']);
+                        self::updateStatus($record, $data['status']);
                         Notification::make()
                             ->title('Status updated: ' . ucfirst($data['status']))
                             ->success()
@@ -939,16 +940,6 @@ trait Table
             ->badge();
     }
 
-    public static function viewTotalAmount(): TextEntry
-    {
-        return TextEntry::make('total_amount')
-            ->label('Total Amount')
-            ->numeric()
-            ->color('secondary')
-            ->copyable()
-            ->badge();
-    }
-
     /**
      * @return TextEntry
      */
@@ -993,6 +984,16 @@ trait Table
     {
         return TextEntry::make('swift_code')
             ->label('Swift Code')
+            ->color('secondary')
+            ->copyable()
+            ->badge();
+    }
+
+    public static function viewTotalAmount(): TextEntry
+    {
+        return TextEntry::make('total_amount')
+            ->label('Total Amount')
+            ->numeric()
             ->color('secondary')
             ->copyable()
             ->badge();

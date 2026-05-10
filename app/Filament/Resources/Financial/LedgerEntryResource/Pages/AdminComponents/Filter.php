@@ -14,11 +14,10 @@ use Illuminate\Support\Carbon;
 
 trait Filter
 {
-
     public static function filterAccount(): SelectFilter
     {
         return SelectFilter::make('account_id')
-            ->label('Account')
+            ->label('Account (Ledger Account)')
             ->relationship('account', 'name')
             ->preload()
             ->searchable();
@@ -27,7 +26,7 @@ trait Filter
     public static function filterIsSettled(): FilamentFilter
     {
         return FilamentFilter::make('is_settled')
-            ->label('Settled Only')
+            ->label('Settled')
             ->toggle()
             ->query(fn(Builder $query): Builder => $query->where('is_settled', true));
     }
@@ -35,24 +34,31 @@ trait Filter
     public static function filterTransactionDate(): FilamentFilter
     {
         return FilamentFilter::make('transaction_date')
-            ->label('Transaction Date')
+            ->label('Date (Transaction Date)')
             ->form([
                 Grid::make(2)->schema([
                     DatePicker::make('created_from')
-                        ->native(false)->placeholder('From'),
+                        ->native(false)
+                        ->placeholder('From'),
                     DatePicker::make('created_until')
-                        ->native(false)->placeholder('Until'),
-                ])
+                        ->native(false)
+                        ->placeholder('Until'),
+                ]),
             ])
             ->query(fn(Builder $query, array $data): Builder => $query
-                ->when($data['created_from'], fn($q, $d) => $q->whereDate('transaction_date', '>=', $d))
-                ->when($data['created_until'], fn($q, $d) => $q->whereDate('transaction_date', '<=', $d))
+                ->when($data['created_from'] ?? null, fn($q, $d) => $q->whereDate('transaction_date', '>=', $d))
+                ->when($data['created_until'] ?? null, fn($q, $d) => $q->whereDate('transaction_date', '<=', $d))
             )
             ->indicateUsing(function (array $data) {
                 $indicators = [];
 
-                if ($data['created_from'] ?? null) $indicators['created_from'] = 'From ' . Carbon::parse($data['created_from'])->toFormattedDateString();
-                if ($data['created_until'] ?? null) $indicators['created_until'] = 'Until ' . Carbon::parse($data['created_until'])->toFormattedDateString();
+                if ($data['created_from'] ?? null) {
+                    $indicators['created_from'] = 'From ' . Carbon::parse($data['created_from'])->toFormattedDateString();
+                }
+
+                if ($data['created_until'] ?? null) {
+                    $indicators['created_until'] = 'Until ' . Carbon::parse($data['created_until'])->toFormattedDateString();
+                }
 
                 return $indicators;
             });
@@ -61,9 +67,10 @@ trait Filter
     public static function filterType(): SelectFilter
     {
         return SelectFilter::make('type')
+            ->label('Type')
             ->options([
-                'disbursement' => 'Disbursement',
-                'receipt' => 'Receipt',
+                'disbursement' => 'Disbursement (Debit)',
+                'receipt' => 'Receipt (Credit)',
             ]);
     }
 
@@ -78,11 +85,10 @@ trait Filter
             ->visible(fn() => auth()->user()?->hasRole('admin') || auth()->user()?->hasRole('developer'));
     }
 
-
     public static function groupAccountRecords(): Grouping
     {
         return Grouping::make('account_id')
-            ->label('Account')
+            ->label('Account (Ledger Account)')
             ->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->account)->name ?? 'No Account');
     }
@@ -90,7 +96,7 @@ trait Filter
     public static function groupSettledRecords(): Grouping
     {
         return Grouping::make('is_settled')
-            ->label('Settlement')
+            ->label('Settled')
             ->collapsible()
             ->getTitleFromRecordUsing(fn(Model $record): string => $record->is_settled ? 'Settled' : 'Pending Settlement');
     }
@@ -98,7 +104,7 @@ trait Filter
     public static function groupTransactionDateRecords(): Grouping
     {
         return Grouping::make('transaction_date')
-            ->label('Transaction Date')
+            ->label('Date (Transaction Date)')
             ->collapsible()
             ->getKeyFromRecordUsing(fn(Model $record) => optional($record->transaction_date)->format('Y-m') ?? 'N/A')
             ->getTitleFromRecordUsing(fn(Model $record): string => optional($record->transaction_date)->format('F Y') ?? 'No Date');

@@ -19,6 +19,7 @@ return new class extends Migration
             $table->decimal('amount_foreign_currency', 24, 6)->nullable();
             $table->decimal('exchange_rate', 24, 6)->nullable();
             $table->decimal('principal_amount_base', 24, 6);
+            $table->decimal('applied_credit_amount', 24, 6)->default(0);
             $table->decimal('commission_amount', 24, 6)->default(0);
             $table->decimal('total_disbursed_base', 24, 6);
             $table->json('rate_matrix_snapshot')->nullable();
@@ -26,8 +27,11 @@ return new class extends Migration
             $table->decimal('unpaid_interest', 24, 6)->default(0);
             $table->boolean('is_settled')->default(false);
 
+
             $table->foreign('account_id')->references('id')->on('accounts');
             $table->foreign('user_id')->references('id')->on('users');
+
+            $table->index(['account_id', 'is_settled', 'transaction_date', 'id'], 'idx_ledger_payment_order');
             $table->timestamps();
         });
     }

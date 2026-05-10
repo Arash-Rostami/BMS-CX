@@ -8,9 +8,12 @@ use App\Filament\Resources\Operational\PaymentRequestResource\Pages\AdminCompone
 use App\Filament\Resources\Operational\PaymentRequestResource\Pages\AdminComponents\Table;
 use App\Models\Order;
 use App\Models\PaymentRequest;
+use App\Models\SupplierSummary;
 use App\Services\Notification\PaymentRequestService;
 use Carbon\Carbon;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action as TableAction;
 use Illuminate\Database\Eloquent\Collection;
@@ -194,6 +197,34 @@ class Admin
         return $record->proforma_invoice_number;
     }
 
+    public static function handleApplySupplierCreditTotal($page): void
+    {
+        $data = $page->data;
+        $credit = (double)data_get($data, 'extra.available_supplier_credit', 0);
+        $requested = (double)data_get($data, 'requested_amount', 0);
+
+        $creditToUse = min($credit, $requested);
+
+        $data['extra']['show_manual_credit'] = true;
+        $data['extra']['credit_to_use'] = $creditToUse;
+        $data['adjustment_amount'] = (double)($requested - $creditToUse);
+
+        $page->data = $data;
+
+        Notification::make()
+            ->title('Credit Applied')
+            ->body('Successfully applied ' . number_format($creditToUse, 2) . ' credit.')
+            ->success()
+            ->send();
+    }
+
+    public static function handleShowManualCredit($page): void
+    {
+        $data = $page->data;
+        $data['extra']['show_manual_credit'] = true;
+        $page->data = $data;
+    }
+
     public static function nameUploadedFile(): \Closure
     {
         return function (TemporaryUploadedFile $file, Get $get, ?Model $record): string {
@@ -250,7 +281,7 @@ class Admin
 
     public static function send(Model $record): void
     {
-        (new PaymentRequestService())->notifyAccountants($record, type: 'delete');
+//        (new PaymentRequestService())->notifyAccountants($record, type: 'delete');
     }
 
     public static function separateRecordsIntoDeletableAndNonDeletable(Collection $records): void
@@ -310,13 +341,60 @@ class Admin
             'extra' => $extra,
             'status' => $status,
         ]);
+//
+//        (new PaymentRequestService())->notifyAccountants(
+//            $record,
+//            type: $status,
+//            status: true,
+//            accountants: $record->user ? collect([$record->user]) : collect()
+//        );
+    }
 
-        (new PaymentRequestService())->notifyAccountants(
-            $record,
-            type: $status,
-            status: true,
-            accountants: $record->user ? collect([$record->user]) : collect()
-        );
+    public static function updateSupplierCreditState(Set $set, Get $get, ?string $supplierId, ?string $currency): void
+    {
+        if (!$supplierId || !$currency) {
+            $set('extra.available_supplier_credit', 0);
+
+            return;
+        }
+
+        $credit = (double)SupplierSummary::where('supplier_id', $supplierId)
+            ->where('currency', $currency)
+            ->where('diff', '>', 0)
+            ->sum('diff');
+
+        $set('extra.available_supplier_credit', $credit);
+
+        if ($credit > 0) {
+            Notification::make()
+                ->title('Available Supplier Credit')
+                ->body('Supplier has ' . number_format($credit, 2) . ' ' . $currency . ' credit available. Do you want to apply it?')
+                ->warning()
+                ->persistent()
+                ->actions([
+                    NotificationAction::make('apply_total')
+                        ->button()
+                        ->label('Apply Total')
+                        ->color('success')
+                        ->dispatch('applySupplierCreditTotal'),
+                    NotificationAction::make('enter_manually')
+                        ->button()
+                        ->label('Enter Manually')
+                        ->color('warning')
+                        ->dispatch('showManualCredit'),
+                    NotificationAction::make('dismiss')
+                        ->color('gray')
+                        ->label('Dismiss')
+                        ->close(),
+                ])
+                ->send();
+        }
+
+        if ($get('extra.credit_to_use')) {
+            $requested = (double)$get('requested_amount');
+            $creditToUse = (double)$get('extra.credit_to_use');
+            $set('adjustment_amount', (double)($requested - $creditToUse));
+        }
     }
 
     protected static function calculateOrderFinancials($state): array
@@ -415,7 +493,6 @@ class Admin
 
         return 'Deadline passed';
     }
-
 
     private static function concatenateSum(?Model $record): HtmlString|string
     {

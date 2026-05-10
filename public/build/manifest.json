@@ -1,11 +1,11 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-ljObk5Yl.css",
+    "file": "assets/app-6uQvYcO3.css",
     "isEntry": true,
     "src": "resources/css/app.css"
   },
   "resources/css/filament/admin/theme.css": {
-    "file": "assets/theme-DEXqcBTx.css",
+    "file": "assets/theme-iVKGQBPk.css",
     "isEntry": true,
     "src": "resources/css/filament/admin/theme.css"
   },
@@ -92,7 +92,7 @@
   },
   "resources/images/avatars/partner.png": {
     "file": "assets/viewer-ANmOMvP3.png",
-    "src": "resources/images/avatars/viewer.png"
+    "src": "resources/images/avatars/partner.png"
   },
   "resources/images/avatars/partner.svg": {
     "file": "assets/viewer-dBUqkQ1t.svg",
@@ -100,7 +100,7 @@
   },
   "resources/images/avatars/viewer.png": {
     "file": "assets/viewer-ANmOMvP3.png",
-    "src": "resources/images/avatars/viewer.png"
+    "src": "resources/images/avatars/partner.png"
   },
   "resources/images/avatars/viewer.svg": {
     "file": "assets/viewer-dBUqkQ1t.svg",

@@ -7,6 +7,7 @@ use App\Models\PaymentRequest;
 use App\Models\User;
 use App\Services\Authorities\PaymentRequestQueryService;
 use App\Services\SmartCacheManager;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 trait PaymentRequestComputations
@@ -170,6 +171,11 @@ trait PaymentRequestComputations
             ->orWhereHas('supplier', fn($s) => $s->where('name', 'like', "%{$search}%"))
             ->orWhereHas('beneficiary', fn($b) => $b->where('name', 'like', "%{$search}%"))
         );
+    }
+
+    public function setDeadlineAttribute($value)
+    {
+        $this->attributes['deadline'] = $value ? Carbon::parse($value)->format('Y-m-d 12:00:00') : null;
     }
 
     public static function showAmongAllReasons($reason)

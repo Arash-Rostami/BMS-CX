@@ -4,10 +4,10 @@ namespace App\Models;
 
 use App\Models\Traits\AttachmentComputations;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
-use Rennokki\QueryCache\Traits\QueryCacheable;
 
 
 class Attachment extends Model
@@ -18,57 +18,43 @@ class Attachment extends Model
     public static bool $filamentDetection = false;
 
 
-
     protected $fillable = [
         'name',
         'file_path',
-        'extra',
         'user_id',
         'order_id',
         'payment_id',
         'payment_request_id',
         'proforma_invoice_id',
     ];
-    protected $casts = [
-        'extra' => 'json',
-    ];
+
     protected $table = 'attachments';
 
-    /**
-     * Get the order associated with the attachment.
-     */
+    public function attachable(): MorphTo
+    {
+        return $this->morphTo();
+    }
+
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id');
     }
 
-    /**
-     * Get the payment associated with the attachment.
-     */
     public function payment()
     {
         return $this->belongsTo(Payment::class);
     }
 
-    /**
-     * Get the payment request associated with the attachment.
-     */
     public function paymentRequest()
     {
         return $this->belongsTo(PaymentRequest::class, 'payment_request_id');
     }
 
-    /**
-     * Get the order request associated with the attachment.
-     */
     public function proformaInvoice()
     {
         return $this->belongsTo(ProformaInvoice::class, 'proforma_invoice_id');
     }
 
-    /**
-     * Get the user that owns the attachment.
-     */
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -103,6 +89,7 @@ class Attachment extends Model
 //            }
 //        });
 //    }
+
     protected static function booted()
     {
         static::creating(fn($attachment) => $attachment->user_id = auth()->id());

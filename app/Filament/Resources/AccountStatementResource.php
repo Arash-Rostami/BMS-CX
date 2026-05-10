@@ -44,6 +44,7 @@ class AccountStatementResource extends Resource
                 Admin::showDebit(),
                 Admin::showCredit(),
                 Admin::showNetMovement(),
+                Admin::showAppliedCredit(),
                 Admin::showAccruedInterest(),
                 Admin::showEventType(),
                 Admin::showRunningBalance(),

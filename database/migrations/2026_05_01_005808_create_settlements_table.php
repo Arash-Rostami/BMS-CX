@@ -19,9 +19,14 @@ return new class extends Migration
             $table->decimal('accrued_interest_in_period', 24, 6);
             $table->decimal('deducted_from_interest', 24, 6)->default(0);
             $table->decimal('deducted_from_principal', 24, 6)->default(0);
+            $table->decimal('counter_interest_applied', 24, 6)->default(0);
+
 
             $table->integer('ledger_entry_id')->unsigned()->index();
             $table->foreign('ledger_entry_id')->references('id')->on('ledger_entries')->cascadeOnDelete();
+
+            $table->index(['ledger_entry_id', 'transaction_date']);
+
             $table->timestamps();
         });
     }
