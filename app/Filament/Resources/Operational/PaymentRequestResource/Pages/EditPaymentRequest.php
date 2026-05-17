@@ -14,12 +14,23 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\MaxWidth;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 
 class EditPaymentRequest extends EditRecord
 {
     protected static string $resource = PaymentRequestResource::class;
+
+    public function handleApplySupplierCreditTotal(): void
+    {
+        Admin::handleApplySupplierCreditTotal($this);
+    }
+
+    public function handleShowManualCredit(): void
+    {
+        Admin::handleShowManualCredit($this);
+    }
 
     protected function afterSave(): void
     {
@@ -50,24 +61,6 @@ class EditPaymentRequest extends EditRecord
         AttachmentCreationService::createFromExisting($this->record->getOriginal('id'), 'payment_request_id');
     }
 
-    protected function getListeners(): array
-    {
-        return [
-            'applySupplierCreditTotal' => 'handleApplySupplierCreditTotal',
-            'showManualCredit' => 'handleShowManualCredit',
-        ];
-    }
-
-    public function handleApplySupplierCreditTotal(): void
-    {
-        Admin::handleApplySupplierCreditTotal($this);
-    }
-
-    public function handleShowManualCredit(): void
-    {
-        Admin::handleShowManualCredit($this);
-    }
-
     protected function getHeaderActions(): array
     {
         return [
@@ -78,7 +71,7 @@ class EditPaymentRequest extends EditRecord
                 ->action(function (Model $record) {
                     $attachmentUrls = Attachment::whereIn('payment_id', $record->payments->pluck('id'))
                         ->pluck('file_path')
-                        ->map(fn($path) => asset($path))
+                        ->map(fn($path) => Storage::disk('filament')->url($path))
                         ->all();
 
                     if (empty($attachmentUrls)) {
@@ -120,6 +113,14 @@ class EditPaymentRequest extends EditRecord
                 ->hidden(fn(?Model $record) => $record ? $record->payments->isNotEmpty() : false)
                 ->icon('heroicon-o-trash')
                 ->successNotification(fn(Model $record) => Admin::send($record)),
+        ];
+    }
+
+    protected function getListeners(): array
+    {
+        return [
+            'applySupplierCreditTotal' => 'handleApplySupplierCreditTotal',
+            'showManualCredit' => 'handleShowManualCredit',
         ];
     }
 

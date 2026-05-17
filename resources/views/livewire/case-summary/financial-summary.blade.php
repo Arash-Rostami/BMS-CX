@@ -44,7 +44,7 @@
                             @endphp
                             @if($attachment)
                                 <x-Summary.tooltip
-                                    href="{{ $attachment['file_path'] }}"
+                                    href="{{ Storage::disk('filament')->url($attachment['file_path']) }}"
                                     target="_blank"
                                     tooltip="View {{ $attachment['name'] }}"
                                 >
@@ -123,7 +123,7 @@
                                 </x-Summary.tooltip>
                                 @foreach($row['doc_attachments'] as $doc)
                                     <x-Summary.tooltip
-                                        href="{{ $doc['url'] }}"
+                                        href="{{ Storage::disk('filament')->url($doc['url']) }}"
                                         target="_blank"
                                         tooltip="View {{ $doc['name'] }}"
                                     >
@@ -144,7 +144,7 @@
                                 </x-Summary.tooltip>
                                 @if($row['bl_attachment'])
                                     <x-Summary.tooltip
-                                        href="{{ $row['bl_attachment']['url'] }}"
+                                        href="{{ Storage::disk('filament')->url($row['bl_attachment']['url']) }}"
                                         target="_blank"
                                         tooltip="View {{ $row['bl_attachment']['name'] }}"
                                     >
@@ -236,7 +236,7 @@
                                     <div class="flex flex-row space-x-1 justify-center">
                                         @foreach($row['receipts'] as $receipt)
                                             <x-Summary.tooltip
-                                                href="{{ $receipt['url'] }}"
+                                                href="{{ Storage::disk('filament')->url($receipt['url']) }}"
                                                 target="_blank"
                                                 tooltip="View {{ $receipt['name'] }}"
                                             >

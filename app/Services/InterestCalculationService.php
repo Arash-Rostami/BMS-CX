@@ -78,6 +78,7 @@ class InterestCalculationService
 
         // Store pre-credit interest as negative unpaid_interest for processPayment to consume
         if ($preCreditInterest > 0) {
+            $data['pre_credit_interest'] = -$preCreditInterest;
             $data['unpaid_interest'] = -$preCreditInterest;
         }
     }

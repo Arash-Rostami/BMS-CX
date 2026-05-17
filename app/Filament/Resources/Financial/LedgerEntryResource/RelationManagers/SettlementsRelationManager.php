@@ -67,9 +67,9 @@ class SettlementsRelationManager extends RelationManager
                     ->sortable()
                     ->summarize(Tables\Columns\Summarizers\Sum::make()->numeric(decimalPlaces: 3)->label('Total Interest')),
 
-                Tables\Columns\TextColumn::make('deducted_from_interest')
-                    ->numeric(decimalPlaces: 3)
-                    ->summarize(Tables\Columns\Summarizers\Sum::make()->numeric(decimalPlaces: 3)),
+//                Tables\Columns\TextColumn::make('deducted_from_interest')
+//                    ->numeric(decimalPlaces: 3)
+//                    ->summarize(Tables\Columns\Summarizers\Sum::make()->numeric(decimalPlaces: 3)),
 
                 Tables\Columns\TextColumn::make('deducted_from_principal')
                     ->numeric(decimalPlaces: 3)

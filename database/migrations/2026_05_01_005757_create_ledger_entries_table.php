@@ -20,12 +20,14 @@ return new class extends Migration
             $table->decimal('exchange_rate', 24, 6)->nullable();
             $table->decimal('principal_amount_base', 24, 6);
             $table->decimal('applied_credit_amount', 24, 6)->default(0);
+            $table->decimal('pre_credit_interest', 24, 6)->default(0);
             $table->decimal('commission_amount', 24, 6)->default(0);
             $table->decimal('total_disbursed_base', 24, 6);
             $table->json('rate_matrix_snapshot')->nullable();
             $table->decimal('remaining_principal', 24, 6)->nullable();
             $table->decimal('unpaid_interest', 24, 6)->default(0);
             $table->boolean('is_settled')->default(false);
+
 
 
             $table->foreign('account_id')->references('id')->on('accounts');

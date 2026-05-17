@@ -16,7 +16,7 @@
             <button @click="open = !open"
                     class="w-full flex justify-between items-center my-dark-class px-4 py-3 text-left text-md md:text-lg font-semibold rounded-xl">
                 <span
-                    title="{{ $paymentTitle }}"> No: {{ $paymentRequest->reference_number ? $paymentRequest->reference_number .$paymentType : 'N/A' }}</span>
+                        title="{{ $paymentTitle }}"> No: {{ $paymentRequest->reference_number ? $paymentRequest->reference_number .$paymentType : 'N/A' }}</span>
                 <span class="material-icons-outlined" x-show="open">expand_less</span>
                 <span class="material-icons-outlined" x-show="!open">expand_more</span>
             </button>
@@ -39,7 +39,7 @@
                     >
                         <div class="font-medium">
                             <span
-                                class="material-icons-outlined">{{ $paymentRequest->order ? 'shopping_cart' : 'insert_drive_file' }}</span>
+                                    class="material-icons-outlined">{{ $paymentRequest->order ? 'shopping_cart' : 'insert_drive_file' }}</span>
                             {{ $paymentRequest->order ? 'Order' : 'Proforma Invoice' }}:
                         </div>
                         <pre>{{ $paymentRequest->order ? 'Part: ' .$paymentRequest->order->part .' (' .$paymentRequest->order->reference_number .')' : $paymentRequest->associatedProformaInvoices->pluck('reference_number')->implode(' | ') }}</pre>
@@ -88,8 +88,9 @@
                     </div>
                     @if($paymentRequest->adjustment_amount)
                         <div class="proforma-details-box">
-                            <div class="font-medium"><span class="material-icons-outlined text-green-600">price_check</span>
-                               Adjusted Amount:
+                            <div class="font-medium"><span
+                                        class="material-icons-outlined text-green-600">price_check</span>
+                                Adjusted Amount:
                             </div>
                             <div class="flex items-center">
                                 <pre class="font-bold text-green-700">{{ number_format($paymentRequest->adjustment_amount, 2) }}</pre>
@@ -182,7 +183,7 @@
                         <div class="font-medium"><span class="material-icons-outlined">check_circle</span> Status:</div>
                         <div class="flex items-center">
                             <span
-                                class="status-badge {{ $paymentRequest->status == 'completed' ? 'approved' : 'pending' }}">
+                                    class="status-badge {{ $paymentRequest->status == 'completed' ? 'approved' : 'pending' }}">
                                 {{ ucfirst($paymentRequest->status) }}
                             </span>
                         </div>
@@ -251,7 +252,7 @@
                                             Total ({{ $currency }}):
                                         </div>
                                         <pre
-                                            class="font-bold">{{ $currency === 'USD' ? '$' : '' }}{{ number_format($paymentsInCurrency->sum('amount'), 2) }}</pre>
+                                                class="font-bold">{{ $currency === 'USD' ? '$' : '' }}{{ number_format($paymentsInCurrency->sum('amount'), 2) }}</pre>
                                     </div>
                                 @endforeach
                             </div>
@@ -264,7 +265,9 @@
                             <div class="flex items-center gap-2">
                                 <span class="material-icons-outlined">attachment</span>
                                 @if ($attachment && $attachment->file_path)
-                                    <a href="{{ asset($attachment->file_path) }}" target="_blank" class="underline">
+                                    <a href="{{ Storage::disk('filament')->url($attachment->file_path) }}"
+                                       target="_blank"
+                                       class="underline">
                                         <span class="text-lg font-medium">{{ $attachment->name }}</span>
                                     </a>
                                 @else
@@ -273,7 +276,8 @@
                             </div>
                         </div>
                     @endforeach
-                    <h5 class="text-xl font-semibold col-span-full mt-6 divider-attachment">Transfer Receipt(s):</h5>
+                    <h5 class="text-xl font-semibold col-span-full mt-6 divider-attachment">Payment/Transfer
+                        Receipt(s):</h5>
                     @php
                         $attachments = !isset($paymentRequest->order_id)
                         ? $selectedProforma->associatedPaymentRequests->flatMap->payments->flatMap->attachments
@@ -284,7 +288,9 @@
                             <div class="flex items-center gap-2">
                                 <span class="material-icons-outlined">attachment</span>
                                 @if ($attachment && $attachment->file_path)
-                                    <a href="{{ asset($attachment->file_path) }}" target="_blank" class="underline">
+                                    <a href="{{ Storage::disk('filament')->url($attachment->file_path) }}"
+                                       target="_blank"
+                                       class="underline">
                                         <span class="text-lg font-medium">{{ $attachment->name }}</span>
                                     </a>
                                 @else

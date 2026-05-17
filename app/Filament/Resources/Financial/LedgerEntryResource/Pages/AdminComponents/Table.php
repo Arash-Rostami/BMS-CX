@@ -119,7 +119,7 @@ trait Table
     public static function showUnpaidInterest(): TextColumn
     {
         return TextColumn::make('unpaid_interest')
-            ->label('Interest (Interest Due)')
+            ->label('Interest (Unpaid Interest)')
             ->grow(false)
             ->numeric(decimalPlaces: 3)
             ->sortable()
@@ -192,6 +192,18 @@ trait Table
             ->numeric(decimalPlaces: 3)
             ->badge()
             ->color('secondary');
+    }
+
+    public static function viewInterestCredit(): TextEntry
+    {
+        return TextEntry::make('pre_credit_interest')
+            ->label('Interest Credit')
+            ->numeric(decimalPlaces: 3)
+            ->formatStateUsing(fn($state): string => $state ? showDelimiter(abs((float)$state), config('financial.base_currency', 'USD')) : '0')
+            ->badge()
+            ->color('success')
+            ->visible(fn($record): bool => $record->type === 'disbursement' && (float)$record->pre_credit_interest < 0)
+            ->helperText('Counter-interest earned by borrower credit consumed at disbursement creation.');
     }
 
     public static function viewIsSettled(): IconEntry

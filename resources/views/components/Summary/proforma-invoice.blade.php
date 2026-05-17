@@ -145,7 +145,9 @@
                     <div class="flex items-center gap-2">
                         <span class="material-icons-outlined">attachment</span>
                         @if ($attachment && $attachment->file_path)
-                            <a href="{{ asset($attachment->file_path) }}" target="_blank" class="underline">
+                            <a href="{{ Storage::disk('filament')->url($attachment->file_path) }}"
+                               target="_blank"
+                               class="underline">
                                 <span class="text-lg font-medium">{{ $attachment->name }}</span>
                             </a>
                         @endif

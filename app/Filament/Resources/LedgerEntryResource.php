@@ -168,19 +168,13 @@ class LedgerEntryResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()
+        return parent::getEloquentQuery()
             ->with([
                 'attachments',
                 'account',
                 'settlements',
                 'user',
             ]);
-
-        if (auth()->check() && !auth()->user()->hasRole('admin')) {
-            $query->where('user_id', auth()->id());
-        }
-
-        return $query;
     }
 
     public static function getModernLayout(Table $table): Table
@@ -252,6 +246,7 @@ class LedgerEntryResource extends Resource
                     Admin::viewRemainingPrincipal(),
                     Admin::viewUnpaidInterest(),
                     Admin::viewAppliedCreditAmount(),
+                    Admin::viewInterestCredit(),
                     Admin::viewCreator(),
                 ])
                 ->columns(3)

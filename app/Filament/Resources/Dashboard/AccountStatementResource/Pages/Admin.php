@@ -35,7 +35,7 @@ class Admin
     public static function filterTransactionDate(): FilamentFilter
     {
         return FilamentFilter::make('transaction_date')
-            ->label('Date (Transaction Date)')
+            ->label('Transaction Date')
             ->form([
                 Grid::make(2)->schema([
                     DatePicker::make('created_from')->native(false)->placeholder('From'),
@@ -67,7 +67,12 @@ class Admin
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->badge()
-            ->color('warning')
+            ->color(fn($record): string => ($record?->accrued_interest ?? 0) < 0 ? 'success' : 'warning')
+            ->tooltip(fn($record): string => match ($record?->event_type) {
+                'disbursement' => 'Counter-interest earned on idle credit before this disbursement (banked for future offset).',
+                'settlement' => 'Gross interest accrued in this period — before counter-interest offset.',
+                default => '',
+            })
             ->summarize([
                 Sum::make()->numeric(decimalPlaces: 3)->label('Total Interest'),
             ]);
@@ -76,23 +81,36 @@ class Admin
     public static function showAppliedCredit(): TextColumn
     {
         return TextColumn::make('applied_credit')
-            ->label('Adjustment (Applied Credit)')
+            ->label('Applied Credit')
             ->numeric(decimalPlaces: 2)
             ->default(0)
             ->color('warning')
             ->placeholder('—')
-            ->toggleable()
+            ->toggleable(isToggledHiddenByDefault: true)
             ->tooltip('Credit used at disbursement — reduces the amount owed.');
+    }
+
+    public static function showCounterInterest(): TextColumn
+    {
+        return TextColumn::make('counter_interest')
+            ->label('Counter Interest')
+            ->numeric(decimalPlaces: 3)
+            ->badge()
+            ->color('success')
+            ->placeholder('—')
+            ->toggleable(isToggledHiddenByDefault: true)
+            ->tooltip('Counter-interest applied in this settlement — earned during the period a prior credit sat idle.');
     }
 
     public static function showCredit(): TextColumn
     {
         return TextColumn::make('credit')
-            ->label('In (Credit Received)')
+            ->label('In (Credit)')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->badge()
             ->color('success')
+            ->tooltip('Money coming into the account. This increases the balance and is counted in the In total.')
             ->summarize([
                 Sum::make()->numeric(decimalPlaces: 3)->label('Total In'),
             ]);
@@ -101,11 +119,12 @@ class Admin
     public static function showDebit(): TextColumn
     {
         return TextColumn::make('debit')
-            ->label('Out (Debit Sent)')
+            ->label('Out (Debit)')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->badge()
             ->color('danger')
+            ->tooltip('Money going out of the account. This reduces the balance and is counted in the Out total.')
             ->summarize([
                 Sum::make()->numeric(decimalPlaces: 3)->label('Total Out'),
             ]);
@@ -116,7 +135,8 @@ class Admin
         return TextColumn::make('description')
             ->label('Description')
             ->wrap()
-            ->searchable(isIndividual: true);
+            ->searchable(isIndividual: true)
+            ->tooltip('Narration or note explaining what this transaction is for.');
     }
 
     public static function showEventType(): TextColumn
@@ -129,38 +149,53 @@ class Admin
                 'receipt' => 'success',
                 default => 'secondary',
             })
+            ->tooltip(fn(?string $state): string => match ($state) {
+                'disbursement' => 'Funds released from the account or loan side. Usually represents an outgoing principal movement.',
+                'receipt' => 'Incoming payment or collection received into the account.',
+                'settlement' => 'Closing or reconciling entry that nets debit, credit, and interest together.',
+                default => 'Transaction category used to classify how this row affects the statement.',
+            })
             ->searchable(query: fn(Builder $q, string $search): Builder => self::applyEventTypeSearch($q, $search));
     }
 
     public static function showNetMovement(): TextColumn
     {
+        $net = fn($record): float => $record->event_type === 'settlement'
+            ? (float)$record->debit - (float)$record->credit - (float)($record->counter_interest ?? 0)
+            : (float)$record->debit - (float)$record->credit + (float)($record->accrued_interest ?? 0);
+
         return TextColumn::make('net')
             ->label('Net (DR−CR)')
-            ->getStateUsing(fn($record) => $record->debit - $record->credit + $record->accrued_interest)
+            ->getStateUsing($net)
             ->numeric(decimalPlaces: 3)
             ->badge()
-            ->color(fn($record): string => ($record->debit - $record->credit + $record->accrued_interest) >= 0 ? 'danger' : 'success');
+            ->color(fn($record): string => $net($record) >= 0 ? 'danger' : 'success')
+            ->tooltip(fn($record): string => $record?->event_type === 'settlement'
+                ? 'Settlement net = debit − credit − counter interest. This shows the final closing movement for the row.'
+                : 'Net movement = debit − credit + accrued interest. Positive means outflow; negative means inflow.');
     }
 
     public static function showRunningBalance(): TextColumn
     {
         return TextColumn::make('running_balance')
-            ->label('Balance (Running Balance)')
+            ->label('Running Balance')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->badge()
-            ->color(fn($record): string => ($record?->running_balance > 0) ? 'info' : 'success');
+            ->color(fn($record): string => ($record?->running_balance > 0) ? 'info' : 'success')
+            ->tooltip('Cumulative balance after applying this row. It shows the account position at this exact point in time.');
     }
 
     public static function showTransactionDate(): TextColumn
     {
         return TextColumn::make('transaction_date')
-            ->label('Date (Transaction Date)')
+            ->label('Transaction Date')
             ->date()
             ->sortable()
             ->badge()
             ->color('secondary')
-            ->icon('heroicon-s-calendar-days');
+            ->icon('heroicon-s-calendar-days')
+            ->tooltip('The business date when this transaction was posted and included in the statement.');
     }
 
     private static function applyEventTypeSearch(Builder $query, string $search): Builder

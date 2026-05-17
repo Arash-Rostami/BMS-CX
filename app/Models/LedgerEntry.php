@@ -16,6 +16,7 @@ class LedgerEntry extends Model
         'exchange_rate' => 'decimal:6',
         'principal_amount_base' => 'decimal:6',
         'applied_credit_amount' => 'decimal:6',
+        'pre_credit_interest' => 'decimal:6',
         'commission_amount' => 'decimal:6',
         'total_disbursed_base' => 'decimal:6',
         'rate_matrix_snapshot' => 'array',

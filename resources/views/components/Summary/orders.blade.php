@@ -1,6 +1,6 @@
 @if ($selectedProforma->orders->isNotEmpty())
     @php($shippedQuantitySoFar = 0)
-        <!-- Header -->
+    <!-- Header -->
     <h3 class="mb-3">
         <span class="material-icons-outlined order-icon text-sm insight">list_alt</span>
         <span class="text-lg md:text-2xl font-semibold mb-4">Order(s)</span>
@@ -11,7 +11,8 @@
         <div x-data="{ open: false }" class="border rounded-lg shadow-lg mb-2">
             <button @click="open = !open"
                     class="w-full flex justify-between items-center my-dark-class px-4 py-3 text-left text-md md:text-lg font-semibold rounded-xl">
-                <span title="part {{ $order->part ?? 'N/A' }}">No: {{ $order->reference_number ?? 'N/A' }} (🛒{{ $order->part ?? 'Undefined Part' }})</span> <span
+                <span title="part {{ $order->part ?? 'N/A' }}">No: {{ $order->reference_number ?? 'N/A' }} (🛒{{ $order->part ?? 'Undefined Part' }})</span>
+                <span
                     class="material-icons-outlined" x-show="open">expand_less</span>
                 <span class="material-icons-outlined" x-show="!open">expand_more</span>
             </button>
@@ -40,7 +41,8 @@
                     <div class="proforma-details-box">
                         <div class="font-medium"><span class="material-icons-outlined">info</span> Order Status:
                         </div>
-                        <pre>{{ isset($order->order_status) ? ucfirst(str_replace('accounting_', '', $order->order_status)) : 'N/A' }}</pre>                    </div>
+                        <pre>{{ isset($order->order_status) ? ucfirst(str_replace('accounting_', '', $order->order_status)) : 'N/A' }}</pre>
+                    </div>
 
                     <div class="proforma-details-box">
                         <div class="font-medium"><span class="material-icons-outlined">person</span> Created by:</div>
@@ -125,7 +127,8 @@
                             $remainingQuantityAfterThisOrder = $selectedProforma->quantity - $shippedQuantitySoFar;
                             ?>
                         <div class="proforma-details-box">
-                            <div class="font-medium"><span class="material-icons-outlined">inventory</span> Remaining (after this part):
+                            <div class="font-medium"><span class="material-icons-outlined">inventory</span> Remaining
+                                (after this part):
                             </div>
                             <pre>{{ number_format($remainingQuantityAfterThisOrder) }} MT</pre>
                         </div>
@@ -231,8 +234,10 @@
                                  {{ $attachment ? 'status-badge approved' : 'status-badge cancelled' }}">
                             <div class="flex items-center gap-2">
                                 <span class="material-icons-outlined">attachment</span>
-                                @if ($attachment && $attachment->file_path )
-                                    <a href="{{ asset($attachment->file_path) }}" target="_blank" class="underline">
+                                @if ($attachment && $attachment->file_path)
+                                    <a href="{{ Storage::disk('filament')->url($attachment->file_path) }}"
+                                       target="_blank"
+                                       class="underline">
                                         <span class="text-lg font-medium">{{ $attachment->name }}</span>
                                     </a>
                                 @endif

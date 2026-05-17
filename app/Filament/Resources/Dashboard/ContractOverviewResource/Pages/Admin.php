@@ -84,8 +84,7 @@ class Admin
     {
         return TextColumn::make('bl_date')
             ->label('BL Date')
-            ->date()
-            ->sortable();
+            ->date();
     }
 
     public static function showCategory(): TextColumn
@@ -126,15 +125,13 @@ class Admin
                 },
                 isIndividual: true,
                 isGlobal: false
-            )
-            ->sortable();
+            );
     }
 
     public static function showGrade(): TextColumn
     {
         return TextColumn::make('grade.name')
             ->label('Grade')
-            ->sortable()
             ->searchable(
                 query: function (Builder $query, string $search): Builder {
                     $s = Str::lower(trim($search));
@@ -153,8 +150,7 @@ class Admin
             ->placeholder('Not Created Yet!')
             ->clickable(OrderResource::class, 'order_id')
             ->formatStateUsing(fn($state) => isset($state) ? 'Part ' . $state : '')
-            ->searchable(isIndividual: true, isGlobal: false)
-            ->sortable();
+            ->searchable(isIndividual: true, isGlobal: false);
     }
 
     public static function showOrderQuantity(): TextColumn
@@ -162,8 +158,7 @@ class Admin
         return TextColumn::make('order_detail_quantity')
             ->label('Orders Quantity')
             ->suffix(' mt')
-            ->formatStateUsing(fn($state) => $state === null ? '-' : (is_numeric($state) ? number_format((float)$state, 2) : (string)$state))
-            ->sortable();
+            ->formatStateUsing(fn($state) => $state === null ? '-' : (is_numeric($state) ? number_format((float)$state, 2) : (string)$state));
     }
 
     public static function showOrderStatus(): TextColumn
@@ -180,16 +175,14 @@ class Admin
                 'accounting_rejected' => '❌ Rejected',
                 default => ucfirst($state),
             })
-            ->searchable(isIndividual: true, isGlobal: false)
-            ->sortable();
+            ->searchable(isIndividual: true, isGlobal: false);
     }
 
     public static function showPiDate(): TextColumn
     {
         return TextColumn::make('pi_date')
             ->label('PI Date')
-            ->date()
-            ->sortable();
+            ->date();
     }
 
     public static function showPiNo()
@@ -215,8 +208,7 @@ class Admin
         return TextColumn::make('pi_quantity')
             ->label('From PI/Contract')
             ->suffix(' mt')
-            ->formatStateUsing(fn($state) => $state === null ? '-' : number_format((float)$state, 2))
-            ->sortable();
+            ->formatStateUsing(fn($state) => $state === null ? '-' : number_format((float)$state, 2));
     }
 
     public static function showShipmentSatus(): TextColumn
@@ -258,8 +250,7 @@ class Admin
                 },
                 isIndividual: true,
                 isGlobal: false
-            )
-            ->sortable();
+            );
     }
 
 }

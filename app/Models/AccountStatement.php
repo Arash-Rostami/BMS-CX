@@ -20,6 +20,7 @@ class AccountStatement extends Model
         'credit' => 'decimal:6',
         'applied_credit' => 'decimal:6',
         'accrued_interest' => 'decimal:6',
+        'counter_interest' => 'decimal:6',
         'net_movement' => 'decimal:6',
         'running_balance' => 'decimal:6',
     ];

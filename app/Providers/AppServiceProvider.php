@@ -151,6 +151,7 @@ class AppServiceProvider extends ServiceProvider
 
     private function registerModelObservers(): void
     {
+
         // Transactional Data Observers
         Attachment::observe(AttachmentObserver::class);
         Order::observe(OrderObserver::class);

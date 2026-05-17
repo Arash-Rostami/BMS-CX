@@ -3,28 +3,30 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
-return new class extends Migration
-{
-    // ── Column reference ──────────────────────────────────────────────────────
+return new class extends Migration {
+    // ── What changed ──────────────────────────────────────────────────────────
     //
-    // statement_id    : globally unique row key — 'LE-{id}' or 'ST-{id}'
-    // ledger_entry_id : always the originating LedgerEntry id (safe for BelongsTo)
-    // event_type      : 'disbursement' | 'receipt' | 'settlement'
-    // sort_order      : intra-day ordering — disbursement(1) → settlement(2) → receipt(3)
-    // debit           : balance-increasing events
-    //                   disbursement → total_disbursed_base (gross contract amount)
-    //                   settlement   → net accrued interest (gross − counter_interest)
-    //                   receipt      → 0
-    // credit          : balance-reducing events
-    //                   settlement   → cash paid by borrower
-    //                   receipt      → overpayment / prior credit
-    //                   disbursement → 0
-    // applied_credit  : prior credit consumed at disbursement birth (disbursement rows only)
-    //                   gross debit − applied_credit = true new net exposure
-    // accrued_interest: net interest charged in this settlement period (= debit for settlements)
-    // net_movement    : credit − debit  (positive = balance fell, negative = balance rose)
-    // running_balance : SUM(debit − credit) cumulative per account, chronological
-    //                   positive → borrower owes us  |  negative → borrower has credit
+    // counter_interest : NEW column — counter-interest consumed in this row
+    //                    settlement → counter_interest_applied (offsets gross interest)
+    //                    others     → 0
+    //
+    // accrued_interest : CHANGED for disbursements and settlements
+    //                    disbursement → COALESCE(unpaid_interest, 0)
+    //                      Negative value shows counter-interest banked from the credit
+    //                      period (receipt sitting idle before disbursement consumed it).
+    //                    settlement   → COALESCE(accrued_interest_in_period, 0) — gross, not net.
+    //                      Gross interest accrued; use counter_interest column to see the offset.
+    //
+    // debit            : CHANGED for settlements
+    //                    Was: net interest (accrued − counter_interest_applied)
+    //                    Now: gross accrued_interest_in_period
+    //
+    // running_balance  : CHANGED formula → SUM(debit − credit − counter_interest)
+    //                    Keeps the cumulative balance correct now that settlement
+    //                    debit carries gross interest instead of net.
+    //
+    // net_movement     : CHANGED → credit − debit + counter_interest
+    //                    = actual change in balance for that row (positive = balance fell)
     // ─────────────────────────────────────────────────────────────────────────
 
     public function up(): void
@@ -36,9 +38,9 @@ return new class extends Migration
             CREATE VIEW account_statements AS
             SELECT
                 rs.*,
-                rs.credit - rs.debit AS net_movement,
+                rs.credit - rs.debit + rs.counter_interest AS net_movement,
                 (
-                    SELECT SUM(rs2.debit - rs2.credit)
+                    SELECT SUM(rs2.debit - rs2.credit - rs2.counter_interest)
                     FROM (
                         SELECT
                             CONCAT('LE-', id)   AS statement_id,
@@ -55,7 +57,8 @@ return new class extends Migration
                             CASE WHEN type = 'disbursement' THEN total_disbursed_base ELSE 0 END AS debit,
                             CASE WHEN type = 'receipt'      THEN total_disbursed_base ELSE 0 END AS credit,
                             CASE WHEN type = 'disbursement' THEN COALESCE(applied_credit_amount, 0) ELSE 0 END AS applied_credit,
-                            0                   AS accrued_interest
+                            CASE WHEN type = 'disbursement' THEN COALESCE(pre_credit_interest, 0) ELSE 0 END AS accrued_interest,
+                            0                   AS counter_interest
                         FROM ledger_entries
 
                         UNION ALL
@@ -68,10 +71,11 @@ return new class extends Migration
                             'settlement',
                             2,
                             s2.id,
-                            s2.accrued_interest_in_period - COALESCE(s2.counter_interest_applied, 0),
+                            COALESCE(s2.accrued_interest_in_period, 0),
                             s2.settlement_amount,
                             0,
-                            s2.accrued_interest_in_period - COALESCE(s2.counter_interest_applied, 0)
+                            COALESCE(s2.accrued_interest_in_period, 0),
+                            COALESCE(s2.counter_interest_applied, 0)
                         FROM settlements s2
                         JOIN ledger_entries l2 ON s2.ledger_entry_id = l2.id
                     ) rs2
@@ -99,7 +103,8 @@ return new class extends Migration
                     CASE WHEN type = 'disbursement' THEN total_disbursed_base ELSE 0 END AS debit,
                     CASE WHEN type = 'receipt'      THEN total_disbursed_base ELSE 0 END AS credit,
                     CASE WHEN type = 'disbursement' THEN COALESCE(applied_credit_amount, 0) ELSE 0 END AS applied_credit,
-                    0                   AS accrued_interest
+                    CASE WHEN type = 'disbursement' THEN COALESCE(pre_credit_interest, 0) ELSE 0 END AS accrued_interest,
+                    0                   AS counter_interest
                 FROM ledger_entries
 
                 UNION ALL
@@ -113,51 +118,53 @@ return new class extends Migration
                     2,
                     s.id,
                     COALESCE(l.description, CONCAT('Payment against ledger #', l.id)),
-                    s.accrued_interest_in_period - COALESCE(s.counter_interest_applied, 0),
+                    COALESCE(s.accrued_interest_in_period, 0),
                     s.settlement_amount,
                     0,
-                    s.accrued_interest_in_period - COALESCE(s.counter_interest_applied, 0)
+                    COALESCE(s.accrued_interest_in_period, 0),
+                    COALESCE(s.counter_interest_applied, 0)
                 FROM settlements s
                 JOIN ledger_entries l ON s.ledger_entry_id = l.id
             ) AS rs
         ");
 
         // PRODUCTION / MySQL 8+ — CTE + window function version (swap in locally)
-        //
-        // DB::statement("
-        //     CREATE VIEW account_statements AS
-        //     WITH raw AS (
-        //         SELECT
-        //             CONCAT('LE-', id) AS statement_id,
-        //             id                AS ledger_entry_id,
-        //             account_id, transaction_date, type AS event_type, description,
-        //             CASE type WHEN 'disbursement' THEN 1 WHEN 'settlement' THEN 2 ELSE 3 END AS sort_order,
-        //             id AS original_id,
-        //             CASE WHEN type = 'disbursement' THEN total_disbursed_base ELSE 0 END AS debit,
-        //             CASE WHEN type = 'receipt'      THEN total_disbursed_base ELSE 0 END AS credit,
-        //             CASE WHEN type = 'disbursement' THEN COALESCE(applied_credit_amount, 0) ELSE 0 END AS applied_credit,
-        //             0 AS accrued_interest
-        //         FROM ledger_entries
-        //         UNION ALL
-        //         SELECT
-        //             CONCAT('ST-', s.id), s.ledger_entry_id, l.account_id, s.transaction_date,
-        //             'settlement', COALESCE(l.description, CONCAT('Payment against ledger #', l.id)),
-        //             2, s.id,
-        //             s.accrued_interest_in_period - COALESCE(s.counter_interest_applied, 0),
-        //             s.settlement_amount, 0,
-        //             s.accrued_interest_in_period - COALESCE(s.counter_interest_applied, 0)
-        //         FROM settlements s
-        //         JOIN ledger_entries l ON s.ledger_entry_id = l.id
-        //     )
-        //     SELECT
-        //         raw.*,
-        //         raw.credit - raw.debit AS net_movement,
-        //         SUM(raw.debit - raw.credit) OVER (
-        //             PARTITION BY raw.account_id
-        //             ORDER BY raw.transaction_date ASC, raw.sort_order ASC, raw.original_id ASC
-        //         ) AS running_balance
-        //     FROM raw
-        // ");
+        DB::statement("
+            CREATE VIEW account_statements AS
+            WITH raw AS (
+                SELECT
+                    CONCAT('LE-', id) AS statement_id,
+                    id                AS ledger_entry_id,
+                    account_id, transaction_date, type AS event_type, description,
+                    CASE type WHEN 'disbursement' THEN 1 WHEN 'settlement' THEN 2 ELSE 3 END AS sort_order,
+                    id AS original_id,
+                    CASE WHEN type = 'disbursement' THEN total_disbursed_base ELSE 0 END AS debit,
+                    CASE WHEN type = 'receipt'      THEN total_disbursed_base ELSE 0 END AS credit,
+                    CASE WHEN type = 'disbursement' THEN COALESCE(applied_credit_amount, 0) ELSE 0 END AS applied_credit,
+                    CASE WHEN type = 'disbursement' THEN COALESCE(pre_credit_interest, 0) ELSE 0 END AS accrued_interest,
+                    0 AS counter_interest
+                FROM ledger_entries
+                UNION ALL
+                SELECT
+                    CONCAT('ST-', s.id), s.ledger_entry_id, l.account_id, s.transaction_date,
+                    'settlement', COALESCE(l.description, CONCAT('Payment against ledger #', l.id)),
+                    2, s.id,
+                    COALESCE(s.accrued_interest_in_period, 0),
+                    s.settlement_amount, 0,
+                    COALESCE(s.accrued_interest_in_period, 0),
+                    COALESCE(s.counter_interest_applied, 0)
+                FROM settlements s
+                JOIN ledger_entries l ON s.ledger_entry_id = l.id
+            )
+            SELECT
+                raw.*,
+                raw.credit - raw.debit + raw.counter_interest AS net_movement,
+                SUM(raw.debit - raw.credit - raw.counter_interest) OVER (
+                    PARTITION BY raw.account_id
+                    ORDER BY raw.transaction_date ASC, raw.sort_order ASC, raw.original_id ASC
+                ) AS running_balance
+            FROM raw
+        ");
     }
 
     public function down(): void

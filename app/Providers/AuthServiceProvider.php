@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 // use Illuminate\Support\Facades\Gate;
+use App\Models\Account;
+use App\Models\AccountStatement;
 use App\Models\Allocation;
 use App\Models\Balance;
 use App\Models\Beneficiary;
@@ -13,6 +15,7 @@ use App\Models\Contractor;
 use App\Models\ContractOverview;
 use App\Models\DeliveryTerm;
 use App\Models\Grade;
+use App\Models\LedgerEntry;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\Packaging;
@@ -26,12 +29,15 @@ use App\Models\ProviderList;
 use App\Models\PurchaseStatus;
 use App\Models\Quote;
 use App\Models\QuoteProvider;
+use App\Models\Settlement;
 use App\Models\ShippingLine;
 use App\Models\Supplier;
 use App\Models\SupplierSummary;
 use App\Models\Tag;
 use App\Models\Target;
 use App\Models\User;
+use App\Policies\AccountPolicy;
+use App\Policies\AccountStatementPolicy;
 use App\Policies\AllocationPolicy;
 use App\Policies\BalancePolicy;
 use App\Policies\BeneficiaryPolicy;
@@ -42,6 +48,7 @@ use App\Policies\ContractorPolicy;
 use App\Policies\ContractOverviewPolicy;
 use App\Policies\DeliveryTermPolicy;
 use App\Policies\GradePolicy;
+use App\Policies\LedgerEntryPolicy;
 use App\Policies\NotificationPolicy;
 use App\Policies\OrderPolicy;
 use App\Policies\PackagingPolicy;
@@ -55,6 +62,7 @@ use App\Policies\ProviderListPolicy;
 use App\Policies\PurchaseStatusPolicy;
 use App\Policies\QuotePolicy;
 use App\Policies\QuoteProviderPolicy;
+use App\Policies\SettlementPolicy;
 use App\Policies\ShippingLinePolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\SupplierSummaryPolicy;
@@ -71,6 +79,8 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
+        Account::class => AccountPolicy::class,
+        AccountStatement::class => AccountStatementPolicy::class,
         Allocation::class => AllocationPolicy::class,
         Balance::class => BalancePolicy::class,
         Beneficiary::class => BeneficiaryPolicy::class,
@@ -81,6 +91,7 @@ class AuthServiceProvider extends ServiceProvider
         ContractOverview::class => ContractOverviewPolicy::class,
         DeliveryTerm::class => DeliveryTermPolicy::class,
         Grade::class => GradePolicy::class,
+        LedgerEntry::class => LedgerEntryPolicy::class,
         Notification::class => NotificationPolicy::class,
         Order::class => OrderPolicy::class,
         Packaging::class => PackagingPolicy::class,
@@ -94,6 +105,7 @@ class AuthServiceProvider extends ServiceProvider
         PurchaseStatus::class => PurchaseStatusPolicy::class,
         Quote::class => QuotePolicy::class,
         QuoteProvider::class => QuoteProviderPolicy::class,
+        Settlement::class => SettlementPolicy::class,
         ShippingLine::class => ShippingLinePolicy::class,
         Supplier::class => SupplierPolicy::class,
         SupplierSummary::class => SupplierSummaryPolicy::class,
@@ -101,7 +113,6 @@ class AuthServiceProvider extends ServiceProvider
         Target::class => TargetPolicy::class,
         User::class => UserPolicy::class,
     ];
-
     /**
      * Register any authentication / authorization services.
      */

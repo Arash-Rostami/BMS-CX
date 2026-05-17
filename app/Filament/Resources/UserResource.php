@@ -89,7 +89,7 @@ class UserResource extends Resource
                 Admin::showFullName(),
                 Admin::showEmail(),
                 Admin::showPhone(),
-                Admin::showIP(),
+//                Admin::showIP(),
                 Admin::showCompany(),
                 Admin::showStatus(),
                 Admin::showRole(),
@@ -107,7 +107,7 @@ class UserResource extends Resource
 
     public static function getGlobalSearchResultTitle(Model $record): string
     {
-        return "👨🏻‍💻 " . $record->fullName;
+        return '👨🏻‍💻 ' . $record->fullName;
     }
 
     public static function getGloballySearchableAttributes(): array
@@ -138,7 +138,7 @@ class UserResource extends Resource
                     Tables\Columns\Layout\Panel::make([
                         Tables\Columns\Layout\Split::make([
                             Tables\Columns\Layout\Stack::make([
-                                Admin::showIP(),
+//                                Admin::showIP(),
                                 Admin::showCompany()
                             ])->space(),
                             Tables\Columns\Layout\Stack::make([
