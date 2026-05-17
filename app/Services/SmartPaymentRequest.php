@@ -6,12 +6,22 @@ use App\Filament\Resources\Operational\PaymentRequestResource\Pages\Admin;
 use App\Models\Order;
 use App\Models\ProformaInvoice;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 
 class SmartPaymentRequest
 {
-    public static function fillForm(?int $id, ?string $module, Form $form, ?string $type = 'balance'): void
+    public static function fillForm(mixed $id, ?string $module, Form $form, ?string $type = 'balance'): void
     {
-        if (!$id || !$module) return;
+        $id = is_array($id) ? $id[0] ?? null : $id;
+
+        if (!$id || !$module) {
+            Notification::make()
+                ->title('Invalid Reference')
+                ->body('Missing or invalid parameters. Proceeding with an empty form.')
+                ->warning()
+                ->send();
+            return;
+        }
 
         match ($module) {
             'proforma-invoice' => self::handleProformaInvoice($id, $form),
@@ -23,10 +33,26 @@ class SmartPaymentRequest
     protected static function handleOrder(int $id, Form $form, ?string $type): void
     {
         $type ??= 'other';
-        if (!$order = Order::with('orderDetail', 'party')->find($id)) return;
+        if (!$order = Order::with('orderDetail', 'party')->find($id)) {
+            Notification::make()
+                ->title('Order Not Found')
+                ->body('The selected order could not be found. Proceeding with an empty form.')
+                ->warning()
+                ->send();
+            return;
+        }
 
         $isBalance = $type === 'balance';
         $detail = $order->orderDetail;
+
+        if (!$detail) {
+            Notification::make()
+                ->title('Missing Order Details')
+                ->body('Order is missing pricing details. Please fix the Order first.')
+                ->danger()
+                ->send();
+            return;
+        }
 
         $requested = self::calculateRequestedAmount($detail);
         $total = $detail->total ?? self::calculateTotal($detail);
@@ -49,7 +75,14 @@ class SmartPaymentRequest
 
     protected static function handleProformaInvoice(int $id, Form $form): void
     {
-        if (!$proforma = ProformaInvoice::find($id)) return;
+        if (!$proforma = ProformaInvoice::find($id)) {
+            Notification::make()
+                ->title('Proforma Invoice Not Found')
+                ->body('The selected proforma invoice could not be found. Proceeding with an empty form.')
+                ->warning()
+                ->send();
+            return;
+        }
 
         $details = Admin::aggregateProformaInvoiceDetails([$proforma]);
 
