@@ -17,7 +17,7 @@ class CreatePayment extends CreateRecord
 {
     protected static string $resource = PaymentResource::class;
 
-    public ?array $id = null;
+    public mixed $id = null;
     public ?string $module = null;
     public float $credit = 0;
 

@@ -22,7 +22,7 @@ class CreatePaymentRequest extends CreateRecord
         'bank_account' => 'account_number',
     ];
     protected static string $resource = PaymentRequestResource::class;
-    public ?int $id = null;
+    public mixed $id = null;
     public ?string $module = null;
     public ?string $type = null;
     public bool $duplicateConfirmed = false;
