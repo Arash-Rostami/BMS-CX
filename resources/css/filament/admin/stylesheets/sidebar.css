@@ -37,6 +37,8 @@ button[title="Collapse sidebar"], button[title="Expand sidebar"] {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    z-index: 50;
 }
 
 button[title="Collapse sidebar"]:hover, button[title="Expand sidebar"]:hover {
