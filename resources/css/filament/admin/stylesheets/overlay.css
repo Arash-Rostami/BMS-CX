@@ -13,7 +13,6 @@
     text-align: center;
     padding: 20px;
     z-index: 9999;
-    pointer-events: none;
 }
 
 .orientation-overlay-content {

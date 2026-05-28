@@ -5,7 +5,7 @@
     "src": "resources/css/app.css"
   },
   "resources/css/filament/admin/theme.css": {
-    "file": "assets/theme-BDLf3QJJ.css",
+    "file": "assets/theme-st3WmQSE.css",
     "isEntry": true,
     "src": "resources/css/filament/admin/theme.css"
   },
@@ -243,7 +243,7 @@
     "src": "resources/images/stats/transit.png"
   },
   "resources/js/app.js": {
-    "file": "assets/app-i4U88SHa.js",
+    "file": "assets/app-iA4nVHdb.js",
     "isEntry": true,
     "src": "resources/js/app.js"
   }

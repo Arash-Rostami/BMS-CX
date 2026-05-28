@@ -40,6 +40,7 @@ class StatusObserver {
         this.statusDiv.style.height = '0px';
         this.statusDiv.style.transition = 'all 1s ease-in-out';
         this.statusDiv.style.opacity = '0'; // Initial opacity
+        this.statusDiv.style.pointerEvents = 'none';
     }
 
     changeColor(color) {
@@ -56,6 +57,7 @@ class StatusObserver {
             setTimeout(() => {
                 this.statusDiv.style.opacity = '0';
                 this.statusDiv.innerHTML = '';
+                this.statusDiv.style.pointerEvents = 'none';
             }, 250);
         }, delay);
     }
@@ -71,6 +73,7 @@ class StatusObserver {
     showDivStatus() {
         this.statusDiv.style.height = '70px';
         this.statusDiv.style.opacity = '1';
+        this.statusDiv.style.pointerEvents = 'auto';
     }
 
     update(status) {
