@@ -5,6 +5,7 @@ html, body, * {
 .fi-logo {
     -webkit-animation: jello-horizontal 0.9s 2s both;
     animation: jello-horizontal 0.9s 2s both;
+    pointer-events: none;
 }
 
 .fi-body {
@@ -35,6 +36,8 @@ html, body, * {
 .fi-topbar > nav {
     background-color: lightgrey;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    position: relative;
+    z-index: 50;
 }
 
 .fi-sidebar-nav {
@@ -68,14 +71,16 @@ html, body, * {
 }
 .fi-dropdown-panel, .fi-dropdown-list {
     display: block;
-    max-height: calc(100vh - 100px);
+    max-height: 60vh;
+    overscroll-behavior: contain;
     overflow-y: auto!important;
     overflow-x: hidden;
 }
 
 .fi-dropdown-list {
     display: block;
-    max-height: calc(100vh - 100px);
+    max-height: 60vh;
+    overscroll-behavior: contain;
     overflow-y: auto!important;
 }
 
