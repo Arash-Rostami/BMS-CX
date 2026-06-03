@@ -38,7 +38,7 @@ return new class extends Migration {
             CREATE VIEW account_statements AS
             SELECT
                 rs.*,
-                rs.credit - rs.debit + rs.counter_interest AS net_movement,
+                rs.debit - rs.credit - rs.counter_interest AS net_movement,
                 (
                     SELECT SUM(rs2.debit - rs2.credit - rs2.counter_interest)
                     FROM (
@@ -158,7 +158,7 @@ return new class extends Migration {
             )
             SELECT
                 raw.*,
-                raw.credit - raw.debit + raw.counter_interest AS net_movement,
+                raw.debit - raw.credit - raw.counter_interest AS net_movement,
                 SUM(raw.debit - raw.credit - raw.counter_interest) OVER (
                     PARTITION BY raw.account_id
                     ORDER BY raw.transaction_date ASC, raw.sort_order ASC, raw.original_id ASC

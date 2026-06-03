@@ -1,4 +1,8 @@
 <?php
+$content = file_get_contents('app/Jobs/RecalculateAccountLedger.php');
+
+$new_content = <<<'NEWCODE'
+<?php
 
 namespace App\Jobs;
 
@@ -12,6 +16,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class RecalculateAccountLedger implements ShouldQueue
@@ -27,7 +32,11 @@ class RecalculateAccountLedger implements ShouldQueue
     public function __construct($accountId, $fromDate)
     {
         $this->accountId = (int)$accountId;
-        // Rebuild from the dawn of time to ensure flawless chronological re-simulation.
+        // The ledger rebuild must start from the very beginning to be accurate.
+        // Even if an entry was edited mid-history, the simplest and most robust
+        // way to reconstruct the declining balance correctly is to purge all
+        // settlements and replay every payment chronologically from day 0.
+        // We override fromDate to the start of time for this account.
         $this->fromDate = Carbon::parse('1970-01-01');
     }
 
@@ -37,6 +46,8 @@ class RecalculateAccountLedger implements ShouldQueue
             $account = Account::findOrFail($this->accountId);
 
             // 1. Group all existing settlements (and overpayments) to reconstruct original gross payments.
+            //    Since a single payment gets split into multiple settlements (one per loan),
+            //    we sum them by transaction_date to recreate the original gross payment.
             $allSettlements = Settlement::query()
                 ->whereHas('ledgerEntry', fn($q) => $q->where('account_id', $account->id))
                 ->orderBy('transaction_date', 'asc')
@@ -126,6 +137,14 @@ class RecalculateAccountLedger implements ShouldQueue
             }
 
             // 3. Chronologically re-apply initial disbursement credits.
+            // Note: Since applyDisbursementCredit in InterestCalculationService modifies
+            // the state directly, we just call it on each disbursement *in chronological order*
+            // *before* replaying the payments. Wait, processPayment needs this to happen
+            // interleaved with payments?
+            // No, disbursements and receipts are independent of settlements in the DB.
+            // However, applyDisbursementCredit looks at receipts.
+
+            // Re-fetch ledgers and clear pre-credit state to ensure cleanliness
             $disbursements = LedgerEntry::where('account_id', $account->id)
                 ->where('type', 'disbursement')
                 ->orderBy('transaction_date', 'asc')
@@ -133,10 +152,18 @@ class RecalculateAccountLedger implements ShouldQueue
                 ->get();
 
             foreach ($disbursements as $disbursement) {
+                // Clear state first
+                $disbursement->applied_credit_amount = 0;
+                $disbursement->remaining_principal = (float)$disbursement->total_disbursed_base;
+                $disbursement->unpaid_interest = 0;
+                $disbursement->is_settled = false;
+
                 $data = $disbursement->toArray();
-                // Pass by reference is used in applyDisbursementCredit
                 $calculator->applyDisbursementCredit($account, $data);
 
+                // applyDisbursementCredit modifies $data array, but also the DB directly in the service?
+                // Wait, InterestCalculationService::applyDisbursementCredit modifies $data array AND saves the receipts,
+                // but we must re-sync the disbursement model
                 if (isset($data['applied_credit_amount'])) {
                      $disbursement->applied_credit_amount = $data['applied_credit_amount'];
                      $disbursement->remaining_principal = $data['remaining_principal'];
@@ -163,3 +190,6 @@ class RecalculateAccountLedger implements ShouldQueue
         });
     }
 }
+NEWCODE;
+
+file_put_contents('app/Jobs/RecalculateAccountLedger.php', $new_content);

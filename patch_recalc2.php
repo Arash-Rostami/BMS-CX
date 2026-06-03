@@ -1,4 +1,6 @@
 <?php
+$content = <<<'NEWCODE'
+<?php
 
 namespace App\Jobs;
 
@@ -163,3 +165,6 @@ class RecalculateAccountLedger implements ShouldQueue
         });
     }
 }
+NEWCODE;
+
+file_put_contents('app/Jobs/RecalculateAccountLedger.php', $content);
