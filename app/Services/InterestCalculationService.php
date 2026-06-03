@@ -183,6 +183,8 @@ class InterestCalculationService
                     (array)$ledger->rate_matrix_snapshot
                 );
 
+                $counterInterest = max(0, $counterInterest - abs((float)$ledger->unpaid_interest));
+
                 $ledger->unpaid_interest -= $counterInterest;
                 $ledger->save();
 

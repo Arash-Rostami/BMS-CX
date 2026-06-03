@@ -10,6 +10,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class CreateSettlement extends CreateRecord
 {
@@ -23,6 +24,27 @@ class CreateSettlement extends CreateRecord
     protected function handleRecordCreation(array $data): Model
     {
         $account = Account::findOrFail($data['account_id']);
+
+        $paymentDate = Carbon::parse($data['transaction_date']);
+
+
+        $latestSettlement = Settlement::query()
+            ->whereHas('ledgerEntry', fn ($q) => $q->where('account_id', $account->id))
+            ->max('transaction_date');
+
+        if ($latestSettlement !== null && $paymentDate->lt(Carbon::parse($latestSettlement))) {
+            Notification::make()
+                ->danger()
+                ->title('Back-dated settlement not allowed')
+                ->body('This date is earlier than an existing settlement ('
+                    . Carbon::parse($latestSettlement)->format('M j, Y')
+                    . '). To insert a payment into the past, edit or delete the affected '
+                    . 'settlement instead — that path rebuilds the timeline safely.')
+                ->persistent()
+                ->send();
+
+            throw new Halt();
+        }
 
         $createdIds = (new InterestCalculationService())->processPayment(
             $account,
