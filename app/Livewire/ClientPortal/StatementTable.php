@@ -1,52 +1,35 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Livewire\ClientPortal;
 
 use App\Filament\Resources\Dashboard\AccountStatementResource\Exports\AccountStatementExport;
 use App\Filament\Resources\Dashboard\AccountStatementResource\Pages\Admin;
-use App\Filament\Resources\Dashboard\AccountStatementResource\Pages\ListAccountStatements;
 use App\Models\AccountStatement;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Livewire\Component;
 use Maatwebsite\Excel\Facades\Excel;
 
-class AccountStatementResource extends Resource
+class StatementTable extends Component implements HasForms, HasTable
 {
-    protected static ?string $model = AccountStatement::class;
-    protected static ?string $navigationIcon = 'heroicon-o-arrow-path';
-    protected static ?int $navigationSort = 4;
+    use InteractsWithTable;
+    use InteractsWithForms;
 
-    protected static bool $isGloballySearchable = false;
-    protected static bool $canCreate = false;
+    public $accountId;
 
-    public static function form(Form $form): Form
-    {
-        return $form->schema([]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => ListAccountStatements::route('/'),
-        ];
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
-
-    public static function table(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table
+            ->query(AccountStatement::query()->where('account_id', $this->accountId))
             ->columns([
                 Admin::showTransactionDate(),
                 Admin::showDescription(),
@@ -63,29 +46,29 @@ class AccountStatementResource extends Resource
             ->filtersFormWidth(MaxWidth::TwoExtraLarge)
             ->filtersFormColumns(2)
             ->filters([
-                Admin::filterAccount(),
                 Admin::filterLedger(),
                 Admin::filterTransactionDate()
             ], layout: FiltersLayout::Modal)
             ->groups([
-                Group::make('account.name')
-                    ->label('Account'),
-                Group::make('transaction_month')
+                Group::make('transaction_date')
                     ->label('Month')
-                    ->groupQueryUsing(fn(Builder $query) => $query->groupBy('transaction_date'))
                     ->getTitleFromRecordUsing(fn($record) => Carbon::parse($record->transaction_date)->format('F Y'))
-                    ->orderQueryUsing(fn(Builder $query, string $direction) => $query->orderBy('transaction_date', $direction)),
+                    ->orderQueryUsing(fn($query, $direction) => $query->orderBy('transaction_date', $direction)),
             ])
-            ->groupingSettingsInDropdownOnDesktop()
             ->defaultGroup(null)
+            ->actions([])
             ->bulkActions([
                 BulkAction::make('export')
                     ->label('Export to Excel')
+                    ->extraAttributes(['style' => 'background-color: rgba(16, 185, 129); color: white; border: 1px solid rgba(16, 185, 129, 0.6); font-weight: 600; padding: 0.5rem 1rem; border-radius: 0.5rem;'])
                     ->icon('heroicon-o-arrow-down-tray')
                     ->action(fn(Collection $records) => Excel::download(
-                        new AccountStatementExport($records),
-                        'account-statement-' . date('Y-m-d') . '.xlsx'
-                    ))
+                        new AccountStatementExport($records), 'account-statement-' . date('Y-m-d') . '.xlsx'))
             ]);
+    }
+
+    public function render()
+    {
+        return view('livewire.client-portal.statement-table');
     }
 }

@@ -1,53 +1,35 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Livewire\ClientPortal;
 
-use App\Filament\Resources\Dashboard\LoanSummaryResource\Exports\LoanSummaryExport;
-use App\Filament\Resources\Dashboard\LoanSummaryResource\Pages\Admin;
-use App\Filament\Resources\Dashboard\LoanSummaryResource\Pages\ListLoanSummaries;
 use App\Models\LoanSummary;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
+use Livewire\Component;
+use App\Filament\Resources\Dashboard\LoanSummaryResource\Pages\Admin;
+use App\Filament\Resources\Dashboard\LoanSummaryResource\Exports\LoanSummaryExport;
 
-
-class LoanSummaryResource extends Resource
+class LoanTable extends Component implements HasForms, HasTable
 {
-    protected static ?string $model = LoanSummary::class;
-    protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
-    protected static ?string $navigationLabel = 'Loan Summary';
-    protected static ?int $navigationSort = 3;
+    use InteractsWithTable;
+    use InteractsWithForms;
 
-    protected static bool $isGloballySearchable = false;
-    protected static bool $canCreate = false;
+    public $accountId;
 
-    public static function form(Form $form): Form
-    {
-        return $form->schema([]);
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => ListLoanSummaries::route('/'),
-        ];
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
-
-    public static function table(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table
+            ->query(LoanSummary::query()->where('account_id', $this->accountId))
             ->columns([
                 Admin::showEntryType(),
                 Admin::showLoanSummary(),
@@ -69,11 +51,9 @@ class LoanSummaryResource extends Resource
             ])
             ->defaultSort('disbursement_date', 'asc')
             ->filtersFormWidth(MaxWidth::ThreeExtraLarge)
-            ->filtersFormColumns(2)
             ->filters([Admin::filterSummary()], layout: FiltersLayout::Modal)
             ->filtersFormColumns(6)
             ->groups([
-                Group::make('account.name')->label('Account'),
                 Group::make('entry_type')->label('Type'),
                 Group::make('disbursement_date')
                     ->label('Month')
@@ -83,14 +63,20 @@ class LoanSummaryResource extends Resource
                     ->label('Settlement')
                     ->getTitleFromRecordUsing(fn($record) => $record->is_settled ? 'Settled' : 'Unsettled'),
             ])
-            ->groupingSettingsInDropdownOnDesktop()
             ->defaultGroup(null)
             ->bulkActions([
                 BulkAction::make('export')
                     ->label('Export to Excel')
+                    ->extraAttributes(['style' => 'background-color: rgba(16, 185, 129); color: white; border: 1px solid rgba(16, 185, 129, 0.6); font-weight: 600; padding: 0.5rem 1rem; border-radius: 0.5rem;'])
                     ->icon('heroicon-o-arrow-down-tray')
                     ->action(fn(Collection $records) => Excel::download(
                         new LoanSummaryExport($records), 'loan-summary-' . date('Y-m-d') . '.xlsx'))
-            ]);
+            ])
+            ->actions([]);
+    }
+
+    public function render()
+    {
+        return view('livewire.client-portal.loan-table');
     }
 }

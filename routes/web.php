@@ -7,9 +7,10 @@ use App\Http\Controllers\ManagerialDashboard;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\UserController;
 use App\Livewire\CaseSummary\TotalSummary;
+use App\Livewire\ClientPortal\Login as ClientLogin;
+use App\Livewire\ClientPortal\Portal as ClientPortal;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/clear', function () {
@@ -93,6 +94,11 @@ Route::middleware(['web', 'custom_auth'])->group(function () {
 //            sleep(2);
 //        });
 //});
+
+Route::middleware('web')->group(function () {
+    Route::get('/client/login', ClientLogin::class)->name('client.login');
+    Route::get('/client/portal', ClientPortal::class)->name('client.portal');
+});
 
 Route::get('/quote-service/{token}', [QuoteController::class, 'authenticate'])->name('quote-service');
 
