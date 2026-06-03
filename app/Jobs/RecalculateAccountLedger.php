@@ -6,13 +6,11 @@ use App\Models\Account;
 use App\Models\LedgerEntry;
 use App\Models\Settlement;
 use App\Services\InterestCalculationService;
-use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class RecalculateAccountLedger implements ShouldQueue
@@ -23,204 +21,243 @@ class RecalculateAccountLedger implements ShouldQueue
     use SerializesModels;
 
     protected int $accountId;
-    protected Carbon $fromDate;
-    protected Carbon $rebuildDate;
 
-    public function __construct($accountId, $fromDate)
+    /**
+     * Kept for compatibility with existing dispatch sites.
+     *
+     * This job intentionally performs a full-account replay because the current
+     * schema stores settlements as generated per-ledger output rows, not as
+     * first-class source payment events.
+     */
+    protected string $fromDate;
+
+    public function __construct(int $accountId, string $fromDate)
     {
-        $this->accountId = (int)$accountId;
-        $this->fromDate = Carbon::parse($fromDate);
-        $this->rebuildDate = $this->fromDate->copy()->subDay();
+        $this->accountId = $accountId;
+        $this->fromDate = $fromDate;
     }
 
     public function handle(InterestCalculationService $calculator): void
     {
-        DB::transaction(function () use ($calculator) {
+        DB::transaction(function () use ($calculator): void {
             $account = Account::findOrFail($this->accountId);
 
-            $settlementsToReplay = Settlement::query()
-                ->whereHas('ledgerEntry', fn($q) => $q->where('account_id', $account->id))
-                ->where('transaction_date', '>=', $this->fromDate)
-                ->orderBy('transaction_date', 'asc')
-                ->get();
+            $paymentsToReplay = $this->collectReplayPayments($account);
 
-            // ── Group 1: ledgers born BEFORE fromDate ─────────────────────────
-            $ledgersToReset = LedgerEntry::where('account_id', $account->id)
-                ->where('transaction_date', '<=', $this->rebuildDate)
-                ->lockForUpdate()
-                ->orderBy('transaction_date', 'asc')
-                ->orderBy('id', 'asc')
-                ->get();
-
-            $previousSettlements = $this->loadPreviousSettlements(
-                $account->id,
-                $ledgersToReset->pluck('id')->all()
-            );
-            $this->resetLedgers($ledgersToReset, $previousSettlements);
-
-            // ── Group 2: ledgers born WITHIN the replay window ────────────────
-            $replayWindowLedgers = LedgerEntry::where('account_id', $account->id)
-                ->where('transaction_date', '>=', $this->fromDate)
-                ->where('description', '!=', InterestCalculationService::OVERPAYMENT_DESCRIPTION)
-                ->lockForUpdate()
-                ->orderBy('transaction_date', 'asc')
-                ->orderBy('id', 'asc')
-                ->get();
-
-            $this->resetLedgers($replayWindowLedgers, collect());
-
-            // ── Re-apply credits + pre-credit interest across both groups ──────
-            $this->applyDisbursementCredits(
-                $account->id,
-                $ledgersToReset->merge($replayWindowLedgers),
-                $calculator
-            );
-
-            $this->purgeAndReplay($account, $calculator, $settlementsToReplay);
+            $this->purgeGeneratedRows($account);
+            $this->resetManualReceipts($account);
+            $this->resetDisbursements($account);
+            $this->reapplyDisbursementCredits($account, $calculator);
+            $this->replayPayments($account, $calculator, $paymentsToReplay);
         });
     }
 
-    protected function applyDisbursementCredits(int $accountId, Collection $allLedgers, InterestCalculationService $calculator): void
+    /**
+     * Reconstruct payment-like replay events from generated settlement rows and
+     * generated overpayment receipt rows.
+     *
+     * This is a best-effort reconstruction until the schema has a real payment
+     * batch/source-event table.
+     */
+    protected function collectReplayPayments(Account $account): array
     {
-        $disbursements = $allLedgers
-            ->where('type', 'disbursement')
-            ->sortBy('transaction_date')
-            ->values();
+        $payments = [];
 
-        if ($disbursements->isEmpty()) return;
+        $settlements = Settlement::query()
+            ->whereHas('ledgerEntry', fn ($q) => $q->where('account_id', $account->id))
+            ->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->lockForUpdate()
+            ->get();
 
-        $allReceipts = LedgerEntry::where('account_id', $accountId)
+        foreach ($settlements as $settlement) {
+            $date = $settlement->transaction_date->format('Y-m-d');
+            $currency = $settlement->currency_type ?? config('financial.base_currency', 'USD');
+            $rate = $settlement->settlement_exchange_rate !== null
+                ? (float) $settlement->settlement_exchange_rate
+                : null;
+
+            $key = $this->paymentKey($date, $currency, $rate);
+
+            if (! isset($payments[$key])) {
+                $payments[$key] = [
+                    'date' => $date,
+                    'amount' => 0.0,
+                    'currency' => $currency,
+                    'rate' => $rate,
+                    'foreign_values' => [],
+                ];
+            }
+
+            $payments[$key]['amount'] += (float) $settlement->settlement_amount;
+
+            if ($settlement->foreign_settlement_amount !== null) {
+                $foreign = round((float) $settlement->foreign_settlement_amount, 6);
+                $payments[$key]['foreign_values'][(string) $foreign] = $foreign;
+            }
+        }
+
+        $overpayments = LedgerEntry::query()
+            ->where('account_id', $account->id)
             ->where('type', 'receipt')
-            ->where(function ($q) {
-                $q->where('description', '!=', InterestCalculationService::OVERPAYMENT_DESCRIPTION)
-                    ->orWhere('transaction_date', '<', $this->fromDate);
-            })
+            ->where('description', InterestCalculationService::OVERPAYMENT_DESCRIPTION)
+            ->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($overpayments as $overpayment) {
+            $date = $overpayment->transaction_date->format('Y-m-d');
+            $currency = $overpayment->currency_type ?? config('financial.base_currency', 'USD');
+            $rate = $overpayment->exchange_rate !== null
+                ? (float) $overpayment->exchange_rate
+                : null;
+
+            $key = $this->paymentKey($date, $currency, $rate);
+
+            if (! isset($payments[$key])) {
+                $payments[$key] = [
+                    'date' => $date,
+                    'amount' => 0.0,
+                    'currency' => $currency,
+                    'rate' => $rate,
+                    'foreign_values' => [],
+                ];
+            }
+
+            $payments[$key]['amount'] += (float) $overpayment->total_disbursed_base;
+
+            if ($overpayment->amount_foreign_currency !== null) {
+                $foreign = round((float) $overpayment->amount_foreign_currency, 6);
+                $payments[$key]['foreign_values'][(string) $foreign] = $foreign;
+            }
+        }
+
+        $payments = array_values(array_map(function (array $payment): array {
+            $foreignValues = array_values($payment['foreign_values']);
+
+            if (count($foreignValues) === 0) {
+                $payment['foreign_amount'] = null;
+            } elseif (count($foreignValues) === 1) {
+                // Avoid multiplying one original foreign amount that was duplicated
+                // across multiple generated settlement rows.
+                $payment['foreign_amount'] = $foreignValues[0];
+            } else {
+                // Best-effort fallback for ambiguous same-day/same-rate groups.
+                $payment['foreign_amount'] = array_sum($foreignValues);
+            }
+
+            unset($payment['foreign_values']);
+
+            return $payment;
+        }, $payments));
+
+        usort(
+            $payments,
+            fn (array $a, array $b): int => [$a['date'], $a['currency'], (string) $a['rate']]
+                <=> [$b['date'], $b['currency'], (string) $b['rate']]
+        );
+
+        return $payments;
+    }
+
+    protected function purgeGeneratedRows(Account $account): void
+    {
+        Settlement::query()
+            ->whereHas('ledgerEntry', fn ($q) => $q->where('account_id', $account->id))
+            ->delete();
+
+        LedgerEntry::query()
+            ->where('account_id', $account->id)
+            ->where('type', 'receipt')
+            ->where('description', InterestCalculationService::OVERPAYMENT_DESCRIPTION)
+            ->delete();
+    }
+
+    protected function resetManualReceipts(Account $account): void
+    {
+        DB::table('ledger_entries')
+            ->where('account_id', $account->id)
+            ->where('type', 'receipt')
+            ->where('description', '!=', InterestCalculationService::OVERPAYMENT_DESCRIPTION)
+            ->update([
+                'remaining_principal' => DB::raw('-1 * total_disbursed_base'),
+                'applied_credit_amount' => 0,
+                'unpaid_interest' => 0,
+                'pre_credit_interest' => 0,
+                'is_settled' => false,
+            ]);
+    }
+
+    protected function resetDisbursements(Account $account): void
+    {
+        DB::table('ledger_entries')
+            ->where('account_id', $account->id)
+            ->where('type', 'disbursement')
+            ->update([
+                'remaining_principal' => DB::raw('total_disbursed_base'),
+                'applied_credit_amount' => 0,
+                'unpaid_interest' => 0,
+                'pre_credit_interest' => 0,
+                'is_settled' => false,
+            ]);
+    }
+
+    protected function reapplyDisbursementCredits(
+        Account $account,
+        InterestCalculationService $calculator
+    ): void {
+        $disbursements = LedgerEntry::query()
+            ->where('account_id', $account->id)
+            ->where('type', 'disbursement')
             ->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc')
             ->lockForUpdate()
             ->get();
 
         foreach ($disbursements as $disbursement) {
-            $disbursementDate = Carbon::parse($disbursement->transaction_date);
-            $startingRemaining = (float)$disbursement->remaining_principal;
-            $remaining = $startingRemaining;
-            $preCreditInterest = 0.0;
+            $data = $disbursement->toArray();
 
-            foreach ($allReceipts as $receipt) {
-                if ($remaining <= 0) break;
-                if ($receipt->transaction_date > $disbursementDate) continue;
-                if ($receipt->is_settled || $receipt->remaining_principal >= 0) continue;
+            $calculator->applyDisbursementCredit($account, $data);
 
-                $available = abs($receipt->remaining_principal);
-                $consume = min($available, $remaining);
-
-                // Counter-interest on consumed amount for [receipt_date → disbursement_date]
-                $receiptDate = Carbon::parse($receipt->transaction_date);
-                $daysHeld = $receiptDate->diffInDays($disbursementDate, false);
-
-                if ($daysHeld > 0) {
-                    $preCreditInterest += $calculator->calculateInterest(
-                        $consume,
-                        0,
-                        (int)$daysHeld,
-                        (array)$receipt->rate_matrix_snapshot
-                    );
-                }
-
-                $receipt->remaining_principal += $consume;
-                if ($receipt->remaining_principal >= 0) {
-                    $receipt->remaining_principal = 0;
-                    $receipt->is_settled = true;
-                }
-                $receipt->save();
-                $remaining -= $consume;
-            }
-
-            $applied = $startingRemaining - $remaining;
-            $disbursement->applied_credit_amount = $applied;
-            $disbursement->remaining_principal = $remaining;
-            $disbursement->is_settled = $remaining <= 0;
-            // Store pre-credit interest as negative unpaid_interest for processPayment to consume
-            $disbursement->unpaid_interest = $preCreditInterest > 0 ? -$preCreditInterest : 0.0;
-            $disbursement->save();
+            $disbursement->fill([
+                'applied_credit_amount' => $data['applied_credit_amount'] ?? 0,
+                'remaining_principal' => $data['remaining_principal'] ?? $disbursement->total_disbursed_base,
+                'unpaid_interest' => $data['unpaid_interest'] ?? 0,
+                'pre_credit_interest' => $data['pre_credit_interest'] ?? 0,
+                'is_settled' => (float) ($data['remaining_principal'] ?? $disbursement->total_disbursed_base) <= 0,
+            ])->save();
         }
     }
 
-    protected function loadPreviousSettlements(int $accountId, array $ledgerIds): Collection
-    {
-        if (empty($ledgerIds)) return collect();
-
-        return Settlement::query()
-            ->whereIn('ledger_entry_id', $ledgerIds)
-            ->where('transaction_date', '<', $this->fromDate)
-            ->orderBy('transaction_date', 'asc')
-            ->get()
-            ->groupBy('ledger_entry_id');
-    }
-
-    protected function purgeAndReplay(Account $account, InterestCalculationService $calculator, Collection $settlementsToReplay): void
-    {
-        LedgerEntry::where('account_id', $account->id)
-            ->where('type', 'receipt')
-            ->where('description', InterestCalculationService::OVERPAYMENT_DESCRIPTION)
-            ->where('transaction_date', '>=', $this->fromDate)
-            ->delete();
-
-        Settlement::whereHas('ledgerEntry', fn($q) => $q->where('account_id', $account->id))
-            ->where('transaction_date', '>=', $this->fromDate)
-            ->delete();
-
-        foreach ($settlementsToReplay as $settlement) {
-            if ($settlement->settlement_amount <= 0) continue;
+    protected function replayPayments(
+        Account $account,
+        InterestCalculationService $calculator,
+        array $payments
+    ): void {
+        foreach ($payments as $payment) {
+            if ((float) $payment['amount'] <= 0) {
+                continue;
+            }
 
             $calculator->processPayment(
                 $account,
-                (float)$settlement->settlement_amount,
-                $settlement->transaction_date->format('Y-m-d'),
-                $settlement->foreign_settlement_amount !== null ? (float)$settlement->foreign_settlement_amount : null,
-                $settlement->settlement_exchange_rate !== null ? (float)$settlement->settlement_exchange_rate : null,
-                $settlement->currency_type ?? 'USD',
+                (float) $payment['amount'],
+                $payment['date'],
+                $payment['foreign_amount'],
+                $payment['rate'],
+                $payment['currency'],
                 null,
             );
         }
     }
 
-    protected function resetLedgers(Collection $ledgers, Collection $groupedSettlements): void
+    protected function paymentKey(string $date, string $currency, ?float $rate): string
     {
-        foreach ($ledgers as $ledger) {
-            if ($ledger->type === 'receipt') {
-                $ledger->remaining_principal = -$ledger->total_disbursed_base;
-            } else {
-                $ledger->remaining_principal = $ledger->total_disbursed_base;
-                $ledger->applied_credit_amount = 0;
-            }
-            $ledger->unpaid_interest = 0;
-            $ledger->is_settled = false;
-
-            foreach ($groupedSettlements->get($ledger->id, collect()) as $settlement) {
-                $ledger->remaining_principal -= $settlement->deducted_from_principal;
-                $ledger->unpaid_interest -= $settlement->deducted_from_interest;
-                $ledger->unpaid_interest += $settlement->accrued_interest_in_period
-                    - $settlement->counter_interest_applied;
-
-
-                if ($ledger->unpaid_interest < 0) {
-                    $excess = abs($ledger->unpaid_interest);
-                    $ledger->remaining_principal = max(0, $ledger->remaining_principal - $excess);
-                    $ledger->unpaid_interest = 0;
-
-                    if ($ledger->remaining_principal <= 0) {
-                        $ledger->remaining_principal = 0;
-                        $ledger->is_settled = true;
-                    }
-                }
-
-                if ($ledger->remaining_principal <= 0 && $ledger->unpaid_interest <= 0) {
-                    $ledger->remaining_principal = 0;
-                    $ledger->is_settled = true;
-                }
-            }
-            $ledger->save();
-        }
+        return implode('|', [
+            $date,
+            $currency,
+            $rate !== null ? number_format($rate, 6, '.', '') : 'null',
+        ]);
     }
 }
