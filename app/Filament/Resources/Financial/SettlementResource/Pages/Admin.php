@@ -49,7 +49,7 @@ class Admin
 
         $record->update($data);
 
-        RecalculateAccountLedger::dispatchSync($accountId);
+        RecalculateAccountLedger::dispatchSync($accountId, $recalcDate);
 
         // Return the replacement settlement created by replay, not the deleted corpse
         $replacement = Settlement::where('ledger_entry_id', $ledgerEntryId)
@@ -70,7 +70,7 @@ class Admin
 
         $record->delete();
 
-        RecalculateAccountLedger::dispatchSync($accountId);
+        RecalculateAccountLedger::dispatchSync($accountId, $recalcDate);
 
         Notification::make()->title('Loan Ledger timeline successfully recalculated')
             ->success()

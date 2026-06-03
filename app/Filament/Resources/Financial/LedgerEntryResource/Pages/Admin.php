@@ -76,7 +76,7 @@ class Admin
 
         $record->delete();
 
-        RecalculateAccountLedger::dispatchSync($record->account_id);
+        RecalculateAccountLedger::dispatchSync($record->account_id, $recalcDate);
 
         Notification::make()
             ->title('Ledger deleted and account recalculated')
@@ -89,7 +89,7 @@ class Admin
         $recalcDate = min($record->getOriginal('transaction_date'), $data['transaction_date']);
         $record->update($data);
 
-        RecalculateAccountLedger::dispatchSync($record->account_id);
+        RecalculateAccountLedger::dispatchSync($record->account_id, $recalcDate);
 
         Notification::make()
             ->title('Ledger updated and account recalculated')
