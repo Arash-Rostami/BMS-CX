@@ -13,8 +13,8 @@ class AccountStatementStats extends BaseWidget
     use AccountStatementStatsTrait;
     use InteractsWithPageTable;
 
-//    protected static ?string $pollingInterval = null;
-    public array $tableColumnSearches = [];
+    public $accountId;
+
     protected ?string $heading = 'Statistics';
     protected ?string $description = 'Real-time insight into aggregated ledger statements and net movements.';
 

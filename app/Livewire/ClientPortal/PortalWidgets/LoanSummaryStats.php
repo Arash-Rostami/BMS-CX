@@ -13,8 +13,8 @@ class LoanSummaryStats extends BaseWidget
     use LoanSummaryStatsTrait;
     use InteractsWithPageTable;
 
-//    protected static ?string $pollingInterval = null;
-    public array $tableColumnSearches = [];
+    public $accountId;
+
     protected ?string $heading = 'Loan Summary Statistics';
     protected ?string $description = 'Real-time overview of disbursements, settlements, and outstanding principal.';
 
