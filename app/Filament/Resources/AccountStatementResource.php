@@ -35,6 +35,11 @@ class AccountStatementResource extends Resource
         return [];
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->withNetMovement();
+    }
+
     public static function table(Table $table): Table
     {
         return $table

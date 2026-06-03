@@ -10,10 +10,4 @@ class ViewAccountStatement extends ViewRecord
 {
     protected static string $resource = AccountStatementResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\EditAction::make(),
-        ];
-    }
 }

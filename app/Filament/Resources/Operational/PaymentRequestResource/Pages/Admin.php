@@ -9,7 +9,6 @@ use App\Filament\Resources\Operational\PaymentRequestResource\Pages\AdminCompone
 use App\Models\Order;
 use App\Models\PaymentRequest;
 use App\Models\SupplierSummary;
-use App\Services\Notification\PaymentRequestService;
 use Carbon\Carbon;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -139,7 +138,7 @@ class Admin
 
     public static function changeBgColor(Model $record): string
     {
-        if ($record->associatedProformaInvoices?->contains('status', 'rejected')) {
+        if ($record?->associatedProformaInvoices()->where('status', 'rejected')->exists()) {
             return 'bg-cancelled';
         }
 
@@ -168,7 +167,9 @@ class Admin
             $lastPayment = PaymentRequest::getLastPaymentDetails($recipientName, $state, $currency);
 
             if ($lastPayment) {
-                $set($setters[$state] ?? null, $lastPayment->account_number);
+                $field = $setters[$state] ?? null;
+                if ($field === null) return;
+                $set($field, $lastPayment->account_number);
                 $set('bank_name', $lastPayment->bank_name);
             } else {
                 foreach ($setters as $setter) {
@@ -399,8 +400,8 @@ class Admin
 
     protected static function calculateOrderFinancials($state): array
     {
-        $order = Order::with('proformaInvoice', 'orderDetail')
-            ->find($state);
+        $order = Order::with('proformaInvoice', 'orderDetail')->find($state);
+        if (!$order) return ['total' => 0.0, 'requested' => 0.0, 'currency' => 'USD'];
 
         $invoice = $order->proformaInvoice;
         $detail = $order->orderDetail;
@@ -446,23 +447,25 @@ class Admin
     protected static function getOrderOptions($get, $set): array
     {
         $proformaNumber = $get('proforma_invoice_number');
-        $total = $get('extra.collectivePayment') ?? $set('extra.collectivePayment', 0);
+        $total = $get('extra.collectivePayment');
+        if ($total === null) {
+            $set('extra.collectivePayment', 0);
+            $total = 0;
+        }
         $part = $get('part');
 
+        if (!$proformaNumber || $total != 0 || empty($part)) return [];
 
-        if (!$proformaNumber || $total != 0 || empty($part)) {
-            return [];
-        }
 
         $relationMap = [
-            'BL' => 'doc',
-            'BN' => 'logistic',
-            'PR/GR' => 'product',
+            'BL' => ['doc'],
+            'BN' => ['logistic.portOfDelivery'],
+            'REF' => [],
+            'PN' => [],
+            'PR/GR' => ['product', 'grade'],
         ];
 
-        if (!isset($relationMap[$part])) {
-            return [];
-        }
+        if (!array_key_exists($part, $relationMap)) return [];
 
         return Order::with($relationMap[$part])
             ->whereRelation('proformaInvoice', 'proforma_number', $proformaNumber)

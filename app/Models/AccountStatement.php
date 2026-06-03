@@ -25,6 +25,26 @@ class AccountStatement extends Model
         'running_balance' => 'decimal:6',
     ];
 
+    protected $appends = ['net'];
+
+    public function getNetAttribute(): float
+    {
+        return $this->event_type === 'settlement'
+            ? (float)$this->debit - (float)$this->credit - (float)($this->counter_interest ?? 0)
+            : (float)$this->debit - (float)$this->credit + (float)($this->accrued_interest ?? 0);
+    }
+
+    public function scopeWithNetMovement($query)
+    {
+        return $query->selectRaw('*, CASE
+        WHEN event_type = "settlement"
+            THEN debit - credit - COALESCE(counter_interest, 0)
+        ELSE
+            debit - credit + COALESCE(accrued_interest, 0)
+        END AS net_computed'
+        );
+    }
+
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'account_id');

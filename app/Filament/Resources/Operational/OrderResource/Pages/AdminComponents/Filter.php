@@ -4,8 +4,10 @@ namespace App\Filament\Resources\Operational\OrderResource\Pages\AdminComponents
 
 use App\Models\Buyer;
 use App\Models\Category;
+use App\Models\DeliveryTerm;
 use App\Models\Grade;
 use App\Models\Order;
+use App\Models\Packaging;
 use App\Models\PortOfDelivery;
 use App\Models\Product;
 use App\Models\PurchaseStatus;
@@ -99,6 +101,24 @@ trait Filter
                         });
                     })
                     ->multiple(),
+                SelectConstraint::make('logistic.deliveryTerm.id')
+                    ->label('Delivery Term')
+                    ->icon('heroicon-o-map')
+                    ->options(function () {
+                        return SmartCacheManager::remember('DeliveryTerm', ['type' => 'select_options'], 720, function () {
+                            return DeliveryTerm::orderBy('name')->pluck('name', 'id')->all();
+                        });
+                    })
+                    ->multiple(),
+                SelectConstraint::make('logistic.packaging.id')
+                    ->label('Package List')
+                    ->icon('heroicon-o-archive-box')
+                    ->options(function () {
+                        return SmartCacheManager::remember('Packaging', ['type' => 'select_options'], 720, function () {
+                            return Packaging::orderBy('name')->pluck('name', 'id')->all();
+                        });
+                    })
+                    ->multiple(),
                 SelectConstraint::make('logistic.portOfDelivery.id')
                     ->label('Port of Delivery')
                     ->icon('heroicon-o-truck')
@@ -131,6 +151,21 @@ trait Filter
                     ->icon('heroicon-s-paper-clip'),
                 TextConstraint::make('invoice_number')
                     ->label('Contract Number'),
+                TextConstraint::make('doc.BL_number')
+                    ->label('BL Number')
+                    ->icon('heroicon-o-document-text'),
+                TextConstraint::make('doc.declaration_number')
+                    ->label('Declaration Number')
+                    ->icon('heroicon-o-identification'),
+                TextConstraint::make('logistic.booking_number')
+                    ->label('Booking Number')
+                    ->icon('heroicon-o-clipboard-document-check'),
+                TextConstraint::make('logistic.voyage_number')
+                    ->label('Voyage Number')
+                    ->icon('heroicon-o-queue-list'),
+                TextConstraint::make('logistic.extra->voyage_number_second_leg')
+                    ->label('Voyage Number ii')
+                    ->icon('heroicon-o-queue-list'),
                 NumberConstraint::make('orderDetail.buying_price')
                     ->label('Initial Price')
                     ->icon('heroicon-m-currency-dollar'),

@@ -341,8 +341,7 @@ class Admin
             ->badge()
             ->grow(false)
             ->color('secondary')
-            ->searchable(query: fn(Builder $query, string $search) => self::searchAllModels($query, $search))
-            ->sortable();
+            ->searchable(query: fn(Builder $query, string $search) => self::searchAllModels($query, $search));
     }
 
     /**

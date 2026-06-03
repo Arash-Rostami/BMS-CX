@@ -8,6 +8,7 @@ use App\Models\Settlement;
 use App\Services\InterestCalculationService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 
 class CreateSettlement extends CreateRecord
@@ -40,8 +41,9 @@ class CreateSettlement extends CreateRecord
                 ->body('The payment was recorded as overpayment because all loans are already settled.')
                 ->send();
 
-            $this->redirect($this->getResource()::getUrl('index'));
-            return $account;
+            $this->redirect($this->getRedirectUrl());
+
+            throw new Halt();
         }
 
         return Settlement::find($createdIds[0]);

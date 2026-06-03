@@ -105,7 +105,7 @@ class Admin
     public static function showCredit(): TextColumn
     {
         return TextColumn::make('credit')
-            ->label('In (Credit)')
+            ->label('🟢 In')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->badge()
@@ -119,7 +119,7 @@ class Admin
     public static function showDebit(): TextColumn
     {
         return TextColumn::make('debit')
-            ->label('Out (Debit)')
+            ->label('🔴 Out')
             ->numeric(decimalPlaces: 3)
             ->sortable()
             ->badge()
