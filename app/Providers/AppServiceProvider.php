@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\AccountStatement;
 use App\Models\Allocation;
 use App\Models\Attachment;
 use App\Models\Beneficiary;
@@ -9,6 +10,7 @@ use App\Models\Buyer;
 use App\Models\Category;
 use App\Models\Contractor;
 use App\Models\Grade;
+use App\Models\LoanSummary;
 use App\Models\Name;
 use App\Models\Order;
 use App\Models\Payment;
@@ -38,6 +40,8 @@ use App\Observers\ProformaInvoiceObserver;
 use App\Observers\PurchaseStatusObserver;
 use App\Observers\SupplierObserver;
 use App\Observers\UserObserver;
+use App\Policies\AccountStatementPolicy;
+use App\Policies\LoanSummaryPolicy;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\Field;
@@ -160,6 +164,8 @@ class AppServiceProvider extends ServiceProvider
         Permission::observe(PermissionObserver::class);
         ProformaInvoice::observe(ProformaInvoiceObserver::class);
 
+        AccountStatement::observe(AccountStatementPolicy::class);
+        LoanSummary::observe(LoanSummaryPolicy::class);
 
         // Master Data Observers
         Allocation::observe(AllocationObserver::class);

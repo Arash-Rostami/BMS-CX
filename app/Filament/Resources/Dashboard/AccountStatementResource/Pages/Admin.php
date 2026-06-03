@@ -5,10 +5,12 @@ namespace App\Filament\Resources\Dashboard\AccountStatementResource\Pages;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter as FilamentFilter;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -74,7 +76,7 @@ class Admin
                 default => '',
             })
             ->summarize([
-                Sum::make()->numeric(decimalPlaces: 3)->label('Total Interest'),
+                Sum::make()->numeric(decimalPlaces: 2)->label('Total Interest'),
             ]);
     }
 
@@ -112,7 +114,7 @@ class Admin
             ->color('success')
             ->tooltip('Money coming into the account. This increases the balance and is counted in the In total.')
             ->summarize([
-                Sum::make()->numeric(decimalPlaces: 3)->label('Total In'),
+                Sum::make()->numeric(decimalPlaces: 2)->label('Total In'),
             ]);
     }
 
@@ -120,13 +122,17 @@ class Admin
     {
         return TextColumn::make('debit')
             ->label('🔴 Out')
-            ->numeric(decimalPlaces: 3)
+            ->numeric(decimalPlaces: 2)
             ->sortable()
             ->badge()
             ->color('danger')
+            ->state(fn($record) => $record->event_type === 'disbursement' ? $record->debit : 0)
             ->tooltip('Money going out of the account. This reduces the balance and is counted in the Out total.')
             ->summarize([
-                Sum::make()->numeric(decimalPlaces: 3)->label('Total Out'),
+                Summarizer::make()
+                    ->label('Total Disbursed')
+                    ->numeric(decimalPlaces: 2)
+                    ->using(fn (QueryBuilder $query) => $query->where('event_type', 'disbursement')->sum('debit')),
             ]);
     }
 
@@ -179,7 +185,7 @@ class Admin
     {
         return TextColumn::make('running_balance')
             ->label('Running Balance')
-            ->numeric(decimalPlaces: 3)
+            ->numeric(decimalPlaces: 2)
             ->sortable()
             ->badge()
             ->color(fn($record): string => ($record?->running_balance > 0) ? 'info' : 'success')

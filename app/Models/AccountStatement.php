@@ -27,11 +27,21 @@ class AccountStatement extends Model
 
     protected $appends = ['net'];
 
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'account_id');
+    }
+
     public function getNetAttribute(): float
     {
         return $this->event_type === 'settlement'
             ? (float)$this->debit - (float)$this->credit - (float)($this->counter_interest ?? 0)
             : (float)$this->debit - (float)$this->credit + (float)($this->accrued_interest ?? 0);
+    }
+
+    public function ledgerEntry(): BelongsTo
+    {
+        return $this->belongsTo(LedgerEntry::class, 'ledger_entry_id');
     }
 
     public function scopeWithNetMovement($query)
@@ -43,15 +53,5 @@ class AccountStatement extends Model
             debit - credit + COALESCE(accrued_interest, 0)
         END AS net_computed'
         );
-    }
-
-    public function account(): BelongsTo
-    {
-        return $this->belongsTo(Account::class, 'account_id');
-    }
-
-    public function ledgerEntry(): BelongsTo
-    {
-        return $this->belongsTo(LedgerEntry::class, 'ledger_entry_id');
     }
 }

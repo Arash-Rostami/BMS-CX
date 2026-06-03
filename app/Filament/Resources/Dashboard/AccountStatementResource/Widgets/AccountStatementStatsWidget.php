@@ -23,7 +23,7 @@ class AccountStatementStatsWidget extends BaseWidget
         $stats = $this->prepareAccountStatementStats($this->getPageTableQuery());
 
         return [
-            Stat::make('Total Disbursed (Debit)', number_format($stats['totalDebit'], 3))
+            Stat::make('Total Disbursed (Credit)', number_format($stats['totalDebit'], 3))
                 ->color('danger')
                 ->icon('heroicon-m-arrow-trending-up')
                 ->extraAttributes([
@@ -32,7 +32,7 @@ class AccountStatementStatsWidget extends BaseWidget
                     'onmouseout' => 'this.style.transform="translateY(0)"; this.style.boxShadow="";',
                 ]),
 
-            Stat::make('Total Received (Credit)', number_format($stats['totalCredit'], 3))
+            Stat::make('Total Received (Debit)', number_format($stats['totalCredit'], 3))
                 ->color('success')
                 ->icon('heroicon-m-arrow-trending-down')
                 ->extraAttributes([

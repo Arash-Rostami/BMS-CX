@@ -10,11 +10,14 @@ use Filament\Resources\Resource;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class AccountStatementResource extends Resource
 {
     protected static ?string $model = AccountStatement::class;
     protected static ?string $navigationIcon = 'heroicon-o-arrow-path';
+    protected static ?int $navigationSort = 4;
+
     protected static bool $isGloballySearchable = false;
     protected static bool $canCreate = false;
 
@@ -33,11 +36,6 @@ class AccountStatementResource extends Resource
     public static function getRelations(): array
     {
         return [];
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->withNetMovement();
     }
 
     public static function table(Table $table): Table

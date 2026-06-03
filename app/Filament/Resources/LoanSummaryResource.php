@@ -23,6 +23,8 @@ class LoanSummaryResource extends Resource
     protected static ?string $model = LoanSummary::class;
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel = 'Loan Summary';
+    protected static ?int $navigationSort = 3;
+
     protected static bool $isGloballySearchable = false;
     protected static bool $canCreate = false;
 

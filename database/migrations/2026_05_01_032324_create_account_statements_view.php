@@ -35,10 +35,10 @@ return new class extends Migration {
 
         // LOCAL: correlated subquery (MySQL 5.7 compatible)
         DB::statement("
-            CREATE VIEW account_statements AS
+            CREATE OR REPLACE VIEW account_statements AS
             SELECT
                 rs.*,
-                rs.credit - rs.debit + rs.counter_interest AS net_movement,
+                rs.credit - rs.debit - rs.counter_interest AS net_movement,
                 (
                     SELECT SUM(rs2.debit - rs2.credit - rs2.counter_interest)
                     FROM (
@@ -130,7 +130,7 @@ return new class extends Migration {
 
         // PRODUCTION / MySQL 8+ — CTE + window function version (swap in locally)
         DB::statement("
-            CREATE VIEW account_statements AS
+            CREATE OR REPLACE VIEW account_statements AS
             WITH raw AS (
                 SELECT
                     CONCAT('LE-', id) AS statement_id,
@@ -158,7 +158,7 @@ return new class extends Migration {
             )
             SELECT
                 raw.*,
-                raw.credit - raw.debit + raw.counter_interest AS net_movement,
+                raw.credit - raw.debit - raw.counter_interest AS net_movement,
                 SUM(raw.debit - raw.credit - raw.counter_interest) OVER (
                     PARTITION BY raw.account_id
                     ORDER BY raw.transaction_date ASC, raw.sort_order ASC, raw.original_id ASC

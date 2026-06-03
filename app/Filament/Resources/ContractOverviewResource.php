@@ -17,6 +17,7 @@ class ContractOverviewResource extends Resource
     use ExposesTableToWidgets;
 
     protected static ?string $model = ContractOverview::class;
+    protected static ?int $navigationSort = 2;
 
 
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';

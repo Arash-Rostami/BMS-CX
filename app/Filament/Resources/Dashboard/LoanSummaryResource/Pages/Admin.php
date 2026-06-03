@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\LoanSummary;
 use Filament\Tables\Columns\Summarizers\Average;
 use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\QueryBuilder;
 use Filament\Tables\Filters\QueryBuilder\Constraints\BooleanConstraint;
@@ -14,7 +15,10 @@ use Filament\Tables\Filters\QueryBuilder\Constraints\DateConstraint;
 use Filament\Tables\Filters\QueryBuilder\Constraints\NumberConstraint;
 use Filament\Tables\Filters\QueryBuilder\Constraints\SelectConstraint;
 use Filament\Tables\Filters\QueryBuilder\Constraints\TextConstraint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Database\Query\Builder;
+
 
 class Admin
 {
@@ -79,7 +83,6 @@ class Admin
             ->formatStateUsing(self::formatList(2))
             ->html()
             ->wrap()
-            ->summarize(self::sumSummary(2, 'Total Interest'))
             ->color('warning')
             ->tooltip('Gross interest accrued per settlement period.');
     }
@@ -303,7 +306,17 @@ class Admin
             ->sortable()
             ->badge()
             ->color('danger')
-            ->summarize(self::averageSummary(3, 'Avg Disbursed'))
+            ->summarize([
+                Summarizer::make()
+                    ->label('Total Disbursed')
+                    ->using(function (Builder $query) {
+                        return number_format(
+                            $query->where('entry_type', 'disbursement')
+                                ->sum('total_disbursed_base'),
+                            3
+                        );
+                    }),
+            ])
             ->toggleable(isToggledHiddenByDefault: true);
     }
 

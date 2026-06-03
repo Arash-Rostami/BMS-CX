@@ -4,6 +4,7 @@ namespace App\Filament\Pages\Trait;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 trait AccountStatementStats
 {
@@ -11,16 +12,19 @@ trait AccountStatementStats
     {
         $cacheKey = 'account_statements_stats_' . md5($query->toSql() . serialize($query->getBindings()));
 
-        $totals = Cache::remember($cacheKey, now()->addMinutes(15), fn () => [
-            'debit' => (clone $query)->sum('debit'),
+
+        $totals = Cache::remember($cacheKey, now()->addMinutes(15), fn() => [
+            'debit' => (clone $query)->where('event_type', 'disbursement')->sum('debit'),
             'credit' => (clone $query)->sum('credit'),
             'accrued' => (clone $query)->sum('accrued_interest'),
+            'net' => (clone $query)->sum(DB::raw('debit - credit - COALESCE(counter_interest, 0)')),
         ]);
 
-        $totalDebit = (float)$totals['debit'];
         $totalCredit = (float)$totals['credit'];
         $totalAccrued = (float)$totals['accrued'];
-        $netMovement = $totalDebit - $totalCredit + $totalAccrued;
+        $netMovement = (float)$totals['net'];
+        $totalDebit = (float)$totals['debit'];
+
 
         $isNetPositive = $netMovement >= 0;
 
