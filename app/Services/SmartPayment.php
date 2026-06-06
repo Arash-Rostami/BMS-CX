@@ -13,6 +13,10 @@ class SmartPayment
     {
         $ids = is_array($ids) ? $ids : (is_numeric($ids) ? [$ids] : null);
 
+        if (!$ids && !$module) {
+            return;
+        }
+
         if (!$ids || !in_array($module, ['proforma-invoice', 'payment-request'])) {
             Notification::make()
                 ->title('Invalid Reference')
