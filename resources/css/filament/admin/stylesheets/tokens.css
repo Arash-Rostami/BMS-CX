@@ -1,0 +1,122 @@
+/* ==========================================================================
+   BMS-CX · MATERIAL DESIGN 3 — DESIGN TOKENS  (NEW FILE)
+   --------------------------------------------------------------------------
+   Single source of truth for the MD3 "physics" layer: MOTION, SHAPE,
+   ELEVATION, STATE LAYERS and DENSITY.
+
+   IDENTITY PRESERVED — READ THIS:
+   This file introduces NO new brand colors and NO font changes. Every
+   background color and font family already in the app (Roboto / Kalameh /
+   Figtree, and all surface/status colors in colors.css and the partials)
+   is kept verbatim. These tokens only standardize *how* surfaces elevate,
+   round, move and respond to interaction — exactly per Material Design 3.
+
+   Loaded first (right after the Filament vendor theme) so every partial can
+   consume the variables below.
+   ========================================================================== */
+:root {
+    /* ----------------------------------------------------------------------
+       1. MOTION · EASING  (MD3 standard + emphasized sets)
+       ---------------------------------------------------------------------- */
+    --md-sys-motion-easing-linear: cubic-bezier(0, 0, 1, 1);
+    --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+    --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+    --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+    --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+    --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+    /* ----------------------------------------------------------------------
+       2. MOTION · DURATION  (MD3 duration tokens, ms)
+       ---------------------------------------------------------------------- */
+    --md-sys-motion-duration-short1: 50ms;
+    --md-sys-motion-duration-short2: 100ms;
+    --md-sys-motion-duration-short3: 150ms;
+    --md-sys-motion-duration-short4: 200ms;
+    --md-sys-motion-duration-medium1: 250ms;
+    --md-sys-motion-duration-medium2: 300ms;
+    --md-sys-motion-duration-medium3: 350ms;
+    --md-sys-motion-duration-medium4: 400ms;
+    --md-sys-motion-duration-long1: 450ms;
+    --md-sys-motion-duration-long2: 500ms;
+
+    /* Convenience pairings reused across the theme. */
+    --md-transition-state:
+        background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+        color            var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+        box-shadow       var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+        border-color     var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+        fill             var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+        stroke           var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+    --md-transition-emphasized: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+
+    /* ----------------------------------------------------------------------
+       3. SHAPE · CORNER RADIUS SCALE  (MD3)
+       ---------------------------------------------------------------------- */
+    --md-sys-shape-corner-none: 0;
+    --md-sys-shape-corner-extra-small: 4px;
+    --md-sys-shape-corner-small: 8px;
+    --md-sys-shape-corner-medium: 12px;
+    --md-sys-shape-corner-large: 16px;
+    --md-sys-shape-corner-extra-large: 28px;
+    --md-sys-shape-corner-full: 9999px;
+
+    /* ----------------------------------------------------------------------
+       4. ELEVATION · LIGHT THEME  (two-layer key + ambient shadows, MD3)
+          Level 0–3 = resting surfaces · Level 4–5 = interacted/raised
+       ---------------------------------------------------------------------- */
+    --md-sys-elevation-0: none;
+    --md-sys-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.30), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+    --md-sys-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.30), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+    --md-sys-elevation-3: 0 1px 3px 0 rgba(0, 0, 0, 0.30), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+    --md-sys-elevation-4: 0 2px 3px 0 rgba(0, 0, 0, 0.30), 0 6px 10px 4px rgba(0, 0, 0, 0.15);
+    --md-sys-elevation-5: 0 4px 4px 0 rgba(0, 0, 0, 0.30), 0 8px 12px 6px rgba(0, 0, 0, 0.15);
+
+    /* ----------------------------------------------------------------------
+       5. STATE LAYERS · MD3 interaction opacities + neutral overlay fills
+          (Overlays sit ON TOP of any surface/gradient — they never replace
+          a fundamental background color.)
+       ---------------------------------------------------------------------- */
+    --md-sys-state-hover-opacity: 0.08;
+    --md-sys-state-focus-opacity: 0.10;
+    --md-sys-state-pressed-opacity: 0.10;
+    --md-sys-state-dragged-opacity: 0.16;
+
+    --md-state-hover-on-light: rgba(0, 0, 0, 0.06);
+    --md-state-pressed-on-light: rgba(0, 0, 0, 0.10);
+    --md-state-hover-on-dark: rgba(255, 255, 255, 0.08);
+    --md-state-pressed-on-dark: rgba(255, 255, 255, 0.12);
+
+    /* ERP data-row hover state layer (translucent — lets status gradients show through). */
+    --erp-row-hover: rgba(0, 0, 0, 0.035);
+
+    /* ----------------------------------------------------------------------
+       6. FOCUS RING · accessible, theme-aware
+       ---------------------------------------------------------------------- */
+    --md-focus-ring-width: 2px;
+    --md-focus-ring-offset: 2px;
+    --md-focus-ring-color: rgba(60, 64, 67, 0.65);
+
+    /* ----------------------------------------------------------------------
+       7. DENSITY · ERP comfortable spacing + header legibility
+       ---------------------------------------------------------------------- */
+    --erp-density-row-py: 0.625rem;   /* comfortable data-row vertical padding */
+    --erp-density-cell-px: 0.75rem;
+    --erp-header-tracking: 0.04em;    /* tracking for terse technical column codes */
+}
+
+/* --------------------------------------------------------------------------
+   ELEVATION · DARK THEME OVERRIDE
+   On dark surfaces a drop shadow nearly disappears, so MD3 adds a tonal lift
+   cue. We keep a stronger umbra AND a 1px translucent ring to imply depth.
+   -------------------------------------------------------------------------- */
+.dark {
+    --md-sys-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.55), 0 1px 3px 1px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    --md-sys-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.55), 0 2px 6px 2px rgba(0, 0, 0, 0.40), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    --md-sys-elevation-3: 0 1px 3px 0 rgba(0, 0, 0, 0.60), 0 4px 8px 3px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --md-sys-elevation-4: 0 2px 3px 0 rgba(0, 0, 0, 0.60), 0 6px 10px 4px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --md-sys-elevation-5: 0 4px 4px 0 rgba(0, 0, 0, 0.60), 0 8px 12px 6px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.07);
+
+    --erp-row-hover: rgba(255, 255, 255, 0.05);
+    --md-focus-ring-color: rgba(255, 255, 255, 0.70);
+}

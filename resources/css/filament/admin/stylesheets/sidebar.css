@@ -1,17 +1,26 @@
+/* ==========================================================================
+   BMS-CX · SIDEBAR / NAVIGATION
+   --------------------------------------------------------------------------
+   This was already the most MD3-aware partial (it used cubic-bezier(0.2,0,0,1)
+   — the MD3 standard easing — and :focus-visible). Standardized onto the
+   shared tokens for consistency. Nav colors (lightgrey, primary-600 active,
+   the neutral greys) are PRESERVED verbatim. One invalid rgb() fixed to rgba().
+   ========================================================================== */
+
+/* Group collapse icon button — MD3 medium shape, Level 1 → 2 elevation. */
 .fi-sidebar-group-collapse-button svg.fi-icon-btn-icon {
     fill: #606060;
-    transition: fill 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s cubic-bezier(0.2, 0, 0, 1);
-    border-radius: 12px;
-    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+    transition: var(--md-transition-state);
+    border-radius: var(--md-sys-shape-corner-medium);
+    box-shadow: var(--md-sys-elevation-1);
     outline: none;
     cursor: pointer;
 }
 
 .fi-sidebar-group-collapse-button:hover svg.fi-icon-btn-icon {
     fill: #505050;
-    border-radius: 12px;
-    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
-    outline: none;
+    border-radius: var(--md-sys-shape-corner-medium);
+    box-shadow: var(--md-sys-elevation-2);
     background-color: lightgrey;
     @apply dark:bg-neutral-700;
 }
@@ -19,17 +28,18 @@
 .fi-sidebar-group-collapse-button:active svg.fi-icon-btn-icon {
     fill: #404040;
     background-color: lightgrey;
-    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--md-sys-elevation-1);
     @apply dark:bg-neutral-800;
 }
 
+/* Sidebar collapse / expand controls. */
 button[title="Collapse sidebar"], button[title="Expand sidebar"] {
     fill: none;
     stroke: #808080;
-    transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1);
+    transition: var(--md-transition-state);
     padding: 8px;
-    border-radius: 12px;
-    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+    border-radius: var(--md-sys-shape-corner-medium);
+    box-shadow: var(--md-sys-elevation-1);
     outline: none;
     cursor: pointer;
     min-height: 36px;
@@ -42,17 +52,18 @@ button[title="Collapse sidebar"], button[title="Expand sidebar"] {
 button[title="Collapse sidebar"]:hover, button[title="Expand sidebar"]:hover {
     background-color: #e8e8e8;
     color: #707070;
-    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--md-sys-elevation-2);
     @apply dark:bg-neutral-700;
 }
 
 button[title="Collapse sidebar"]:focus-visible, button[title="Expand sidebar"]:focus-visible {
-    box-shadow: 0 0 0 2px darkgray;
+    outline: var(--md-focus-ring-width) solid var(--md-focus-ring-color);
+    outline-offset: var(--md-focus-ring-offset);
 }
 
 button[title="Collapse sidebar"]:active, button[title="Expand sidebar"]:active {
     background-color: lightgrey;
-    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--md-sys-elevation-1);
     @apply dark:bg-neutral-800;
 }
 
@@ -63,7 +74,7 @@ button[title="Collapse sidebar"] .fi-icon-btn-icon, button[title="Expand sidebar
 }
 
 .fi-sidebar-group-label {
-    border-bottom: 1px solid rgb(148, 148, 148, 0.8);
+    border-bottom: 1px solid rgba(148, 148, 148, 0.8); /* fixed invalid rgb(...,0.8) → rgba(), same color */
     padding-bottom: 4px;
     margin-bottom: 6px;
     font-size: 0.875rem;
@@ -72,30 +83,31 @@ button[title="Collapse sidebar"] .fi-icon-btn-icon, button[title="Expand sidebar
 
 .btn {
     @apply shadow-2xl;
-    border-radius: 12px;
+    border-radius: var(--md-sys-shape-corner-medium);
 }
 
 svg.fi-sidebar-item-icon {
     @apply font-extrabold;
 }
 
+/* Nav items — MD3 medium shape + tokenized state transition. */
 .fi-sidebar-item {
     border: none;
     margin: 0 0 2px 0;
     padding: 0;
-    transition: background-color 0.2s cubic-bezier(0.2, 0, 0, 1), color 0.2s cubic-bezier(0.2, 0, 0, 1), border-radius 0.2s cubic-bezier(0.2, 0, 0, 1);
-    border-radius: 12px;
+    transition: var(--md-transition-state);
+    border-radius: var(--md-sys-shape-corner-medium);
 }
 
 .fi-sidebar-item:hover {
     background-color: lightgrey;
-    border-radius: 12px;
+    border-radius: var(--md-sys-shape-corner-medium);
     @apply dark:bg-gray-800;
 }
 
 .fi-sidebar-item-active > a {
     @apply bg-primary-600;
-    border-radius: 12px;
+    border-radius: var(--md-sys-shape-corner-medium);
 }
 
 .fi-sidebar-item-active > a > svg,

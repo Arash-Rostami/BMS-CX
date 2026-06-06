@@ -1,3 +1,8 @@
+/* ==========================================================================
+   BMS-CX · APP SHELL  (topbar · sidebar surfaces · scrollbars · entrances)
+   ========================================================================== */
+
+/* Smooth in-page scrolling (auto-disabled under prefers-reduced-motion). */
 html, body, * {
     scroll-behavior: smooth !important;
 }
@@ -9,13 +14,7 @@ html, body, * {
 }
 
 .fi-body {
-    background-color: rgb(224, 228, 231, 0.75);
-}
-
-.fi-sidebar-header {
-    border-radius: 8px 8px 0 0 !important;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    background-color: rgba(224, 228, 231, 0.75);
 }
 
 
@@ -23,26 +22,31 @@ html, body, * {
     background-image: none;
 }
 
+.fi-sidebar-item > a {
+    transition: var(--md-transition-state);
+}
+
 .fi-sidebar-item > a:hover {
-    border-radius: 7px;
+    border-radius: var(--md-sys-shape-corner-small);
     background-color: lightgrey;
     @apply dark:hover:bg-white/10;
 }
 
-.fi-wi-widget{
+.fi-wi-widget {
     padding: 0;
 }
 
 .fi-topbar > nav {
     background-color: lightgrey;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--md-sys-elevation-0);
     position: relative;
+    width: 101%;
+    right: 5px;
     z-index: 50;
 }
 
 .fi-sidebar-nav {
-    /*background-color: #D0DAE1;*/
-    background-color: rgb(224, 228, 231,0.75);
+    background-color: rgba(224, 228, 231, 0.75);
     border-right: solid 1px #e0e7eb;
 }
 
@@ -51,14 +55,14 @@ html, body, * {
     border-right: solid 1px #27272F; /* Dark mode sidebar border */
 }
 
-
-.fi-topbar, .fi-sidebar-header {
-    /*background-color: #D0DBE1;*/
+.fi-sidebar-header {
     background-color: lightgrey;
+    border-radius: 0 !important;
+    box-shadow: var(--md-sys-elevation-0);
     @apply dark:bg-gray-950 border-none;
-
 }
 
+/* Content surfaces are intentionally flat (MD3 Level 0 / filled surfaces). */
 .fi-section,
 .fi-page,
 .fi-page-wrapper,
@@ -69,91 +73,120 @@ html, body, * {
     box-shadow: none !important;
     border: none !important;
 }
+
+/* Dropdown / menu panels (deduplicated — was declared twice). */
 .fi-dropdown-panel, .fi-dropdown-list {
     display: block;
     max-height: 60vh;
     overscroll-behavior: contain;
-    overflow-y: auto!important;
+    overflow-y: auto !important;
     overflow-x: hidden;
 }
 
-.fi-dropdown-list {
-    display: block;
-    max-height: 60vh;
-    overscroll-behavior: contain;
-    overflow-y: auto!important;
+.fi-wi-widget .fi-section-content,
+.fi-fo-component-ctn .fi-section-content {
+    border-radius: var(--md-sys-shape-corner-small);
 }
 
-::-webkit-scrollbar {
+.fi-modal-window {
+    background-color: lightgrey;
+    transition: background-color 0.2s ease;
+    box-shadow: var(--md-sys-elevation-2) !important;
+    border-radius: var(--md-sys-shape-corner-small);
+}
+
+.dark .fi-modal-window {
+    background-color: #18181B;
+}
+
+.fi-modal-window {
+    transition: background-color 150ms ease;
+}
+
+.fi-modal-window:hover {
+    background-color: #CDCDCD;
+}
+
+.dark .fi-modal-window:hover {
+    background-color: #1E1E22;
+}
+
+.fi-modal-header {
+    background-color: #BFBFBF;
+    padding-bottom: 10px;
+    border-radius: var(--md-sys-shape-corner-small);
+}
+
+.dark .fi-modal-header {
+    background-color: #27272A;
+}
+
+/* --------------------------------------------------------------------------
+   GLOBAL SCROLLBARS  (colors preserved; radii tokenized; no-op shadow removed)
+   -------------------------------------------------------------------------- */
+::-webkit-scrollbar, .fi-sidebar-nav::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 
-.fi-sidebar-nav::-webkit-scrollbar {
-    width: 8px; /* Slightly thinner scrollbar in sidebar */
-    height: 8px; /* Slightly thinner scrollbar in sidebar */
-}
-
-::-webkit-scrollbar-track, .fi-sidebar-nav::-webkit-scrollbar-track { /* SCROLL RAIL */
-    box-shadow: inset 0 0 0 rgba(0, 0, 0, 0.0);
-    border-radius: 8px;
+::-webkit-scrollbar-track, .fi-sidebar-nav::-webkit-scrollbar-track {
+    border-radius: var(--md-sys-shape-corner-small);
     @apply bg-[#E6E6E6];
 }
 
-.dark ::-webkit-scrollbar-track { /* DARK */
+.dark ::-webkit-scrollbar-track {
     background: #09090B;
 }
 
-
-::-webkit-scrollbar-thumb, .fi-sidebar-nav::-webkit-scrollbar-thumb { /* SCROLLER */
-    /*background: #B0BCC5;*/
+::-webkit-scrollbar-thumb, .fi-sidebar-nav::-webkit-scrollbar-thumb {
     background: lightgrey;
-    border-radius: 8px;
+    border-radius: var(--md-sys-shape-corner-small);
     border: 2px solid transparent;
     background-clip: padding-box;
+    transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
 }
 
-.dark ::-webkit-scrollbar-thumb { /* DARK MODE */
+.dark ::-webkit-scrollbar-thumb {
     background: #6E6E6E;
-    /*@apply bg-primary-500;*/
 }
 
-
-::-webkit-scrollbar-thumb:hover, .fi-sidebar-nav::-webkit-scrollbar-thumb:hover { /* Handle on hover */
+::-webkit-scrollbar-thumb:hover, .fi-sidebar-nav::-webkit-scrollbar-thumb:hover {
     background: #909090;
     @apply dark:bg-gray-700;
 }
 
-
+/* Dashboard analytics card — MD3 Level 1, medium shape. */
 .analytics {
     padding: 0 0 15px 20px;
-    border-radius: 12px;
-    /*background-color: #e0e7eb;*/
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    border-radius: var(--md-sys-shape-corner-medium);
+    box-shadow: var(--md-sys-elevation-1);
     @apply dark:bg-[#27353f]
 }
 
 .ring-1 {
-    border-radius: 8px;
+    border-radius: var(--md-sys-shape-corner-small);
     @apply shadow-md border-none;
 }
 
-/*ANIMATIONS*/
+/* --------------------------------------------------------------------------
+   DECORATIVE ENTRANCES  (kept; durations/easing corrected; a11y-gated)
+   -------------------------------------------------------------------------- */
 .bounce-in-top {
     -webkit-animation: bounce-in-top 1.1s 1s both;
     animation: bounce-in-top 1.1s 1s both;
 }
 
+/* Re-eased: an entrance should DECELERATE into place (was an accelerating curve). */
 .text-focus-in {
-    -webkit-animation: text-focus-in 0.75s cubic-bezier(0.550, 0.085, 0.680, 0.530) both;
-    animation: text-focus-in 0.75s cubic-bezier(0.550, 0.085, 0.680, 0.530) both;
+    -webkit-animation: text-focus-in var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-emphasized-decelerate) both;
+    animation: text-focus-in var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-emphasized-decelerate) both;
 }
 
+/* Duration unified to 1s on both tracks (was -webkit:2s vs standard:1s). */
 .swing-in-top-fwd {
-    -webkit-animation: swing-in-top-fwd 2s cubic-bezier(0.175, 0.885, 0.320, 1.275) both;
+    -webkit-animation: swing-in-top-fwd 1s cubic-bezier(0.175, 0.885, 0.320, 1.275) both;
     animation: swing-in-top-fwd 1s cubic-bezier(0.175, 0.885, 0.320, 1.275) both;
 }
-
 
 @-webkit-keyframes swing-in-top-fwd {
     0% {
@@ -189,7 +222,6 @@ html, body, * {
     }
 }
 
-
 @-webkit-keyframes text-focus-in {
     0% {
         -webkit-filter: blur(12px);
@@ -215,7 +247,6 @@ html, body, * {
         opacity: 1;
     }
 }
-
 
 @-webkit-keyframes bounce-in-top {
     0% {

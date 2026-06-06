@@ -1,4 +1,18 @@
+/* ==========================================================================
+   BMS-CX · FILAMENT ADMIN THEME — ENTRY POINT
+   --------------------------------------------------------------------------
+   Import order matters (PostCSS inlines these in sequence):
+     1. Filament vendor base theme
+     2. tokens.css       → MD3 design tokens (motion/shape/elevation/state)   [NEW]
+     3. colors.css       → fundamental status/surface colors (UNCHANGED values)
+     4. partials         → login / panel / sidebar / table / form / animations / overlay
+     5. accessibility.css→ reduced-motion + focus rings (loaded last to win)   [NEW]
+     6. third-party (kenepa banner)
+   ========================================================================== */
 @import '/vendor/filament/filament/resources/css/theme.css';
+
+@import 'stylesheets/tokens.css';
+
 @import 'stylesheets/colors.css';
 @import 'stylesheets/login.css';
 @import 'stylesheets/panel.css';
@@ -7,12 +21,10 @@
 @import 'stylesheets/form.css';
 @import 'stylesheets/animations.css';
 @import 'stylesheets/overlay.css';
+
+@import 'stylesheets/accessibility.css';
+
 @import '../../../../vendor/kenepa/banner/resources/css/index.css';
 
 
-
 @config 'tailwind.config.js';
-
-
-
-

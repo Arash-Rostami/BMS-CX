@@ -1,9 +1,13 @@
+/* ==========================================================================
+   BMS-CX · AUTHENTICATION / LOGIN LAYOUT
+   ========================================================================== */
 .fi-simple-layout {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-image: url('/resources/images/logos/minimal.jpg');
-    background-size: contain;
+    background-size: 70%;
     background-repeat: no-repeat;
+
 }
 
 
@@ -11,27 +15,41 @@
     position: absolute;
     right: 3%;
     padding: 2rem;
-    border-radius: 8px;
-    box-shadow: rgba(0, 0, 0, 0.07) 0px 1px 2px,
-    rgba(0, 0, 0, 0.07) 0px 2px 4px,
-    rgba(0, 0, 0, 0.07) 0px 4px 8px,
-    rgba(0, 0, 0, 0.07) 0px 8px 16px,
-    rgba(0, 0, 0, 0.07) 0px 16px 32px,
-    rgba(0, 0, 0, 0.07) 0px 32px 64px;
-
-    transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    border-radius: var(--md-sys-shape-corner-large);
+    box-shadow: var(--md-sys-elevation-2);
+    transition:
+        background-color var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard),
+        box-shadow var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
 }
 
-.fi-simple-main:hover {
+.fi-simple-main:hover,
+.fi-simple-main:focus-within {
     background-color: #EAEAEA;
-    box-shadow: rgba(0, 0, 0, 0.1) 0px 3px 6px,
-    rgba(0, 0, 0, 0.1) 0px 6px 12px,
-    rgba(0, 0, 0, 0.1) 0px 12px 24px;
-    @apply dark:bg-stone-900
+    box-shadow: var(--md-sys-elevation-3);
+    @apply dark:bg-stone-900;
 }
 
 .fi-pw-reveal-button {
     @apply ps-3;
+    border-radius: var(--md-sys-shape-corner-small);
+    transition: var(--md-transition-state);
+}
+
+/* MD3 state layers on the reveal control (previously had none). */
+.fi-pw-reveal-button:hover {
+    background-color: var(--md-state-hover-on-light);
+}
+
+.fi-pw-reveal-button:active {
+    background-color: var(--md-state-pressed-on-light);
+}
+
+.dark .fi-pw-reveal-button:hover {
+    background-color: var(--md-state-hover-on-dark);
+}
+
+.dark .fi-pw-reveal-button:active {
+    background-color: var(--md-state-pressed-on-dark);
 }
 
 @media (max-width: 768px) {

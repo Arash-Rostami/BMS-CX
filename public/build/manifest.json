@@ -1,11 +1,11 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-6uQvYcO3.css",
+    "file": "assets/app-0n8obfSa.css",
     "isEntry": true,
     "src": "resources/css/app.css"
   },
   "resources/css/filament/admin/theme.css": {
-    "file": "assets/theme-iVKGQBPk.css",
+    "file": "assets/theme-syxR0HHE.css",
     "isEntry": true,
     "src": "resources/css/filament/admin/theme.css"
   },
@@ -92,7 +92,7 @@
   },
   "resources/images/avatars/partner.png": {
     "file": "assets/viewer-ANmOMvP3.png",
-    "src": "resources/images/avatars/partner.png"
+    "src": "resources/images/avatars/viewer.png"
   },
   "resources/images/avatars/partner.svg": {
     "file": "assets/viewer-dBUqkQ1t.svg",
@@ -100,7 +100,7 @@
   },
   "resources/images/avatars/viewer.png": {
     "file": "assets/viewer-ANmOMvP3.png",
-    "src": "resources/images/avatars/partner.png"
+    "src": "resources/images/avatars/viewer.png"
   },
   "resources/images/avatars/viewer.svg": {
     "file": "assets/viewer-dBUqkQ1t.svg",
@@ -243,7 +243,7 @@
     "src": "resources/images/stats/transit.png"
   },
   "resources/js/app.js": {
-    "file": "assets/app-i4U88SHa.js",
+    "file": "assets/app-vwNdEjjN.js",
     "isEntry": true,
     "src": "resources/js/app.js"
   }

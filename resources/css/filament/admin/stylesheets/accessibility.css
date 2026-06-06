@@ -1,0 +1,52 @@
+/* ==========================================================================
+   BMS-CX · ACCESSIBILITY LAYER  (NEW FILE)
+   --------------------------------------------------------------------------
+   Global reduced-motion safeguards + a consistent keyboard focus ring for
+   custom-styled chrome. Loaded LAST so these protections win the cascade.
+
+   Why this exists: the audit found NO `prefers-reduced-motion` handling and
+   inconsistent `:focus-visible` coverage anywhere in the original theme.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. REDUCED MOTION  (WCAG 2.3.3 / MD3 accessibility)
+   Neutralizes decorative entrances (bounce/jello/swing/text-focus/fade),
+   the global smooth-scroll, and the infinite orientation spinner — while
+   still allowing instant state changes so the UI stays responsive.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        animation-delay: 0ms !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   2. KEYBOARD FOCUS  (:focus-visible = keyboard-only, no ring on mouse click)
+   A single MD3 focus ring for the custom-styled interactive surfaces that
+   would otherwise depend on inconsistent user-agent defaults.
+   -------------------------------------------------------------------------- */
+.fi-sidebar-item > a:focus-visible,
+.fi-dropdown-list-item:focus-visible,
+.fi-ta-record a:focus-visible,
+.fi-ta-actions a:focus-visible,
+.tab-item:focus-visible,
+.copyable-content:focus-visible,
+.fi-pw-reveal-button:focus-visible {
+    outline: var(--md-focus-ring-width) solid var(--md-focus-ring-color);
+    outline-offset: var(--md-focus-ring-offset);
+    border-radius: var(--md-sys-shape-corner-small);
+}
+
+.fi-fo-field-wrp{
+    position: relative;
+    border-radius: 0 !important;
+    border:none!important;
+    top:6px!important;
+    box-shadow: none!important;
+}

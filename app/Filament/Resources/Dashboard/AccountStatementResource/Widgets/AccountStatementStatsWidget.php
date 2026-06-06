@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Dashboard\AccountStatementResource\Widgets;
 
 use App\Filament\Pages\Trait\AccountStatementStats;
 use App\Filament\Resources\Dashboard\AccountStatementResource\Pages\ListAccountStatements;
+use App\Models\AccountStatement;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -13,14 +14,18 @@ class AccountStatementStatsWidget extends BaseWidget
     use AccountStatementStats;
     use InteractsWithPageTable;
 
-//    protected static ?string $pollingInterval = null;
+    public $accountId = null;
     public array $tableColumnSearches = [];
     protected ?string $heading = 'Statistics';
     protected ?string $description = 'Real-time insight into aggregated ledger statements and net movements.';
 
     protected function getStats(): array
     {
-        $stats = $this->prepareAccountStatementStats($this->getPageTableQuery());
+        $stats = $this->prepareAccountStatementStats(
+            !empty($this->accountId)
+                ? AccountStatement::query()->where('account_id', $this->accountId)
+                : $this->getPageTableQuery()
+        );
 
         return [
             Stat::make('Total Disbursed (Credit)', number_format($stats['totalDebit'], 3))

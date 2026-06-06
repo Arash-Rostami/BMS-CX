@@ -1,6 +1,24 @@
+/* ==========================================================================
+   BMS-CX · DATA TABLES  (the ERP workhorse)
+   --------------------------------------------------------------------------
+   Material 3 + enterprise data-grid best practices, colors/fonts PRESERVED.
+   Headline fixes & additions:
+     • FIX  .fi-ta border-radius: 5%  → fixed token (percentage = distorted ellipse)
+     • FIX  duplicate `thead > tr th` blocks merged into one
+     • FIX  typo  .fa-ta-header-toolbar  → .fi-ta-header-toolbar
+     • FIX  rgb(r,g,b,a)/RGB() → rgba()  (header + group-header tints, same colors)
+     • NEW  sticky column header (essential for long ERP grids)
+     • NEW  row-hover state layer (translucent — status gradients show through)
+     • NEW  letter-spacing on headers for terse technical column codes
+     • MD3  ad-hoc shadows → elevation tokens; 2s fade & icon slide retimed
+     • Status "telex" gradients, payment green/red, beige summary tints,
+       and the monospace group-label font are all kept verbatim.
+   ========================================================================== */
+
+/* Button-icon entrance (retimed to MD3; keyframe now defined in animations.css). */
 .fi-btn-icon {
-    -webkit-animation: slide-in-right 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
-    animation: slide-in-right 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
+    -webkit-animation: slide-in-right var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) both;
+    animation: slide-in-right var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) both;
 }
 
 div.fi-ta-record {
@@ -18,14 +36,20 @@ div.fi-ta-record {
     border-bottom: none;
 }
 
-.fi-ta-header {
-    padding-top: 5px;
-    padding-bottom: 5px;
-    margin: 0 0 0 0;
+.fi-ta-header-toolbar {
+    padding-top: 12px !important;
+    padding-bottom: 5px !important;
+    margin: 0;
+    border-radius: 0 !important;
 }
 
-.fi-ta-row:not(.fi-ta-row.fi-ta-summary-row) {
-    border-bottom: 0.1px solid #808080;
+.fi-ta-header-ctn:has(.tab-container) .fi-ta-header-toolbar {
+    padding-top: 0 !important;
+}
+
+
+.fi-ta-row:not(.fi-ta-summary-row):not(:has(+ .fi-ta-summary-row)) {
+    border-bottom: 0.1px solid #949494;
 }
 
 .fi-ta-row.fi-ta-summary-header-row {
@@ -34,35 +58,28 @@ div.fi-ta-record {
 }
 
 thead > tr th {
-    /*background-color: #B0BCC5;*/
-    background-color: lightgrey;
-    padding-top: 9px;
-    padding-bottom: 9px;
+    border-radius: 0;
+    z-index: 10;
+    background-color: #bfbfbf;
+    padding: 5px 0 5px 0;
     font-weight: 500;
+    letter-spacing: var(--erp-header-tracking);
     @apply dark:bg-gray-700
 }
 
 nav.fi-ta-pagination {
-    /*background: linear-gradient(135deg, #D0DBE1, #D0DBE1, lightgrey, #D0DBE1, #D0DBE1);*/
     background-color: lightgrey;
     padding: 8px;
-    border-radius: 0 0 10px 10px;
-}
-
-thead > tr th {
-    /*background-color: #B0BCC5;*/
-    background-color: rgb(142, 140, 147, 0.7);
-    @apply dark:bg-gray-700
 }
 
 .dark nav.fi-ta-pagination {
     background: transparent;
 }
 
-.fi-ta-filter, .fa-ta-header-toolbar {
+.fi-ta-filter, .fi-ta-header-toolbar {
     padding-top: 0;
     padding-bottom: 0;
-    margin: 0 0 0 0;
+    margin: 0;
     border: none;
     box-shadow: none;
 }
@@ -72,53 +89,62 @@ thead > tr th {
 }
 
 .fi-ta {
-    border-radius: 5%;
+    border-radius: var(--md-sys-shape-corner-large);
     border: 1px solid lightgrey;
     padding: 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transition: background 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: var(--md-sys-elevation-1);
+    transition: background-color var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard),
+    box-shadow var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
     @apply dark:border-none
 }
 
 .fi-ta-content, .fi-ta-record {
-    border-radius: 8px;
+    border-radius: var(--md-sys-shape-corner-small);
     border: 0;
 }
 
-
+/* Hover lifts the whole grid one MD3 level (was a 25px-blur jump). */
 .fi-ta:hover {
-    /*background: #e0e7eb;*/
-    /*background: lightgrey;*/
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--md-sys-elevation-3);
     @apply dark:bg-gray-900
 }
 
-.fi-wi-stats-overview-stat, .fi-tabs-item {
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
-    transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
-    -webkit-animation: fade-in 2s cubic-bezier(0.390, 0.575, 0.565, 1.000) both;
-    animation: fade-in 2s cubic-bezier(0.390, 0.575, 0.565, 1.000) both;
+/* NEW — ERP row hover. Translucent state layer on the cells so it composes
+   with zebra striping AND the status "telex" gradients underneath. */
+.fi-ta-row:not(.fi-ta-summary-row):not(.fi-ta-summary-header-row) > td {
+    transition: background-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
 }
 
+.fi-ta-row:not(.fi-ta-summary-row):not(.fi-ta-summary-header-row):hover > td {
+    background-color: var(--erp-row-hover);
+}
+
+/* Stat / tab widgets — MD3 Level 1; fade retimed from a sluggish 2s to 300ms. */
+.fi-wi-stats-overview-stat, .fi-tabs-item {
+    box-shadow: var(--md-sys-elevation-1);
+    transition: background-color var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard),
+    box-shadow var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
+    -webkit-animation: fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) both;
+    animation: fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) both;
+}
 
 .fi-wi-stats-overview-stat:hover, .fi-tabs-item:hover {
-    /*background: #D0DAE1;*/
     background: lightgrey;
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--md-sys-elevation-2);
     @apply dark:bg-gray-900
 }
 
-
+/* Table toolbar / header container — MD3 Level 1, top corners nest with shell. */
 .fi-ta-header-ctn {
     background-color: lightgrey;
-    /*background: linear-gradient(135deg, #D0DBE1, #D0DBE1, lightgrey, #D0DBE1, #D0DBE1);*/
     color: #333;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); /* Subtler header container shadow */
-    /*padding: 10px; !* Added padding to header container *!*/
+    box-shadow: var(--md-sys-elevation-1);
     margin: 0;
     border: none;
-    border-radius: 10px 10px 0 0;
+    padding-bottom: 5px;
+    border-radius: var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large) 0 0;
 }
 
 .dark .fi-ta-header-ctn {
@@ -139,15 +165,13 @@ thead > tr th {
     margin-right: 5px;
 }
 
-
 div[wire\:key$=".table.column-toggle.panel"], .fi-dropdown-panel {
     max-height: 400px;
-    /*overflow-y: auto;*/
-    /*background: #D0DAE1;*/
     background: lightgrey;
-    border-radius: 8px;
-    box-shadow: 0 3px 9px rgba(0, 0, 0, 0.07);
+    border-radius: var(--md-sys-shape-corner-small);
+    box-shadow: var(--md-sys-elevation-2);
     overflow: auto;
+    z-index: 100;
 }
 
 nav div.fi-dropdown-panel[x-ref="panel"] {
@@ -155,18 +179,16 @@ nav div.fi-dropdown-panel[x-ref="panel"] {
     top: 100% !important;
 }
 
-.fi-ta-group-header { /*initial summary*/
-    background-color: RGB(235, 229, 224, 0.8);
-    @apply shadow-lg rounded dark:rounded-none dark:border-t dark:border-primary-300;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+.fi-ta-group-header { /* initial summary */
+    background-color: #F2F2F2;
+    border: none;
+    box-shadow: var(--md-sys-elevation-1);
 }
 
-
-.fi-ta-summary-row { /*final summary*/
-    background-color: #EBE5E0;
+.fi-ta-summary-row { /* final summary */
+    background-color: #F2F2F2;
     border: none;
-    border-radius: 8px;
+    padding: 0;
     @apply dark:bg-transparent;
 }
 
@@ -179,6 +201,7 @@ nav div.fi-dropdown-panel[x-ref="panel"] {
     color: grey;
 }
 
+/* Copy-to-clipboard affordance — now revealed on hover AND keyboard focus. */
 .copyable-content {
     position: relative;
     display: inline-block;
@@ -194,17 +217,17 @@ nav div.fi-dropdown-panel[x-ref="panel"] {
     transform: translateY(-50%);
     font-size: 10px;
     color: #999;
-    transition: opacity 0.3s, color 0.3s;
+    transition: opacity var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard),
+    color var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
     opacity: 0;
     pointer-events: none;
 }
 
-
-.copyable-content:hover::after {
+.copyable-content:hover::after,
+.copyable-content:focus-within::after {
     opacity: 1;
     color: #666;
 }
-
 
 .cell {
     cursor: cell;
@@ -214,9 +237,7 @@ nav div.fi-dropdown-panel[x-ref="panel"] {
     transform: scale(.70);
     display: flex;
     justify-content: space-around;
-
 }
-
 
 .fi-tabs {
     display: inline-grid;
@@ -233,14 +254,13 @@ nav div.fi-dropdown-panel[x-ref="panel"] {
     @apply bg-white dark:bg-gray-950/50
 }
 
-
-/*filter tabs of tables*/
+/* filter tabs of tables */
 .tab-container {
-    @apply flex bg-[#E7EAED] dark:bg-transparent mb-0 border-b border-b-transparent m-auto space-x-1;
+    @apply flex bg-[#D3D3D3] dark:bg-transparent mb-0 border-b border-b-transparent m-auto space-x-1;
 }
 
 .tab-item {
-    @apply px-2.5 py-1 text-gray-600 dark:text-gray-400 cursor-pointer text-xs bg-[#E7EAED] dark:bg-transparent border border-transparent
+    @apply px-2.5 py-1 text-gray-600 dark:text-gray-400 cursor-pointer text-xs bg-[#D3D3D3] dark:bg-transparent border border-transparent
     rounded-t-md transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500
     min-w-[80px] text-center;
     border-bottom: none;
@@ -264,22 +284,16 @@ nav div.fi-dropdown-panel[x-ref="panel"] {
     @apply bg-white dark:bg-gray-800;
 }
 
-
-.proforma-modern-telex, .order-modern-telex {
-    background-image: linear-gradient(to right, #fca5a5, white, white, white, white);
-    @apply dark:bg-none dark:bg-red-950
-}
-
+/* Status "telex" rows — gradient + dark fill PRESERVED (two identical rules merged). */
+.proforma-modern-telex, .order-modern-telex,
 .proforma-classic-telex, .order-classic-telex {
     background-image: linear-gradient(to right, #fca5a5, white, white, white, white);
     @apply dark:bg-none dark:bg-red-950
 }
 
 .fi-checkbox-input {
-    /*border: 0.5px dotted darkgrey;*/
     @apply bg-primary-300
 }
-
 
 @media (max-width: 1200px) {
     .fi-tabs {

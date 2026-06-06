@@ -1,4 +1,12 @@
-/* Orientation Overlay Styles */
+/* ==========================================================================
+   BMS-CX · ORIENTATION OVERLAY  (portrait "please rotate" gate)
+   --------------------------------------------------------------------------
+   All colors (rgba(20,20,20,0.97) scrim, #bbc3c3 glyph, #888583 icon) are
+   PRESERVED verbatim. MD3 additions: the phone card now carries Level 3
+   elevation, the overlay fades in with standard easing, shapes map to the
+   MD3 scale, and the spinner is tokenized. The infinite spin auto-stops
+   under prefers-reduced-motion (accessibility.css forces iteration-count: 1).
+   ========================================================================== */
 #orientation-overlay {
     position: fixed;
     top: 0;
@@ -14,6 +22,7 @@
     padding: 20px;
     z-index: 9999;
     pointer-events: none;
+    animation: fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard) both;
 }
 
 .orientation-overlay-content {
@@ -28,19 +37,20 @@
     width: 100px;
     height: 150px;
     border: 5px solid #bbc3c3;
-    border-radius: 15px;
+    border-radius: var(--md-sys-shape-corner-large);
     position: relative;
     margin: 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: var(--md-sys-elevation-3);
 }
 
 .orientation-overlay-phone-screen {
     width: 80px;
     height: 130px;
     background: #bbc3c3;
-    border-radius: 10px;
+    border-radius: var(--md-sys-shape-corner-medium);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -49,16 +59,12 @@
 .orientation-overlay-rotate-icon {
     font-size: 50px;
     color: #888583;
-    animation: orientation-overlay-rotate 2s infinite linear;
+    animation: orientation-overlay-rotate 1.4s infinite var(--md-sys-motion-easing-linear);
 }
 
 @keyframes orientation-overlay-rotate {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 @media only screen and (orientation: landscape) {

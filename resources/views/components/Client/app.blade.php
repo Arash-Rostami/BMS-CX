@@ -7,11 +7,12 @@
 
     <title>{{ $title ?? 'Client Portal' }}</title>
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css','resources/css/main-fonts.css','resources/js/app.js'])
     @filamentStyles
     @livewireStyles
 </head>
-<body class="antialiased bg-gray-50 text-gray-900 min-h-screen">
+<body class="antialiased bg-gray-50 text-gray-900 min-h-screen"
+      style="font-family: 'Roboto' , 'Kalameh' , sans-serif!important;">
 {{ $slot }}
 
 @livewireScripts

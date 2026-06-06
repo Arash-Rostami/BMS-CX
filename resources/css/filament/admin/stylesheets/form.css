@@ -1,39 +1,50 @@
-.fi-section-content {
-    box-shadow: 0 3px 9px rgba(0, 0, 0, 0.08);
-    transition: background 0.3s ease, box-shadow 0.3s ease, border-radius 0.3s ease;
-    background-color: rgb(212, 212, 212, 0.8);
-    border-radius: 8px;
-    padding: 12px;
+/* ==========================================================================
+   BMS-CX · FORMS  (sections · fieldsets · wizard · choices · modals)
+   ========================================================================== */
+
+header.fi-section-header {
+    background-color: #BFBFBF;
+    padding: 6px 15px;
+    box-shadow: var(--md-sys-elevation-2) !important;
+    border-radius: var(--md-sys-shape-corner-small) var(--md-sys-shape-corner-small) 0 0;
+    font-weight: 500;
+}
+
+section .fi-section-content {
+    box-shadow: var(--md-sys-elevation-1);
+    transition: background-color var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard),
+    box-shadow var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
+    background-color: rgba(212, 212, 212, 0.8);
+    border-radius: var(--md-sys-shape-corner-small);
     @apply dark:bg-gray-900;
 }
 
+section:has(.fi-section-header) .fi-section-content {
+    border-radius: 0 0 var(--md-sys-shape-corner-small) var(--md-sys-shape-corner-small);
+}
 
-.fi-section-content:hover {
-    /*background: #D0DAE1;*/
-    background-color: rgb(212, 212, 212, 0.9);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    border-radius: 10px;
+.fi-section-content:hover,
+.fi-section-content:focus-within {
+    background-color: lightgrey;
+    box-shadow: var(--md-sys-elevation-2);
     @apply dark:bg-gray-950/50
 }
 
-header.fi-section-header {
-    background-color: lightgrey;
-    /*background: linear-gradient(135deg, #D0DBE1, #D0DBE1, lightgrey, #D0DBE1, #D0DBE1);*/
-    padding: 8px 15px;
-    border-radius: 7px 7px 0 0;
-    font-weight: 500;
-}
 
 .dark header.fi-section-header {
     background: #242429;
 }
 
 .fi-fieldset {
-    /*border: solid 1px #e0e7eb;*/
     border: solid 1px lightgrey;
-    border-radius: 6px;
+    border-radius: var(--md-sys-shape-corner-small);
     padding: 10px;
     margin-bottom: 10px;
+}
+
+/* Dark-mode contrast fix: the lightgrey border was washed out on dark surfaces. */
+.dark .fi-fieldset {
+    border-color: #3f3f46;
 }
 
 .grayscale {
@@ -42,37 +53,37 @@ header.fi-section-header {
     opacity: 0.9;
 }
 
-.fi-modal-content button[title="deleteMe"] {
-    display: none;
-}
-
+/* (Deduplicated — this rule was declared twice in the original.) */
 .fi-modal-content button[title="deleteMe"] {
     display: none;
 }
 
 .choices__list:hover {
-    /*background-color: #E6ECEE;*/
     background-color: lightgrey;
-    border-radius: 6px;
+    border-radius: var(--md-sys-shape-corner-small);
+    transition: var(--md-transition-state);
     @apply dark:bg-gray-900;
 }
 
-
 .fi-fo-wizard-header {
-    /*background-color: #DFE7EA;*/
     background-color: lightgrey;
     padding: 10px 15px;
     border-bottom: solid 1px #e0e7eb;
     @apply dark:bg-gray-950/50
 }
 
+/* Dark-mode contrast fix for the wizard hairline (was a pale #e0e7eb in dark). */
+.dark .fi-fo-wizard-header {
+    border-bottom-color: #3f3f46;
+}
+
 .fi-fo-wizard-header svg {
     @apply text-primary-500
 }
 
-.fi-modal-window:hover {
-    /*background-color: #E6ECEE;*/
+.fi--window:hover {
     background-color: lightgrey;
-    border-radius: 8px;
+    border-radius: var(--md-sys-shape-corner-small);
+    transition: var(--md-transition-state);
     @apply dark:bg-gray-900;
 }

@@ -15,9 +15,8 @@ use Filament\Tables\Filters\QueryBuilder\Constraints\DateConstraint;
 use Filament\Tables\Filters\QueryBuilder\Constraints\NumberConstraint;
 use Filament\Tables\Filters\QueryBuilder\Constraints\SelectConstraint;
 use Filament\Tables\Filters\QueryBuilder\Constraints\TextConstraint;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Str;
 
 
 class Admin
@@ -28,12 +27,12 @@ class Admin
             ->constraintPickerColumns(2)
             ->constraintPickerWidth('3xl')
             ->constraints([
-                SelectConstraint::make('account_id')
-                    ->label('Account')
-                    ->options(fn(): array => Account::query()
-                        ->orderBy('name')
-                        ->pluck('name', 'id')
-                        ->all()),
+                ...(auth()->check() && filament()->getCurrentPanel() ? [
+                    SelectConstraint::make('account_id')
+                        ->label('Account')
+                        ->options(fn(): array => Account::query()
+                            ->orderBy('name')->pluck('name', 'id')->all()),
+                ] : []),
 
                 SelectConstraint::make('entry_type')
                     ->label('Type')
@@ -188,7 +187,10 @@ class Admin
             ->formatStateUsing(fn($state, LoanSummary $record): string => $record->entryTypeLabel())
             ->color(fn($state, LoanSummary $record): string => $record->entryTypeColor())
             ->tooltip(fn($state, LoanSummary $record): string => $record->entryTypeTooltip())
-            ->url(fn($record) => $record->id ? LedgerEntryResource::getUrl('view', ['record' => $record->id]) : null)
+            ->url(function (LoanSummary $record): ?string {
+                if (!$record->id || !auth()->check() || !filament()->getCurrentPanel()) return null;
+                return LedgerEntryResource::getUrl('view', ['record' => $record->id]);
+            })
             ->openUrlInNewTab();
     }
 
