@@ -417,7 +417,7 @@ trait Form
             ->options(function (callable $get) {
                 $departmentId = $get('department_id');
 
-                return in_array($departmentId, [2, 5, 6, 8, 10, 21, 22, 23])
+                return in_array($departmentId, [2, 5, 6, 8, 10, 17, 21, 22, 23])
                     ? showCurrencies()
                     : ['Rial' => new HtmlString('<span class="mr-2">🇮🇷</span> Rial')];
             })

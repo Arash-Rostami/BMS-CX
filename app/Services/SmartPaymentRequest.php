@@ -14,6 +14,7 @@ class SmartPaymentRequest
     {
         $id = is_array($id) ? $id[0] ?? null : $id;
 
+        if (!$id && !$module) return;
         if (!$id || !$module) {
             Notification::make()
                 ->title('Invalid Reference')

@@ -14,12 +14,12 @@
 @import 'stylesheets/tokens.css';
 
 @import 'stylesheets/colors.css';
+@import 'stylesheets/animations.css';
 @import 'stylesheets/login.css';
 @import 'stylesheets/panel.css';
 @import 'stylesheets/sidebar.css';
 @import 'stylesheets/table.css';
 @import 'stylesheets/form.css';
-@import 'stylesheets/animations.css';
 @import 'stylesheets/overlay.css';
 
 @import 'stylesheets/accessibility.css';
