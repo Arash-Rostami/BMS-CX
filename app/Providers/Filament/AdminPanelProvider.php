@@ -144,6 +144,10 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarWidth('18rem')
             ->unsavedChangesAlerts()
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->renderHook(
+                \Filament\View\PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn (): string => \Illuminate\Support\Facades\Blade::render('@livewire("components.user-guide-topbar")')
+            )
             ->topNavigation(fn() => auth()->check() && isMenuTop());
     }
 }
