@@ -1,11 +1,11 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-0n8obfSa.css",
+    "file": "assets/app-58LUwfuo.css",
     "isEntry": true,
     "src": "resources/css/app.css"
   },
   "resources/css/filament/admin/theme.css": {
-    "file": "assets/theme-syxR0HHE.css",
+    "file": "assets/theme-Z-A7_OJG.css",
     "isEntry": true,
     "src": "resources/css/filament/admin/theme.css"
   },
@@ -63,7 +63,7 @@
     "src": "resources/images/avatars/accountant.png"
   },
   "resources/images/avatars/accountant.svg": {
-    "file": "assets/accountant-A6pa-KD5.svg",
+    "file": "assets/accountant-jB-yzPaQ.svg",
     "src": "resources/images/avatars/accountant.svg"
   },
   "resources/images/avatars/admin.png": {
@@ -87,7 +87,7 @@
     "src": "resources/images/avatars/manager.png"
   },
   "resources/images/avatars/manager.svg": {
-    "file": "assets/manager-lNXAK0M1.svg",
+    "file": "assets/manager-G4-RjSS1.svg",
     "src": "resources/images/avatars/manager.svg"
   },
   "resources/images/avatars/partner.png": {
@@ -111,7 +111,7 @@
     "src": "resources/images/logos/bms-main-logo.png"
   },
   "resources/images/cloud.svg": {
-    "file": "assets/cloud-KMB3wBWF.svg",
+    "file": "assets/cloud-o1xcuPZq.svg",
     "src": "resources/images/cloud.svg"
   },
   "resources/images/logos/backdrop-new.jpg": {
@@ -175,7 +175,7 @@
     "src": "resources/images/main-bg.png"
   },
   "resources/images/star.svg": {
-    "file": "assets/star-Jpveviwm.svg",
+    "file": "assets/star-LWxXvt9a.svg",
     "src": "resources/images/star.svg"
   },
   "resources/images/stats/allowed.png": {
