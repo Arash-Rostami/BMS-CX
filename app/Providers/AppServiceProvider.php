@@ -50,6 +50,7 @@ use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Columns\TextColumn;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\View\View;
@@ -133,12 +134,17 @@ class AppServiceProvider extends ServiceProvider
     {
         FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_START,
-            fn(): View => view('components.overlay'),
+            fn (): View => view('components.overlay'),
         );
 
         FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,
-            fn(): View => view('components.events'),
+            fn (): View => view('components.events'),
+        );
+
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::GLOBAL_SEARCH_AFTER,
+            fn (): string => Blade::render('@livewire(App\Livewire\Guide::class)'),
         );
     }
 
