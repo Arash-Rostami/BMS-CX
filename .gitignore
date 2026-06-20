@@ -53,3 +53,6 @@ Thumbs.db
 /bootstrap/cache/*.php
 /bootstrap/cache/packages.php
 /bootstrap/cache/services.php
+
+
+/public/guides/

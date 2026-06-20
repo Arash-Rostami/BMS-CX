@@ -100,7 +100,7 @@ html, body, * {
 }
 
 .fi-modal-window {
-    transition: background-color 150ms ease;
+    @apply transition-colors duration-200;
 }
 
 .fi-modal-window:hover {
@@ -120,6 +120,22 @@ html, body, * {
 .dark .fi-modal-header {
     background-color: #27272A;
 }
+
+.fi-modal-slide-over-window {
+    transition-property: all !important;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition-duration: 500ms !important;
+    will-change: transform, opacity;
+    transform: translateX(0);
+}
+
+.pulse {
+    -webkit-animation: elegant-pulse 2.5s ease-in-out infinite;
+    animation: elegant-pulse 2.5s ease-in-out infinite;
+    -webkit-transform-origin: center center;
+    transform-origin: center center;
+}
+
 
 /* --------------------------------------------------------------------------
    GLOBAL SCROLLBARS  (colors preserved; radii tokenized; no-op shadow removed)

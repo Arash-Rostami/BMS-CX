@@ -1,19 +1,11 @@
 /* ==========================================================================
    BMS-CX · KEYFRAME LIBRARY
-   --------------------------------------------------------------------------
-   Motion GEOMETRY only — every keyframe animates opacity/transform, which are
-   GPU-composited (no layout/paint thrash). Timing + easing are supplied by the
-   consumers using the MD3 tokens in tokens.css. All of these are neutralized
-   under prefers-reduced-motion (see accessibility.css).
    ========================================================================== */
 
-/* fade-in — consumed by stat/tab widgets (table.css). */
 @-webkit-keyframes fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
 
-/* slide-in-right — consumed by .fi-btn-icon (table.css).
-   NOTE: this keyframe was REFERENCED but never DEFINED in the original theme,
-   so the icon entrance silently no-op'd. Defined here so it actually runs. */
+
 @-webkit-keyframes slide-in-right {
     0% { -webkit-transform: translateX(28px); transform: translateX(28px); opacity: 0; }
     100% { -webkit-transform: translateX(0); transform: translateX(0); opacity: 1; }
@@ -23,7 +15,6 @@
     100% { -webkit-transform: translateX(0); transform: translateX(0); opacity: 1; }
 }
 
-/* jello-horizontal — consumed by .fi-logo (panel.css). Decorative brand flourish. */
 @-webkit-keyframes jello-horizontal {
     0% { -webkit-transform: scale3d(1, 1, 1); transform: scale3d(1, 1, 1); }
     30% { -webkit-transform: scale3d(1.25, 0.75, 1); transform: scale3d(1.25, 0.75, 1); }

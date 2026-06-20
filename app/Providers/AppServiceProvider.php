@@ -76,7 +76,7 @@ class AppServiceProvider extends ServiceProvider
         $this->registerFilamentRenderHooks();
         $this->registerModelObservers();
         $this->registerGates();
-        // $this->registerInactiveFeatures();
+//         $this->registerInactiveFeatures();
     }
 
 
@@ -99,10 +99,10 @@ class AppServiceProvider extends ServiceProvider
     {
         FilamentAsset::register([
             Js::make('fullscreen', __DIR__ . '/../../resources/js/fullscreen.js'),
-//            Js::make('lightBoxLocal', __DIR__ . '/../../resources/js/lightBoxLocal.js'),
-//            Js::make('lightBoxInit', __DIR__ . '/../../resources/js/lightBoxInit.js'),
+            Js::make('lightBoxLocal', __DIR__ . '/../../resources/js/lightBoxLocal.js'),
+            Js::make('lightBoxInit', __DIR__ . '/../../resources/js/lightBoxInit.js'),
             Js::make('connectionStatus', __DIR__ . '/../../resources/js/connectionStatus.js'),
-//            Js::make('sortable-js', __DIR__ . '/../../resources/js/sort.js'),
+            Js::make('sortable-js', __DIR__ . '/../../resources/js/sort.js'),
             Js::make('tweaks', __DIR__ . '/../../resources/js/tweaks.js'),
         ]);
     }
